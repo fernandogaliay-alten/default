@@ -1,0 +1,281 @@
+﻿{
+  "_meta": {
+    "id": "taxonomy",
+    "version": "0.1.0",
+    "locale": "es-ES",
+    "status": "baselined",
+    "purpose": "Fuente única de verdad de opciones de onboarding, filtros y mapeo a recursos visuales. La consumen la UI, el constructor de prompt de IA y el validador de recetas.",
+    "conventions": "Claves e ids en inglés (estables, nunca se renombran). Labels y descripciones en español (editables).",
+    "extensionRule": "Los ingredientes son un conjunto semilla, no una lista cerrada. El usuario puede añadir ingredientes libres; el validador los resuelve por palabras clave.",
+    "breakingChangeRule": "Renombrar o borrar un id existente rompe preferencias guardadas y cachés. Solo se añaden ids nuevos o se deprecan con alias."
+  },
+
+  "dietPatterns": {
+    "cardinality": "single-select",
+    "usedIn": ["onboarding.step2", "filters", "profile", "prompt", "validator"],
+    "items": [
+      { "id": "omnivore", "label": "Omnívoro", "description": "Como de todo.", "excludedTags": [] },
+      { "id": "flexitarian", "label": "Flexitariano", "description": "Carne de forma ocasional, con base vegetal.", "excludedTags": [], "promptHint": "prioriza recetas de base vegetal y usa carne solo de forma ocasional" },
+      { "id": "pescatarian", "label": "Pescetariano", "description": "Vegetales más pescado y marisco, sin carne.", "excludedTags": ["meat", "poultry"] },
+      { "id": "vegetarian", "label": "Vegetariano", "description": "Sin carne ni pescado.", "excludedTags": ["meat", "poultry", "fish", "seafood"] },
+      { "id": "vegan", "label": "Vegano", "description": "Sin ningún producto de origen animal.", "excludedTags": ["meat", "poultry", "fish", "seafood", "dairy", "egg", "honey", "gelatin"] }
+    ]
+  },
+
+  "hardRestrictions": {
+    "cardinality": "multi-select",
+    "severity": "safety",
+    "rule": "Se declaran en el prompt Y se verifican después sobre la respuesta de la IA. Un incumplimiento descarta la receta.",
+    "usedIn": ["onboarding.step6", "filters", "profile", "prompt", "validator"],
+    "items": [
+      { "id": "gluten", "label": "Gluten", "icon": "bakery_dining", "keywords": ["harina de trigo", "trigo", "pan", "pasta", "cebada", "centeno", "espelta", "cuscús", "sémola", "rebozado", "empanado", "galleta", "cerveza", "avena", "seitán"] },
+      { "id": "lactose", "label": "Lactosa", "icon": "icecream", "keywords": ["leche", "queso", "yogur", "mantequilla", "nata", "crema", "helado", "requesón", "cuajada", "mascarpone", "mozzarella", "parmesano"] },
+      { "id": "nuts", "label": "Frutos secos", "icon": "nutrition", "keywords": ["almendra", "nuez", "avellana", "anacardo", "pistacho", "piñón", "castaña", "macadamia", "pecana", "praliné"] },
+      { "id": "peanut", "label": "Cacahuete", "icon": "spa", "keywords": ["cacahuete", "maní", "crema de cacahuete"] },
+      { "id": "soy", "label": "Soja", "icon": "grass", "keywords": ["soja", "tofu", "tempeh", "edamame", "salsa de soja", "miso", "lecitina de soja"] },
+      { "id": "shellfish", "label": "Marisco", "icon": "seafood", "keywords": ["gamba", "langostino", "mejillón", "almeja", "calamar", "pulpo", "cangrejo", "langosta", "marisco", "bogavante", "vieira", "berberecho"] },
+      { "id": "fish", "label": "Pescado", "icon": "set_meal", "keywords": ["salmón", "atún", "merluza", "bacalao", "sardina", "anchoa", "pescado", "trucha", "lubina", "dorada", "rape", "boquerón", "salsa de pescado", "worcestershire"] },
+      { "id": "egg", "label": "Huevo", "icon": "egg", "keywords": ["huevo", "clara", "yema", "mayonesa", "tortilla", "merengue", "flan"] },
+      { "id": "sesame", "label": "Sésamo", "icon": "grain", "keywords": ["sésamo", "tahini", "ajonjolí"] },
+      { "id": "celery", "label": "Apio", "icon": "agriculture", "keywords": ["apio", "celery"] },
+      { "id": "mustard", "label": "Mostaza", "icon": "local_florist", "keywords": ["mostaza"] }
+    ]
+  },
+
+  "softPreferences": {
+    "cardinality": "multi-select",
+    "severity": "ranking",
+    "rule": "Influyen en la puntuación y en el prompt, pero no descartan recetas.",
+    "usedIn": ["onboarding.step3", "profile", "prompt"],
+    "items": [
+      { "id": "real_fooding", "label": "Real Fooding", "icon": "eco", "description": "Comida real, sin ultraprocesados.", "promptHint": "evita productos ultraprocesados y aditivos; usa ingredientes frescos y mínimamente procesados" },
+      { "id": "low_calorie", "label": "Bajo en calorías", "icon": "monitor_weight", "description": "Recetas ligeras.", "promptHint": "prioriza recetas ligeras y con pocas calorías" },
+      { "id": "keto", "label": "Keto / bajo en carbohidratos", "icon": "egg_alt", "description": "Muy pocos hidratos.", "promptHint": "minimiza hidratos de carbono y azúcares" },
+      { "id": "high_protein", "label": "Alto en proteína", "icon": "fitness_center", "description": "Enfoque post-entreno.", "promptHint": "maximiza la proteína por ración" },
+      { "id": "no_added_sugar", "label": "Sin azúcar añadido", "icon": "no_drinks", "description": "Sin azúcares añadidos.", "promptHint": "no añadas azúcar ni edulcorantes calóricos" },
+      { "id": "economical", "label": "Económico", "icon": "savings", "description": "Ingredientes baratos.", "promptHint": "prioriza ingredientes económicos y de temporada" },
+      { "id": "zero_waste", "label": "Aprovechamiento", "icon": "compost", "description": "Sin desperdiciar nada.", "promptHint": "aprovecha todos los ingredientes aportados, incluidas sobras" }
+    ]
+  },
+
+  "mealTypes": {
+    "cardinality": "single-select",
+    "usedIn": ["generator.step2", "filters"],
+    "items": [
+      { "id": "breakfast", "label": "Desayuno", "icon": "breakfast_dining" },
+      { "id": "lunch", "label": "Comida", "icon": "lunch_dining" },
+      { "id": "dinner", "label": "Cena", "icon": "dinner_dining" },
+      { "id": "snack", "label": "Snack", "icon": "cookie" },
+      { "id": "dessert", "label": "Postre", "icon": "cake" }
+    ]
+  },
+
+  "cuisines": {
+    "cardinality": "multi-select",
+    "usedIn": ["onboarding.step4", "filters", "prompt"],
+    "items": [
+      { "id": "spanish", "label": "Española", "icon": "tapas" },
+      { "id": "mediterranean", "label": "Mediterránea", "icon": "local_dining" },
+      { "id": "italian", "label": "Italiana", "icon": "local_pizza" },
+      { "id": "asian", "label": "Asiática", "icon": "ramen_dining" },
+      { "id": "japanese", "label": "Japonesa", "icon": "set_meal" },
+      { "id": "indian", "label": "India", "icon": "soup_kitchen" },
+      { "id": "mexican", "label": "Mexicana", "icon": "lunch_dining" },
+      { "id": "american", "label": "Americana", "icon": "fastfood" },
+      { "id": "middle_eastern", "label": "Oriente Medio", "icon": "kebab_dining" },
+      { "id": "latin", "label": "Latina", "icon": "rice_bowl" }
+    ]
+  },
+
+  "timeBuckets": {
+    "cardinality": "single-select",
+    "usedIn": ["onboarding.step7", "generator.step2", "filters"],
+    "items": [
+      { "id": "lte_15", "label": "Hasta 15 min", "maxMinutes": 15 },
+      { "id": "lte_30", "label": "Hasta 30 min", "maxMinutes": 30 },
+      { "id": "lte_45", "label": "Hasta 45 min", "maxMinutes": 45 },
+      { "id": "lte_60", "label": "Hasta 60 min", "maxMinutes": 60 },
+      { "id": "gt_60", "label": "Más de 60 min", "maxMinutes": null }
+    ]
+  },
+
+  "difficulties": {
+    "cardinality": "single-select",
+    "usedIn": ["onboarding.step7", "generator.step2", "filters"],
+    "items": [
+      { "id": "easy", "label": "Fácil", "level": 1 },
+      { "id": "medium", "label": "Media", "level": 2 },
+      { "id": "hard", "label": "Elaborada", "level": 3 }
+    ]
+  },
+
+  "servings": {
+    "usedIn": ["onboarding.step7", "generator.step2", "recipeDetail", "profile"],
+    "min": 1,
+    "max": 12,
+    "default": 2
+  },
+
+  "avatarColors": {
+    "purpose": "Colores disponibles para el avatar de iniciales del Usuario local. No aportan información: son identidad, y no entran en la firma de preferencias.",
+    "usedIn": ["onboarding.step1", "profile"],
+    "items": [
+      { "id": "terracotta", "label": "Terracota", "hex": "#D9552B" },
+      { "id": "olive", "label": "Oliva", "hex": "#5F7A3D" },
+      { "id": "amber", "label": "Ámbar", "hex": "#C97B12" },
+      { "id": "plum", "label": "Ciruela", "hex": "#8E4A5B" },
+      { "id": "teal", "label": "Verde azulado", "hex": "#2F6F6B" },
+      { "id": "indigo", "label": "Índigo", "hex": "#4A6FA5" },
+      { "id": "clay", "label": "Arcilla", "hex": "#9C5B3B" },
+      { "id": "rose", "label": "Rosa", "hex": "#B2557A" }
+    ]
+  },
+
+  "ingredients": {
+    "cardinality": "multi-select + free text",
+    "usedIn": ["onboarding.step5", "generator.step1", "validator"],
+    "iconResolution": "assets/icons/ingredients/{icon}.svg ; si no existe, usa assets/icons/ingredients/_fallback.svg de la categoría",
+    "categoryFallbackIcon": {
+      "vegetable": "vegetable",
+      "fruit": "fruit",
+      "grain": "grain",
+      "legume": "legume",
+      "nut": "nut",
+      "meat": "meat",
+      "poultry": "poultry",
+      "fish": "fish",
+      "seafood": "seafood",
+      "dairy": "dairy",
+      "egg": "egg",
+      "fat": "oil",
+      "spice": "spice",
+      "condiment": "condiment",
+      "sweetener": "sweetener",
+      "other": "_fallback"
+    },
+    "items": [
+      { "id": "tomate", "label": "Tomate", "category": "vegetable", "icon": "tomato", "allergens": [], "tags": [] },
+      { "id": "cebolla", "label": "Cebolla", "category": "vegetable", "icon": "onion", "allergens": [], "tags": [] },
+      { "id": "ajo", "label": "Ajo", "category": "vegetable", "icon": "garlic", "allergens": [], "tags": [] },
+      { "id": "pimiento", "label": "Pimiento", "category": "vegetable", "icon": "pepper", "allergens": [], "tags": [] },
+      { "id": "patata", "label": "Patata", "category": "vegetable", "icon": "potato", "allergens": [], "tags": [] },
+      { "id": "boniato", "label": "Boniato", "category": "vegetable", "icon": "sweet-potato", "allergens": [], "tags": [] },
+      { "id": "zanahoria", "label": "Zanahoria", "category": "vegetable", "icon": "carrot", "allergens": [], "tags": [] },
+      { "id": "calabacin", "label": "Calabacín", "category": "vegetable", "icon": "zucchini", "allergens": [], "tags": [] },
+      { "id": "berenjena", "label": "Berenjena", "category": "vegetable", "icon": "eggplant", "allergens": [], "tags": [] },
+      { "id": "espinacas", "label": "Espinacas", "category": "vegetable", "icon": "spinach", "allergens": [], "tags": [] },
+      { "id": "lechuga", "label": "Lechuga", "category": "vegetable", "icon": "lettuce", "allergens": [], "tags": [] },
+      { "id": "brocoli", "label": "Brócoli", "category": "vegetable", "icon": "broccoli", "allergens": [], "tags": [] },
+      { "id": "champinon", "label": "Champiñón", "category": "vegetable", "icon": "mushroom", "allergens": [], "tags": [] },
+      { "id": "puerro", "label": "Puerro", "category": "vegetable", "icon": "leek", "allergens": [], "tags": [] },
+      { "id": "judia_verde", "label": "Judía verde", "category": "vegetable", "icon": "green-beans", "allergens": [], "tags": [] },
+      { "id": "pepino", "label": "Pepino", "category": "vegetable", "icon": "cucumber", "allergens": [], "tags": [] },
+      { "id": "calabaza", "label": "Calabaza", "category": "vegetable", "icon": "pumpkin", "allergens": [], "tags": [] },
+      { "id": "guisantes", "label": "Guisantes", "category": "vegetable", "icon": "peas", "allergens": [], "tags": [] },
+      { "id": "maiz", "label": "Maíz", "category": "vegetable", "icon": "corn", "allergens": [], "tags": [] },
+      { "id": "aguacate", "label": "Aguacate", "category": "vegetable", "icon": "avocado", "allergens": [], "tags": [] },
+      { "id": "aceituna", "label": "Aceituna", "category": "vegetable", "icon": "olive", "allergens": [], "tags": [] },
+      { "id": "apio", "label": "Apio", "category": "vegetable", "icon": "celery", "allergens": ["celery"], "tags": [] },
+      { "id": "manzana", "label": "Manzana", "category": "fruit", "icon": "apple", "allergens": [], "tags": [] },
+      { "id": "platano", "label": "Plátano", "category": "fruit", "icon": "banana", "allergens": [], "tags": [] },
+      { "id": "naranja", "label": "Naranja", "category": "fruit", "icon": "orange", "allergens": [], "tags": [] },
+      { "id": "limon", "label": "Limón", "category": "fruit", "icon": "lemon", "allergens": [], "tags": [] },
+      { "id": "fresa", "label": "Fresa", "category": "fruit", "icon": "strawberry", "allergens": [], "tags": [] },
+      { "id": "pera", "label": "Pera", "category": "fruit", "icon": "pear", "allergens": [], "tags": [] },
+      { "id": "uva", "label": "Uva", "category": "fruit", "icon": "grapes", "allergens": [], "tags": [] },
+      { "id": "mango", "label": "Mango", "category": "fruit", "icon": "mango", "allergens": [], "tags": [] },
+      { "id": "arroz", "label": "Arroz", "category": "grain", "icon": "rice", "allergens": [], "tags": [] },
+      { "id": "pasta", "label": "Pasta", "category": "grain", "icon": "pasta", "allergens": ["gluten"], "tags": [] },
+      { "id": "pan", "label": "Pan", "category": "grain", "icon": "bread", "allergens": ["gluten"], "tags": [] },
+      { "id": "harina_trigo", "label": "Harina de trigo", "category": "grain", "icon": "flour", "allergens": ["gluten"], "tags": [] },
+      { "id": "cuscus", "label": "Cuscús", "category": "grain", "icon": "couscous", "allergens": ["gluten"], "tags": [] },
+      { "id": "quinoa", "label": "Quinoa", "category": "grain", "icon": "quinoa", "allergens": [], "tags": [] },
+      { "id": "avena", "label": "Avena", "category": "grain", "icon": "oats", "allergens": ["gluten"], "tags": [] },
+      { "id": "tortita_maiz", "label": "Tortita de maíz", "category": "grain", "icon": "corn-tortilla", "allergens": [], "tags": [] },
+      { "id": "garbanzo", "label": "Garbanzos", "category": "legume", "icon": "chickpea", "allergens": [], "tags": [] },
+      { "id": "lenteja", "label": "Lentejas", "category": "legume", "icon": "lentils", "allergens": [], "tags": [] },
+      { "id": "alubia_blanca", "label": "Alubias blancas", "category": "legume", "icon": "beans", "allergens": [], "tags": [] },
+      { "id": "alubia_roja", "label": "Alubias rojas", "category": "legume", "icon": "beans", "allergens": [], "tags": [] },
+      { "id": "soja_texturizada", "label": "Soja texturizada", "category": "legume", "icon": "soy", "allergens": ["soy"], "tags": [] },
+      { "id": "tofu", "label": "Tofu", "category": "legume", "icon": "tofu", "allergens": ["soy"], "tags": [] },
+      { "id": "tempeh", "label": "Tempeh", "category": "legume", "icon": "tempeh", "allergens": ["soy"], "tags": [] },
+      { "id": "edamame", "label": "Edamame", "category": "legume", "icon": "edamame", "allergens": ["soy"], "tags": [] },
+      { "id": "almendra", "label": "Almendra", "category": "nut", "icon": "almond", "allergens": ["nuts"], "tags": [] },
+      { "id": "nuez", "label": "Nuez", "category": "nut", "icon": "walnut", "allergens": ["nuts"], "tags": [] },
+      { "id": "avellana", "label": "Avellana", "category": "nut", "icon": "hazelnut", "allergens": ["nuts"], "tags": [] },
+      { "id": "anacardo", "label": "Anacardo", "category": "nut", "icon": "cashew", "allergens": ["nuts"], "tags": [] },
+      { "id": "pistacho", "label": "Pistacho", "category": "nut", "icon": "pistachio", "allergens": ["nuts"], "tags": [] },
+      { "id": "cacahuete", "label": "Cacahuete", "category": "nut", "icon": "peanut", "allergens": ["peanut"], "tags": [] },
+      { "id": "sesamo", "label": "Sésamo", "category": "nut", "icon": "sesame", "allergens": ["sesame"], "tags": [] },
+      { "id": "pollo", "label": "Pollo", "category": "poultry", "icon": "chicken", "allergens": [], "tags": ["poultry"] },
+      { "id": "pavo", "label": "Pavo", "category": "poultry", "icon": "turkey", "allergens": [], "tags": ["poultry"] },
+      { "id": "ternera", "label": "Ternera", "category": "meat", "icon": "beef", "allergens": [], "tags": ["meat"] },
+      { "id": "cerdo", "label": "Cerdo", "category": "meat", "icon": "pork", "allergens": [], "tags": ["meat"] },
+      { "id": "cordero", "label": "Cordero", "category": "meat", "icon": "lamb", "allergens": [], "tags": ["meat"] },
+      { "id": "jamon", "label": "Jamón", "category": "meat", "icon": "ham", "allergens": [], "tags": ["meat"] },
+      { "id": "chorizo", "label": "Chorizo", "category": "meat", "icon": "sausage", "allergens": [], "tags": ["meat"] },
+      { "id": "bacon", "label": "Bacon", "category": "meat", "icon": "bacon", "allergens": [], "tags": ["meat"] },
+      { "id": "salmon", "label": "Salmón", "category": "fish", "icon": "salmon", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "atun", "label": "Atún", "category": "fish", "icon": "tuna", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "merluza", "label": "Merluza", "category": "fish", "icon": "fish", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "bacalao", "label": "Bacalao", "category": "fish", "icon": "fish", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "sardina", "label": "Sardina", "category": "fish", "icon": "fish", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "anchoa", "label": "Anchoa", "category": "fish", "icon": "fish", "allergens": ["fish"], "tags": ["fish"] },
+      { "id": "gamba", "label": "Gambas", "category": "seafood", "icon": "shrimp", "allergens": ["shellfish"], "tags": ["seafood"] },
+      { "id": "mejillon", "label": "Mejillones", "category": "seafood", "icon": "mussel", "allergens": ["shellfish"], "tags": ["seafood"] },
+      { "id": "calamar", "label": "Calamar", "category": "seafood", "icon": "squid", "allergens": ["shellfish"], "tags": ["seafood"] },
+      { "id": "pulpo", "label": "Pulpo", "category": "seafood", "icon": "octopus", "allergens": ["shellfish"], "tags": ["seafood"] },
+      { "id": "leche", "label": "Leche", "category": "dairy", "icon": "milk", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "queso", "label": "Queso", "category": "dairy", "icon": "cheese", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "yogur", "label": "Yogur", "category": "dairy", "icon": "yogurt", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "mantequilla", "label": "Mantequilla", "category": "dairy", "icon": "butter", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "nata", "label": "Nata", "category": "dairy", "icon": "cream", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "mozzarella", "label": "Mozzarella", "category": "dairy", "icon": "cheese", "allergens": ["lactose"], "tags": ["dairy"] },
+      { "id": "huevo", "label": "Huevo", "category": "egg", "icon": "egg", "allergens": ["egg"], "tags": ["egg"] },
+      { "id": "aceite_oliva", "label": "Aceite de oliva", "category": "fat", "icon": "olive-oil", "allergens": [], "tags": [] },
+      { "id": "vinagre", "label": "Vinagre", "category": "condiment", "icon": "vinegar", "allergens": [], "tags": [] },
+      { "id": "mostaza", "label": "Mostaza", "category": "condiment", "icon": "mustard", "allergens": ["mustard"], "tags": [] },
+      { "id": "salsa_soja", "label": "Salsa de soja", "category": "condiment", "icon": "soy-sauce", "allergens": ["soy"], "tags": [] },
+      { "id": "tomate_frito", "label": "Tomate frito", "category": "condiment", "icon": "tomato", "allergens": [], "tags": [] },
+      { "id": "caldo", "label": "Caldo", "category": "condiment", "icon": "broth", "allergens": [], "tags": [] },
+      { "id": "perejil", "label": "Perejil", "category": "condiment", "icon": "parsley", "allergens": [], "tags": [] },
+      { "id": "sal", "label": "Sal", "category": "spice", "icon": "salt", "allergens": [], "tags": [] },
+      { "id": "pimienta", "label": "Pimienta", "category": "spice", "icon": "pepper-corn", "allergens": [], "tags": [] },
+      { "id": "pimenton", "label": "Pimentón", "category": "spice", "icon": "paprika", "allergens": [], "tags": [] },
+      { "id": "curcuma", "label": "Cúrcuma", "category": "spice", "icon": "turmeric", "allergens": [], "tags": [] },
+      { "id": "oregano", "label": "Orégano", "category": "spice", "icon": "oregano", "allergens": [], "tags": [] },
+      { "id": "comino", "label": "Comino", "category": "spice", "icon": "cumin", "allergens": [], "tags": [] },
+      { "id": "canela", "label": "Canela", "category": "spice", "icon": "cinnamon", "allergens": [], "tags": [] },
+      { "id": "miel", "label": "Miel", "category": "sweetener", "icon": "honey", "allergens": [], "tags": ["honey"] },
+      { "id": "azucar", "label": "Azúcar", "category": "sweetener", "icon": "sugar", "allergens": [], "tags": [] },
+      { "id": "chocolate", "label": "Chocolate", "category": "sweetener", "icon": "chocolate", "allergens": [], "tags": [] }
+    ]
+  },
+
+  "recipeCategories": {
+    "purpose": "Clasificación que devuelve la IA por receta. Resuelve la imagen local y el filtro por categoría. Evita generar imágenes.",
+    "iconResolution": "assets/icons/categories/{id}.svg",
+    "imageResolution": "assets/img/recipes/{id}.webp",
+    "fallback": "other",
+    "items": [
+      { "id": "pasta", "label": "Pasta", "image": "assets/img/recipes/pasta.webp" },
+      { "id": "rice", "label": "Arroz", "image": "assets/img/recipes/rice.webp" },
+      { "id": "soup_cream", "label": "Sopas y cremas", "image": "assets/img/recipes/soup_cream.webp" },
+      { "id": "salad", "label": "Ensaladas", "image": "assets/img/recipes/salad.webp" },
+      { "id": "meat", "label": "Carnes", "image": "assets/img/recipes/meat.webp" },
+      { "id": "poultry", "label": "Aves", "image": "assets/img/recipes/poultry.webp" },
+      { "id": "fish_seafood", "label": "Pescados y mariscos", "image": "assets/img/recipes/fish_seafood.webp" },
+      { "id": "vegetarian", "label": "Vegetariano", "image": "assets/img/recipes/vegetarian.webp" },
+      { "id": "vegan", "label": "Vegano", "image": "assets/img/recipes/vegan.webp" },
+      { "id": "legume_stew", "label": "Legumbres y guisos", "image": "assets/img/recipes/legume_stew.webp" },
+      { "id": "pizza_bread", "label": "Pizzas y panes", "image": "assets/img/recipes/pizza_bread.webp" },
+      { "id": "egg_breakfast", "label": "Huevos y desayunos", "image": "assets/img/recipes/egg_breakfast.webp" },
+      { "id": "sandwich_wrap", "label": "Bocadillos y wraps", "image": "assets/img/recipes/sandwich_wrap.webp" },
+      { "id": "tapas_appetizer", "label": "Tapas y aperitivos", "image": "assets/img/recipes/tapas_appetizer.webp" },
+      { "id": "dessert", "label": "Postres", "image": "assets/img/recipes/dessert.webp" },
+      { "id": "smoothie_drink", "label": "Batidos y bebidas", "image": "assets/img/recipes/smoothie_drink.webp" },
+      { "id": "casserole_oven", "label": "Horno y cazuela", "image": "assets/img/recipes/casserole_oven.webp" },
+      { "id": "other", "label": "Otras recetas", "image": "assets/img/recipes/other.webp" }
+    ]
+  }
+}

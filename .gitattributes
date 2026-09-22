@@ -1,0 +1,8 @@
+# Fuerza LF en el repositorio. Sin esto, core.autocrlf=true convierte gradlew e
+# init.sh a CRLF al clonar en Windows y dejan de ejecutarse.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+
+*.jar binary
+*.webp binary

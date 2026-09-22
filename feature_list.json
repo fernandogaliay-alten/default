@@ -1,0 +1,378 @@
+[
+  {
+    "id": "bootstrap-android-project",
+    "area": "platform",
+    "title": "Esqueleto del proyecto Android compilable",
+    "user_visible_behavior": "El proyecto Android compila, la app vacía arranca en el emulador y 'bash init.sh' deja de ser provisional y pasa en verde.",
+    "depends_on": [],
+    "status": "passing",
+    "verification": [
+      "'bash init.sh' ejecuta la verificación real (no el mensaje pre-bootstrap) y termina con código 0",
+      "'./gradlew test' se ejecuta y pasa",
+      "'./gradlew assembleDebug' genera un APK de depuración"
+    ],
+    "evidence": [
+      "./gradlew test: BUILD SUCCESSFUL. app/build/test-results/testDebugUnitTest/TEST-com.sazon.app.ExampleUnitTest.xml -> tests=1 failures=0 errors=0",
+      "./gradlew lint: BUILD SUCCESSFUL. 0 errores, 18 warnings (versiones de plantilla, recursos de color sin usar, OldTargetApi y RedundantLabel)",
+      "./gradlew assembleDebug: BUILD SUCCESSFUL. app/build/outputs/apk/debug/app-debug.apk (28,2 MB)",
+      "init.sh con Git Bash: exit 0, ejecuta test y lint, no deja procesos en marcha",
+      "Emulador Pixel_7a_API_33: instalación 'Success'; topResumedActivity=com.sazon.app/.MainActivity; buffer de crashes vacío; captura en %TEMP%\\opencode\\sazon-arranque.png"
+    ],
+    "notes": "Bootstrap creado con el asistente de Android Studio, plantilla 'Empty Activity' (Compose), Kotlin DSL, minSdk 33, targetSdk 36 y paquete com.sazon.app. El contenido de muestra de MainActivity se reduce a una Surface vacía. Sustituir init.sh provisional por el definitivo. Ver docs/technical-discovery.md."
+  },
+  {
+    "id": "taxonomy-in-code",
+    "area": "domain",
+    "title": "Taxonomía tipada con test de integridad",
+    "user_visible_behavior": "La Taxonomía se carga desde assets a objetos tipados y un test verifica que sus invariantes se cumplen.",
+    "depends_on": ["bootstrap-android-project"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' ejecuta un test de integridad que comprueba: alérgenos de ingrediente dentro de restricciones duras, tags de ingrediente dentro de las dietas, ids únicos y colores de avatar válidos"
+    ],
+    "evidence": [],
+    "notes": "docs/domain/taxonomy.json es la fuente de verdad (ADR 0001). No persistir la Taxonomía en base de datos."
+  },
+  {
+    "id": "recipe-domain-model",
+    "area": "domain",
+    "title": "Modelo de Receta con origen seed o ai",
+    "user_visible_behavior": "Una receta semilla y una receta generada por IA se representan con el mismo esquema y se serializan y deserializan sin pérdida.",
+    "depends_on": ["taxonomy-in-code"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre ida y vuelta de serialización de una receta y una receta sin nutrición (campo opcional)"
+    ],
+    "evidence": [],
+    "notes": "Esquema en docs/domain-model.md (Recipe, RecipeIngredient, RecipeStep, Nutrition, matchScore opcional)."
+  },
+  {
+    "id": "profile-persistence",
+    "area": "data",
+    "title": "Persistencia del perfil de usuario y de preferencias",
+    "user_visible_behavior": "El nombre, el color de avatar y las preferencias del usuario siguen ahí después de cerrar y reabrir la app.",
+    "depends_on": ["bootstrap-android-project"],
+    "status": "not_started",
+    "verification": [
+      "Test de persistencia en JVM con base de datos en memoria: guardar, releer y comparar"
+    ],
+    "evidence": [],
+    "notes": "Room, una fila. Nombre obligatorio (1-40 caracteres tras recortar). Ver docs/domain-model.md (UserProfile, PreferenceProfile)."
+  },
+  {
+    "id": "preference-signature",
+    "area": "domain",
+    "title": "Firma de preferencias determinista",
+    "user_visible_behavior": "La firma cambia al modificar cualquier preferencia y NO cambia al cambiar el nombre o el color de avatar.",
+    "depends_on": ["profile-persistence"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que dos perfiles idénticos dan la misma firma, que cada preferencia la altera y que nombre y color de avatar no la alteran"
+    ],
+    "evidence": [],
+    "notes": "Regla crítica: la firma EXCLUYE la identidad. Ver docs/domain-model.md."
+  },
+  {
+    "id": "recipe-validator",
+    "area": "domain",
+    "title": "Validador que descarta recetas inseguras",
+    "user_visible_behavior": "Una receta que incumple una restricción dura o el patrón de dieta se descarta y no se muestra, con el motivo registrado.",
+    "depends_on": ["recipe-domain-model"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre: esquema inválido, id desconocido, dieta incumplida, alérgeno detectado por keywords en ingrediente libre, e incoherencia de tiempos",
+      "Un test comprueba que un ingrediente libre como 'pan' activa la restricción de gluten"
+    ],
+    "evidence": [],
+    "notes": "Reglas del validador en docs/domain/taxonomy.md sección 5. Es la capa que garantiza la seguridad y donde vive la calidad del producto."
+  },
+  {
+    "id": "prompt-builder",
+    "area": "domain",
+    "title": "Constructor de prompt desde el perfil",
+    "user_visible_behavior": "Dado un perfil, se compone el prompt con las etiquetas y los ids de la Taxonomía, sin texto libre para nada clasificable.",
+    "depends_on": ["taxonomy-in-code", "preference-signature"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' compara el prompt generado con un perfil de ejemplo y comprueba que las restricciones duras y el patrón de dieta aparecen siempre"
+    ],
+    "evidence": [],
+    "notes": "Lógica pura, sin red. Contrato de respuesta en docs/domain/taxonomy.md sección 4."
+  },
+  {
+    "id": "fake-recipe-generator",
+    "area": "domain",
+    "title": "Generador de recetas falso para desarrollo",
+    "user_visible_behavior": "El flujo completo funciona sin red devolviendo recetas fijas, incluidas algunas que el validador debe descartar.",
+    "depends_on": ["recipe-domain-model"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que el generador falso devuelve las tres operaciones (sugerir, buscar, generar) con datos deterministas"
+    ],
+    "evidence": [],
+    "notes": "Permite construir y validar toda la app antes de elegir proveedor. Ver docs/technical-discovery.md."
+  },
+  {
+    "id": "seed-recipe-catalog",
+    "area": "data",
+    "title": "Catálogo de recetas semilla offline",
+    "user_visible_behavior": "Existe un catálogo local de recetas semilla que se lee y se muestra sin conexión.",
+    "depends_on": ["recipe-domain-model"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que el catálogo se carga, que no está vacío y que todas sus recetas cumplen el esquema de Receta"
+    ],
+    "evidence": [],
+    "notes": "Pregunta 11 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
+  },
+  {
+    "id": "design-tokens-and-theme",
+    "area": "ui",
+    "title": "Tokens de diseño y tema de la app",
+    "user_visible_behavior": "Toda la app usa la paleta, la tipografía y las formas de DESIGN.md, en claro y en oscuro, y los colores no cambian con el fondo de pantalla del dispositivo.",
+    "depends_on": ["bootstrap-android-project"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que los tokens expuestos coinciden con los valores declarados en DESIGN.md",
+      "Prueba manual: cambiar el fondo de pantalla del dispositivo no altera ningún color de la app",
+      "Prueba manual: con el modo oscuro del sistema activo, la app usa la variante oscura de DESIGN.md"
+    ],
+    "evidence": [],
+    "notes": "Conflicto ya resuelto: se desactiva el color dinámico de Material You porque contradice DESIGN.md. Sustituye la paleta de plantilla (purple/teal) y elimina los recursos de color sin usar y el aviso RedundantLabel. Decide si el modo oscuro entra en el MVP (pregunta abierta 3 de DESIGN.md). Debe ir antes de la primera pantalla real para que ninguna UI improvise colores."
+  },
+  {
+    "id": "onboarding-shell-and-identity",
+    "area": "ui",
+    "title": "Onboarding: armazón y paso de identidad",
+    "user_visible_behavior": "En el primer arranque aparece un onboarding que no se puede saltar; el paso 1 pide el nombre (obligatorio) y el color del avatar, con vista previa de las iniciales.",
+    "depends_on": ["profile-persistence", "taxonomy-in-code"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual en emulador: el botón 'Empezar' está deshabilitado hasta escribir un nombre",
+      "Prueba manual: el progreso indica 1 de 7 y 'Atrás' no está disponible en el paso 1"
+    ],
+    "evidence": [],
+    "notes": "Este paso introduce el armazón compartido (progreso, Atrás, Siguiente) que reutilizarán los pasos siguientes y el Perfil."
+  },
+  {
+    "id": "onboarding-diet-style-cuisines",
+    "area": "ui",
+    "title": "Onboarding: dieta, estilo y cocinas",
+    "user_visible_behavior": "Los pasos 2, 3 y 4 capturan patrón de dieta, preferencias de estilo (opcionales) y cocinas favoritas, todas leídas de la Taxonomía.",
+    "depends_on": ["onboarding-shell-and-identity"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: las opciones mostradas coinciden con la Taxonomía y lo elegido persiste entre reinicios"
+    ],
+    "evidence": [],
+    "notes": "El paso de estilo permite 'Ninguno'. No duplicar pantallas: los mismos editores se reutilizan en Perfil."
+  },
+  {
+    "id": "onboarding-ingredients-safety-kitchen",
+    "area": "ui",
+    "title": "Onboarding: ingredientes, alérgenos y tu cocina",
+    "user_visible_behavior": "Los pasos 5, 6 y 7 capturan ingredientes que me gustan y que evito, restricciones duras y el nivel, tiempo disponible y comensales habituales.",
+    "depends_on": ["onboarding-diet-style-cuisines"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: elegir un ingrediente en 'Me gusta' lo quita de 'Evito'",
+      "Prueba manual: los chips de alérgenos se muestran en ámbar y nunca en rojo",
+      "Prueba manual: al terminar, el onboarding no vuelve a aparecer al reabrir la app"
+    ],
+    "evidence": [],
+    "notes": "Los alérgenos son seguridad: pantalla propia. Los comensales habituales precargan el stepper del generador."
+  },
+  {
+    "id": "suggestion-batch-cache",
+    "area": "data",
+    "title": "Lote de sugerencias con política cache-first",
+    "user_visible_behavior": "El lote se lee de caché al abrir la app y solo se refresca si cambió la firma de preferencias, si caducó o si el usuario lo pide.",
+    "depends_on": ["preference-signature", "fake-recipe-generator", "seed-recipe-catalog"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba: mismo perfil no genera llamada, firma distinta marca el lote como obsoleto, caducidad lo marca como obsoleto",
+      "Un test comprueba que sin IA disponible el lote cae a solo semilla y sigue siendo utilizable"
+    ],
+    "evidence": [],
+    "notes": "La caducidad en días es la pregunta 3, sin resolver: dejar el valor en un único sitio configurable."
+  },
+  {
+    "id": "home-offline-blocks",
+    "area": "ui",
+    "title": "Home con sus bloques locales",
+    "user_visible_behavior": "La Home muestra cabecera con saludo y avatar, tarjeta-héroe al generador, carrusel de sugeridas y el bloque 'Tus recetas', y todo ello funciona sin conexión.",
+    "depends_on": ["suggestion-batch-cache"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual en emulador con la red desactivada: los bloques 1, 3, 4 y 5 se ven y navegan",
+      "Prueba manual: la Home se muestra poblada de inmediato, sin pantalla de carga"
+    ],
+    "evidence": [],
+    "notes": "Cinco bloques según DESIGN.md. El bloque de búsqueda con IA se implementa en 'ai-search'. Introduce la barra de navegación inferior y el FAB."
+  },
+  {
+    "id": "local-result-filters",
+    "area": "ui",
+    "title": "Filtros locales sobre las recetas del dispositivo",
+    "user_visible_behavior": "En 'Tus recetas' el usuario filtra por categoría y por 'Rápido' o 'Vegetariano' sin conexión.",
+    "depends_on": ["seed-recipe-catalog", "home-offline-blocks"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que 'Rápido' selecciona totalMinutes <= 30 y que 'Vegetariano' excluye ingredientes con tags de carne, ave, pescado o marisco"
+    ],
+    "evidence": [],
+    "notes": "'Rápido' y 'Vegetariano' son filtros derivados, no categorías. Ver CONTEXT.md (Filtros de resultados)."
+  },
+  {
+    "id": "generator-ingredients-step",
+    "area": "ui",
+    "title": "Generador: paso de ingredientes",
+    "user_visible_behavior": "El usuario añade ingredientes de la Taxonomía o libres, los ve como chips y no puede continuar sin al menos uno.",
+    "depends_on": ["home-offline-blocks"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: el botón 'Continuar' está deshabilitado con cero ingredientes y el contador se actualiza al añadir y quitar"
+    ],
+    "evidence": [],
+    "notes": "El paso 2 se implementa en 'generator-settings-step'."
+  },
+  {
+    "id": "generator-settings-step",
+    "area": "ui",
+    "title": "Generador: paso de ajustes",
+    "user_visible_behavior": "El usuario ajusta tiempo, tipo de comida, comensales (precargados), dificultad, alergias a evitar y notas libres.",
+    "depends_on": ["generator-ingredients-step"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: el stepper aparece con los comensales habituales del perfil",
+      "Prueba manual: los cinco tipos de comida incluyen Postre"
+    ],
+    "evidence": [],
+    "notes": "Los ajustes van agrupados en tarjetas. Las alergias se muestran en ámbar con enlace a Perfil."
+  },
+  {
+    "id": "generation-flow-with-validation",
+    "area": "ui",
+    "title": "Generación con validación y estado de carga",
+    "user_visible_behavior": "Al generar, la app pide recetas al generador, descarta las que incumplen restricciones y muestra solo las aceptadas.",
+    "depends_on": ["generator-settings-step", "prompt-builder", "fake-recipe-generator", "recipe-validator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que una receta insegura devuelta por el generador falso no llega a la lista de aceptadas",
+      "Prueba manual: se muestra el estado de generación y el botón Cancelar responde"
+    ],
+    "evidence": [],
+    "notes": "Caso negativo obligatorio del build brief. Es el corte vertical principal del MVP."
+  },
+  {
+    "id": "results-screen",
+    "area": "ui",
+    "title": "Pantalla de resultados",
+    "user_visible_behavior": "Se listan las recetas con imagen, nombre, tiempo, dificultad, comensales y porcentaje de coincidencia, con estados vacío y de error.",
+    "depends_on": ["generation-flow-with-validation"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: el estado vacío aparece cuando no hay recetas y el estado de error ofrece reintentar"
+    ],
+    "evidence": [],
+    "notes": "Cuando se llega desde la búsqueda con IA, el subtítulo es la consulta escrita."
+  },
+  {
+    "id": "recipe-detail-screen",
+    "area": "ui",
+    "title": "Detalle de receta con raciones ajustables",
+    "user_visible_behavior": "El usuario ve ingredientes con cantidades, ajusta las raciones, recorre los pasos con su duración y consulta notas y nutrición básica.",
+    "depends_on": ["results-screen"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el escalado de raciones, incluido el redondeo de cantidades no lineales",
+      "Prueba manual: cambiar las raciones actualiza las cantidades mostradas"
+    ],
+    "evidence": [],
+    "notes": "Nutrición opcional (pregunta 5). Unidades permitidas sin cerrar (pregunta 4)."
+  },
+  {
+    "id": "favorites",
+    "area": "ui",
+    "title": "Favoritos disponibles sin conexión",
+    "user_visible_behavior": "El usuario guarda y quita recetas como favoritas, y las consulta sin conexión desde su pestaña.",
+    "depends_on": ["recipe-detail-screen", "profile-persistence"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: guardar una receta generada por IA y verla tras reiniciar la app sin conexión",
+      "Prueba manual: el estado vacío aparece cuando no hay favoritos"
+    ],
+    "evidence": [],
+    "notes": "El favorito persiste una copia de la Receta, porque el lote de sugerencias puede refrescarse y perderla."
+  },
+  {
+    "id": "profile-screen",
+    "area": "ui",
+    "title": "Perfil con identidad y preferencias editables",
+    "user_visible_behavior": "El usuario consulta y modifica su nombre, su color de avatar y todas las preferencias del onboarding, reutilizando los mismos editores.",
+    "depends_on": ["home-offline-blocks", "profile-persistence", "preference-signature"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: editar una preferencia desde el Perfil se refleja igual que si se hubiera elegido en el onboarding",
+      "Prueba manual: cambiar el nombre o el color de avatar no invalida el lote de sugerencias"
+    ],
+    "evidence": [],
+    "notes": "Regla 'un editor, dos entradas': los editores del Perfil son los mismos componentes que los del onboarding."
+  },
+  {
+    "id": "activity-summary",
+    "area": "ui",
+    "title": "Resumen de actividad en el Perfil",
+    "user_visible_behavior": "El Perfil muestra cuántas recetas se han generado y cuántas están guardadas como favoritas.",
+    "depends_on": ["profile-screen", "favorites"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que el contador de recetas generadas solo aumenta y no baja al refrescar el lote de sugerencias",
+      "Prueba manual: el número de favoritas coincide con las recetas guardadas"
+    ],
+    "evidence": [],
+    "notes": "El contador se persiste; el de favoritas se deriva. Ver docs/domain-model.md (ActivitySummary)."
+  },
+  {
+    "id": "manual-suggestions-refresh",
+    "area": "ui",
+    "title": "Actualizar sugerencias desde el Perfil",
+    "user_visible_behavior": "El usuario ve cuándo se actualizaron las sugerencias por última vez y puede forzar su refresco.",
+    "depends_on": ["suggestion-batch-cache", "profile-screen"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual: pulsar 'Actualizar sugerencias' renueva el lote sin cambiar ninguna preferencia y actualiza la fecha mostrada"
+    ],
+    "evidence": [],
+    "notes": "Expone al usuario la política cache-first, que si no es invisible."
+  },
+  {
+    "id": "ai-search",
+    "area": "ui",
+    "title": "Búsqueda con IA desde la Home",
+    "user_visible_behavior": "El usuario escribe qué le apetece, la app pide recetas al generador y muestra los resultados; si la consulta choca con su perfil, se lo explica en lugar de mostrar la receta.",
+    "depends_on": ["generation-flow-with-validation"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que una consulta que contradice el patrón de dieta devuelve cero recetas",
+      "Prueba manual: sin conexión, la barra se muestra deshabilitada con aviso y el resto de la Home sigue funcionando",
+      "Prueba manual: los resultados llegan a la pantalla de resultados con la consulta como subtítulo"
+    ],
+    "evidence": [],
+    "notes": "Único bloque de la Home que necesita red. Política de la búsqueda en docs/domain-model.md."
+  },
+  {
+    "id": "real-ai-provider",
+    "area": "integration",
+    "title": "Proveedor de IA real tras la interfaz",
+    "user_visible_behavior": "Las tres operaciones del generador funcionan contra el proveedor real y devuelven salida estructurada que el validador puede procesar.",
+    "depends_on": ["prompt-builder", "generation-flow-with-validation"],
+    "status": "not_started",
+    "verification": [
+      "Prueba manual en emulador con clave válida: generar recetas end-to-end",
+      "Prueba manual con clave ausente o inválida: la app entra en modo semilla y no falla"
+    ],
+    "evidence": [],
+    "notes": "Proveedor sin decidir (pregunta 1). Es lo último que se conecta. La clave va en local.properties y no se versiona (ADR 0002)."
+  }
+]
