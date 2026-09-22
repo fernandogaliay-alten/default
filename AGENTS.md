@@ -42,6 +42,21 @@ Antes de escribir código:
 - `PROGRESS.md` — estado verificado y registro ligero de sesiones.
 - `init.sh` — camino estándar de arranque y verificación.
 
+## Ciclo de vida de una feature
+
+```
+not_started → in_progress → passing → accepted
+                    ↓
+                 blocked
+```
+
+- `passing`: implementado y **autoverificado** con evidencia registrada. No es aceptación final.
+- `accepted`: un **validador independiente** devolvió `accept`. Lo persiste el orquestador, nunca
+  quien implementó.
+- `blocked`: no se puede continuar y el motivo queda registrado en `PROGRESS.md` o en la feature.
+- Un vector de dependencias está satisfecho cuando apunta a una feature en `accepted`.
+- Como máximo una feature puede estar en `in_progress`.
+
 ## Definición de hecho
 
 Una feature está hecha solo si se cumplen todas:

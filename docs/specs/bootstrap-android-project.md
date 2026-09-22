@@ -260,6 +260,11 @@ La spec se corrige aquí, no en silencio:
    investigación lo resolvió el asistente. Sigue fuera de control de versiones.
 6. **`bash` no estaba en el PATH de la sesión**, así que el gate se ejecutó como
    `& "C:\Program Files\Git\bin\bash.exe" init.sh`.
+7. **`.gitattributes` añadido, no previsto en la spec.** `core.autocrlf=true` está activo en el
+   sistema, así que un clon fresco habría convertido `gradlew` e `init.sh` a CRLF y los habría
+   dejado inejecutables. El fichero fuerza LF y marca binarios. Se marca también el bit de ejecución
+   de `gradlew`, que el asistente dejó en 100644. Detectado por el validador como hueco de
+   trazabilidad de alcance.
 
 Advertencias de lint que **no** se corrigen aquí, por ser ruido de plantilla que resolverá la feature
 de tokens de diseño: 7 recursos de color sin usar, 7 avisos de versiones de dependencias, 1 de versión

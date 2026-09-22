@@ -8,7 +8,7 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Siguiente feature lista: `taxonomy-in-code`
 - Bloqueo actual: ninguno
-- Última verificación: 2026-09-22 (bootstrap, gate en verde)
+- Última verificación: 2026-09-22 (bootstrap validado de forma independiente: veredicto `accept`)
 
 ## Registro de sesiones
 
@@ -61,6 +61,28 @@
 - Verificación ejecutada: `init.sh` con Git Bash tras el cambio de `targetSdk`.
 - Evidencia capturada: ambas ejecuciones con `BUILD SUCCESSFUL`; lint con 0 errores y 18 warnings.
 - Ficheros actualizados: `app/build.gradle.kts`, `docs/technical-discovery.md`,
-  `docs/specs/bootstrap-android-project.md`, `feature_list.json` y `PROGRESS.md`.
+  `docs/specs/bootstrap-android-project.md`, `feature_list.json`, `.gitignore` y `PROGRESS.md`.
 - Riesgo o incógnita abierta: ninguno nuevo.
 - Siguiente paso: validación independiente del bootstrap con `feature-validator`.
+
+### Sesión 004
+
+- Fecha: 2026-09-22
+- Objetivo: crear la línea base del repositorio y validar el bootstrap de forma independiente.
+- Completado: commit inicial `06459f8` (56 ficheros) más `66fc6da` (bit de ejecución de `gradlew`);
+  creado `.gitattributes` porque `core.autocrlf=true` habría roto `gradlew` e `init.sh` en un clon;
+  validación del bootstrap por un agente con contexto limpio.
+- Verificación ejecutada: el validador re-ejecutó `init.sh`, `./gradlew test --rerun-tasks`,
+  `./gradlew lint` y `./gradlew assembleDebug`, y reprodujo el escenario del SDK ausente exportando
+  solo lo versionado a un directorio temporal.
+- Evidencia capturada: veredicto **`accept`**; los cinco escenarios de aceptación comprobados;
+  coherencia de `minSdk` 33 / `targetSdk` 36 / `compileSdk` 36 / `com.sazon.app` en los cinco
+  documentos; sin artefactos generados versionados; `local.properties` ignorado.
+- Ficheros actualizados: `feature_list.json` (la feature pasa a `accepted`), la spec (hallazgo 7) y
+  este registro.
+- Hallazgos del validador (todos de severidad baja, ninguno bloqueante): `.gitattributes` no estaba
+  documentado en el alcance (ya corregido); la captura de pantalla no es legible por un modelo sin
+  visión; quedan dependencias de test de plantilla sin ejercitar, que son valores por defecto del
+  asistente.
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: especificar `taxonomy-in-code` con `feature-spec`.

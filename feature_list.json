@@ -5,7 +5,7 @@
     "title": "Esqueleto del proyecto Android compilable",
     "user_visible_behavior": "El proyecto Android compila, la app vacía arranca en el emulador y 'bash init.sh' deja de ser provisional y pasa en verde.",
     "depends_on": [],
-    "status": "passing",
+    "status": "accepted",
     "verification": [
       "'bash init.sh' ejecuta la verificación real (no el mensaje pre-bootstrap) y termina con código 0",
       "'./gradlew test' se ejecuta y pasa",
@@ -18,7 +18,7 @@
       "init.sh con Git Bash: exit 0, ejecuta test y lint, no deja procesos en marcha",
       "Emulador Pixel_7a_API_33: instalación 'Success'; topResumedActivity=com.sazon.app/.MainActivity; buffer de crashes vacío; captura en %TEMP%\\opencode\\sazon-arranque.png"
     ],
-    "notes": "Bootstrap creado con el asistente de Android Studio, plantilla 'Empty Activity' (Compose), Kotlin DSL, minSdk 33, targetSdk 36 y paquete com.sazon.app. El contenido de muestra de MainActivity se reduce a una Surface vacía. Sustituir init.sh provisional por el definitivo. Ver docs/technical-discovery.md."
+    "notes": "Bootstrap creado con el asistente de Android Studio, plantilla 'Empty Activity' (Compose), Kotlin DSL, minSdk 33, targetSdk 36 y paquete com.sazon.app. El contenido de muestra de MainActivity se reduce a una Surface vacía. Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesión 004). Ver docs/technical-discovery.md."
   },
   {
     "id": "taxonomy-in-code",
