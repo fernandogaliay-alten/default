@@ -36,6 +36,15 @@ Antes de escribir código:
 - No cambies las reglas de verificación durante la implementación.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
+## Acuerdos de trabajo con la persona
+
+Estos acuerdos tienen prioridad sobre la autonomía del agente:
+
+- La persona revisa y aprueba la spec **antes** de implementarla.
+- La persona revisa los cambios **antes** de commitear. **No commitear sin petición explícita.**
+- Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
+  regenerar las pantallas en Stitch) los hace la persona.
+
 ## Artefactos obligatorios
 
 - `feature_list.json` — fuente de verdad del estado de las features.
