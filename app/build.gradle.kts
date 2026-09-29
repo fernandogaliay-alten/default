@@ -1,6 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+val taxonomyAssetFile = layout.projectDirectory.file("src/main/assets/taxonomy.json")
+
+val syncTaxonomy by tasks.registering(Copy::class) {
+    description = "Copia la Taxonomia canonica al directorio de assets de la aplicacion."
+    from(rootProject.layout.projectDirectory.file("docs/domain/taxonomy.json"))
+    into(layout.projectDirectory.dir("src/main/assets"))
 }
 
 android {
@@ -46,6 +55,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -53,4 +63,13 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(syncTaxonomy)
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(syncTaxonomy)
+    systemProperty("taxonomy.asset.path", taxonomyAssetFile.asFile.absolutePath)
 }

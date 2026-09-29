@@ -6,9 +6,9 @@
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
-- Siguiente feature lista: `taxonomy-in-code`
+- Siguiente feature lista: `recipe-domain-model`
 - Bloqueo actual: ninguno
-- Última verificación: 2026-09-22 (bootstrap validado de forma independiente: veredicto `accept`)
+- Última verificación: 2026-09-29 (taxonomy-in-code aceptada de forma independiente)
 
 ## Registro de sesiones
 
@@ -86,3 +86,46 @@
   asistente.
 - Riesgo o incógnita abierta: ninguno nuevo.
 - Siguiente paso: especificar `taxonomy-in-code` con `feature-spec`.
+
+### Sesión 005
+
+- Fecha: 2026-09-29
+- Objetivo: implementar `taxonomy-in-code` (la Taxonomía como pieza de código).
+- Completado: `kotlinx.serialization` 1.9.0 añadido al catálogo de versiones; tarea `syncTaxonomy`
+  que copia `docs/domain/taxonomy.json` a `app/src/main/assets/` (ignorado en git); modelos tipados y
+  catálogo consultable por id en `domain.taxonomy` sin dependencias de Android; `AssetTaxonomySource`
+  en `data`; test de integridad con dos casos negativos; borrado `ExampleUnitTest.kt`.
+- Verificación ejecutada: `./gradlew test`, `./gradlew lint`, `./gradlew assembleDebug`, `init.sh`
+  con Git Bash e inspección del contenido del APK.
+- Evidencia capturada: `TaxonomyIntegrityTest` con **5 tests, 0 fallos**; lint con 0 errores y 20
+  warnings; APK de 29 MB que contiene `assets/taxonomy.json` (22956 bytes); `init.sh` con código 0.
+- Ficheros actualizados: `gradle/libs.versions.toml`, `app/build.gradle.kts`, `.gitignore`,
+  `docs/domain/taxonomy.json` (BOM eliminado), `docs/technical-discovery.md`,
+  `docs/specs/taxonomy-in-code.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: el JSON canónico tenía un **BOM de UTF-8** heredado de un `Set-Content` de
+  PowerShell 5.1, y el parser lo rechazaba; lo detectó el test y sin él la app habría fallado al
+  arrancar. AGP 9.3.3 rechaza `Provider` en el SourceSet API, así que la sincronización escribe
+  directamente en `app/src/main/assets/` en lugar de en un directorio generado.
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: validación independiente de `taxonomy-in-code` con `feature-validator`.
+
+### Sesión 006
+
+- Fecha: 2026-09-29
+- Objetivo: validar `taxonomy-in-code` de forma independiente y cerrar sus hallazgos.
+- Completado: veredicto **`accept`** de un agente con contexto limpio, que re-ejecutó el gate, abrió
+  el APK como ZIP, recalculó los tamaños del catálogo con su propio script y comparó el JSON byte a
+  byte contra HEAD para descartar manipulación; `feature_list.json` pasa a `accepted`; corregida la
+  contradicción del spec (una tarea citaba `assets.srcDir` y las casillas estaban sin marcar);
+  anotada como deuda técnica la sincronización por nombre de tarea.
+- Verificación ejecutada: `init.sh` tras los cambios de documentación y del build.
+- Evidencia capturada: el validador confirmó 5 tests con 0 fallos, APK con `assets/taxonomy.json`, y
+  que el BOM era un defecto real: HEAD empieza por `ef bb bf` y el árbol de trabajo por `7b 0a`.
+- Ficheros actualizados: `feature_list.json`, `docs/specs/taxonomy-in-code.md`,
+  `docs/risks-and-open-questions.md`, `app/build.gradle.kts` y este registro.
+- Hallazgos del validador (5, todos de severidad baja): asset generado en el árbol de fuentes con
+  enganche por nombre de tarea; checklists del spec sin marcar y una tarea desactualizada (corregido);
+  `AssetTaxonomySource` sin test directo (aceptable, lo cubrirá la primera pantalla); `clean` no borra
+  el asset; falta de salto de línea final (corregido).
+- Riesgo o incógnita abierta: deuda técnica anotada en `docs/risks-and-open-questions.md`.
+- Siguiente paso: especificar `recipe-domain-model` con `feature-spec`.

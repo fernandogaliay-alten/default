@@ -23,7 +23,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 
 | Qué | Dónde | Por qué |
 |---|---|---|
-| Taxonomía | **JSON en assets, parseado a objetos tipados al arrancar** | Fuente única, sin base de datos, cacheable en memoria |
+| Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
 | Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 11 de riesgos) | Contenido empaquetado, siempre disponible offline |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
@@ -35,6 +35,12 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
 versiones. Los `id` nunca se renombran.
+
+`docs/domain/taxonomy.json` es la única fuente editable. La tarea de Gradle `syncTaxonomy` la copia a
+`app/src/main/assets/`, que está ignorado en git. El parseo vive en `com.sazon.app.domain.taxonomy`
+(`TaxonomyJson.parse`, sin dependencias de Android) y la lectura del asset en `com.sazon.app.data`
+(`AssetTaxonomySource`), de modo que los tests corren en JVM sin emulador. Ver
+`docs/specs/taxonomy-in-code.md`.
 
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md` y
 `docs/adr/0002-local-first-no-backend.md`.

@@ -3,6 +3,8 @@
 .kotlin/
 build/
 local.properties
+# Generado por la tarea syncTaxonomy a partir de docs/domain/taxonomy.json
+app/src/main/assets/taxonomy.json
 *.apk
 *.aab
 captures/

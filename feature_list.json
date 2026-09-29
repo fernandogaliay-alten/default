@@ -26,12 +26,19 @@
     "title": "Taxonomía tipada con test de integridad",
     "user_visible_behavior": "La Taxonomía se carga desde assets a objetos tipados y un test verifica que sus invariantes se cumplen.",
     "depends_on": ["bootstrap-android-project"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' ejecuta un test de integridad que comprueba: alérgenos de ingrediente dentro de restricciones duras, tags de ingrediente dentro de las dietas, ids únicos y colores de avatar válidos"
     ],
-    "evidence": [],
-    "notes": "docs/domain/taxonomy.json es la fuente de verdad (ADR 0001). No persistir la Taxonomía en base de datos."
+    "evidence": [
+      "./gradlew test: 5 tests, 0 fallos (TaxonomyIntegrityTest), incluidos dos casos negativos con catalogo roto",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores y 20 warnings (solo versiones de dependencias y ruido de plantilla)",
+      "./gradlew assembleDebug: APK de 29 MB que contiene assets/taxonomy.json (22956 bytes)",
+      "init.sh con Git Bash: exit 0",
+      "El asset generado app/src/main/assets/taxonomy.json esta ignorado en git",
+      "Hallazgo: docs/domain/taxonomy.json tenia BOM de UTF-8 y el test lo detecto; sin el, la app habria fallado al arrancar"
+    ],
+    "notes": "docs/domain/taxonomy.json es la fuente de verdad (ADR 0001). La tarea syncTaxonomy la copia a app/src/main/assets/ (ignorado en git). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesión 006)."
   },
   {
     "id": "recipe-domain-model",
