@@ -8,10 +8,11 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Siguiente feature lista: `preference-signature` (dependencia `profile-persistence` ya `accepted`)
+- Última feature aceptada: `preference-signature` (validador independiente, veredicto `accept`)
+- Siguiente feature lista: `recipe-validator` (dependencia `recipe-domain-model` ya `accepted`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-05 (harness de entrega con `github-flow` configurado; `init.sh` sin
-  cambios desde la sesión 010)
+- Última verificación: 2026-10-05 (`preference-signature` aceptada: `init.sh` exit 0, 26 tests/0
+  fallos; `init.sh` sin cambios desde la sesión 010)
 
 ## Registro de sesiones
 
@@ -256,3 +257,49 @@
   edita cada worktree en su rama; al mergear varios PRs en paralelo habrá conflictos que la persona
   debe resolver. Pendiente de probar `github-flow` en modo `plan`.
 - Siguiente paso: reiniciar opencode y lanzar `github-flow` en modo `plan` para `preference-signature`.
+
+### Sesión 012
+
+- Fecha: 2026-10-05
+- Objetivo: implementar `preference-signature` (firma de preferencias determinista).
+- Completado: objeto puro `com.sazon.app.domain.profile.PreferenceSignature` con
+  `of(preferences: PreferenceProfile): String`; cadena canónica con listas tratadas como conjuntos
+  (`distinct().sorted()`), orden de campos fijo, separador U+001F y prefijo de versión `v1`; hash
+  SHA-256 en hex minúscula con `java.security.MessageDigest`. Excluye la identidad por construcción
+  (recibe `PreferenceProfile`, no `UserProfile`) y también `updatedAt`. `PreferenceSignatureTest` con
+  los escenarios 1–7. Sin persistir la firma, sin integrarla en el Lote y sin UI (no-goals).
+- Verificación ejecutada: `init.sh` con Git Bash, `./gradlew test` y `./gradlew lint`; inspección de
+  imports de `domain.profile`.
+- Evidencia capturada: `PreferenceSignatureTest` con **8 tests, 0 fallos** (26 tests en total, 0
+  fallos); lint con 0 errores y los mismos 20 warnings preexistentes (sin nuevos); `init.sh` con
+  código 0; `domain.profile` sin imports de Android; vector dorado
+  `256cbcb3fae4784e9f89ab408d690a8ad184f36435fc276ca25e9b9b42197a8c`.
+- Ficheros actualizados: `app/src/main/java/com/sazon/app/domain/profile/PreferenceSignature.kt`,
+  `app/src/test/java/com/sazon/app/domain/profile/PreferenceSignatureTest.kt`,
+  `docs/specs/preference-signature.md`, `docs/technical-discovery.md`, `docs/domain-model.md`,
+  `feature_list.json` y este registro.
+- Hallazgos relevantes: ninguno. El vector dorado previsto coincidió con el SHA-256 real producido,
+  así que no hubo que corregirlo.
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: validación independiente de `preference-signature` con `feature-validator`.
+
+### Sesión 013
+
+- Fecha: 2026-10-05
+- Objetivo: validar `preference-signature` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0),
+  `./gradlew testDebugUnitTest --rerun-tasks` y `./gradlew lint --rerun-tasks`.
+- Evidencia capturada: 26 tests, 0 fallos (`PreferenceSignatureTest` 8, `RoomProfileRepositoryTest` 9,
+  `RecipeSerializationTest` 4, `TaxonomyIntegrityTest` 5); lint 0 errores y sin warnings nuevos en
+  ficheros de la feature; el validador recalculó el vector dorado por su cuenta con SHA-256 de .NET y
+  coincidió exactamente (`256cbcb3...197a8c`); escenarios 1–7 cubiertos, una comprobación por campo,
+  identidad y `updatedAt` excluidos, listas como conjuntos, alcance/no-goals respetados y `of(...)`
+  recibe `PreferenceProfile` (sin sobrecarga con `UserProfile`).
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (1 Low, no bloqueante): el recuento de warnings de lint pasó de 20 a 21 por
+  deriva de comprobaciones de versión de dependencias dependientes de red/tiempo; ninguno es de los
+  ficheros de la feature. Se mantiene la redacción "sin warnings nuevos".
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: especificar `recipe-validator` con `feature-spec`.
