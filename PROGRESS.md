@@ -243,11 +243,15 @@
 - Herramientas instaladas: **opencode CLI** 1.18.34 (npm `opencode-ai`; ExecutionPolicy `CurrentUser`
   → `RemoteSigned` para invocar el shim) y **gh** 2.102.0 autenticado como `fernandogaliay-alten`
   (scopes `repo`, `read:org`, `gist`, `workflow`).
+- Bootstrap del SDK para worktrees: `ANDROID_HOME` definido a nivel de usuario
+  (`%LOCALAPPDATA%\Android\Sdk`), `scripts/new-worktree.sh` creado (crea/reutiliza el worktree y
+  copia `local.properties`, que está ignorado en git y no viaja solo) y documentado en `AGENTS.md`.
 - Ficheros actualizados: `AGENTS.md` (acuerdos de trabajo alineados con `github-flow`: ciclo autónomo,
   commit al `accept`, push + PR solo con permiso de push, nunca merge; sección "Repositorio y
-  publicación"; regla `in_progress` por worktree) y este registro.
+  publicación"; regla `in_progress` por worktree; notas de entorno de worktrees), `scripts/new-worktree.sh`
+  y este registro.
 - Verificación ejecutada: `git status` limpio; push a `origin/main` OK; `gh auth status` y
-  `gh repo view` (privado, default `main`); `opencode --version` y `gh --version`.
+  `gh repo view` (privado, default `main`); `opencode --version` y `gh --version`; `bash -n` del script.
 - Riesgo o incógnita abierta: los artefactos compartidos (`feature_list.json`, `PROGRESS.md`) los
   edita cada worktree en su rama; al mergear varios PRs en paralelo habrá conflictos que la persona
   debe resolver. Pendiente de probar `github-flow` en modo `plan`.

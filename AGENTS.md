@@ -137,6 +137,12 @@ Una feature está hecha solo si se cumplen todas:
   aprovisiona solo, según `gradle/gradle-daemon-jvm.properties`. No asumas que el `java` del PATH
   sirve para compilar.
 - El SDK de Android está en `%LOCALAPPDATA%\Android\Sdk` y se localiza vía `local.properties`
-  (`sdk.dir`), que está fuera de control de versiones. `ANDROID_HOME` no está definido.
-- Al hacer el primer commit, marca el script como ejecutable para no perder el bit en otros entornos:
-  `git add --chmod=+x init.sh`.
+  (`sdk.dir`), que está fuera de control de versiones. `ANDROID_HOME` está definido a nivel de
+  usuario como respaldo para los worktrees.
+- **Worktrees (`github-flow`)**: crea el worktree de una feature con
+  `bash scripts/new-worktree.sh <feature-id>`. El script ramifica desde `origin/main`, crea la rama
+  `feature/<feature-id>` en `../<checkout>-worktrees/<id>` y copia `local.properties` al worktree
+  (ignorado en git, no viaja solo). Sin ese fichero ni `ANDROID_HOME`, `./init.sh` falla al no
+  encontrar el SDK.
+- Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
+  entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.
