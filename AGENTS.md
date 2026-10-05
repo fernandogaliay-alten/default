@@ -46,9 +46,11 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   feature.
 - El **commit** se crea automáticamente al `accept` (regla de `feature-flow`), en la rama
   `feature/<id>` del worktree de esa feature.
-- Al `accept`, el orquestador **publica automáticamente**: hace push de la rama `feature/<id>` y
-  abre (o reutiliza) el **PR** contra la rama base, con **permiso de push permanente**. No se pide
-  autorización por ejecución.
+- Al `accept`, **el orquestador de `github-flow`** publica automáticamente: hace push de la rama
+  `feature/<id>` y abre (o reutiliza) el **PR** contra la rama base, con **permiso de push
+  permanente**. No se pide autorización por ejecución. Una sesión que ejecute `feature-flow` (incluida
+  la sesión hija de un worktree) **nunca** hace push ni abre PR, ni siquiera teniendo el permiso: su
+  salida es el commit local.
 - El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
@@ -77,6 +79,8 @@ aceptación.
 - Worktree por feature, **fuera** del checkout base, en `../<carpeta-del-checkout>-worktrees`
   (aquí `..\Default Project-worktrees`).
 - Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
+- **Quién publica**: solo el orquestador de `github-flow`, una vez, al `accept` (reutilizando el PR si
+  ya existe). `feature-flow` termina en el commit local de la rama; nunca hace push ni PR.
 - Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y, al
   `accept`, **commitea, hace push y abre el PR** automáticamente) y `publish` (republicación: push +
   PR). Identidades deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` →
