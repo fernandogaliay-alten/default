@@ -8,11 +8,11 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Última feature aceptada: `preference-signature` (validador independiente, veredicto `accept`)
+- Última feature aceptada: `fake-recipe-generator` (validador independiente, veredicto `accept`)
 - Siguiente feature lista: `recipe-validator` (dependencia `recipe-domain-model` ya `accepted`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-05 (`preference-signature` aceptada: `init.sh` exit 0, 26 tests/0
-  fallos; `init.sh` sin cambios desde la sesión 010)
+- Última verificación: 2026-10-05 (`fake-recipe-generator` aceptada: `init.sh` exit 0, 32
+  tests/0 fallos, lint 0 errores y 21 warnings preexistentes; validación independiente `accept`)
 
 ## Registro de sesiones
 
@@ -302,4 +302,65 @@
   deriva de comprobaciones de versión de dependencias dependientes de red/tiempo; ninguno es de los
   ficheros de la feature. Se mantiene la redacción "sin warnings nuevos".
 - Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: especificar `recipe-validator` con `feature-spec`.
+
+### Sesión 014
+
+- Fecha: 2026-10-05
+- Objetivo: implementar `fake-recipe-generator` (puerto `RecipeGenerator` + implementación falsa
+  determinista y sin red) según `docs/specs/fake-recipe-generator.md`.
+- Completado: puerto puro `com.sazon.app.domain.generator.RecipeGenerator` con las tres operaciones
+  `suspend` (`suggestByPreferences`, `searchByText`, `generateFromIngredients`) y `GenerationConstraints`
+  (`profile`, `servings` + `mealTypeId`/`timeBucketId`/`difficultyId`/`notes` opcionales);
+  `com.sazon.app.data.generator.FakeRecipeGenerator` con 4 fixtures fijas (`source = AI`,
+  `matchScore = null`, ids `fake-*`) que ignora la entrada y no usa `Random`/reloj/`UUID`; incluye el
+  caso negativo: ingrediente libre `"Pan"` (`ingredientId = null`, gluten) y `"Pollo"` (id real, tag
+  `poultry`); `FakeRecipeGeneratorTest` con los escenarios 1–6. Sin Validador, sin proveedor real/HTTP,
+  sin persistencia/caché/DI/UI, sin cálculo de `matchScore` (no-goals).
+- Verificación ejecutada: `./gradlew testDebugUnitTest --tests "...FakeRecipeGeneratorTest"` (enfocado),
+  y el gate estándar `init.sh` con Git Bash (`./gradlew test` + `./gradlew lint`); inspección de imports
+  y de que no cambian `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Evidencia capturada: `FakeRecipeGeneratorTest` con **6 tests, 0 fallos** (**32 tests en total, 0
+  fallos**: RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, TaxonomyIntegrityTest 5,
+  RecipeSerializationTest 4); lint 0 errores y 21 warnings preexistentes, ninguno en ficheros de la
+  feature; `init.sh` con código 0; ni `domain.generator` ni `data.generator` importan
+  `android.*`/`androidx.*`/`java.net`/HTTP; sin dependencias nuevas.
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/domain/generator/RecipeGenerator.kt`,
+  `.../domain/generator/GenerationConstraints.kt`,
+  `app/src/main/java/com/sazon/app/data/generator/FakeRecipeGenerator.kt`,
+  `app/src/test/java/com/sazon/app/data/generator/FakeRecipeGeneratorTest.kt`,
+  `docs/technical-discovery.md`, `docs/domain-model.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: `./gradlew test --tests` no funciona en este proyecto (el atajo `test` es la
+  tarea de ciclo de vida de AGP y no acepta `--tests`); el filtrado enfocado se hace con
+  `testDebugUnitTest --tests`. La spec cita `./gradlew test --tests`; se registra como desviación menor,
+  sin impacto en el gate (`init.sh` ejecuta `./gradlew test`).
+- Riesgo o incógnita abierta: ninguno nuevo. La pregunta 6 (errores/reintentos, `ai_unavailable`) sigue
+  abierta y el puerto devuelve `List<Recipe>` sin envoltorio de error, como fija la spec.
+- Siguiente paso: validación independiente de `fake-recipe-generator` con `feature-validator`.
+
+### Sesión 015
+
+- Fecha: 2026-10-05
+- Objetivo: validar `fake-recipe-generator` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente; commit y publicación de la rama.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, test + lint, sin
+  procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` y `lint --rerun-tasks`; parseó los XML
+  de resultados y de lint por su cuenta.
+- Evidencia capturada: 32 tests, 0 fallos/errores/saltados (`FakeRecipeGeneratorTest` 6,
+  `RoomProfileRepositoryTest` 9, `PreferenceSignatureTest` 8, `TaxonomyIntegrityTest` 5,
+  `RecipeSerializationTest` 4); lint 21 warnings, 0 errores, ninguno en ficheros de la feature; el
+  validador comprobó que el puerto tiene exactamente las tres operaciones `suspend`, que el falso es
+  determinista e independiente de la entrada (sin `Random`/reloj/`UUID`/estado mutable), que las
+  fixtures incluyen el caso negativo (`Pan` libre con `ingredientId=null` y `pollo` con tag
+  `poultry`), que los cuatro `id` de fixture resuelven en la Taxonomía, la ida y vuelta `RecipeJson`,
+  la ausencia de imports `android.*`/`java.net`/HTTP y de dependencias nuevas, y el respeto de
+  alcance/no-goals.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (2 Low, informativos, no bloqueantes): las casillas del `Validator Checklist`
+  de la spec quedan sin marcar (codifican las propias comprobaciones del validador); el test de guardia
+  Android/red escanea texto fuente y resuelve la raíz vía `settings.gradle.kts`, algo frágil pero
+  correcto hoy. El recuento de warnings de lint (20→21) sigue la deriva ya anotada en la sesión 013.
+- Riesgo o incógnita abierta: ninguno nuevo. La pregunta 6 (errores/reintentos, `ai_unavailable`) sigue
+  abierta y el puerto devuelve `List<Recipe>` sin envoltorio de error, como fija la spec.
 - Siguiente paso: especificar `recipe-validator` con `feature-spec`.

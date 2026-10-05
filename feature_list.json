@@ -136,12 +136,20 @@
     "title": "Generador de recetas falso para desarrollo",
     "user_visible_behavior": "El flujo completo funciona sin red devolviendo recetas fijas, incluidas algunas que el validador debe descartar.",
     "depends_on": ["recipe-domain-model"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' comprueba que el generador falso devuelve las tres operaciones (sugerir, buscar, generar) con datos deterministas"
     ],
-    "evidence": [],
-    "notes": "Permite construir y validar toda la app antes de elegir proveedor. Ver docs/technical-discovery.md."
+    "evidence": [
+      "Validacion independiente: veredicto accept. El validador re-ejecuto init.sh con Git Bash (exit 0), ./gradlew testDebugUnitTest --rerun-tasks y lint --rerun-tasks; parseo los XML de resultados (32 tests, 0 fallos/errores/saltados: FakeRecipeGeneratorTest 6, RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, TaxonomyIntegrityTest 5, RecipeSerializationTest 4) y de lint (21 warnings, 0 errores, ninguno en ficheros de la feature); confirmo el puerto con exactamente 3 operaciones suspend, determinismo e independencia de la entrada (sin Random/reloj/UUID/estado mutable), fixtures inseguras (Pan libre con ingredientId=null + pollo con tag poultry), ida y vuelta RecipeJson de las 4 fixtures, ids resueltos en la Taxonomia, sin imports android/net ni dependencias HTTP nuevas, y alcance/no-goals respetados",
+      "./gradlew test (via init.sh): BUILD SUCCESSFUL. FakeRecipeGeneratorTest tests=6 failures=0 errors=0; 32 tests en total, 0 fallos (RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, TaxonomyIntegrityTest 5, RecipeSerializationTest 4)",
+      "Escenarios 1-6 cubiertos: sugerir/buscar/generar devuelven listas no vacias e iguales entre llamadas (determinismo) e ignoran la entrada; ida y vuelta RecipeJson de todas las fixtures; disparadores de descarte (ingrediente libre 'Pan' con ingredientId=null y 'Pollo' con id real y tag poultry); sin imports android/androidx/java.net/http en domain.generator ni data.generator",
+      "./gradlew lint (via init.sh): BUILD SUCCESSFUL, 0 errores y 21 warnings preexistentes (GradleDependency, UnusedResources, NewerVersionAvailable, AndroidGradlePluginVersion, OldTargetApi, RedundantLabel); ninguno en ficheros de la feature",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "Sin cambios en app/build.gradle.kts ni gradle/libs.versions.toml: no se anaden dependencias ni HTTP; el falso no hace red",
+      "Fixtures fijas source=AI, matchScore=null e ids deterministas (fake-...): fake-arroz-verduras, fake-lentejas-estofadas, fake-pollo-ajillo, fake-bocadillo-tomate"
+    ],
+    "notes": "Puerto com.sazon.app.domain.generator.RecipeGenerator (3 operaciones suspend: suggestByPreferences, searchByText, generateFromIngredients) y GenerationConstraints (profile, servings + ajustes opcionales). Implementacion falsa determinista com.sazon.app.data.generator.FakeRecipeGenerator: devuelve siempre las mismas 4 recetas fijas ignorando la entrada, sin Random/reloj/UUID/red/Android; no filtra recetas inseguras (eso es recipe-validator). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesion 015). Ver docs/specs/fake-recipe-generator.md, docs/technical-discovery.md y docs/domain-model.md."
   },
   {
     "id": "seed-recipe-catalog",
