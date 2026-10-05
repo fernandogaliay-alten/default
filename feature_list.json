@@ -88,12 +88,20 @@
     "title": "Firma de preferencias determinista",
     "user_visible_behavior": "La firma cambia al modificar cualquier preferencia y NO cambia al cambiar el nombre o el color de avatar.",
     "depends_on": ["profile-persistence"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' comprueba que dos perfiles idénticos dan la misma firma, que cada preferencia la altera y que nombre y color de avatar no la alteran"
     ],
-    "evidence": [],
-    "notes": "Regla crítica: la firma EXCLUYE la identidad. Ver docs/domain-model.md."
+    "evidence": [
+      "Validacion independiente: veredicto accept. El validador re-ejecuto init.sh con Git Bash (exit 0), ./gradlew testDebugUnitTest --rerun-tasks (26 tests, 0 fallos: PreferenceSignatureTest 8, RoomProfileRepositoryTest 9, RecipeSerializationTest 4, TaxonomyIntegrityTest 5) y lint --rerun-tasks (0 errores, sin warnings nuevos en ficheros de la feature); recalculo el vector dorado de forma independiente con SHA-256 de .NET y coincidio exactamente; confirmo escenarios 1-7, una comprobacion por campo, exclusion de identidad y updatedAt, semantica de conjuntos y alcance/no-goals",
+      "./gradlew test: BUILD SUCCESSFUL. PreferenceSignatureTest tests=8 failures=0 errors=0 (26 tests en total, 0 fallos)",
+      "Cubre los escenarios 1-7: dos perfiles identicos dan la misma firma y es estable; cada campo de PreferenceProfile (dietPatternId, hardRestrictionIds, softPreferenceIds, cuisineIds, preferredIngredientIds, dislikedIngredientIds, difficultyId, timeBucketId, defaultServings) altera la firma; anadir/quitar elementos la altera; nombre, color de avatar, createdAt y updatedAt NO la alteran; orden y duplicados de las listas NO la alteran; coincide con el vector dorado y es hex de 64 caracteres",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores y los mismos 20 warnings preexistentes (OldTargetApi, RedundantLabel, versiones y recursos de plantilla); sin warnings nuevos",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "Inspeccion: com.sazon.app.domain.profile no importa android.*; PreferenceSignature.of recibe PreferenceProfile (no UserProfile), lo que excluye la identidad por construccion; sin cambios en UserProfile, ProfileRepository, data.profile ni el build",
+      "Vector dorado SHA-256 fijado en el test: 256cbcb3fae4784e9f89ab408d690a8ad184f36435fc276ca25e9b9b42197a8c"
+    ],
+    "notes": "Object PreferenceSignature en com.sazon.app.domain.profile (puro, sin Android). of(preferences: PreferenceProfile): String: SHA-256 en hex minuscula sobre cadena canonica con prefijo de version 'v1' y separador U+001F; listas como conjuntos (distinct().sorted()); excluye updatedAt ademas de la identidad. Sin persistir firma ni integracion con el Lote (eso es suggestion-batch-cache). Ver docs/specs/preference-signature.md."
   },
   {
     "id": "recipe-validator",

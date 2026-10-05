@@ -57,6 +57,12 @@ y una columna JSON por lista (conversor con `kotlinx.serialization`). El dominio
 `ProfileRepository` (`get`/`observe`/`save`/`clear`). El test corre en JVM con Robolectric y base de
 datos en memoria, sin emulador. Ver `docs/specs/profile-persistence.md`.
 
+La Firma de preferencias vive en `com.sazon.app.domain.profile.PreferenceSignature.of(preferences)`:
+un hash SHA-256 determinista sobre una cadena canonica (listas tratadas como conjuntos) que **excluye**
+la identidad (nombre y color de avatar) y `updatedAt`. Logica pura sin Android, testeada en JVM. Aun
+no se persiste ni se conecta al Lote de sugerencias (eso es `suggestion-batch-cache`). Ver
+`docs/specs/preference-signature.md`.
+
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md` y
 `docs/adr/0002-local-first-no-backend.md`.
 

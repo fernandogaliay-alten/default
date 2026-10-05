@@ -34,6 +34,8 @@ IA. Es el mecanismo para decidir si un lote es obsoleto, sin adivinar.
 - **Incluye**: patrón de dieta, restricciones duras, preferencias blandas, cocinas, ingredientes
   preferidos, ingredientes que evito, dificultad, tiempo disponible y comensales habituales.
 - **Excluye**: nombre y color de avatar. Cambiar de identidad no invalida recetas.
+- Trata las listas como **conjuntos**: reordenar la misma selección (o duplicarla) no altera la firma.
+- Los sellos temporales (`createdAt`, `updatedAt`) tampoco son una preferencia y quedan excluidos.
 
 ### Resumen de actividad (ActivitySummary)
 Datos que la pantalla Perfil muestra al usuario:
