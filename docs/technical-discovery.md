@@ -79,9 +79,13 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
 - **API de IA**: única integración externa. El proveedor **está por decidir**.
 - El dominio depende de la interfaz `RecipeGenerator` (tres operaciones: sugerir por preferencias,
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
-  es lo último que se conecta.
+  es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
+  junto a `GenerationConstraints`, la costura minima de `generateFromIngredients`.
 - `FakeRecipeGenerator` (datos fijos, sin red) es la implementación por defecto en desarrollo y
-  tests, y permite construir y validar toda la app antes de elegir proveedor.
+  tests, y permite construir y validar toda la app antes de elegir proveedor. Vive en
+  `com.sazon.app.data.generator` (Kotlin puro, sin Android ni red) y sus fixtures incluyen, a
+  proposito, recetas que el Validador debe descartar: un ingrediente libre "Pan" (gluten) y un
+  ingrediente de carne/ave con id real de la Taxonomia.
 - **Búsqueda con IA**: no se persiste un caché consulta→resultado; se memoiza en memoria por sesión
   para evitar llamadas repetidas al volver atrás. Las recetas devueltas se guardan como recetas `ai`
   en la caché normal.
@@ -104,7 +108,8 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Tests unitarios de dominio en JVM** (obligatorios): integridad de la Taxonomía, `PromptBuilder`,
   parsing y validación de la respuesta, descarte por Restricciones duras, firma de preferencias y
   política de caché, escalado de raciones.
-- `FakeRecipeGenerator` disponible para el flujo completo sin red.
+- `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
+  red, incluidas recetas inseguras para el test negativo del Validador.
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
 - `init.sh` debe ejecutar los tests de forma reproducible y ser el punto de entrada de verificación
   del harness.

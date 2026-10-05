@@ -76,8 +76,10 @@ Puerto con tres operaciones:
 - `searchByText(query, profile)` → **Búsqueda con IA** escrita en la Home.
 - `generateFromIngredients(ingredients, constraints)` → recetas para el flujo principal.
 
-Las tres devuelven `Recipe` y **todas** pasan por el Validador. Implementación real: pendiente.
-Implementación de test: `FakeRecipeGenerator`.
+Las tres devuelven `Recipe` y **todas** pasan por el Validador. `constraints` es
+`GenerationConstraints` (`profile`, `servings` y los ajustes opcionales del paso del generador).
+Implementación real: pendiente. Implementación de test: `FakeRecipeGenerator` (en `data.generator`,
+determinista y sin red).
 
 ### Política de la Búsqueda con IA
 - **Restricciones duras y Patrón de dieta se aplican siempre**, las garantiza el Validador. No son
