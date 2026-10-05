@@ -17,14 +17,22 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 | 2 | ¿Cuántas recetas se piden por generación? | Coste, latencia, UI de resultados | Al fijar el contrato del prompt |
 | 3 | ¿Cuántos días tarda en caducar el Lote de sugerencias? | Nº de llamadas a la IA | Antes de la feature de Home |
 | 4 | ¿`matchScore` lo calcula el modelo o la app? | Validador y ranking | Antes de la feature de resultados |
-| 5 | ¿Política de trazas (p. ej. avena)? | Seguridad alimentaria | Antes del validador |
-| 6 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
-| 7 | ¿Cómo se resuelve un ingrediente libre (`pan`) contra las keywords? | Validador | Antes del validador |
-| 8 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
-| 9 | ¿Las recetas semilla se empaquetan como JSON en assets o como código? | Mantenibilidad | Antes de la feature de recetas semilla |
+| 5 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
+| 6 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
+| 7 | ¿Las recetas semilla se empaquetan como JSON en assets o como código? | Mantenibilidad | Antes de la feature de recetas semilla |
 
 ### Resueltas
 
+- **Política de trazas** (antes pregunta 5, la de trazas): resuelta en `recipe-validator`. Se aplica
+  tal cual la política conservadora de `docs/domain/taxonomy.md` §7: la Taxonomía ya marca los
+  posibles trazas con el alérgeno y su keyword (p. ej. `avena` con `gluten`). El validador **no**
+  añade una capa de trazas: si la keyword aparece en el nombre normalizado, descarta. La decisión fina
+  de negocio vive en `docs/domain/taxonomy.json`; cambiarla es cambiar keywords.
+- **Resolución de un ingrediente libre (`pan`) contra las keywords** (antes pregunta 7, la de
+  ingrediente libre): resuelta en `recipe-validator`. Un ingrediente libre se resuelve **solo** por
+  `keywords`, nunca contra la lista `ingredients` (`docs/domain/taxonomy.md` §7): se normaliza el
+  `name` (minúsculas, sin acentos) y se busca contención de cada keyword de las restricciones activas.
+  Un `ingredientId` desconocido se degrada a libre y sigue validándose por keywords.
 - **Unidades permitidas** (antes pregunta 4): resuelta en `recipe-domain-model`. Conjunto cerrado
   `MeasureUnit`: `g`, `ml`, `ud`, `cda`, `cdta`; `unit` es opcional (`null` = "al gusto"). Ver
   `docs/specs/recipe-domain-model.md`.

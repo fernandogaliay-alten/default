@@ -109,13 +109,20 @@
     "title": "Validador que descarta recetas inseguras",
     "user_visible_behavior": "Una receta que incumple una restricción dura o el patrón de dieta se descarta y no se muestra, con el motivo registrado.",
     "depends_on": ["recipe-domain-model"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' cubre: esquema inválido, id desconocido, dieta incumplida, alérgeno detectado por keywords en ingrediente libre, e incoherencia de tiempos",
       "Un test comprueba que un ingrediente libre como 'pan' activa la restricción de gluten"
     ],
-    "evidence": [],
-    "notes": "Reglas del validador en docs/domain/taxonomy.md sección 5. Es la capa que garantiza la seguridad y donde vive la calidad del producto."
+    "evidence": [
+      "Validacion independiente: veredicto accept. El validador re-ejecuto init.sh con Git Bash (exit 0), ./gradlew test --rerun-tasks (38 tests, 0 fallos: RecipeValidatorTest 12, RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, RecipeSerializationTest 4, TaxonomyIntegrityTest 5) y lint --rerun-tasks (0 errores, sin issues en ficheros de la feature); confirmo escenarios 1-11, el orden de reglas de docs/domain/taxonomy.md seccion 5, que una respuesta malformada nunca lanza excepcion, pureza de dominio (sin imports android.*/androidx.*), disciplina de alcance, que no se tocaron app/build.gradle.kts ni gradle/libs.versions.toml, y la resolucion coherente de las preguntas 5 y 7 con renumeracion y citas corregidas",
+      "./gradlew test: BUILD SUCCESSFUL. RecipeValidatorTest tests=12 failures=0 errors=0 (38 tests en total, 0 fallos). Cubre los escenarios 1-11: respuesta segura/coherente aceptada; malformada devuelve Malformed sin excepcion; difficultyId desconocido -> SCHEMA; categoryId desconocido -> 'other'; dieta vegetarian con pollo -> DIET_PATTERN; gluten por keyword 'pan' en ingrediente libre; gluten por ingredientId 'pasta' (nombre 'Espaguetis'); acentos y mayusculas 'SESAMO tostado' -> sesame; deriva de tiempos 25/10 -> INCOHERENT; alergeno lactosa omitido en declaredAllergens -> INCOHERENT; y lote con una receta rota que no tumba la correcta. Extra: ingredientId desconocido degradado a ingrediente libre",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores, 21 warnings preexistentes (GradleDependency 7, UnusedResources 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1, RedundantLabel 1); ninguno en ficheros de la feature",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "Inspeccion: com.sazon.app.domain.validation no importa android.* ni androidx.*; los tests corren en JVM sin emulador",
+      "Resueltas las preguntas 5 (trazas) y 7 (ingrediente libre) en docs/risks-and-open-questions.md; renumeradas las restantes (6->5, 8->6, 9->7) y corregidas las citas en docs/technical-discovery.md y feature_list.json"
+    ],
+    "notes": "Reglas del validador en docs/domain/taxonomy.md sección 5. Es la capa que garantiza la seguridad y donde vive la calidad del producto. Implementado como lógica pura en com.sazon.app.domain.validation (RecipeValidator, RecipeConstraints, DiscardReason, DiscardedRecipe, RecipeValidation, ValidationOutcome e IngredientText); parsea el envelope {recipes:[...]} elemento a elemento sin lanzar, normaliza categoryId desconocido a 'other' y ingredientId desconocido a libre, y aplica dieta -> restricciones duras (allergens curados + keywords) -> coherencia (deriva <= 5 min y declaredAllergens). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesion 015). Ver docs/specs/recipe-validator.md."
   },
   {
     "id": "prompt-builder",
@@ -154,7 +161,7 @@
       "'./gradlew test' comprueba que el catálogo se carga, que no está vacío y que todas sus recetas cumplen el esquema de Receta"
     ],
     "evidence": [],
-    "notes": "Pregunta 9 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
+    "notes": "Pregunta 7 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
   },
   {
     "id": "design-tokens-and-theme",
