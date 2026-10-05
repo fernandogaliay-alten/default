@@ -46,12 +46,19 @@
     "title": "Modelo de Receta con origen seed o ai",
     "user_visible_behavior": "Una receta semilla y una receta generada por IA se representan con el mismo esquema y se serializan y deserializan sin pérdida.",
     "depends_on": ["taxonomy-in-code"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' cubre ida y vuelta de serialización de una receta y una receta sin nutrición (campo opcional)"
     ],
-    "evidence": [],
-    "notes": "Esquema en docs/domain-model.md (Recipe, RecipeIngredient, RecipeStep, Nutrition, matchScore opcional)."
+    "evidence": [
+      "./gradlew test: BUILD SUCCESSFUL. RecipeSerializationTest tests=4 failures=0 errors=0 (9 tests en total)",
+      "Cubre: ida y vuelta de receta completa; receta sin nutricion ni matchScore (opcionales null); origen seed/ai con @SerialName; unidad cerrada ('g') y unidad ausente (null)",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores, sin warnings nuevos (solo versiones de plantilla/dependencias)",
+      "init.sh con Git Bash: exit 0 (test + lint)",
+      "Inspeccion: com.sazon.app.domain.recipe no importa nada de Android; los tests corren en JVM sin emulador",
+      "Validacion independiente: veredicto accept. Re-ejecuto init.sh (exit 0), ./gradlew test --rerun-tasks (9 tests, 0 fallos) y lint (0 errores); confirmo esquema vs docs, ambito y ausencia de imports Android"
+    ],
+    "notes": "Esquema en docs/domain-model.md. Modelo en com.sazon.app.domain.recipe (Recipe, RecipeIngredient, RecipeStep, Nutrition, RecipeSource, MeasureUnit), con RecipeJson (ignoreUnknownKeys, encodeDefaults). Resueltas las preguntas 4 (unidades: MeasureUnit g/ml/ud/cda/cdta, unit nullable) y 5 (nutricion opcional en esquema, siempre pedida en el prompt) en docs/risks-and-open-questions.md. matchScore queda como Int? de cable: lo recalcula la app (derivado, no persistido); formula pendiente en results-screen."
   },
   {
     "id": "profile-persistence",
@@ -59,12 +66,21 @@
     "title": "Persistencia del perfil de usuario y de preferencias",
     "user_visible_behavior": "El nombre, el color de avatar y las preferencias del usuario siguen ahí después de cerrar y reabrir la app.",
     "depends_on": ["bootstrap-android-project"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "Test de persistencia en JVM con base de datos en memoria: guardar, releer y comparar"
     ],
-    "evidence": [],
-    "notes": "Room, una fila. Nombre obligatorio (1-40 caracteres tras recortar). Ver docs/domain-model.md (UserProfile, PreferenceProfile)."
+    "evidence": [
+      "./gradlew test: BUILD SUCCESSFUL. RoomProfileRepositoryTest tests=9 failures=0 errors=0 (18 tests en total). Cubre los escenarios 1-6: guardar/releer/comparar un perfil completo, recorte del nombre, rechazo de nombre vacio y de 41 caracteres sin escribir fila, nombre de 40 caracteres aceptado, perfil ausente -> null, sobrescritura de la fila unica (COUNT=1), clear() y Flow null->perfil",
+      "Test en JVM sobre Robolectric @Config(sdk = [33]) con Room.inMemoryDatabaseBuilder, sin emulador ni base de datos en disco",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores y 20 warnings preexistentes (OldTargetApi, RedundantLabel, GradleDependency/NewerVersionAvailable y recursos de plantilla); sin warnings nuevos",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "Versiones fijadas y verificadas: KSP 2.2.10-2.0.2, Room 2.8.5, Robolectric 4.17, androidx.test:core 1.7.0, kotlinx-coroutines 1.11.0 (compatible con Kotlin 2.2.10)",
+      "Hallazgo de build: AGP 9 usa Kotlin integrado y bloquea kotlin.sourceSets; KSP necesita android.disallowKotlinSourceSets=false en gradle.properties. Aplicado y documentado",
+      "Inspeccion: com.sazon.app.domain.profile no importa android.*; entidad, DAO, conversores y mapeo viven en com.sazon.app.data.profile",
+      "Validacion independiente: veredicto accept. Re-ejecuto init.sh con Git Bash (exit 0, test + lint); ./gradlew test --rerun-tasks (18 tests, 0 fallos: RoomProfileRepositoryTest 9, RecipeSerializationTest 4, TaxonomyIntegrityTest 5) y lint --rerun-tasks (0 errores, 20 warnings preexistentes, sin nuevos); confirmo domain.profile sin imports android.* ni androidx.*, alcance/no-goals respetados (sin UI, firma, DataStore ni migraciones)"
+    ],
+    "notes": "Room, una fila (user_profile, PK id=1) con INSERT OR REPLACE; listas en columnas JSON con kotlinx.serialization. Dominio puro en domain.profile (UserProfile, PreferenceProfile, ProfileName 1-40 tras recortar, ProfileRepository get/observe/save/clear); Room en data.profile con ProfileDatabase.build(context), exportSchema=false y version=1. Sin UI, sin firma, sin DataStore y sin migraciones (no-goals de la spec). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesion 010). Ver docs/specs/profile-persistence.md y docs/technical-discovery.md."
   },
   {
     "id": "preference-signature",
@@ -130,7 +146,7 @@
       "'./gradlew test' comprueba que el catálogo se carga, que no está vacío y que todas sus recetas cumplen el esquema de Receta"
     ],
     "evidence": [],
-    "notes": "Pregunta 11 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
+    "notes": "Pregunta 9 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
   },
   {
     "id": "design-tokens-and-theme",
@@ -296,7 +312,7 @@
       "Prueba manual: cambiar las raciones actualiza las cantidades mostradas"
     ],
     "evidence": [],
-    "notes": "Nutrición opcional (pregunta 5). Unidades permitidas sin cerrar (pregunta 4)."
+    "notes": "Nutrición opcional y unidades (MeasureUnit: g/ml/ud/cda/cdta, unidad nullable) resueltas en recipe-domain-model."
   },
   {
     "id": "favorites",

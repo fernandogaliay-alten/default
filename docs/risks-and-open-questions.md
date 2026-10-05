@@ -16,14 +16,21 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 | 1 | ¿Qué proveedor de IA y qué modelo? | Feature de integración | Antes de conectar el proveedor real |
 | 2 | ¿Cuántas recetas se piden por generación? | Coste, latencia, UI de resultados | Al fijar el contrato del prompt |
 | 3 | ¿Cuántos días tarda en caducar el Lote de sugerencias? | Nº de llamadas a la IA | Antes de la feature de Home |
-| 4 | ¿Qué unidades se permiten (`g`, `ml`, `ud`, `cda`, `cdta`)? | Esquema de receta y UI | Antes del modelo de Receta |
-| 5 | ¿La nutrición es obligatoria u opcional en la respuesta? | Esquema y pantalla de detalle | Antes del modelo de Receta |
-| 6 | ¿`matchScore` lo calcula el modelo o la app? | Validador y ranking | Antes de la feature de resultados |
-| 7 | ¿Política de trazas (p. ej. avena)? | Seguridad alimentaria | Antes del validador |
-| 8 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
-| 9 | ¿Cómo se resuelve un ingrediente libre (`pan`) contra las keywords? | Validador | Antes del validador |
-| 10 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
-| 11 | ¿Las recetas semilla se empaquetan como JSON en assets o como código? | Mantenibilidad | Antes de la feature de recetas semilla |
+| 4 | ¿`matchScore` lo calcula el modelo o la app? | Validador y ranking | Antes de la feature de resultados |
+| 5 | ¿Política de trazas (p. ej. avena)? | Seguridad alimentaria | Antes del validador |
+| 6 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
+| 7 | ¿Cómo se resuelve un ingrediente libre (`pan`) contra las keywords? | Validador | Antes del validador |
+| 8 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
+| 9 | ¿Las recetas semilla se empaquetan como JSON en assets o como código? | Mantenibilidad | Antes de la feature de recetas semilla |
+
+### Resueltas
+
+- **Unidades permitidas** (antes pregunta 4): resuelta en `recipe-domain-model`. Conjunto cerrado
+  `MeasureUnit`: `g`, `ml`, `ud`, `cda`, `cdta`; `unit` es opcional (`null` = "al gusto"). Ver
+  `docs/specs/recipe-domain-model.md`.
+- **Nutrición obligatoria u opcional** (antes pregunta 5): resuelta en `recipe-domain-model` como
+  **opcional en el esquema** (`Nutrition?`); el prompt y el generador pedirán que se incluya siempre
+  que se pueda. Ver `docs/specs/recipe-domain-model.md`.
 
 ## Later / Not MVP
 

@@ -6,9 +6,9 @@
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
-- Siguiente feature lista: `recipe-domain-model`
+- Siguiente feature lista: `preference-signature` (dependencia `profile-persistence` ya `accepted`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-09-29 (taxonomy-in-code aceptada de forma independiente)
+- Última verificación: 2026-10-02 (`profile-persistence` validada de forma independiente, `accepted`)
 
 ## Registro de sesiones
 
@@ -129,3 +129,102 @@
   el asset; falta de salto de línea final (corregido).
 - Riesgo o incógnita abierta: deuda técnica anotada en `docs/risks-and-open-questions.md`.
 - Siguiente paso: especificar `recipe-domain-model` con `feature-spec`.
+
+### Sesión 007
+
+- Fecha: 2026-09-29
+- Objetivo: implementar `recipe-domain-model` (esquema único de Receta para `seed` y `ai`).
+- Completado: paquete `com.sazon.app.domain.recipe` con `Recipe`, `RecipeIngredient`, `RecipeStep`,
+  `Nutrition`, `RecipeSource` y `MeasureUnit`; `RecipeJson` con `ignoreUnknownKeys` y
+  `encodeDefaults`; `RecipeSerializationTest` con cuatro casos. Resueltas las preguntas 4 (unidades:
+  `MeasureUnit` `g`/`ml`/`ud`/`cda`/`cdta`, `unit` nullable) y 5 (nutrición opcional en el esquema,
+  siempre pedida en el prompt) en `docs/risks-and-open-questions.md`, con renumeración del resto.
+- Verificación ejecutada: `./gradlew test`, `./gradlew lint` e `init.sh` con Git Bash.
+- Evidencia capturada: `RecipeSerializationTest` con **4 tests, 0 fallos** (9 tests en total); lint
+  con 0 errores y sin warnings nuevos; `init.sh` con código 0; `com.sazon.app.domain.recipe` sin
+  imports de Android.
+- Ficheros actualizados: `app/src/main/java/com/sazon/app/domain/recipe/Recipe.kt`,
+  `.../RecipeJson.kt`, `app/src/test/java/com/sazon/app/domain/recipe/RecipeSerializationTest.kt`,
+  `docs/risks-and-open-questions.md`, `docs/technical-discovery.md`,
+  `docs/specs/recipe-domain-model.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: la renumeración de preguntas obligó a corregir citas en `feature_list.json`
+  (semilla: 11→9) y `technical-discovery.md`. Una aserción del propio test estaba mal contada
+  (esperaba 1 ingrediente libre y hay 2); no era un fallo del modelo. La pregunta 4 antigua
+  (`matchScore`) sigue abierta: dirección provisional "lo calcula la app, derivado y no persistido",
+  registrada solo en la spec.
+- Riesgo o incógnita abierta: `matchScore` sin cerrar formalmente (se decide antes de `results-screen`).
+- Siguiente paso: validación independiente de `recipe-domain-model` con `feature-validator`.
+
+### Sesión 008
+
+- Fecha: 2026-09-29
+- Objetivo: validar `recipe-domain-model` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio. Re-ejecutó `init.sh` (exit 0),
+  `./gradlew test --rerun-tasks` (9 tests, 0 fallos) y `lint` (0 errores, 20 warnings preexistentes);
+  confirmó el esquema contra los documentos, el ámbito y la ausencia de imports de Android. Cerrados
+  los dos hallazgos Low en la spec (cita `parse(json): Recipe` y numeración antigua de preguntas).
+- Verificación ejecutada: el gate estándar y los tests forzados por el validador; sin cambios de
+  código tras la validación (solo documentación).
+- Evidencia capturada: `feature_list.json` pasa a `accepted`; el validador confirmó 9 tests/0 fallos,
+  `MeasureUnit` con los cinco ids, `matchScore` como `Int?` de cable y sin tocar el build.
+- Ficheros actualizados: `feature_list.json`, `docs/specs/recipe-domain-model.md` y este registro.
+- Hallazgos del validador (2, ambos Low, no bloqueantes): numeración antigua de preguntas dentro de la
+  spec (aclarada) y typo `parse(json): String` (corregido a `Recipe`).
+- Riesgo o incógnita abierta: la pregunta 4 de riesgos (antigua 6, `matchScore`) sigue abierta.
+- Siguiente paso: especificar `profile-persistence` con `feature-spec`.
+
+### Sesión 009
+
+- Fecha: 2026-10-01
+- Objetivo: implementar `profile-persistence` (capa mínima de persistencia del Perfil de usuario y de
+  preferencias en Room).
+- Completado: dominio puro `com.sazon.app.domain.profile` (`UserProfile`, `PreferenceProfile`,
+  `ProfileName` con recorte y 1–40, y el puerto `ProfileRepository` con `get`/`observe`/`save`/
+  `clear`); capa `com.sazon.app.data.profile` (`ProfileEntity` de una fila `user_profile` con PK
+  `id = 1`, `ProfileDao` con `Flow`/`INSERT OR REPLACE`/`DELETE`, `ListStringConverter` JSON con
+  `kotlinx.serialization`, `ProfileMappers`, `RoomProfileRepository` y `ProfileDatabase` con
+  `version = 1`/`exportSchema = false` y fábrica `build(context)`); `RoomProfileRepositoryTest` con
+  los seis escenarios y dos de borde. Sin UI, sin firma, sin DataStore y sin migraciones (no-goals).
+- Verificación ejecutada: `./gradlew test`, `./gradlew lint` e `init.sh` con Git Bash; inspección de
+  imports de `domain.profile`.
+- Evidencia capturada: `RoomProfileRepositoryTest` con **9 tests, 0 fallos** (18 tests en total, 0
+  fallos), en JVM sobre Robolectric `@Config(sdk = [33])` y base en memoria; lint con 0 errores y los
+  mismos 20 warnings preexistentes (sin nuevos); `init.sh` con código 0; `domain.profile` sin imports
+  de `android.*`. Versiones fijadas: KSP `2.2.10-2.0.2`, Room `2.8.5`, Robolectric `4.17`,
+  `androidx.test:core` `1.7.0`, kotlinx-coroutines `1.11.0`.
+- Ficheros cambiados: `gradle/libs.versions.toml`, `gradle.properties`, `build.gradle.kts`,
+  `app/build.gradle.kts`, los cuatro ficheros de `domain/profile`, los seis de `data/profile`,
+  `app/src/test/.../data/profile/RoomProfileRepositoryTest.kt`, `docs/technical-discovery.md`,
+  `docs/specs/profile-persistence.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: AGP 9 usa Kotlin integrado y bloquea el DSL `kotlin.sourceSets` que KSP
+  necesita; se añadió `android.disallowKotlinSourceSets=false` en `gradle.properties` (solución
+  documentada por AGP, con un warning experimental, no bloqueante). Se actualizó el spec con este
+  hallazgo y con las versiones elegidas.
+- Riesgo o incógnita abierta: ninguno nuevo. La única deuda anotada es el warning experimental de AGP
+  por la excepción de KSP.
+- Siguiente paso: validación independiente de `profile-persistence` con `feature-validator`.
+
+### Sesión 010
+
+- Fecha: 2026-10-02
+- Objetivo: validar `profile-persistence` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted`; desbloqueada `preference-signature` (su dependencia ya está aceptada).
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew test --rerun-tasks` y
+  `./gradlew lint --rerun-tasks`.
+- Evidencia capturada: 18 tests, 0 fallos (`RoomProfileRepositoryTest` 9, `RecipeSerializationTest` 4,
+  `TaxonomyIntegrityTest` 5); lint 0 errores y los mismos 20 warnings preexistentes (sin nuevos);
+  `domain.profile` sin imports `android.*`/`androidx.*`; alcance y no-goals respetados (sin UI, sin
+  firma, sin DataStore, sin migraciones, sin `ProfileDatabase` en `MainActivity`); escenarios 1-6 más
+  `clear()` cubiertos.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (4, todos Low o informativos, ninguno bloqueante): estado de git mezcla la
+  feature ya aceptada `recipe-domain-model` sin commitear (no es de esta feature); `AGENTS.md`
+  modificado con la sección "Reparto de roles (subagentes)" y no declarado en la sesión 009 (es
+  harness, ajeno a la feature, pendiente de trazar/commitear aparte); `ProfileDatabase` usa el nombre
+  de fichero genérico `sazon.db` (deuda ya anotada); `ListStringConverter.toList` no tolera JSON
+  malformado (solo con BD corrupta, aceptable en v1); perfil en Room sin cifrado (coherente con
+  ADR 0002).
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: especificar `preference-signature` con `feature-spec`.

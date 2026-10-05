@@ -45,6 +45,19 @@ Estos acuerdos tienen prioridad sobre la autonomía del agente:
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
 
+## Reparto de roles (subagentes)
+
+Cada fase del ciclo la ejecuta un subagente especializado; el agente principal orquesta y persiste la
+aceptación.
+
+- La especificación (`feature-spec`) la hace el subagente **`planner`**.
+- La implementación (`feature-implementer`) la hace el subagente **`implementer`**.
+- La validación (`feature-validator`) la hace el subagente **`validator`**.
+- El agente principal **no** ejecuta esas skills directamente: delega en el subagente del rol. El
+  flujo completo (`feature-flow`) lo orquesta el agente principal.
+- Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
+  sin él, la skill correspondiente selecciona la siguiente feature.
+
 ## Artefactos obligatorios
 
 - `feature_list.json` — fuente de verdad del estado de las features.

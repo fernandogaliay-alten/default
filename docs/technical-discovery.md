@@ -13,6 +13,9 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 - Toolchain del bootstrap: Gradle 9.5.0 (wrapper), AGP 9.3.3, Kotlin 2.2.10, Compose BOM 2026.02.01.
 - `applicationId` / paquete base: **`com.sazon.app`**. Barato de cambiar ahora; caro tras publicar.
 - Room para persistencia local; DataStore para flags de aplicación (p. ej. "onboarding completado").
+- KSP para procesar las anotaciones de Room. Con el Kotlin integrado de AGP 9, KSP necesita la
+  excepción `android.disallowKotlinSourceSets=false` en `gradle.properties` para registrar sus fuentes
+  generadas; sin ella, la configuración falla.
 - Coroutines + Flow para asincronía.
 - Cliente HTTP (Retrofit o Ktor) + `kotlinx.serialization` para el proveedor de IA.
 - Inyección de dependencias ligera. En un proyecto de curso, manual o Koin es suficiente; Hilt añade
@@ -24,7 +27,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Qué | Dónde | Por qué |
 |---|---|---|
 | Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
-| Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 11 de riesgos) | Contenido empaquetado, siempre disponible offline |
+| Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 9 de riesgos) | Contenido empaquetado, siempre disponible offline |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
@@ -41,6 +44,18 @@ versiones. Los `id` nunca se renombran.
 (`TaxonomyJson.parse`, sin dependencias de Android) y la lectura del asset en `com.sazon.app.data`
 (`AssetTaxonomySource`), de modo que los tests corren en JVM sin emulador. Ver
 `docs/specs/taxonomy-in-code.md`.
+
+El esquema de una receta vive en `com.sazon.app.domain.recipe` (`Recipe`, `RecipeIngredient`,
+`RecipeStep`, `Nutrition`, `RecipeSource` y `MeasureUnit`), un único modelo serializable con
+`kotlinx.serialization` para recetas `seed` y `ai`, también sin dependencias de Android. Ver
+`docs/specs/recipe-domain-model.md`.
+
+La persistencia del Perfil de usuario (identidad + preferencias) vive en
+`com.sazon.app.data.profile` sobre Room 2.8.5: una sola fila (`user_profile`) con `INSERT OR REPLACE`
+y una columna JSON por lista (conversor con `kotlinx.serialization`). El dominio puro
+`com.sazon.app.domain.profile` define `UserProfile`, `PreferenceProfile`, `ProfileName` y el puerto
+`ProfileRepository` (`get`/`observe`/`save`/`clear`). El test corre en JVM con Robolectric y base de
+datos en memoria, sin emulador. Ver `docs/specs/profile-persistence.md`.
 
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md` y
 `docs/adr/0002-local-first-no-backend.md`.
