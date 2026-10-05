@@ -46,8 +46,9 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   feature.
 - El **commit** se crea automáticamente al `accept` (regla de `feature-flow`), en la rama
   `feature/<id>` del worktree de esa feature.
-- **Publicar (push + Pull Request) exige permiso de push explícito concedido por ejecución**; por
-  defecto está denegado. Cada feature aceptada se publica como un PR contra la rama base.
+- Al `accept`, el orquestador **publica automáticamente**: hace push de la rama `feature/<id>` y
+  abre (o reutiliza) el **PR** contra la rama base, con **permiso de push permanente**. No se pide
+  autorización por ejecución.
 - El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
@@ -76,9 +77,10 @@ aceptación.
 - Worktree por feature, **fuera** del checkout base, en `../<carpeta-del-checkout>-worktrees`
   (aquí `..\Default Project-worktrees`).
 - Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
-- Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y commitea
-  en local) y `publish` (push + PR, solo con permiso de push). Identidades deterministas: rama
-  `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` → `main`.
+- Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y, al
+  `accept`, **commitea, hace push y abre el PR** automáticamente) y `publish` (republicación: push +
+  PR). Identidades deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` →
+  `main`. Nunca hace merge.
 
 ## Artefactos obligatorios
 
@@ -140,9 +142,10 @@ Una feature está hecha solo si se cumplen todas:
   (`sdk.dir`), que está fuera de control de versiones. `ANDROID_HOME` está definido a nivel de
   usuario como respaldo para los worktrees.
 - **Worktrees (`github-flow`)**: crea el worktree de una feature con
-  `bash scripts/new-worktree.sh <feature-id>`. El script ramifica desde `origin/main`, crea la rama
-  `feature/<feature-id>` en `../<checkout>-worktrees/<id>` y copia `local.properties` al worktree
-  (ignorado en git, no viaja solo). Sin ese fichero ni `ANDROID_HOME`, `./init.sh` falla al no
-  encontrar el SDK.
+  `bash scripts/new-worktree.sh <feature-id>`. El script hace `git fetch origin main` antes de
+  ramificar (para no partir de un `origin/main` obsoleto), crea la rama `feature/<feature-id>` en
+  `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
+  solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
+  `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
 - Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
   entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.

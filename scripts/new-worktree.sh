@@ -27,11 +27,19 @@ worktree_path="${worktrees_root}/${feature_id}"
 branch="feature/${feature_id}"
 
 if [ "$#" -ge 2 ] && [ -n "${2:-}" ]; then
+  # SHA explicito: el llamante ya es responsable de haber fetcheado.
   base_sha="$2"
-elif git rev-parse --verify --quiet "origin/${BASE_BRANCH}" >/dev/null; then
-  base_sha="$(git rev-parse "origin/${BASE_BRANCH}")"
 else
-  base_sha="$(git rev-parse "${BASE_BRANCH}")"
+  # Sin SHA explicito: fetchea origin para no ramificar de un origin/<base> obsoleto.
+  if git remote get-url origin >/dev/null 2>&1; then
+    echo "fetch origin ${BASE_BRANCH}..."
+    git fetch --quiet origin "${BASE_BRANCH}" || echo "AVISO: fetch fallo; se usa origin/${BASE_BRANCH} local" >&2
+  fi
+  if git rev-parse --verify --quiet "origin/${BASE_BRANCH}" >/dev/null; then
+    base_sha="$(git rev-parse "origin/${BASE_BRANCH}")"
+  else
+    base_sha="$(git rev-parse "${BASE_BRANCH}")"
+  fi
 fi
 
 mkdir -p "$worktrees_root"
@@ -56,3 +64,11 @@ fi
 
 echo "worktree: $worktree_path"
 echo "branch:   ${branch} @ $(git -C "$worktree_path" rev-parse --short HEAD)"
+
+# Aviso de desincronizacion respecto a la base.
+if git rev-parse --verify --quiet "origin/${BASE_BRANCH}" >/dev/null; then
+  behind="$(git -C "$worktree_path" rev-list --count "HEAD..origin/${BASE_BRANCH}" 2>/dev/null || echo 0)"
+  if [ "${behind:-0}" != "0" ]; then
+    echo "AVISO: la rama va ${behind} commit(s) por detras de origin/${BASE_BRANCH}; revisa antes de mergear" >&2
+  fi
+fi
