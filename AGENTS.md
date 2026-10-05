@@ -81,6 +81,11 @@ aceptación.
 - Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
 - **Quién publica**: solo el orquestador de `github-flow`, una vez, al `accept` (reutilizando el PR si
   ya existe). `feature-flow` termina en el commit local de la rama; nunca hace push ni PR.
+- **Integración de artefactos compartidos**: el orquestador es el único integrador. Antes de publicar,
+  trae `origin/main` a la rama con un merge (`scripts/sync-worktree.sh <id>`; nunca rebase ni
+  force-push) y resuelve los conflictos de estado/docs (`feature_list.json`, `PROGRESS.md`,
+  `docs/technical-discovery.md`, …) manteniendo **ambas** aportaciones. Tras cada merge de un PR,
+  re-sincroniza las ramas abiertas restantes igual.
 - Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y, al
   `accept`, **commitea, hace push y abre el PR** automáticamente) y `publish` (republicación: push +
   PR). Identidades deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` →
