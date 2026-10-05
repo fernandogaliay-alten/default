@@ -6,9 +6,12 @@
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
+- Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
+  remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Siguiente feature lista: `preference-signature` (dependencia `profile-persistence` ya `accepted`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-02 (`profile-persistence` validada de forma independiente, `accepted`)
+- Última verificación: 2026-10-05 (harness de entrega con `github-flow` configurado; `init.sh` sin
+  cambios desde la sesión 010)
 
 ## Registro de sesiones
 
@@ -228,3 +231,24 @@
   ADR 0002).
 - Riesgo o incógnita abierta: ninguno nuevo.
 - Siguiente paso: especificar `preference-signature` con `feature-spec`.
+
+### Sesión 011
+
+- Fecha: 2026-10-05
+- Objetivo: habilitar la entrega concurrente por worktrees y PR con la skill `github-flow`.
+- Completado: instalada la skill `github-flow` (y su `references/evals.md`) en `~/.agents/skills/`;
+  consolidada la base del repositorio en el commit `65c7d7c`; rama renombrada `master` → `main`;
+  creado el remoto `origin` y publicado `main` en el repo privado `fernandogaliay-alten/default`;
+  añadido permiso `external_directory` para `...\Documents\*-worktrees\**` en la config global.
+- Herramientas instaladas: **opencode CLI** 1.18.34 (npm `opencode-ai`; ExecutionPolicy `CurrentUser`
+  → `RemoteSigned` para invocar el shim) y **gh** 2.102.0 autenticado como `fernandogaliay-alten`
+  (scopes `repo`, `read:org`, `gist`, `workflow`).
+- Ficheros actualizados: `AGENTS.md` (acuerdos de trabajo alineados con `github-flow`: ciclo autónomo,
+  commit al `accept`, push + PR solo con permiso de push, nunca merge; sección "Repositorio y
+  publicación"; regla `in_progress` por worktree) y este registro.
+- Verificación ejecutada: `git status` limpio; push a `origin/main` OK; `gh auth status` y
+  `gh repo view` (privado, default `main`); `opencode --version` y `gh --version`.
+- Riesgo o incógnita abierta: los artefactos compartidos (`feature_list.json`, `PROGRESS.md`) los
+  edita cada worktree en su rama; al mergear varios PRs en paralelo habrá conflictos que la persona
+  debe resolver. Pendiente de probar `github-flow` en modo `plan`.
+- Siguiente paso: reiniciar opencode y lanzar `github-flow` en modo `plan` para `preference-signature`.

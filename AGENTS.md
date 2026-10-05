@@ -30,7 +30,8 @@ Antes de escribir código:
 
 ## Reglas de trabajo
 
-- Una feature a la vez.
+- Una feature por sesión/worktree. Pueden correr varias features en paralelo si cada una usa su
+  propio worktree y su propia sesión (ver `github-flow`); dentro de una sesión no se mezclan features.
 - No marques una feature como hecha solo porque hayas añadido código.
 - Mantén los cambios dentro del alcance de la feature elegida.
 - No cambies las reglas de verificación durante la implementación.
@@ -38,10 +39,16 @@ Antes de escribir código:
 
 ## Acuerdos de trabajo con la persona
 
-Estos acuerdos tienen prioridad sobre la autonomía del agente:
+El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas mandan:
 
-- La persona revisa y aprueba la spec **antes** de implementarla.
-- La persona revisa los cambios **antes** de commitear. **No commitear sin petición explícita.**
+- El ciclo spec → implementación → validación es **autónomo**: los subagentes trabajan sin aprobación
+  paso a paso. El validador independiente es la única puerta de calidad; solo un `accept` cierra la
+  feature.
+- El **commit** se crea automáticamente al `accept` (regla de `feature-flow`), en la rama
+  `feature/<id>` del worktree de esa feature.
+- **Publicar (push + Pull Request) exige permiso de push explícito concedido por ejecución**; por
+  defecto está denegado. Cada feature aceptada se publica como un PR contra la rama base.
+- El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
 
@@ -55,8 +62,23 @@ aceptación.
 - La validación (`feature-validator`) la hace el subagente **`validator`**.
 - El agente principal **no** ejecuta esas skills directamente: delega en el subagente del rol. El
   flujo completo (`feature-flow`) lo orquesta el agente principal.
+- Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
+  **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
+  (`opencode run --dir <worktree>`) y delega el ciclo de cada feature a `feature-flow`.
+  `github-flow` **nunca** hace merge.
 - Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
   sin él, la skill correspondiente selecciona la siguiente feature.
+
+## Repositorio y publicación (github-flow)
+
+- Remoto: `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado).
+- Rama base: **`main`**; cada feature trabaja en `feature/<feature-id>`.
+- Worktree por feature, **fuera** del checkout base, en `../<carpeta-del-checkout>-worktrees`
+  (aquí `..\Default Project-worktrees`).
+- Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
+- Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y commitea
+  en local) y `publish` (push + PR, solo con permiso de push). Identidades deterministas: rama
+  `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` → `main`.
 
 ## Artefactos obligatorios
 
@@ -77,7 +99,8 @@ not_started → in_progress → passing → accepted
   quien implementó.
 - `blocked`: no se puede continuar y el motivo queda registrado en `PROGRESS.md` o en la feature.
 - Un vector de dependencias está satisfecho cuando apunta a una feature en `accepted`.
-- Como máximo una feature puede estar en `in_progress`.
+- Como máximo una feature puede estar en `in_progress` **por worktree/sesión**. Con `github-flow`
+  pueden coexistir varias en paralelo, cada una en su rama `feature/<id>`.
 
 ## Definición de hecho
 
