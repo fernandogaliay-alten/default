@@ -156,5 +156,9 @@ Una feature está hecha solo si se cumplen todas:
   `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
   solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
+- **Monitoreo en vivo (TUI)**: arranca el backend compartido una vez con `bash scripts/serve.sh`
+  (`opencode serve --port 4096`) y observa las sesiones con
+  `opencode attach http://localhost:4096` en Windows Terminal. El orquestador lanza cada feature con
+  `opencode run --attach http://localhost:4096 ...` para que su progreso aparezca en esa TUI.
 - Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
   entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.
