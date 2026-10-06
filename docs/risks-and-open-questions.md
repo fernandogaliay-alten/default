@@ -14,12 +14,11 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 | # | Pregunta | Impacto | Cuándo decidir |
 |---|---|---|---|
 | 1 | ¿Qué proveedor de IA y qué modelo? | Feature de integración | Antes de conectar el proveedor real |
-| 2 | ¿Cuántas recetas se piden por generación? | Coste, latencia, UI de resultados | Al fijar el contrato del prompt |
-| 3 | ¿Cuántos días tarda en caducar el Lote de sugerencias? | Nº de llamadas a la IA | Antes de la feature de Home |
-| 4 | ¿`matchScore` lo calcula el modelo o la app? | Validador y ranking | Antes de la feature de resultados |
-| 5 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
-| 6 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
-| 7 | ¿Las recetas semilla se empaquetan como JSON en assets o como código? | Mantenibilidad | Antes de la feature de recetas semilla |
+| 2 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
+| 3 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
+
+Nota de renumeración: las antiguas preguntas 5 y 7 se resolvieron y la 6 pasó a ser la 2. Las specs
+históricas conservan las citas con la numeración de su momento; la tabla se mantiene posicional.
 
 ### Resueltas
 
@@ -39,6 +38,13 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 - **Nutrición obligatoria u opcional** (antes pregunta 5): resuelta en `recipe-domain-model` como
   **opcional en el esquema** (`Nutrition?`); el prompt y el generador pedirán que se incluya siempre
   que se pueda. Ver `docs/specs/recipe-domain-model.md`.
+- **Nº de recetas por generación** (antes pregunta 2): **6** recetas por petición (compromiso
+  coste/latencia/UI). El contrato del prompt (`prompt-builder`) pedirá ese número.
+- **Caducidad del Lote de sugerencias** (antes pregunta 3): **7 días**, en un único sitio configurable.
+- **Cálculo de `matchScore`** (antes pregunta 4): lo calcula **la app** (derivado, **no persistido**);
+  la app lo recalcula al mostrar resultados. La fórmula se fija en `results-screen`.
+- **Formato de las recetas semilla** (antes pregunta 7): **JSON en assets**
+  (`app/src/main/assets/`), cargado por la app y validado por test. Empezar con **12** recetas.
 
 ## Later / Not MVP
 

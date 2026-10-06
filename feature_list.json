@@ -58,7 +58,7 @@
       "Inspeccion: com.sazon.app.domain.recipe no importa nada de Android; los tests corren en JVM sin emulador",
       "Validacion independiente: veredicto accept. Re-ejecuto init.sh (exit 0), ./gradlew test --rerun-tasks (9 tests, 0 fallos) y lint (0 errores); confirmo esquema vs docs, ambito y ausencia de imports Android"
     ],
-    "notes": "Esquema en docs/domain-model.md. Modelo en com.sazon.app.domain.recipe (Recipe, RecipeIngredient, RecipeStep, Nutrition, RecipeSource, MeasureUnit), con RecipeJson (ignoreUnknownKeys, encodeDefaults). Resueltas las preguntas 4 (unidades: MeasureUnit g/ml/ud/cda/cdta, unit nullable) y 5 (nutricion opcional en esquema, siempre pedida en el prompt) en docs/risks-and-open-questions.md. matchScore queda como Int? de cable: lo recalcula la app (derivado, no persistido); formula pendiente en results-screen."
+    "notes": "Esquema en docs/domain-model.md. Modelo en com.sazon.app.domain.recipe (Recipe, RecipeIngredient, RecipeStep, Nutrition, RecipeSource, MeasureUnit), con RecipeJson (ignoreUnknownKeys, encodeDefaults). Resueltas las preguntas 4 (unidades: MeasureUnit g/ml/ud/cda/cdta, unit nullable) y 5 (nutricion opcional en esquema, siempre pedida en el prompt) en docs/risks-and-open-questions.md. matchScore lo calcula la app (derivado, no persistido); la formula se fija en results-screen (ya no es pregunta abierta)."
   },
   {
     "id": "profile-persistence",
@@ -135,7 +135,7 @@
       "'./gradlew test' compara el prompt generado con un perfil de ejemplo y comprueba que las restricciones duras y el patrón de dieta aparecen siempre"
     ],
     "evidence": [],
-    "notes": "Lógica pura, sin red. Contrato de respuesta en docs/domain/taxonomy.md sección 4."
+    "notes": "Lógica pura, sin red. Contrato de respuesta en docs/domain/taxonomy.md sección 4. Pedirá 6 recetas por generación (decisión de riesgos)."
   },
   {
     "id": "fake-recipe-generator",
@@ -169,7 +169,7 @@
       "'./gradlew test' comprueba que el catálogo se carga, que no está vacío y que todas sus recetas cumplen el esquema de Receta"
     ],
     "evidence": [],
-    "notes": "Pregunta 7 sin resolver: JSON en assets o código. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
+    "notes": "Resuelto: recetas semilla como JSON en assets (app/src/main/assets/), cargado y validado por test. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
   },
   {
     "id": "design-tokens-and-theme",
@@ -240,7 +240,7 @@
       "Un test comprueba que sin IA disponible el lote cae a solo semilla y sigue siendo utilizable"
     ],
     "evidence": [],
-    "notes": "La caducidad en días es la pregunta 3, sin resolver: dejar el valor en un único sitio configurable."
+    "notes": "Resuelto: caducidad del lote de 7 días, en un único sitio configurable."
   },
   {
     "id": "home-offline-blocks",
@@ -321,7 +321,7 @@
       "Prueba manual: el estado vacío aparece cuando no hay recetas y el estado de error ofrece reintentar"
     ],
     "evidence": [],
-    "notes": "Cuando se llega desde la búsqueda con IA, el subtítulo es la consulta escrita."
+    "notes": "Cuando se llega desde la búsqueda con IA, el subtítulo es la consulta escrita. Aquí se fija la formula de matchScore (lo calcula la app, derivado, no persistido)."
   },
   {
     "id": "recipe-detail-screen",

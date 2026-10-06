@@ -52,6 +52,9 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   la sesión hija de un worktree) **nunca** hace push ni abre PR, ni siquiera teniendo el permiso: su
   salida es el commit local.
 - El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
+- **Verificación de UI**: no se automatizan pruebas de UI (emulador). Las features de UI se validan por
+  lógica/estado en JVM cuando sea posible; lo puramente visual lo revisa la persona tras el merge. Un
+  defecto visual se corrige con una **feature correctiva** nueva, sin bloquear el flujo autónomo.
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
 
@@ -156,9 +159,13 @@ Una feature está hecha solo si se cumplen todas:
   `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
   solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
-- **Monitoreo en vivo (TUI)**: arranca el backend compartido una vez con `bash scripts/serve.sh`
-  (`opencode serve --port 4096`) y observa las sesiones con
-  `opencode attach http://localhost:4096` en Windows Terminal. El orquestador lanza cada feature con
-  `opencode run --attach http://localhost:4096 ...` para que su progreso aparezca en esa TUI.
+- **Monitoreo en vivo (TUI)**: el orquestador **se asegura de que el backend esté arriba** —si el puerto
+  4096 no escucha, arranca `bash scripts/serve.sh`— antes de lanzar cada feature con
+  `opencode run --attach http://localhost:4096 ...`. Para observarlo tú:
+  `opencode attach http://localhost:4096` en Windows Terminal.
+- **Segfault de opencode (Bun) en Windows**: el CLI puede abortar **al cerrar** de forma intermitente.
+  No afecta al trabajo ya persistido; se tolera y la verificación se hace por artefactos
+  (git/`feature_list`/PR), no por el código de salida. Reanudar con `--continue` si muere a media
+  ejecución; escalar a WSL solo si se vuelve frecuente.
 - Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
   entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.

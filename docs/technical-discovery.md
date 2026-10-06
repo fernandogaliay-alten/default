@@ -27,7 +27,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Qué | Dónde | Por qué |
 |---|---|---|
 | Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
-| Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 7 de riesgos) | Contenido empaquetado, siempre disponible offline |
+| Recetas semilla | **JSON en assets** (`app/src/main/assets/`), cargado por la app y validado por test (decisión: riesgos, antes pregunta 7) | Contenido empaquetado, siempre disponible offline, editable sin recompilar |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |

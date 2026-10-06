@@ -49,8 +49,8 @@ Datos que la pantalla Perfil muestra al usuario:
 Toda receta, sea `seed` o `ai`, cumple el mismo esquema:
 `id`, `source` (`seed` | `ai`), `title`, `description`, `categoryId`, `mealTypeId`, `cuisineId`,
 `totalMinutes`, `prepMinutes`, `cookMinutes`, `difficultyId`, `servings`, `ingredients[]`, `steps[]`,
-`tips[]`, `nutrition` (opcional), `declaredAllergens[]` y `matchScore` (opcional; ver quién lo
-calcula en `docs/risks-and-open-questions.md`).
+`tips[]`, `nutrition` (opcional), `declaredAllergens[]` y `matchScore` (opcional; lo **calcula la app**,
+derivado y **no persistido**, ver `docs/risks-and-open-questions.md`).
 
 - **RecipeIngredient**: `name`, `quantity`, `unit`, `isPantry`, `ingredientId` (opcional; `null`
   cuando es ingrediente libre).

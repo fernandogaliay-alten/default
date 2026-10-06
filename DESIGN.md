@@ -220,6 +220,7 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
    actuales quedan obsoletas; hay que regenerarlas con ese prompt. Al aceptar exportaciones,
    guardarlas en `docs/design/concepts/` y registrar su estado en este documento.
 2. ¿Existe nombre de producto e icono definitivos, o "Sazón" es un marcador de posición?
-3. ¿Se incluye modo oscuro en el MVP o solo se documenta?
+3. **Resuelto (2026-10-06):** el modo oscuro **entra en el MVP**. Se implementa la variante oscura con
+   `darkBackground`/`darkSurface` y los acentos terracota y oliva (feature `design-tokens-and-theme`).
 4. ¿Las fotos de receta son reales (banco de imágenes) o ilustraciones? Afecta al tono general.
 5. ¿La ilustración de los estados vacíos es un estilo definido (línea, color plano) o se improvisa?
