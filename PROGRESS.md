@@ -8,11 +8,13 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Última feature aceptada: `fake-recipe-generator` (validador independiente, veredicto `accept`)
-- Siguiente feature lista: `recipe-validator` (dependencia `recipe-domain-model` ya `accepted`)
+- Últimas features aceptadas: `fake-recipe-generator` y `recipe-validator` (validador independiente,
+  veredicto `accept`)
+- Siguiente feature lista: `prompt-builder` (dependencias `taxonomy-in-code` y `preference-signature`
+  ya `accepted`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-05 (`fake-recipe-generator` aceptada: `init.sh` exit 0, 32
-  tests/0 fallos, lint 0 errores y 21 warnings preexistentes; validación independiente `accept`)
+- Última verificación: 2026-10-05 (`recipe-validator`: `init.sh` exit 0, 38 tests/0 fallos;
+  `fake-recipe-generator`: 32 tests/0 fallos; lint 0 errores y 21 warnings preexistentes, sin nuevos)
 
 ## Registro de sesiones
 
@@ -307,6 +309,45 @@
 ### Sesión 014
 
 - Fecha: 2026-10-05
+
+- Objetivo: implementar `recipe-validator` (validador que descarta recetas inseguras).
+- Completado: paquete puro `com.sazon.app.domain.validation` con `RecipeValidator`,
+  `RecipeConstraints`, `DiscardReason`, `DiscardedRecipe`, `RecipeValidation`, `ValidationOutcome` y
+  el helper interno `IngredientText` (normalización sin acentos con `java.text.Normalizer` y matching
+  por keywords conservador). El parseo del envelope `{ "recipes": [...] }` es propio (un `Json` nuevo,
+  no se toca `RecipeJson`): raíz/`recipes` malformados → `Malformed`; cada elemento se decodifica por
+  separado dentro de `runCatching`, de modo que una receta rota se descarta con `SCHEMA` sin tumbar el
+  lote. `validateRecipe` aplica las reglas 1–4 de `docs/domain/taxonomy.md` §5 en orden: esquema/ids
+  (ids desconocidos sin fallback → `SCHEMA`; `categoryId` → `"other"`; `ingredientId` desconocido →
+  libre), dieta por `excludedTags`, restricciones duras por `allergens` curados + keywords sobre el
+  nombre normalizado, y coherencia (`abs(sum(steps) - totalMinutes) > 5` y `declaredAllergens` debe
+  cubrir los alérgenos curados de los ingredientes resueltos). Sin Android, sin red, sin persistencia
+  y sin log (no-goals). Resueltas las preguntas 5 (trazas) y 7 (ingrediente libre) en
+  `docs/risks-and-open-questions.md`, renumeradas las restantes (6→5, 8→6, 9→7) y corregida la cita de
+  `docs/technical-discovery.md`.
+- Verificación ejecutada: `./gradlew test`, `./gradlew lint` e `init.sh` con Git Bash; inspección de
+  imports de `domain.validation`.
+- Evidencia capturada: `RecipeValidatorTest` con **12 tests, 0 fallos** (38 tests en total, 0 fallos);
+  cubre los escenarios 1–11 más un extra de `ingredientId` desconocido degradado a libre. Lint con 0
+  errores y 21 warnings preexistentes (GradleDependency 7, UnusedResources 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1, RedundantLabel 1), ninguno en ficheros de la feature;
+  `init.sh` con código 0; `com.sazon.app.domain.validation` sin imports `android.*`/`androidx.*`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/domain/validation/RecipeValidator.kt`,
+  `.../IngredientText.kt`, `app/src/test/java/com/sazon/app/domain/validation/RecipeValidatorTest.kt`,
+  `docs/risks-and-open-questions.md`, `docs/technical-discovery.md`, `feature_list.json` y este
+  registro. No se tocaron `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento; los dos descartes/conversiones esperados
+  (`categoryId` → `other`, `ingredientId` desconocido → libre) se documentan como decisiones de la
+  spec.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda anotado el riesgo residual ya descrito en la spec:
+  un ingrediente libre que sea violación de dieta (p. ej. "pollo" sin `ingredientId`) no se detecta
+  como dieta, solo por keywords de restricciones duras.
+- Siguiente paso: validación independiente de `recipe-validator` con `feature-validator`.
+
+### Sesión 015
+
+- Fecha: 2026-10-05
+
 - Objetivo: implementar `fake-recipe-generator` (puerto `RecipeGenerator` + implementación falsa
   determinista y sin red) según `docs/specs/fake-recipe-generator.md`.
 - Completado: puerto puro `com.sazon.app.domain.generator.RecipeGenerator` con las tres operaciones
@@ -338,9 +379,36 @@
   abierta y el puerto devuelve `List<Recipe>` sin envoltorio de error, como fija la spec.
 - Siguiente paso: validación independiente de `fake-recipe-generator` con `feature-validator`.
 
-### Sesión 015
+
+### Sesión 016
 
 - Fecha: 2026-10-05
+
+- Objetivo: validar `recipe-validator` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente; registrado el detalle en
+  `docs/validations/recipe-validator.md`.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0),
+  `./gradlew test --rerun-tasks` y `./gradlew lint --rerun-tasks`; inspección de pureza y de las
+  citas de numeración.
+- Evidencia capturada: 38 tests, 0 fallos (`RecipeValidatorTest` 12, `RoomProfileRepositoryTest` 9,
+  `PreferenceSignatureTest` 8, `RecipeSerializationTest` 4, `TaxonomyIntegrityTest` 5); lint 0
+  errores y sin issues en ficheros de la feature; `domain.validation` sin imports `android.*`; build
+  intacto (`app/build.gradle.kts` y `gradle/libs.versions.toml` sin cambios); escenarios 1–11 y orden
+  de reglas §5 confirmados; malformada nunca lanza; preguntas 5 y 7 resueltas con renumeración y
+  citas coherentes.
+- Ficheros actualizados: `feature_list.json`, `docs/validations/recipe-validator.md` y este registro.
+- Hallazgos del validador (3 Low, ninguno bloqueante): dos entradas de `risks-and-open-questions.md`
+  comparten la etiqueta "(antes pregunta 5)" pero se distinguen por contexto; `FALLBACK_CATEGORY_ID`
+  fijado en código en vez de leerse de `recipeCategories.fallback` (el modelo no lo expone); riesgo
+  residual ya documentado de ingrediente libre que viola dieta solo detectado por keywords.
+- Riesgo o incógnita abierta: ninguno nuevo.
+- Siguiente paso: especificar `prompt-builder` con `feature-spec`.
+
+### Sesión 017
+
+- Fecha: 2026-10-05
+
 - Objetivo: validar `fake-recipe-generator` de forma independiente y persistir la aceptación.
 - Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
   `accepted` con evidencia que nombra la aceptación independiente; commit y publicación de la rama.

@@ -27,7 +27,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Qué | Dónde | Por qué |
 |---|---|---|
 | Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
-| Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 9 de riesgos) | Contenido empaquetado, siempre disponible offline |
+| Recetas semilla | **Pendiente**: JSON en assets o código (ver pregunta 7 de riesgos) | Contenido empaquetado, siempre disponible offline |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
@@ -49,6 +49,14 @@ El esquema de una receta vive en `com.sazon.app.domain.recipe` (`Recipe`, `Recip
 `RecipeStep`, `Nutrition`, `RecipeSource` y `MeasureUnit`), un único modelo serializable con
 `kotlinx.serialization` para recetas `seed` y `ai`, también sin dependencias de Android. Ver
 `docs/specs/recipe-domain-model.md`.
+
+El Validador de recetas vive en `com.sazon.app.domain.validation` (`RecipeValidator`,
+`RecipeConstraints`, `DiscardReason`, `DiscardedRecipe`, `RecipeValidation`, `ValidationOutcome` y el
+helper interno `IngredientText`). Es lógica pura sin Android: consume el modelo de Receta y la
+Taxonomía, parsea el envelope `{ "recipes": [...] }` elemento a elemento (sin lanzar ante una
+respuesta mala) y aplica las reglas 1–4 de `docs/domain/taxonomy.md` §5 en orden, devolviendo las
+recetas aceptadas y el motivo de cada descarte (no registra log ni persiste: eso es del llamador).
+Testeado en JVM (`RecipeValidatorTest`). Ver `docs/specs/recipe-validator.md`.
 
 La persistencia del Perfil de usuario (identidad + preferencias) vive en
 `com.sazon.app.data.profile` sobre Room 2.8.5: una sola fila (`user_profile`) con `INSERT OR REPLACE`
