@@ -130,12 +130,20 @@
     "title": "Constructor de prompt desde el perfil",
     "user_visible_behavior": "Dado un perfil, se compone el prompt con las etiquetas y los ids de la Taxonomía, sin texto libre para nada clasificable.",
     "depends_on": ["taxonomy-in-code", "preference-signature"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' compara el prompt generado con un perfil de ejemplo y comprueba que las restricciones duras y el patrón de dieta aparecen siempre"
     ],
-    "evidence": [],
-    "notes": "Lógica pura, sin red. Contrato de respuesta en docs/domain/taxonomy.md sección 4. Pedirá 6 recetas por generación (decisión de riesgos)."
+    "evidence": [
+      "Validacion independiente: veredicto accept. El validador re-ejecuto init.sh con Git Bash (exit 0, test + lint, sin procesos largos), ./gradlew testDebugUnitTest --rerun-tasks (32/32 tareas) y parseo por su cuenta los XML de resultados (54 tests, 0 fallos/errores/saltados: PromptBuilderTest 10, RecipeValidatorTest 12, RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, FakeRecipeGeneratorTest 6, TaxonomyIntegrityTest 5, RecipeSerializationTest 4) y el informe de lint (0 errores, 21 warnings preexistentes, ninguno en ficheros de la feature); confirmo pureza de domain.prompt (sin android.*/androidx.*/java.net, sin Random/reloj/UUID), determinismo, ausencia de cambios en build/dependencias, coherencia de los 8 escenarios y del contrato §4, y que la evidencia del harness es real. Sin hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes (drift de docs en taxonomy.md §4 sobre matchScore, ya derivado por la app; robustez de dos aserciones de test)",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "./gradlew testDebugUnitTest --rerun-tasks: BUILD SUCCESSFUL. PromptBuilderTest tests=10 failures=0 errors=0; 54 tests en total, 0 fallos (RecipeValidatorTest 12, RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, FakeRecipeGeneratorTest 6, TaxonomyIntegrityTest 5, RecipeSerializationTest 4)",
+      "Escenarios 1-8 cubiertos: dieta y restricciones duras siempre presentes (id y label) y sección 'Restricciones duras:' con 'Ninguna' cuando la lista está vacía; 6 recetas y todas las claves del contrato de §4; todos los id de recipeCategories/mealTypes/cuisines/difficulties/hardRestrictions enumerados con instrucción de no usar texto libre; promptHint de dieta (flexitarian) y de preferencias blandas inyectados; contexto opcional (comida, franja con y sin maxMinutes, dificultad, notes, ingrediente de Taxonomía y libre) reflejado; ids desconocidos omitidos sin excepción; dos peticiones iguales dan system/user idénticos",
+      "./gradlew lint (via init.sh): 0 errores y 21 warnings preexistentes (OldTargetApi, RedundantLabel, GradleDependency, NewerVersionAvailable, AndroidGradlePluginVersion, UnusedResources); ninguno en ficheros de la feature",
+      "Inspeccion: com.sazon.app.domain.prompt no importa android.* ni androidx.* ni java.net; solo depende de domain.profile (PreferenceProfile) y domain.taxonomy (Taxonomy). No se tocan PreferenceProfile, la Taxonomia ni app/build.gradle.kts/gradle/libs.versions.toml; sin dependencias nuevas",
+      "docs/technical-discovery.md anota la ubicacion y las garantias de PromptBuilder; el paquete sigue siendo logica pura testeable en JVM"
+    ],
+    "notes": "Constructor puro com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request): BuiltPrompt(system, user). system depende solo de la Taxonomia (rol, regla de salida JSON, contrato de docs/domain/taxonomy.md seccion 4, unidades cerradas g/ml/ud/cda/cdta/null, despensa asumida y enumeracion id — label de recipeCategories/mealTypes/cuisines/difficulties/hardRestrictions); user traduce el Perfil y el contexto opcional con secciones fijas de seguridad ('Patrón de dieta:' y 'Restricciones duras:', esta ultima con 'Ninguna' si vacia). RECIPES_PER_GENERATION = 6. Los ids desconocidos se omiten sin lanzar ni inventar etiquetas; determinista (sin Random/reloj/estado). Sin UI, sin red, sin persistencia y sin firma (no-goals de la spec). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesion 018). Ver docs/specs/prompt-builder.md."
   },
   {
     "id": "fake-recipe-generator",

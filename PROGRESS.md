@@ -2,19 +2,20 @@
 
 ## Estado verificado actual
 
-- Raíz del repositorio: `C:\Users\fernando.galiay\OneDrive - ALTEN Group\Documents\Default Project`
+- Raíz del repositorio: `C:\Users\fernando.galiay\Documents\Default Project`
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator` y `seed-recipe-catalog`
-  (validador independiente, veredicto `accept`)
+- Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder` y
+  `seed-recipe-catalog` (validador independiente, veredicto `accept`)
 - Siguiente feature lista: `suggestion-batch-cache` (dependencias `preference-signature`,
-  `fake-recipe-generator` y `seed-recipe-catalog` ya `accepted`); `prompt-builder` también está listo
-  en su propio worktree
+  `fake-recipe-generator` y `seed-recipe-catalog` ya `accepted`); las features de UI que consumen el
+  catálogo también están listas
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-07 (`seed-recipe-catalog`: `init.sh` exit 0, 51 tests/0 fallos,
+- Última verificación: 2026-10-07 (`prompt-builder`: `init.sh` exit 0, 54 tests/0 fallos,
+  `PromptBuilderTest` 10; `seed-recipe-catalog`: `init.sh` exit 0, 51 tests/0 fallos,
   `SeedRecipeCatalogTest` 6 y `AssetSeedRecipeSourceTest` 1; `assets/seed-recipes.json` en el APK;
   lint 0 errores y 21 warnings preexistentes, sin nuevos)
 
@@ -438,6 +439,74 @@
 ### Sesión 018
 
 - Fecha: 2026-10-07
+- Objetivo: reanudar e implementar `prompt-builder` (constructor de prompt desde el Perfil) según
+  `docs/specs/prompt-builder.md`. Una ejecución previa se interrumpió por un corte del proveedor y dejó
+  el trabajo sin commitear; esta sesión lo retoma sin rehacer lo ya válido.
+- Completado: paquete puro `com.sazon.app.domain.prompt` con `PromptIngredient`, `PromptRequest`,
+  `BuiltPrompt` y `PromptBuilder` (`build(taxonomy, request)` y `RECIPES_PER_GENERATION = 6`). El
+  bloque `system` (dependiente solo de la Taxonomía) fija el rol, la regla de responder solo con el
+  JSON pedido, el contrato de `docs/domain/taxonomy.md` sección 4, las unidades cerradas
+  (`g`/`ml`/`ud`/`cda`/`cdta`/`null`), la despensa asumida y la enumeración `id — label` de
+  `recipeCategories`/`mealTypes`/`cuisines`/`difficulties`/`hardRestrictions` con la instrucción de no
+  usar texto libre en los campos clasificables. El bloque `user` traduce el Perfil y el contexto
+  opcional con las secciones fijas de seguridad (`Patrón de dieta:` y `Restricciones duras:`, esta
+  última con `Ninguna` si la lista está vacía), inyecta los `promptHint` de dieta y preferencias
+  blandas, y refleja cocinas, ingredientes preferidos/evitados, ajustes (comida, dificultad, franja con
+  `maxMinutes` o "sin límite máximo", comensales), ingredientes disponibles (de Taxonomía o libres) y
+  `query`/`notes`. Los ids desconocidos se omiten sin lanzar ni inventar etiquetas; sin `Random`, reloj
+  ni estado mutable (determinista). `PromptBuilderTest` con los escenarios 1–8 (10 tests). Sin UI, sin
+  red, sin persistencia y sin firma (no-goals de la spec).
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` con parseo propio
+  de los XML de resultados, y parseo del informe de lint.
+- Evidencia capturada: 54 tests, 0 fallos/errores/saltados (`PromptBuilderTest` 10,
+  `RecipeValidatorTest` 12, `RoomProfileRepositoryTest` 9, `PreferenceSignatureTest` 8,
+  `FakeRecipeGeneratorTest` 6, `TaxonomyIntegrityTest` 5, `RecipeSerializationTest` 4); lint 0 errores
+  y 21 warnings preexistentes, ninguno en ficheros de la feature; `init.sh` con código 0;
+  `com.sazon.app.domain.prompt` sin imports `android.*`/`androidx.*`/`java.net` y con dependencias solo
+  de `domain.profile` y `domain.taxonomy`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/domain/prompt/PromptBuilder.kt`,
+  `app/src/test/java/com/sazon/app/domain/prompt/PromptBuilderTest.kt`, `docs/specs/prompt-builder.md`
+  (spec del planner, ya presente), `docs/technical-discovery.md`, `feature_list.json` y este registro.
+  No se tocaron `PreferenceProfile`, la Taxonomía, `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento. En la Taxonomía real `flexitarian` aporta el
+  `promptHint` usado por el escenario 5 y la franja `gt_60` tiene `maxMinutes = null` (cubierto por el
+  test 6b). El trabajo previo ya estaba completo y en verde; solo se verificó y se registró la evidencia.
+- Riesgo o incógnita abierta: ninguno nuevo. Riesgo residual ya descrito en la spec: una restricción
+  dura corrupta (id inexistente) no se comunicaría al modelo porque se omite; aceptable porque la UI
+  solo ofrece ids válidos.
+- Siguiente paso: validación independiente de `prompt-builder` con `feature-validator`.
+
+### Sesión 019
+
+- Fecha: 2026-10-07
+- Objetivo: validar `prompt-builder` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  parseó por su cuenta los XML de resultados y el informe de lint; releyó la Taxonomía real y la spec.
+- Evidencia capturada: 54 tests, 0 fallos/errores/saltados (`PromptBuilderTest` 10,
+  `RecipeValidatorTest` 12, `RoomProfileRepositoryTest` 9, `PreferenceSignatureTest` 8,
+  `FakeRecipeGeneratorTest` 6, `TaxonomyIntegrityTest` 5, `RecipeSerializationTest` 4); lint 0 errores y
+  21 warnings preexistentes, ninguno en ficheros de la feature; `domain.prompt` sin imports
+  `android.*`/`androidx.*`/`java.net` y sin `Random`/reloj/`UUID`; build y dependencias intactos;
+  escenarios 1–8 y contrato de `docs/domain/taxonomy.md` §4 confirmados; sección de seguridad con
+  `Ninguna` cuando no hay restricciones duras.
+- Hallazgos del validador (2 Low, informativos, ninguno bloqueante): deriva de documentación en
+  `docs/domain/taxonomy.md` §4, que aún lista `matchScore` aunque la app lo deriva y el prompt no lo
+  pide; robustez de dos aserciones del test (coincidencia por subcadena en `escenario_4` y microcopy
+  exacto), correctas hoy y heredadas del patrón de features previas.
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantiene el riesgo residual documentado en la spec
+  (una restricción dura corrupta no se comunicaría al modelo).
+- Siguiente paso: commit local de la rama `feature/prompt-builder` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, especificar `seed-recipe-catalog`
+  con `feature-spec`.
+
+### Sesión 020
+
+- Fecha: 2026-10-07
 - Objetivo: implementar `seed-recipe-catalog` (contenido + costura de lectura + test de integridad) según
   `docs/specs/seed-recipe-catalog.md`. Sesión reanudada tras una interrupción de la ejecución previa
   (stall del stream del proveedor); el trabajo en disco ya existía sin commitear y solo faltaban los
@@ -477,7 +546,7 @@
   exige `>= 12`).
 - Siguiente paso: validación independiente de `seed-recipe-catalog` con `feature-validator`.
 
-### Sesión 019
+### Sesión 021
 
 - Fecha: 2026-10-07
 - Objetivo: validar `seed-recipe-catalog` de forma independiente y persistir la aceptación.
