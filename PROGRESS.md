@@ -8,13 +8,15 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Últimas features aceptadas: `fake-recipe-generator` y `recipe-validator` (validador independiente,
-  veredicto `accept`)
-- Siguiente feature lista: `prompt-builder` (dependencias `taxonomy-in-code` y `preference-signature`
-  ya `accepted`)
+- Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator` y `seed-recipe-catalog`
+  (validador independiente, veredicto `accept`)
+- Siguiente feature lista: `suggestion-batch-cache` (dependencias `preference-signature`,
+  `fake-recipe-generator` y `seed-recipe-catalog` ya `accepted`); `prompt-builder` también está listo
+  en su propio worktree
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-05 (`recipe-validator`: `init.sh` exit 0, 38 tests/0 fallos;
-  `fake-recipe-generator`: 32 tests/0 fallos; lint 0 errores y 21 warnings preexistentes, sin nuevos)
+- Última verificación: 2026-10-07 (`seed-recipe-catalog`: `init.sh` exit 0, 51 tests/0 fallos,
+  `SeedRecipeCatalogTest` 6 y `AssetSeedRecipeSourceTest` 1; `assets/seed-recipes.json` en el APK;
+  lint 0 errores y 21 warnings preexistentes, sin nuevos)
 
 ## Registro de sesiones
 
@@ -432,3 +434,77 @@
 - Riesgo o incógnita abierta: ninguno nuevo. La pregunta 6 (errores/reintentos, `ai_unavailable`) sigue
   abierta y el puerto devuelve `List<Recipe>` sin envoltorio de error, como fija la spec.
 - Siguiente paso: especificar `recipe-validator` con `feature-spec`.
+
+### Sesión 018
+
+- Fecha: 2026-10-07
+- Objetivo: implementar `seed-recipe-catalog` (contenido + costura de lectura + test de integridad) según
+  `docs/specs/seed-recipe-catalog.md`. Sesión reanudada tras una interrupción de la ejecución previa
+  (stall del stream del proveedor); el trabajo en disco ya existía sin commitear y solo faltaban los
+  artefactos de harness/docs.
+- Completado: `app/src/main/assets/seed-recipes.json` con **12 recetas semilla** autoradas (envelope
+  `{ "recipes": [...] }`, `source = seed`, `matchScore` omitido, ids `seed-*`); parser puro
+  `com.sazon.app.domain.recipe.SeedRecipeCatalog` + `SeedRecipeJson` (sin Android); lector
+  `com.sazon.app.data.AssetSeedRecipeSource(context).load()`; propiedad de sistema
+  `seed.recipes.asset.path` en `app/build.gradle.kts` (nada más); `SeedRecipeCatalogTest` (escenarios
+  1 y 3–6, con dos casos negativos de JSON mutado) y `AssetSeedRecipeSourceTest` (escenario 2,
+  Robolectric). Sin UI, sin red, sin persistencia, sin `RecipeValidator` en ejecución y sin
+  `matchScore` (no-goals). No se tocó `.gitignore` (el asset es fuente versionada, no generada).
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0),
+  `./gradlew testDebugUnitTest --rerun-tasks` con parseo de los XML de resultados,
+  `./gradlew lint` (dentro de `init.sh`), `./gradlew assembleDebug` e inspección del contenido del APK;
+  `git check-ignore` sobre el asset e inspección de imports de `domain.recipe`.
+- Evidencia capturada: **51 tests, 0 fallos/errores/saltados** (`SeedRecipeCatalogTest` 6,
+  `AssetSeedRecipeSourceTest` 1, `RecipeValidatorTest` 12, `RoomProfileRepositoryTest` 9,
+  `PreferenceSignatureTest` 8, `TaxonomyIntegrityTest` 5, `FakeRecipeGeneratorTest` 6,
+  `RecipeSerializationTest` 4); lint 0 errores y 21 warnings preexistentes, ninguno en ficheros de la
+  feature; `init.sh` con código 0; `app-debug.apk` (29,45 MB) contiene `assets/seed-recipes.json`
+  (20710 bytes sin comprimir); `seed-recipes.json` **no** está ignorado en `.gitignore` y aparece como
+  fichero nuevo versionable en `git status`; `com.sazon.app.domain.recipe` sin imports `android.*`; sin
+  dependencias nuevas.
+- Ficheros creados/cambiados: `app/src/main/assets/seed-recipes.json`,
+  `app/src/main/java/com/sazon/app/domain/recipe/SeedRecipeCatalog.kt`,
+  `app/src/main/java/com/sazon/app/data/AssetSeedRecipeSource.kt`,
+  `app/src/test/java/com/sazon/app/domain/recipe/SeedRecipeCatalogTest.kt`,
+  `app/src/test/java/com/sazon/app/data/AssetSeedRecipeSourceTest.kt`, `app/build.gradle.kts`,
+  `docs/technical-discovery.md`, `feature_list.json` y este registro. La spec
+  `docs/specs/seed-recipe-catalog.md` se mantiene sin cambios (no hubo desviaciones de contrato).
+- Hallazgos relevantes: ninguno de comportamiento. La interrupción previa no dejó trabajo a medias en
+  código; el contenido de las 12 recetas se validó íntegro contra la Taxonomía (referencias,
+  alérgenos declarados y coherencia de tiempos) sin correcciones.
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantiene el riesgo de calendario ya registrado (las
+  recetas semilla son contenido, no código) y el crecimiento del catálogo queda como contenido (el test
+  exige `>= 12`).
+- Siguiente paso: validación independiente de `seed-recipe-catalog` con `feature-validator`.
+
+### Sesión 019
+
+- Fecha: 2026-10-07
+- Objetivo: validar `seed-recipe-catalog` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0), `./gradlew
+  testDebugUnitTest --rerun-tasks` (32/32 tareas), `./gradlew assembleDebug`, parseó por su cuenta los
+  XML de tests y el informe de lint, e inspeccionó el APK como ZIP; re-verificó los escenarios 1–6 con
+  su propio parser de JSON y PowerShell contra `docs/domain/taxonomy.json`.
+- Evidencia capturada: 51 tests, 0 fallos/errores/saltados (`SeedRecipeCatalogTest` 6,
+  `AssetSeedRecipeSourceTest` 1, `RecipeValidatorTest` 12, `RoomProfileRepositoryTest` 9,
+  `PreferenceSignatureTest` 8, `TaxonomyIntegrityTest` 5, `FakeRecipeGeneratorTest` 6,
+  `RecipeSerializationTest` 4); lint 0 errores y 21 warnings preexistentes, 0 en ficheros de la feature;
+  el validador confirmó con su propio parser 12 recetas, ids únicos `seed-*`, `source=seed`,
+  `matchScore=null`, todas las referencias resueltas, `declaredAllergens ⊆ hardRestrictions`,
+  `servings` en 1..12, coherencia de tiempos y cobertura de alérgenos, con 0 violaciones; el caso
+  negativo falla de verdad (mutar `categoryId` → 1 violación; quitar `gluten` → 2 violaciones);
+  `assets/seed-recipes.json` (20710 bytes) está en el APK y no está ignorado en git; `domain.recipe` sin
+  imports Android.
+- Hallazgos del validador (2 Low, informativos, ninguno bloqueante): el test de "apta vegana" usa un
+  `ANIMAL_TAGS` fijo en vez de derivarlo de `dietPatterns[vegan].excludedTags` (hoy idénticos); el
+  helper `violations(...)` es solo de test, coherente con la decisión de la spec de no pasar el catálogo
+  por el `RecipeValidator` en ejecución.
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantiene el riesgo de calendario (el catálogo es
+  contenido) y el crecimiento del catálogo (el test exige `>= 12`).
+- Siguiente paso: commit local de la rama `feature/seed-recipe-catalog` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `suggestion-batch-cache` (depende
+  de `preference-signature`, `fake-recipe-generator` y `seed-recipe-catalog`, todas ya `accepted`) o las
+  features de UI que consume el catálogo.

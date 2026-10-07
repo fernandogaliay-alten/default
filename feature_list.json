@@ -164,12 +164,22 @@
     "title": "Catálogo de recetas semilla offline",
     "user_visible_behavior": "Existe un catálogo local de recetas semilla que se lee y se muestra sin conexión.",
     "depends_on": ["recipe-domain-model"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' comprueba que el catálogo se carga, que no está vacío y que todas sus recetas cumplen el esquema de Receta"
     ],
-    "evidence": [],
-    "notes": "Resuelto: recetas semilla como JSON en assets (app/src/main/assets/), cargado y validado por test. Empezar con 12 recetas. Es contenido, no código: riesgo de calendario ya registrado."
+    "evidence": [
+      "Validacion independiente: veredicto accept. El validador re-ejecuto init.sh con Git Bash (exit 0), ./gradlew testDebugUnitTest --rerun-tasks (32/32 tareas), parseo por su cuenta los XML (51 tests, 0 fallos/errores/saltados: SeedRecipeCatalogTest 6, AssetSeedRecipeSourceTest 1, RecipeValidatorTest 12, RoomProfileRepositoryTest 9, PreferenceSignatureTest 8, TaxonomyIntegrityTest 5, FakeRecipeGeneratorTest 6, RecipeSerializationTest 4) y el informe de lint (0 errores, 21 warnings preexistentes, 0 en ficheros de la feature); re-verifico el escenario 1-6 con su propio parser contra docs/domain/taxonomy.json (12 recetas, ids unicos seed-*, source=seed, matchScore null; todos los *Id/ingredientId resuelven; declaredAllergens dentro de hardRestrictions; servings 1..12; coherencia de tiempos y cobertura de alergenos; 0 violaciones) y confirmo que el caso negativo falla de verdad (mutacion de categoryId -> 1 violacion; quitar gluten -> 2 violaciones); comprobo con assembleDebug + inspeccion ZIP que assets/seed-recipes.json (20710 bytes) va en el APK y que el asset no esta ignorado. Sin hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes (ANIMAL_TAGS fijo en el test vegano; helper violations test-only, coherente con la spec)",
+      "./gradlew testDebugUnitTest --rerun-tasks: BUILD SUCCESSFUL. 51 tests, 0 fallos/errores/saltados; SeedRecipeCatalogTest tests=6 failures=0 errors=0 y AssetSeedRecipeSourceTest tests=1 failures=0 errors=0",
+      "SeedRecipeCatalogTest cubre los escenarios 1 y 3-6: carga >=12 recetas con source=seed, matchScore=null e id unico seed-*; ida y vuelta RecipeJson de cada receta; integridad referencial contra la Taxonomia (categoryId/mealTypeId/cuisineId/difficultyId/ingredientId existen, declaredAllergens dentro de hardRestrictions, servings 1..12); coherencia de contenido (ingredientes y pasos no vacios, orden 1..n, abs(sum(steps)-totalMinutes)<=5, declaredAllergens cubre los alergenos de los ingredientes resueltos); diversidad minima (una receta <=30 min y una apta vegana)",
+      "Caso negativo (escenario 6): dos tests mutan el JSON (categoryId='categoria-inexistente' y declaredAllergens de gluten a []) y comprueban que violations(...) devuelve >=1 violacion; no pasan en vacio",
+      "AssetSeedRecipeSourceTest (Robolectric, escenario 2): AssetSeedRecipeSource(context).load() devuelve >=12 recetas seed sin excepcion",
+      "./gradlew lint: BUILD SUCCESSFUL, 0 errores y 21 warnings preexistentes; ninguno en ficheros de la feature",
+      "init.sh con Git Bash: exit 0 (./gradlew test + ./gradlew lint), sin procesos largos",
+      "./gradlew assembleDebug: BUILD SUCCESSFUL. assets/seed-recipes.json empaquetado en app-debug.apk (20710 bytes sin comprimir)",
+      "Inspeccion: com.sazon.app.domain.recipe no importa android.*; seed-recipes.json no esta ignorado en .gitignore (fuente versionada, aparece como fichero nuevo en git status); sin dependencias nuevas"
+    ],
+    "notes": "Contenido + lectura + test. 12 recetas semilla autoradas en app/src/main/assets/seed-recipes.json (fuente versionada, no generada; sin tarea sync ni entrada en .gitignore). Parser puro SeedRecipeCatalog + SeedRecipeJson en com.sazon.app.domain.recipe (sin Android) y lector AssetSeedRecipeSource en com.sazon.app.data, mismo patron que la Taxonomia. app/build.gradle.kts solo anade la propiedad de sistema seed.recipes.asset.path. Sin UI, sin red, sin persistencia, sin RecipeValidator en ejecucion y sin matchScore (no-goals). Validado de forma independiente con veredicto 'accept' (ver PROGRESS.md, sesion 019). Ver docs/specs/seed-recipe-catalog.md."
   },
   {
     "id": "design-tokens-and-theme",

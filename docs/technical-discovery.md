@@ -28,7 +28,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Qué | Dónde | Por qué |
 |---|---|---|
 | Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
-| Recetas semilla | **JSON en assets** (`app/src/main/assets/`), cargado por la app y validado por test (decisión: riesgos, antes pregunta 7) | Contenido empaquetado, siempre disponible offline, editable sin recompilar |
+| Recetas semilla | **JSON fuente versionado** en `app/src/main/assets/seed-recipes.json`, cargado por la app y validado por test (decisión: riesgos, antes pregunta 7) | Contenido empaquetado, siempre disponible offline, editable sin recompilar |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
@@ -50,6 +50,16 @@ El esquema de una receta vive en `com.sazon.app.domain.recipe` (`Recipe`, `Recip
 `RecipeStep`, `Nutrition`, `RecipeSource` y `MeasureUnit`), un único modelo serializable con
 `kotlinx.serialization` para recetas `seed` y `ai`, también sin dependencias de Android. Ver
 `docs/specs/recipe-domain-model.md`.
+
+El Catálogo de recetas semilla vive en `app/src/main/assets/seed-recipes.json` (12 recetas, envelope
+`{ "recipes": [...] }`). A diferencia de la Taxonomía, este JSON es **fuente versionada**, no generado:
+no tiene gemelo en `docs/` ni tarea `sync`, y `.gitignore` no lo ignora. El parser puro vive en
+`com.sazon.app.domain.recipe` (`SeedRecipeCatalog` + `SeedRecipeJson.parse`, sin Android) y la lectura
+del asset en `com.sazon.app.data` (`AssetSeedRecipeSource`), mismo patrón que la Taxonomía. La
+integridad y coherencia del contenido se verifican en JVM con `SeedRecipeCatalogTest` (referencias a la
+Taxonomía, alérgenos, tiempos y dos casos negativos con JSON mutado) y `AssetSeedRecipeSourceTest`
+(Robolectric) confirma que el asset se empaqueta y se carga por nombre. Ver
+`docs/specs/seed-recipe-catalog.md`.
 
 El Validador de recetas vive en `com.sazon.app.domain.validation` (`RecipeValidator`,
 `RecipeConstraints`, `DiscardReason`, `DiscardedRecipe`, `RecipeValidation`, `ValidationOutcome` y el
