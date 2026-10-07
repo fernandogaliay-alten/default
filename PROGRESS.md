@@ -2,7 +2,7 @@
 
 ## Estado verificado actual
 
-- Raíz del repositorio: `C:\Users\fernando.galiay\OneDrive - ALTEN Group\Documents\Default Project`
+- Raíz del repositorio: `C:\Users\fernando.galiay\Documents\Default Project`
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
