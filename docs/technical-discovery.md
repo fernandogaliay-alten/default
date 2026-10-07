@@ -72,6 +72,15 @@ la identidad (nombre y color de avatar) y `updatedAt`. Logica pura sin Android, 
 no se persiste ni se conecta al Lote de sugerencias (eso es `suggestion-batch-cache`). Ver
 `docs/specs/preference-signature.md`.
 
+El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
+traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
+el contrato de `docs/domain/taxonomy.md` seccion 4 con `id` de la Taxonomia y garantiza que el patron
+de dieta y las restricciones duras aparecen **siempre**; pide 6 recetas por generacion
+(`RECIPES_PER_GENERATION`). Es logica pura sin Android, red, persistencia ni coroutines, y no incluye
+la Firma de preferencias (es clave de cache del Lote, no contenido del prompt). Testeado en JVM
+(`PromptBuilderTest`). La implementacion real del proveedor lo consumira. Ver
+`docs/specs/prompt-builder.md`.
+
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
 `docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.
 
