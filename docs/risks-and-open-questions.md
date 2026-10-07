@@ -46,6 +46,12 @@ numeración de su momento; la tabla se mantiene posicional.
   la app lo recalcula al mostrar resultados. La fórmula se fija en `results-screen`.
 - **Formato de las recetas semilla** (antes pregunta 7): **JSON en assets**
   (`app/src/main/assets/`), cargado por la app y validado por test. Empezar con **12** recetas.
+- **Licencia de las fuentes Manrope/Inter** (assets tipográficos de `design-tokens-and-theme`): ambas
+  se empaquetan bajo **SIL Open Font License 1.1**; el texto completo queda en
+  `docs/licenses/manrope-OFL.txt` y `docs/licenses/inter-OFL.txt`. Los `.ttf` de
+  `app/src/main/res/font/` son instancias estáticas de los pesos usados (Manrope 600/700, Inter
+  400/500) generadas con `fontTools` a partir de las fuentes variables oficiales de Google Fonts, no
+  descargables por red en tiempo de ejecución.
 - **Proveedor/modelo de IA** (antes pregunta 1): **DevExpert Inference**, API compatible con OpenAI
   (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, `Bearer DEVEXPERT_API_KEY`).
   Alias `chat` (diario) y `chat-pro` (avanzado); cuota semanal. La app usa HTTP directo + parsing

@@ -91,6 +91,21 @@ la Firma de preferencias (es clave de cache del Lote, no contenido del prompt). 
 (`PromptBuilderTest`). La implementacion real del proveedor lo consumira. Ver
 `docs/specs/prompt-builder.md`.
 
+El Tema de la app vive en `com.sazon.app.ui.theme` y es la unica fuente de verdad visual,
+materializada desde `DESIGN.md`: `Color.kt` (paleta + `LightColorScheme`/`DarkColorScheme` con todos
+los roles sobrescritos, sin purple/pink por defecto), `Type.kt` (`SazonTypography` + familias
+Manrope/Inter), `Shape.kt` (formas 16/24 + pildora) y `Spacing.kt` (espaciado 12/16/24 y metricas de
+componentes). `SazonTheme` elige la variante clara/oscura con `isSystemInDarkTheme()` y **no** usa
+color dinamico de Material You: ninguna ruta lee el fondo de pantalla, por lo que los colores no
+cambian con el. El **modo oscuro entra en el MVP** (pregunta abierta 3 de `DESIGN.md`, resuelta). Las
+fuentes OFL Manrope/Inter se empaquetan en `app/src/main/res/font/` (instancias estaticas de los pesos
+600/700 y 400/500, generadas con `fontTools` de las fuentes variables oficiales; licencias en
+`docs/licenses/`) y no se descargan por red. El fondo de ventana del sistema se alinea con
+`background`/`darkBackground` (`values/colors.xml`, `values-night/colors.xml`, `themes.xml` y
+`values-night/themes.xml`) y fija `android:forceDarkAllowed=false`. `DesignTokensTest` (JVM) compara
+los tokens expuestos con el frontmatter YAML de `DESIGN.md` (con caso negativo) leyendo la ruta por la
+propiedad de sistema `design.tokens.path`. Ver `docs/specs/design-tokens-and-theme.md`.
+
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
 `docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.
 
