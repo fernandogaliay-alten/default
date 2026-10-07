@@ -17,7 +17,8 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
   excepción `android.disallowKotlinSourceSets=false` en `gradle.properties` para registrar sus fuentes
   generadas; sin ella, la configuración falla.
 - Coroutines + Flow para asincronía.
-- Cliente HTTP (Retrofit o Ktor) + `kotlinx.serialization` para el proveedor de IA.
+- Cliente HTTP (Retrofit o Ktor) + `kotlinx.serialization` contra la API compatible con OpenAI de
+  **DevExpert Inference** (proveedor decidido; ver `docs/adr/0003-ai-provider.md`).
 - Inyección de dependencias ligera. En un proyecto de curso, manual o Koin es suficiente; Hilt añade
   ceremonia.
 - Tests: JUnit en JVM. El dominio no debe depender de Android para poder testarse sin emulador.
@@ -71,12 +72,18 @@ la identidad (nombre y color de avatar) y `updatedAt`. Logica pura sin Android, 
 no se persiste ni se conecta al Lote de sugerencias (eso es `suggestion-batch-cache`). Ver
 `docs/specs/preference-signature.md`.
 
-Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md` y
-`docs/adr/0002-local-first-no-backend.md`.
+Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
+`docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.
 
 ## Integrations
 
-- **API de IA**: única integración externa. El proveedor **está por decidir**.
+- **API de IA**: única integración externa. Proveedor decidido: **DevExpert Inference**, API
+  compatible con OpenAI (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, auth
+  `Bearer DEVEXPERT_API_KEY`). Alias `chat` (diario) y `chat-pro` (avanzado); el modelo real puede
+  cambiar sin cambiar el alias. Cuota **semanal** por clave. Ver `docs/adr/0003-ai-provider.md`.
+- **Salida estructurada**: la compatibilidad con OpenAI **no** garantiza `json_schema`/structured
+  outputs. El contrato del prompt pide JSON y el `RecipeValidator` parsea de forma tolerante (sin
+  lanzar), por lo que la app **no** depende de salida estructurada forzada.
 - El dominio depende de la interfaz `RecipeGenerator` (tres operaciones: sugerir por preferencias,
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
@@ -124,8 +131,8 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 ## Constraints
 
 - **Sin backend**: la clave de IA viaja en el APK → solo válido para demo.
-- **Coste y cuota** del proveedor desconocidos hasta decidirlo → la política cache-first y el modo
-  semilla son también una protección de coste.
+- **Coste y cuota**: DevExpert Inference tiene cuota **semanal** por clave (al 100 % se rechazan las
+  peticiones hasta el reset) → la política cache-first y el modo semilla protegen el coste.
 - **Red intermitente**: solo la Búsqueda con IA necesita red; el Lote de sugerencias, "Tus recetas" y
   Favoritos deben funcionar sin conexión.
 - **Tamaño del APK**: las imágenes locales de receta suman; conviene formato WebP y resolución

@@ -419,6 +419,6 @@
       "Prueba manual con clave ausente o inválida: la app entra en modo semilla y no falla"
     ],
     "evidence": [],
-    "notes": "Proveedor sin decidir (pregunta 1). Es lo último que se conecta. La clave va en local.properties y no se versiona (ADR 0002)."
+    "notes": "Proveedor decidido: DevExpert Inference (API compatible con OpenAI; base https://inference.devexpert.io/v1, POST /chat/completions, modelos chat/chat-pro). Es lo último que se conecta. La clave va en local.properties y no se versiona (ADR 0002). Ver ADR 0003."
   }
 ]

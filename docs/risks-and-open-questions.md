@@ -13,12 +13,13 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 
 | # | Pregunta | Impacto | Cuándo decidir |
 |---|---|---|---|
-| 1 | ¿Qué proveedor de IA y qué modelo? | Feature de integración | Antes de conectar el proveedor real |
-| 2 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
-| 3 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
+| 1 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
+| 2 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
 
-Nota de renumeración: las antiguas preguntas 5 y 7 se resolvieron y la 6 pasó a ser la 2. Las specs
-históricas conservan las citas con la numeración de su momento; la tabla se mantiene posicional.
+Nota de renumeración: se han resuelto el proveedor de IA (antes 1), el nº de recetas por generación
+(antes 2), la caducidad del lote (antes 3), `matchScore` (antes 4) y el formato de las recetas semilla
+(antes 7); las antiguas 5 y 6 pasaron a ser 1 y 2. Las specs históricas conservan las citas con la
+numeración de su momento; la tabla se mantiene posicional.
 
 ### Resueltas
 
@@ -45,6 +46,10 @@ históricas conservan las citas con la numeración de su momento; la tabla se ma
   la app lo recalcula al mostrar resultados. La fórmula se fija en `results-screen`.
 - **Formato de las recetas semilla** (antes pregunta 7): **JSON en assets**
   (`app/src/main/assets/`), cargado por la app y validado por test. Empezar con **12** recetas.
+- **Proveedor/modelo de IA** (antes pregunta 1): **DevExpert Inference**, API compatible con OpenAI
+  (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, `Bearer DEVEXPERT_API_KEY`).
+  Alias `chat` (diario) y `chat-pro` (avanzado); cuota semanal. La app usa HTTP directo + parsing
+  tolerante del `RecipeValidator` (no depende de structured outputs). Ver `docs/adr/0003-ai-provider.md`.
 
 ## Later / Not MVP
 
@@ -64,8 +69,8 @@ Evolutivos aceptados, a planificar después del MVP:
 - Idioma único: español.
 - El usuario dispone de red al menos de forma ocasional; la app debe funcionar sin ella.
 - La Taxonomía es suficientemente estable como para empaquetarse con la app.
-- El proveedor elegido permitirá **salida estructurada** (JSON Schema). Si no, habrá que reforzar el
-  parsing y la validación.
+- El proveedor (DevExpert Inference) **no** garantiza **salida estructurada** (JSON Schema): el
+  contrato del prompt pide JSON y el `RecipeValidator` parsea de forma tolerante (ver ADR 0003).
 - La clave de IA en `BuildConfig` es aceptable porque el APK no se distribuye.
 
 ## Risks
@@ -102,6 +107,7 @@ Evolutivos aceptados, a planificar después del MVP:
 - `docs/adr/0001-taxonomy-in-code.md` — la Taxonomía vive en código y es la única fuente de verdad.
 - `docs/adr/0002-local-first-no-backend.md` — todo el estado en el dispositivo; la clave de IA viaja
   en el APK.
+- `docs/adr/0003-ai-provider.md` — proveedor de IA: DevExpert Inference (API compatible con OpenAI).
 
 `RecipeGenerator` como interfaz con implementación falsa **no se elevó a ADR**: introducir esa
 abstracción más tarde sería un refactor de una sola capa y el patrón es estándar. Queda documentado
