@@ -1,0 +1,369 @@
+{
+  "recipes": [
+    {
+      "id": "seed-tortilla-patatas",
+      "source": "seed",
+      "title": "Tortilla de patatas",
+      "description": "Tortilla clásica de patata y huevo, jugosa por dentro.",
+      "categoryId": "egg_breakfast",
+      "mealTypeId": "dinner",
+      "cuisineId": "spanish",
+      "totalMinutes": 40,
+      "prepMinutes": 15,
+      "cookMinutes": 25,
+      "difficultyId": "easy",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Patata", "quantity": 600, "unit": "g", "isPantry": false, "ingredientId": "patata" },
+        { "name": "Huevo", "quantity": 6, "unit": "ud", "isPantry": false, "ingredientId": "huevo" },
+        { "name": "Cebolla", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "cebolla" },
+        { "name": "Aceite de oliva", "quantity": 150, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Pelar y cortar", "description": "Pela las patatas, córtalas en láminas finas y pica la cebolla.", "minutes": 15 },
+        { "order": 2, "title": "Freír", "description": "Fríe la patata y la cebolla a fuego medio hasta que estén tiernas.", "minutes": 15 },
+        { "order": 3, "title": "Cuajar", "description": "Bate los huevos, mezcla con la patata y cuaja la tortilla.", "minutes": 10 }
+      ],
+      "tips": ["Cuaja la tortilla a fuego bajo para que quede jugosa."],
+      "nutrition": { "kcal": 320, "protein": 14, "carbs": 24, "fat": 19 },
+      "declaredAllergens": ["egg"]
+    },
+    {
+      "id": "seed-gazpacho-andaluz",
+      "source": "seed",
+      "title": "Gazpacho andaluz",
+      "description": "Sopa fría de tomate, pepino y pimiento, ideal para el verano.",
+      "categoryId": "soup_cream",
+      "mealTypeId": "lunch",
+      "cuisineId": "spanish",
+      "totalMinutes": 20,
+      "prepMinutes": 20,
+      "cookMinutes": 0,
+      "difficultyId": "easy",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Tomate", "quantity": 800, "unit": "g", "isPantry": false, "ingredientId": "tomate" },
+        { "name": "Pepino", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "pepino" },
+        { "name": "Pimiento", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "pimiento" },
+        { "name": "Cebolla", "quantity": 0.5, "unit": "ud", "isPantry": false, "ingredientId": "cebolla" },
+        { "name": "Ajo", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Pan", "quantity": 50, "unit": "g", "isPantry": false, "ingredientId": "pan" },
+        { "name": "Aceite de oliva", "quantity": 50, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Vinagre", "quantity": 15, "unit": "ml", "isPantry": true, "ingredientId": "vinagre" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Trocear", "description": "Trocea las verduras y el pan.", "minutes": 10 },
+        { "order": 2, "title": "Triturar y enfriar", "description": "Tritura todo con el aceite y el vinagre, y enfría en la nevera.", "minutes": 10 }
+      ],
+      "tips": ["Sírvelo muy frío."],
+      "nutrition": { "kcal": 140, "protein": 3, "carbs": 14, "fat": 9 },
+      "declaredAllergens": ["gluten"]
+    },
+    {
+      "id": "seed-pasta-tomate",
+      "source": "seed",
+      "title": "Pasta con tomate y orégano",
+      "description": "Pasta sencilla con salsa de tomate casera y un toque de orégano.",
+      "categoryId": "pasta",
+      "mealTypeId": "lunch",
+      "cuisineId": "italian",
+      "totalMinutes": 25,
+      "prepMinutes": 5,
+      "cookMinutes": 20,
+      "difficultyId": "easy",
+      "servings": 2,
+      "ingredients": [
+        { "name": "Pasta", "quantity": 200, "unit": "g", "isPantry": false, "ingredientId": "pasta" },
+        { "name": "Tomate", "quantity": 400, "unit": "g", "isPantry": false, "ingredientId": "tomate" },
+        { "name": "Ajo", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Aceite de oliva", "quantity": 30, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Orégano", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "oregano" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Cocer la pasta", "description": "Hierve la pasta en agua con sal.", "minutes": 5 },
+        { "order": 2, "title": "Hacer la salsa", "description": "Sofríe el ajo y cocina el tomate hasta que espese.", "minutes": 15 },
+        { "order": 3, "title": "Mezclar", "description": "Mezcla la pasta con la salsa y espolvorea orégano.", "minutes": 5 }
+      ],
+      "tips": ["Reserva un poco de agua de cocción para ligar la salsa."],
+      "nutrition": { "kcal": 420, "protein": 14, "carbs": 72, "fat": 9 },
+      "declaredAllergens": ["gluten"]
+    },
+    {
+      "id": "seed-pollo-al-ajillo",
+      "source": "seed",
+      "title": "Pollo al ajillo",
+      "description": "Pollo dorado con mucho ajo y perejil fresco.",
+      "categoryId": "poultry",
+      "mealTypeId": "dinner",
+      "cuisineId": "spanish",
+      "totalMinutes": 30,
+      "prepMinutes": 10,
+      "cookMinutes": 20,
+      "difficultyId": "easy",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Pollo", "quantity": 800, "unit": "g", "isPantry": false, "ingredientId": "pollo" },
+        { "name": "Ajo", "quantity": 6, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Aceite de oliva", "quantity": 60, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Perejil", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "perejil" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" },
+        { "name": "Pimienta", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "pimienta" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Dorar", "description": "Dora el pollo en aceite caliente.", "minutes": 5 },
+        { "order": 2, "title": "Añadir el ajo", "description": "Incorpora los ajos laminados y cocina a fuego medio.", "minutes": 15 },
+        { "order": 3, "title": "Terminar", "description": "Espolvorea perejil y ajusta de sal.", "minutes": 10 }
+      ],
+      "nutrition": { "kcal": 380, "protein": 42, "carbs": 3, "fat": 22 },
+      "declaredAllergens": []
+    },
+    {
+      "id": "seed-lentejas-estofadas",
+      "source": "seed",
+      "title": "Lentejas estofadas",
+      "description": "Guiso tradicional de lentejas con verduras y pimentón.",
+      "categoryId": "legume_stew",
+      "mealTypeId": "lunch",
+      "cuisineId": "spanish",
+      "totalMinutes": 60,
+      "prepMinutes": 15,
+      "cookMinutes": 45,
+      "difficultyId": "medium",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Lentejas", "quantity": 400, "unit": "g", "isPantry": false, "ingredientId": "lenteja" },
+        { "name": "Cebolla", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "cebolla" },
+        { "name": "Zanahoria", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "zanahoria" },
+        { "name": "Pimiento", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "pimiento" },
+        { "name": "Ajo", "quantity": 3, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Pimentón", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "pimenton" },
+        { "name": "Aceite de oliva", "quantity": 40, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Caldo", "quantity": 800, "unit": "ml", "isPantry": true, "ingredientId": "caldo" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Sofreír", "description": "Pocha la cebolla, la zanahoria, el pimiento y el ajo.", "minutes": 15 },
+        { "order": 2, "title": "Cocer", "description": "Añade las lentejas, el pimentón y el caldo, y cuece a fuego lento.", "minutes": 25 },
+        { "order": 3, "title": "Reposar", "description": "Deja reposar el guiso y ajusta de sal.", "minutes": 20 }
+      ],
+      "tips": ["El pimentón se añade fuera del fuego para que no amargue."],
+      "nutrition": { "kcal": 340, "protein": 20, "carbs": 48, "fat": 8 },
+      "declaredAllergens": []
+    },
+    {
+      "id": "seed-salmon-a-la-plancha",
+      "source": "seed",
+      "title": "Salmón a la plancha",
+      "description": "Lomo de salmón a la plancha con limón y ajo.",
+      "categoryId": "fish_seafood",
+      "mealTypeId": "dinner",
+      "cuisineId": "mediterranean",
+      "totalMinutes": 25,
+      "prepMinutes": 5,
+      "cookMinutes": 20,
+      "difficultyId": "easy",
+      "servings": 2,
+      "ingredients": [
+        { "name": "Salmón", "quantity": 400, "unit": "g", "isPantry": false, "ingredientId": "salmon" },
+        { "name": "Limón", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "limon" },
+        { "name": "Ajo", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Aceite de oliva", "quantity": 20, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" },
+        { "name": "Pimienta", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "pimienta" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Preparar", "description": "Sazona el salmón y exprime el limón.", "minutes": 5 },
+        { "order": 2, "title": "Marcar", "description": "Marca el salmón en la plancha bien caliente.", "minutes": 10 },
+        { "order": 3, "title": "Terminar", "description": "Añade el ajo laminado y cocina hasta el punto deseado.", "minutes": 10 }
+      ],
+      "nutrition": { "kcal": 410, "protein": 40, "carbs": 2, "fat": 27 },
+      "declaredAllergens": ["fish"]
+    },
+    {
+      "id": "seed-tacos-de-pollo",
+      "source": "seed",
+      "title": "Tacos de pollo",
+      "description": "Tacos de tortita de maíz con pollo, lechuga y queso.",
+      "categoryId": "other",
+      "mealTypeId": "dinner",
+      "cuisineId": "mexican",
+      "totalMinutes": 30,
+      "prepMinutes": 15,
+      "cookMinutes": 15,
+      "difficultyId": "easy",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Tortita de maíz", "quantity": 8, "unit": "ud", "isPantry": false, "ingredientId": "tortita_maiz" },
+        { "name": "Pollo", "quantity": 500, "unit": "g", "isPantry": false, "ingredientId": "pollo" },
+        { "name": "Tomate", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "tomate" },
+        { "name": "Lechuga", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "lechuga" },
+        { "name": "Queso", "quantity": 100, "unit": "g", "isPantry": false, "ingredientId": "queso" },
+        { "name": "Tomate frito", "quantity": 50, "unit": "ml", "isPantry": true, "ingredientId": "tomate_frito" },
+        { "name": "Comino", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "comino" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Adobar", "description": "Adoba el pollo con comino y sal.", "minutes": 10 },
+        { "order": 2, "title": "Cocinar", "description": "Cocina el pollo y calienta las tortitas.", "minutes": 10 },
+        { "order": 3, "title": "Montar", "description": "Rellena las tortitas con pollo, tomate, lechuga y queso.", "minutes": 10 }
+      ],
+      "nutrition": { "kcal": 390, "protein": 32, "carbs": 30, "fat": 16 },
+      "declaredAllergens": ["lactose"]
+    },
+    {
+      "id": "seed-ensalada-de-quinoa",
+      "source": "seed",
+      "title": "Ensalada de quinoa",
+      "description": "Ensalada fresca de quinoa con tomate, pepino y aguacate.",
+      "categoryId": "salad",
+      "mealTypeId": "lunch",
+      "cuisineId": "mediterranean",
+      "totalMinutes": 25,
+      "prepMinutes": 10,
+      "cookMinutes": 15,
+      "difficultyId": "easy",
+      "servings": 2,
+      "ingredients": [
+        { "name": "Quinoa", "quantity": 150, "unit": "g", "isPantry": false, "ingredientId": "quinoa" },
+        { "name": "Tomate", "quantity": 200, "unit": "g", "isPantry": false, "ingredientId": "tomate" },
+        { "name": "Pepino", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "pepino" },
+        { "name": "Aguacate", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "aguacate" },
+        { "name": "Cebolla", "quantity": 0.5, "unit": "ud", "isPantry": false, "ingredientId": "cebolla" },
+        { "name": "Limón", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "limon" },
+        { "name": "Aceite de oliva", "quantity": 20, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Cocer la quinoa", "description": "Cuece la quinoa y déjala enfriar.", "minutes": 15 },
+        { "order": 2, "title": "Cortar", "description": "Corta las verduras en dados.", "minutes": 5 },
+        { "order": 3, "title": "Aliñar", "description": "Mezcla todo con limón, aceite y sal.", "minutes": 5 }
+      ],
+      "tips": ["Añade la quinoa templada para que absorba mejor el aliño."],
+      "nutrition": { "kcal": 360, "protein": 11, "carbs": 46, "fat": 15 },
+      "declaredAllergens": []
+    },
+    {
+      "id": "seed-tofu-salteado",
+      "source": "seed",
+      "title": "Tofu salteado con verduras",
+      "description": "Salteado rápido de tofu y verduras con salsa de soja.",
+      "categoryId": "vegan",
+      "mealTypeId": "dinner",
+      "cuisineId": "asian",
+      "totalMinutes": 30,
+      "prepMinutes": 15,
+      "cookMinutes": 15,
+      "difficultyId": "medium",
+      "servings": 3,
+      "ingredients": [
+        { "name": "Tofu", "quantity": 400, "unit": "g", "isPantry": false, "ingredientId": "tofu" },
+        { "name": "Brócoli", "quantity": 300, "unit": "g", "isPantry": false, "ingredientId": "brocoli" },
+        { "name": "Pimiento", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "pimiento" },
+        { "name": "Zanahoria", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "zanahoria" },
+        { "name": "Salsa de soja", "quantity": 30, "unit": "ml", "isPantry": true, "ingredientId": "salsa_soja" },
+        { "name": "Ajo", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "ajo" },
+        { "name": "Aceite de oliva", "quantity": 20, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Preparar", "description": "Corta el tofu y las verduras en trozos regulares.", "minutes": 10 },
+        { "order": 2, "title": "Dorar el tofu", "description": "Dora el tofu hasta que esté crujiente.", "minutes": 5 },
+        { "order": 3, "title": "Saltear", "description": "Añade las verduras, el ajo y la salsa de soja y saltea.", "minutes": 15 }
+      ],
+      "nutrition": { "kcal": 280, "protein": 22, "carbs": 18, "fat": 14 },
+      "declaredAllergens": ["soy"]
+    },
+    {
+      "id": "seed-crema-de-calabaza",
+      "source": "seed",
+      "title": "Crema de calabaza",
+      "description": "Crema suave de calabaza y puerro con un chorrito de leche.",
+      "categoryId": "soup_cream",
+      "mealTypeId": "dinner",
+      "cuisineId": "mediterranean",
+      "totalMinutes": 40,
+      "prepMinutes": 10,
+      "cookMinutes": 30,
+      "difficultyId": "easy",
+      "servings": 4,
+      "ingredients": [
+        { "name": "Calabaza", "quantity": 800, "unit": "g", "isPantry": false, "ingredientId": "calabaza" },
+        { "name": "Puerro", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "puerro" },
+        { "name": "Cebolla", "quantity": 1, "unit": "ud", "isPantry": false, "ingredientId": "cebolla" },
+        { "name": "Leche", "quantity": 200, "unit": "ml", "isPantry": false, "ingredientId": "leche" },
+        { "name": "Aceite de oliva", "quantity": 20, "unit": "ml", "isPantry": true, "ingredientId": "aceite_oliva" },
+        { "name": "Sal", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "sal" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Pochar", "description": "Pocha el puerro y la cebolla.", "minutes": 10 },
+        { "order": 2, "title": "Cocer", "description": "Añade la calabaza y cuece hasta que esté tierna.", "minutes": 20 },
+        { "order": 3, "title": "Triturar", "description": "Tritura con la leche y ajusta de sal.", "minutes": 10 }
+      ],
+      "nutrition": { "kcal": 180, "protein": 5, "carbs": 26, "fat": 7 },
+      "declaredAllergens": ["lactose"]
+    },
+    {
+      "id": "seed-tortitas-de-avena",
+      "source": "seed",
+      "title": "Tortitas de avena y plátano",
+      "description": "Desayuno rápido de tortitas de avena, plátano y huevo.",
+      "categoryId": "egg_breakfast",
+      "mealTypeId": "breakfast",
+      "cuisineId": "american",
+      "totalMinutes": 20,
+      "prepMinutes": 5,
+      "cookMinutes": 15,
+      "difficultyId": "easy",
+      "servings": 2,
+      "ingredients": [
+        { "name": "Avena", "quantity": 100, "unit": "g", "isPantry": false, "ingredientId": "avena" },
+        { "name": "Plátano", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "platano" },
+        { "name": "Huevo", "quantity": 2, "unit": "ud", "isPantry": false, "ingredientId": "huevo" },
+        { "name": "Leche", "quantity": 100, "unit": "ml", "isPantry": false, "ingredientId": "leche" },
+        { "name": "Canela", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "canela" },
+        { "name": "Miel", "quantity": 1, "unit": "cda", "isPantry": true, "ingredientId": "miel" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Batir", "description": "Tritura la avena, el plátano, el huevo y la leche.", "minutes": 5 },
+        { "order": 2, "title": "Cuajar", "description": "Cuaja pequeñas tortitas en una sartén antiadherente.", "minutes": 10 },
+        { "order": 3, "title": "Servir", "description": "Sirve con canela y un hilo de miel.", "minutes": 5 }
+      ],
+      "tips": ["Deja reposar la masa unos minutos para que espese."],
+      "nutrition": { "kcal": 340, "protein": 15, "carbs": 45, "fat": 11 },
+      "declaredAllergens": ["gluten", "lactose", "egg"]
+    },
+    {
+      "id": "seed-tarta-de-manzana",
+      "source": "seed",
+      "title": "Tarta de manzana",
+      "description": "Tarta casera de manzana con almendra y un toque de canela.",
+      "categoryId": "dessert",
+      "mealTypeId": "dessert",
+      "cuisineId": "american",
+      "totalMinutes": 60,
+      "prepMinutes": 20,
+      "cookMinutes": 40,
+      "difficultyId": "medium",
+      "servings": 8,
+      "ingredients": [
+        { "name": "Harina de trigo", "quantity": 250, "unit": "g", "isPantry": false, "ingredientId": "harina_trigo" },
+        { "name": "Manzana", "quantity": 4, "unit": "ud", "isPantry": false, "ingredientId": "manzana" },
+        { "name": "Huevo", "quantity": 3, "unit": "ud", "isPantry": false, "ingredientId": "huevo" },
+        { "name": "Mantequilla", "quantity": 120, "unit": "g", "isPantry": false, "ingredientId": "mantequilla" },
+        { "name": "Azúcar", "quantity": 150, "unit": "g", "isPantry": false, "ingredientId": "azucar" },
+        { "name": "Almendra", "quantity": 50, "unit": "g", "isPantry": false, "ingredientId": "almendra" },
+        { "name": "Canela", "quantity": 1, "unit": null, "isPantry": true, "ingredientId": "canela" }
+      ],
+      "steps": [
+        { "order": 1, "title": "Masa", "description": "Mezcla la harina con la mantequilla, el azúcar y el huevo.", "minutes": 20 },
+        { "order": 2, "title": "Montar", "description": "Coloca la manzana laminada sobre la masa.", "minutes": 15 },
+        { "order": 3, "title": "Hornear", "description": "Hornea hasta que esté dorada y espolvorea almendra y canela.", "minutes": 25 }
+      ],
+      "nutrition": { "kcal": 310, "protein": 5, "carbs": 42, "fat": 14 },
+      "declaredAllergens": ["gluten", "egg", "lactose", "nuts"]
+    }
+  ]
+}
