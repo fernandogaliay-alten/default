@@ -10,17 +10,17 @@
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
-  `onboarding-diet-style-cuisines` y `onboarding-ingredients-safety-kitchen` (validador independiente,
-  veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar.
-- Siguiente feature lista en orden de lista con dependencias satisfechas (sin empezar):
-  `suggestion-batch-cache` (dependencias `preference-signature`, `fake-recipe-generator` y
-  `seed-recipe-catalog`, ya `accepted`)
+  `onboarding-diet-style-cuisines`, `onboarding-ingredients-safety-kitchen` y `suggestion-batch-cache`
+  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste
+  el Perfil al cerrar.
+- Siguiente feature lista en orden de lista con dependencias satisfechas: `home-offline-blocks`
+  (depende de `suggestion-batch-cache`, ya `accepted`)
 - Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-08 (`onboarding-ingredients-safety-kitchen`: `init.sh` exit 0, 110
-  tests/0 fallos, 17 nuevos — `OnboardingIngredientsDraftTest` 9, `OnboardingProfileBuilderTest` 4 e
-  `IngredientsFilterTest` 4; lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la
-  feature; validación independiente `accept`)
+- Última verificación: 2026-10-08 (`suggestion-batch-cache`: `init.sh` exit 0, 132 tests/0 fallos,
+  22 nuevos — `SuggestionBatchPolicyTest` 8, `SuggestionBatchServiceTest` 9 y
+  `RoomSuggestionBatchRepositoryTest` 5; lint 0 errores y 13 warnings preexistentes, ninguno en
+  ficheros de la feature; validación independiente `accept`)
 
 ## Registro de sesiones
 
@@ -928,4 +928,102 @@
   las tres pruebas de emulador y el acabado visual de los pasos 5–7.
 - Siguiente paso: commit local de la rama `feature/onboarding-ingredients-safety-kitchen` y publicación
   por `github-flow` (push + PR). Después, `suggestion-batch-cache`.
+
+### Sesión 030
+
+- Fecha: 2026-10-08
+- Objetivo: implementar `suggestion-batch-cache` (Lote de sugerencias como caché persistida y
+  cache-first) según `docs/specs/suggestion-batch-cache.md`.
+- Completado: paquete puro `com.sazon.app.domain.suggestions` con `SuggestionBatch`
+  (`preferenceSignature`, `generatedAt`, recetas y `recipeIds`), `BatchRefreshReason`, `BatchDecision`,
+  `SuggestionBatchPolicy.decide(...)` (con `BATCH_TTL_MILLIS` = 7 días en un único sitio y frontera
+  `elapsed >= TTL`) y el puerto `SuggestionBatchRepository` (`get`/`observe`/`save`/`clear`).
+  `SuggestionBatchService.ensureBatch(profile, force)` es cache-first: consume
+  `PreferenceSignature.of(profile)`, consulta la política y solo genera cuando toca; al generar,
+  mapea el Perfil a `RecipeConstraints`, filtra las recetas `ai` con `RecipeValidator.validateRecipe`
+  (aceptadas entran, descartadas no), deduplica por título normalizado (minúsculas, sin acentos con
+  `Normalizer`, `trim`; gana la `seed`) y persiste. Si el generador **falla**, degrada a un lote
+  seed-only persistido sin propagar, re-lanzando `CancellationException` (no `runCatching`). Añadido
+  aditivo a `RecipeJson`: `encodeList`/`parseList` con `ListSerializer(Recipe.serializer())` reusando
+  la `format`. Capa `com.sazon.app.data.suggestions` sobre Room en base **propia**
+  (`SuggestionBatchDatabase`, `suggestion_batch.db`, versión 1, una fila `SINGLETON_ID = 1` con
+  `INSERT OR REPLACE`, `Flow` para observar y `DELETE` para `clear`): `SuggestionBatchEntity`,
+  `SuggestionBatchDao`, `SuggestionBatchMappers` (entidad ↔ dominio y (de)serialización de la lista) y
+  `RoomSuggestionBatchRepository`. Sin UI y sin composición en la app (la monta `home-offline-blocks`),
+  sin dependencias nuevas y sin tocar `ProfileDatabase`, `data.profile/**`, `domain.profile/**`,
+  `domain.generator/**`, la Taxonomía, `app/build.gradle.kts`, `gradle/libs.versions.toml` ni la UI.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados
+  (`test-results/testDebugUnitTest/TEST-*.xml`) y del informe `lint-results-debug.xml`; inspección de
+  imports de `domain.suggestions` (sin `android.*`/`androidx.*`) y de `git status` (solo cambia
+  `RecipeJson.kt`; el resto son ficheros nuevos).
+- Evidencia capturada: **132 tests, 0 fallos/errores/saltados** en 21 suites (22 nuevos:
+  `SuggestionBatchPolicyTest` 8, `SuggestionBatchServiceTest` 9 y
+  `RoomSuggestionBatchRepositoryTest` 5; 110 preexistentes en verde); lint 0 errores y 13 warnings
+  preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; `init.sh` con código 0; `domain.suggestions` sin
+  imports Android; `git diff --stat` solo lista `RecipeJson.kt` (+10, aditivo) y `feature_list.json`;
+  el bundle de la base (`sazon.db` del Perfil) y el build quedan intactos.
+  Cobertura de escenarios: 1 (firma igual y fresco → 0 llamadas al generador y 0 `save`), 2
+  (`SIGNATURE_CHANGED`, firma nueva persistida), 3 (`EXPIRED`), 4 (frontera: un milisegundo antes
+  `UseCached`, en el TTL exacto `EXPIRED`, en política y en servicio), 5 (generador que lanza → lote
+  solo `seed`, no vacío y persistido), 6 (`force` refresca aunque esté fresco), 7 (`MISSING` genera y
+  persiste `seed` + `ai` con `generatedAt = now`), 8 (receta `ai` con "Pan" libre descartada por
+  restricción de gluten; la `ai` segura entra junto a las semillas), 9 (duplicado seed/ai por título
+  normalizado, gana la `seed`), 10 (ida y vuelta exacta con `nutrition`/`ingredientId` opcionales,
+  una sola fila al sobrescribir, `clear()` → `null` y `observe()` emite).
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/domain/suggestions/{SuggestionBatch,SuggestionBatchPolicy,
+  SuggestionBatchRepository,SuggestionBatchService}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/domain/recipe/RecipeJson.kt` (modificado, aditivo),
+  `app/src/main/java/com/sazon/app/data/suggestions/{SuggestionBatchEntity,SuggestionBatchDao,
+  SuggestionBatchDatabase,SuggestionBatchMappers,RoomSuggestionBatchRepository}.kt` (nuevos),
+  `app/src/test/java/com/sazon/app/domain/suggestions/{SuggestionBatchPolicyTest,
+  SuggestionBatchServiceTest}.kt`, `app/src/test/java/com/sazon/app/data/suggestions/
+  RoomSuggestionBatchRepositoryTest.kt` (nuevos), `docs/technical-discovery.md`,
+  `docs/domain-model.md`, `docs/risks-and-open-questions.md`, `docs/specs/suggestion-batch-cache.md`
+  (hallazgos), `feature_list.json` y este registro.
+- Hallazgos relevantes: las firmas de la spec compilaron con las APIs reales
+  (`PreferenceSignature.of`, `RecipeGenerator.suggestByPreferences`,
+  `RecipeValidator.validateRecipe`, `Taxonomy`, `Recipe`) sin adaptaciones de contrato. `generatedAt`
+  se captura una sola vez tras decidir (la spec ilustraba `now()` dos veces); comportamiento
+  observable idéntico con reloj fijo. `RecipeJson.encodeList/parseList` es aditivo y no cambia
+  `encode`/`parse`.
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantiene la pregunta abierta 1 (modelo de errores del
+  generador: el servicio trata cualquier `Exception` como IA no disponible) y el unknown de la spec
+  (un lote seed-only persistido con la firma actual no se reintenta hasta que cambie la firma, caduque
+  o el usuario fuerce); la deuda de consolidar `sazon.db` + `suggestion_batch.db` con una migración
+  probada sigue anotada.
+- Siguiente paso: validación independiente de `suggestion-batch-cache` con `feature-validator`;
+  después, commit local (orquestador de `feature-flow`) y publicación por `github-flow`. La siguiente
+  feature sin empezar es `home-offline-blocks`.
+
+### Sesión 031
+
+- Fecha: 2026-10-08
+- Objetivo: validar `suggestion-batch-cache` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Queda desbloqueada `home-offline-blocks`.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0), `./gradlew
+  testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks` (28/28 tareas);
+  parseó por su cuenta los XML de resultados y el informe de lint, e inspeccionó el código (pureza,
+  TTL único, frontera `>=`, cancelación, dedupe, base propia, alcance data-only).
+- Evidencia capturada: 132 tests, 0 fallos/errores/saltados (nuevos: `SuggestionBatchPolicyTest` 8,
+  `SuggestionBatchServiceTest` 9, `RoomSuggestionBatchRepositoryTest` 5; 110 preexistentes); lint 0
+  errores y 13 warnings preexistentes, 0 en ficheros de la feature; escenarios 1–10 y `Validator
+  Checklist` en PASS; escenario 1 sin llamada al generador ni `save`; `SIGNATURE_CHANGED`/`EXPIRED` y
+  frontera del TTL en política y servicio; fallback a solo semilla no vacío y persistido; descarte de
+  la `ai` insegura por `RecipeValidator` conservando la segura; dedupe con la seed ganadora;
+  round-trip con una fila, `clear()` → `null` y `observe()` emite; `CancellationException` re-lanzada;
+  dominio puro sin Android; sin cambios en build/`ProfileDatabase`/`data.profile`/UI.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (2 Low + 2 informativos, ninguno bloqueante): redacción imprecisa del
+  `git diff --stat` en una entrada de evidencia; aserción de `observe()` con carrera teórica
+  (patrón heredado); `catch (Exception)` mapeado a "IA no disponible" como decisión explícita de la
+  spec; `Validator Checklist` de la spec sin marcar.
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantienen la pregunta abierta 1 (modelo de errores del
+  generador) y la deuda de consolidar `sazon.db` + `suggestion_batch.db` con migración probada.
+- Siguiente paso: commit local de la rama `feature/suggestion-batch-cache` y publicación por
+  `github-flow` (push + PR). Después, `home-offline-blocks`.
 
