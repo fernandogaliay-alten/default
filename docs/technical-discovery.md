@@ -30,7 +30,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Taxonomía | `app/src/main/assets/taxonomy.json`, generado por la tarea `syncTaxonomy` desde `docs/domain/taxonomy.json`, y parseado a objetos tipados al arrancar | Fuente única editable y artefacto empaquetado, sin base de datos |
 | Recetas semilla | **JSON fuente versionado** en `app/src/main/assets/seed-recipes.json`, cargado por la app y validado por test (decisión: riesgos, antes pregunta 7) | Contenido empaquetado, siempre disponible offline, editable sin recompilar |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
-| Perfil de preferencias | Room (1 fila) + DataStore para el flag de onboarding | Estado mutable del usuario; fuente de la firma |
+| Perfil de preferencias | Room (1 fila); el flag de onboarding en DataStore queda **diferido** (la puerta usa la presencia de Perfil, ver más abajo) | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room | Evita llamadas repetidas a la IA y da soporte offline |
@@ -105,6 +105,21 @@ fuentes OFL Manrope/Inter se empaquetan en `app/src/main/res/font/` (instancias 
 `values-night/themes.xml`) y fija `android:forceDarkAllowed=false`. `DesignTokensTest` (JVM) compara
 los tokens expuestos con el frontmatter YAML de `DESIGN.md` (con caso negativo) leyendo la ruta por la
 propiedad de sistema `design.tokens.path`. Ver `docs/specs/design-tokens-and-theme.md`.
+
+El punto de entrada real de la app vive en `com.sazon.app.ui`: `SazonApp` compone la raíz y la
+**puerta de primer arranque**, que en esta feature es la **presencia de Perfil** en Room
+(`ProfileRepository.observe()` → `AppGate.decide`): sin Perfil se muestra el onboarding obligatorio y
+no saltable; con Perfil, el destino principal (`HomePlaceholder`, sustituido por
+`home-offline-blocks`). **No** se usa el flag de DataStore (diferido sin segunda fuente de verdad que
+pueda desincronizarse) ni una librería de navegación: el cambio de destino es un estado mínimo
+(`AppDestination`), adoptable más tarde sin cambiar los contratos puros. El onboarding entrega el
+**armazón reutilizable** (`OnboardingScaffold`: progreso "Paso N de 7" con puntos, "Atrás" y primario
+anclado) y el **paso 1 (identidad)**, con lógica pura en `com.sazon.app.ui.onboarding`
+(`OnboardingStep`, `OnboardingProgress`, `AvatarInitials`, `OnboardingIdentityState`) testeada en JVM;
+los pasos 2–7 son marcadores y el borrador (nombre y color) vive en `rememberSaveable`, sin persistir
+un Perfil inventado. `MainActivity` monta `ProfileDatabase.build(applicationContext)` →
+`RoomProfileRepository` + `AssetTaxonomySource` y compone `SazonTheme { SazonApp(...) }`. Ver
+`docs/specs/onboarding-shell-and-identity.md`.
 
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
 `docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.

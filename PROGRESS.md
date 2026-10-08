@@ -9,18 +9,18 @@
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
-  `seed-recipe-catalog` y `design-tokens-and-theme` (validador independiente, veredicto `accept`)
-- Siguiente feature lista: `onboarding-shell-and-identity` (dependencias `profile-persistence` y
-  `taxonomy-in-code` ya `accepted`); `suggestion-batch-cache` y las features de UI que consumen el
-  catálogo también están listas
+  `seed-recipe-catalog`, `design-tokens-and-theme` y `onboarding-shell-and-identity` (validador
+  independiente, veredicto `accept`)
+- Siguiente feature lista en orden de lista con dependencias satisfechas:
+  `onboarding-diet-style-cuisines` (depende de `onboarding-shell-and-identity`, ya `accepted`);
+  `suggestion-batch-cache` (dependencias `preference-signature`, `fake-recipe-generator` y
+  `seed-recipe-catalog`, ya `accepted`) también está lista
 - Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-07 (`design-tokens-and-theme`: `init.sh` exit 0, 67 tests/0 fallos,
-  `DesignTokensTest` 6; lint 0 errores y 13 warnings, sin `UnusedResources` de plantilla ni
-  `RedundantLabel`. `prompt-builder`: `init.sh` exit 0, 54 tests/0 fallos,
-  `PromptBuilderTest` 10; `seed-recipe-catalog`: `init.sh` exit 0, 51 tests/0 fallos,
-  `SeedRecipeCatalogTest` 6 y `AssetSeedRecipeSourceTest` 1; `assets/seed-recipes.json` en el APK;
-  lint 0 errores y 21 warnings preexistentes, sin nuevos)
+- Última verificación: 2026-10-08 (`onboarding-shell-and-identity`: `init.sh` exit 0, 85 tests/0
+  fallos, 18 nuevos — `OnboardingProgressTest` 5, `AvatarInitialsTest` 5,
+  `OnboardingIdentityStateTest` 6 y `AppGateTest` 2; lint 0 errores y 13 warnings preexistentes,
+  ninguno en ficheros de la feature; validación independiente `accept`)
 
 ## Registro de sesiones
 
@@ -666,4 +666,91 @@
 - Siguiente paso: commit local de la rama `feature/design-tokens-and-theme` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `onboarding-shell-and-identity`
   (depende de `profile-persistence` y `taxonomy-in-code`, ya `accepted`) o `suggestion-batch-cache`.
+
+### Sesión 024
+
+- Fecha: 2026-10-08
+- Objetivo: reanudar e implementar `onboarding-shell-and-identity` (armazón de onboarding + paso 1 de
+  identidad + puerta de primer arranque) según `docs/specs/onboarding-shell-and-identity.md`. La
+  ejecución previa dejó el trabajo sin commitear; esta sesión lo revisa, completa lo que faltaba
+  (documentación) y lo autoverifica sin rehacer lo ya válido.
+- Completado: `OnboardingStep` (7 pasos en orden con `title`/`nextLabel`, `TOTAL_STEPS = 7`),
+  `OnboardingProgress` (máquina de pasos pura con `stepNumber`, `step`, `canGoBack`, `isLastStep`,
+  `next()`, `back()` sin salirse de rango y `progressLabel = "Paso N de 7"`), `AvatarInitials.of`
+  (máx. 2 iniciales en mayúsculas; `null` si el nombre queda vacío) y `OnboardingIdentityState`
+  (`normalizedName`/`isNameValid`/`canProceed` vía `ProfileName`, `initials` vía `AvatarInitials` y
+  `initial(taxonomy)` con el primer `avatarColors`, `terracotta`). Puerta pura `AppDestination` +
+  `AppGate.decide(profile)`. Capa Compose: `OnboardingScaffold` (progreso con puntos, "Atrás" y
+  primario terracota anclado), `AvatarPreview` (iniciales o icono genérico sobre el color), 
+  `OnboardingIdentityScreen` (microcopy del `stitch-prompt`, campo obligatorio, 8 muestras y vista
+  previa), `OnboardingFlow` (`rememberSaveable`, placeholders 2–7, costura `onFinished`),
+  `SazonApp` + `HomePlaceholder` y `MainActivity` cableado con `ProfileDatabase` +
+  `RoomProfileRepository` + `AssetTaxonomySource`. Sin persistir Perfil, sin DataStore, sin
+  `navigation-compose` ni DI, sin Home real ni Perfil editable (no-goals).
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); `./gradlew testDebugUnitTest --rerun-tasks` con parseo propio
+  de los XML de resultados; parseo y agrupación del informe `lint-results-debug.xml`; comprobación de
+  la ausencia de `material-icons` en `:app:dependencies --configuration debugRuntimeClasspath`.
+- Evidencia capturada: **85 tests, 0 fallos/errores/saltados**; 18 nuevos de esta feature
+  (`OnboardingProgressTest` 5, `AvatarInitialsTest` 5, `OnboardingIdentityStateTest` 6,
+  `AppGateTest` 2) más los 67 preexistentes; lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; `init.sh` con código 0; `app/build.gradle.kts` y
+  `gradle/libs.versions.toml` sin cambios; la lógica pura de `ui.onboarding`/`ui.AppGate` no importa
+  Compose ni Android y corre en JVM.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/onboarding/{OnboardingStep,
+  OnboardingProgress, AvatarInitials, OnboardingIdentityState, OnboardingScaffold,
+  OnboardingIdentityScreen, AvatarPreview, OnboardingFlow}.kt`,
+  `app/src/main/java/com/sazon/app/ui/{AppGate, SazonApp, HomePlaceholder}.kt`,
+  `app/src/main/java/com/sazon/app/MainActivity.kt`,
+  `app/src/test/java/com/sazon/app/ui/AppGateTest.kt`,
+  `app/src/test/java/com/sazon/app/ui/onboarding/{OnboardingProgressTest, AvatarInitialsTest,
+  OnboardingIdentityStateTest}.kt`, `docs/technical-discovery.md`,
+  `docs/specs/onboarding-shell-and-identity.md` (hallazgo), `feature_list.json` y este registro.
+- Hallazgos relevantes: el proyecto no arrastra `material-icons-core` (verificado en el classpath de
+  runtime) y la spec prohíbe añadir dependencias, así que `AvatarPreview` dibuja el icono genérico de
+  persona con primitivas de `Canvas` en vez de `Icons.Default.Person`; documentado como hallazgo en la
+  spec. `SazonApp` usa `produceState` en vez de `collectAsState(initial = null)`, equivalente.
+- Riesgo o incógnita abierta: quedan las dos pruebas manuales de emulador ("Empezar" deshabilitado sin
+  nombre; "Paso 1 de 7" y "Atrás" no disponible), que AGENTS.md reserva a la persona tras el merge. La
+  reanudación de un onboarding interrumpido sigue fuera de alcance (requiere persistir el paso).
+- Siguiente paso: validación independiente de `onboarding-shell-and-identity` con `feature-validator`.
+  Después, commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por
+  `github-flow`.
+
+### Sesión 025
+
+- Fecha: 2026-10-08
+- Objetivo: validar `onboarding-shell-and-identity` de forma independiente y persistir la aceptación.
+  Sesión reanudada tras una interrupción de la ejecución previa (la feature quedó implementada sin
+  commitear); el worktree se sincronizó con `origin/main` antes de continuar.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks`; parseó por su cuenta los XML de resultados y el informe de lint, e
+  inspeccionó el código y la microcopy contra `docs/design/stitch-prompt.md`.
+- Evidencia capturada: 85 tests, 0 fallos/errores/saltados (18 nuevos: `OnboardingProgressTest` 5,
+  `AvatarInitialsTest` 5, `OnboardingIdentityStateTest` 6, `AppGateTest` 2); lint 0 errores y 13
+  warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; escenarios 1–6 y `Validator Checklist` en PASS;
+  disciplina de alcance confirmada (sin pasos reales 2–7, sin persistir Perfil, sin Home real, sin
+  barra/FAB, sin DataStore, sin `navigation-compose` ni DI); `app/build.gradle.kts` y
+  `gradle/libs.versions.toml` sin cambios; lógica pura de `ui.onboarding`/`ui.AppGate` sin imports
+  Android/Compose; decisiones documentadas verificadas (puerta por presencia de Perfil, navegación
+  mínima, `AvatarPreview` con `Canvas`, `SazonApp` con `produceState`).
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (2 Low + 2 informativos, ninguno bloqueante): el fallback defensivo del `hex`
+  es inconsistente entre las muestras de color (`OnboardingIdentityScreen`) y `AvatarPreview`, hoy no
+  alcanzable (la Taxonomía valida el formato) y anotado para una feature correctiva; el
+  `Validator Checklist` de la spec queda sin marcar (por diseño, codifica las comprobaciones del
+  validador); la carga del asset en el hilo principal sigue como *Unknown* de la spec; el trabajo sin
+  commitear es el comportamiento esperado de `feature-flow`.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge
+  las dos pruebas de emulador ("Empezar" deshabilitado sin nombre; "Paso 1 de 7" y "Atrás" no
+  disponible) y el acabado visual (muestras, contraste, claro/oscuro); un defecto visual se corrige
+  con una feature correctiva.
+- Siguiente paso: commit local de la rama `feature/onboarding-shell-and-identity` y publicación por
+  `github-flow` (push + PR). Después, `onboarding-diet-style-cuisines` o `suggestion-batch-cache`.
 
