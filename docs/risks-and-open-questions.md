@@ -14,12 +14,12 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 | # | Pregunta | Impacto | Cuándo decidir |
 |---|---|---|---|
 | 1 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
-| 2 | Licencias de iconos y de fotos de receta | Legalidad del curso | Antes de empaquetar assets |
 
 Nota de renumeración: se han resuelto el proveedor de IA (antes 1), el nº de recetas por generación
 (antes 2), la caducidad del lote (antes 3), `matchScore` (antes 4) y el formato de las recetas semilla
-(antes 7); las antiguas 5 y 6 pasaron a ser 1 y 2. Las specs históricas conservan las citas con la
-numeración de su momento; la tabla se mantiene posicional.
+(antes 7); las antiguas 5 y 6 pasaron a ser 1 y 2. La que era la pregunta 2 de la tabla (licencias de
+assets) también se ha resuelto, así que la tabla queda solo con la 1. Las specs históricas conservan
+las citas con la numeración de su momento; la tabla se mantiene posicional.
 
 ### Resueltas
 
@@ -56,6 +56,10 @@ numeración de su momento; la tabla se mantiene posicional.
   (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, `Bearer DEVEXPERT_API_KEY`).
   Alias `chat` (diario) y `chat-pro` (avanzado); cuota semanal. La app usa HTTP directo + parsing
   tolerante del `RecipeValidator` (no depende de structured outputs). Ver `docs/adr/0003-ai-provider.md`.
+- **Licencias de iconos y fotos de receta** (era la pregunta 2 de la tabla): resuelta como **no
+  bloqueante**. La app es personal y no se publica, así que la elección de assets es libre y se
+  prioriza la comodidad: iconos vía Material Symbols (incluido en Material 3) y fotos con placeholders
+  de degradado o imágenes propias. Ver `docs/design/concepts/README.md`.
 
 ## Later / Not MVP
 
@@ -103,8 +107,10 @@ Evolutivos aceptados, a planificar después del MVP:
 1. Comparar la salida estructurada de los proveedores candidatos (esquema forzado, longitud máxima,
    tratamiento de `enum`).
 2. Medir latencia y coste reales de generar 4–6 recetas con el contrato de la Taxonomía.
-3. Elegir set de iconos de ingredientes y su licencia (Noto Emoji, Twemoji, u otro).
-4. Elegir origen de las fotos de receta y su licencia (Unsplash, Pexels, propias).
+3. Elegir set de iconos de ingredientes (**no bloqueante**: app personal y no publicada; se prioriza
+   comodidad, p. ej. Material Symbols o Noto Emoji).
+4. Elegir origen de las fotos de receta (**no bloqueante**: app personal; fotos propias o placeholders
+   de degradado).
 5. Validar el contrato del prompt contra un modelo real antes de fijarlo como definitivo.
 6. Regenerar las pantallas de Stitch a partir de `DESIGN.md` (las actuales quedan obsoletas).
 

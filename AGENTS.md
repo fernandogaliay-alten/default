@@ -90,9 +90,11 @@ aceptación.
   `docs/technical-discovery.md`, …) manteniendo **ambas** aportaciones. Tras cada merge de un PR,
   re-sincroniza las ramas abiertas restantes igual.
 - Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y, al
-  `accept`, **commitea, hace push y abre el PR** automáticamente) y `publish` (republicación: push +
-  PR). Identidades deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` →
-  `main`. Nunca hace merge.
+  `accept`, **commitea, hace push y abre el PR** automáticamente), `publish` (republicación: push +
+  PR) y `prune` (limpieza: elimina worktree y rama local de una feature **solo** si está `accepted`
+  y su PR está mergeado; `execute` y `publish` lo ejecutan antes de trabajar). Identidades
+  deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` → `main`. Nunca
+  hace merge.
 
 ## Artefactos obligatorios
 
