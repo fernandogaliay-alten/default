@@ -7,6 +7,7 @@ plugins {
 
 val taxonomyAssetFile = layout.projectDirectory.file("src/main/assets/taxonomy.json")
 val seedRecipesAssetFile = layout.projectDirectory.file("src/main/assets/seed-recipes.json")
+val designTokensFile = rootProject.layout.projectDirectory.file("DESIGN.md")
 
 val syncTaxonomy by tasks.registering(Copy::class) {
     description = "Copia la Taxonomia canonica al directorio de assets de la aplicacion."
@@ -87,4 +88,5 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     dependsOn(syncTaxonomy)
     systemProperty("taxonomy.asset.path", taxonomyAssetFile.asFile.absolutePath)
     systemProperty("seed.recipes.asset.path", seedRecipesAssetFile.asFile.absolutePath)
+    systemProperty("design.tokens.path", designTokensFile.asFile.absolutePath)
 }

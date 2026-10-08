@@ -8,13 +8,16 @@
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
-- Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder` y
-  `seed-recipe-catalog` (validador independiente, veredicto `accept`)
-- Siguiente feature lista: `suggestion-batch-cache` (dependencias `preference-signature`,
-  `fake-recipe-generator` y `seed-recipe-catalog` ya `accepted`); las features de UI que consumen el
+- Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
+  `seed-recipe-catalog` y `design-tokens-and-theme` (validador independiente, veredicto `accept`)
+- Siguiente feature lista: `onboarding-shell-and-identity` (dependencias `profile-persistence` y
+  `taxonomy-in-code` ya `accepted`); `suggestion-batch-cache` y las features de UI que consumen el
   catálogo también están listas
+- Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-07 (`prompt-builder`: `init.sh` exit 0, 54 tests/0 fallos,
+- Última verificación: 2026-10-07 (`design-tokens-and-theme`: `init.sh` exit 0, 67 tests/0 fallos,
+  `DesignTokensTest` 6; lint 0 errores y 13 warnings, sin `UnusedResources` de plantilla ni
+  `RedundantLabel`. `prompt-builder`: `init.sh` exit 0, 54 tests/0 fallos,
   `PromptBuilderTest` 10; `seed-recipe-catalog`: `init.sh` exit 0, 51 tests/0 fallos,
   `SeedRecipeCatalogTest` 6 y `AssetSeedRecipeSourceTest` 1; `assets/seed-recipes.json` en el APK;
   lint 0 errores y 21 warnings preexistentes, sin nuevos)
@@ -577,3 +580,90 @@
   `feature-flow`); la publicación queda para `github-flow`. Después, `suggestion-batch-cache` (depende
   de `preference-signature`, `fake-recipe-generator` y `seed-recipe-catalog`, todas ya `accepted`) o las
   features de UI que consume el catálogo.
+
+### Sesión 022
+
+- Fecha: 2026-10-07
+- Objetivo: implementar `design-tokens-and-theme` (tokens de `DESIGN.md` + tema claro/oscuro sin color
+  dinámico) según `docs/specs/design-tokens-and-theme.md`.
+- Completado: paquete `com.sazon.app.ui.theme` como única fuente de verdad visual. `Color.kt`
+  reescrito con la paleta de `DESIGN.md` y `LightColorScheme`/`DarkColorScheme` con **todos** los roles
+  sobrescritos (sin purple/pink por defecto; modo oscuro anclado a `darkBackground`/`darkSurface` con
+  acentos terracota/oliva y texto crema). `Type.kt` con `SazonFontFamilies` (Manrope/Inter) y
+  `SazonTypography` (display 32/700, h1 28/600, body 16/400, caption 12/500). `Shape.kt` (`SazonShapes`
+  16/24 + `SazonPillShape`) y `Spacing.kt` (`SazonSpacing` 12/16/24 y `SazonComponents`). `Theme.kt`
+  reescrito **sin** `dynamicColor`/`LocalContext` y cableando color, tipografía y formas. Sistema
+  alineado: `values/colors.xml` (solo `sazon_window_background` #FFF8F0), `values-night/colors.xml`
+  (#241C16), `themes.xml` y `values-night/themes.xml` (`windowBackground` + `forceDarkAllowed=false`),
+  `android:label` quitado de la actividad y `Surface` de `MainActivity` pintada con
+  `colorScheme.background`. Añadida la propiedad de sistema `design.tokens.path` en
+  `app/build.gradle.kts` y `DesignTokensTest` (JVM, 6 tests, con casos negativos de deriva de `primary`
+  y de paleta de plantilla). Las fuentes OFL se obtuvieron de las variables oficiales de Google Fonts y
+  se instanciaron a estáticas con `fontTools` (`manrope_semibold/bold`, `inter_regular/medium`);
+  licencias en `docs/licenses/` y regla `*.ttf binary` en `.gitattributes`.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); antes, `./gradlew testDebugUnitTest --tests
+  "com.sazon.app.ui.theme.DesignTokensTest"` (enfocado) y parseo propio de los XML de resultados y del
+  informe `lint-results-debug.xml`.
+- Evidencia capturada: **67 tests, 0 fallos/errores/saltados** (`DesignTokensTest` 6,
+  `RecipeValidatorTest` 12, `PromptBuilderTest` 10, `RoomProfileRepositoryTest` 9,
+  `PreferenceSignatureTest` 8, `FakeRecipeGeneratorTest` 6, `SeedRecipeCatalogTest` 6,
+  `TaxonomyIntegrityTest` 5, `RecipeSerializationTest` 4, `AssetSeedRecipeSourceTest` 1); lint 0 errores
+  y **13 warnings** (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1): desaparecen los 7 `UnusedResources` de colores de plantilla y el `RedundantLabel`
+  (21→13), sin issues en ficheros de la feature; `init.sh` con código 0. Inspección: no queda ninguna
+  ruta de color dinámico ni referencia a purple/pink/teal en `app/src/main`; las cuatro fuentes `.ttf`
+  están en `res/font/` y `values-night/` existe con `colors.xml` y `themes.xml`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/theme/{Color,Type,Theme,Shape,Spacing}.kt`,
+  `app/src/main/res/font/{manrope_semibold,manrope_bold,inter_regular,inter_medium}.ttf`,
+  `app/src/main/res/values/colors.xml`, `app/src/main/res/values-night/{colors,themes}.xml`,
+  `app/src/main/res/values/themes.xml`, `app/src/main/AndroidManifest.xml`,
+  `app/src/main/java/com/sazon/app/MainActivity.kt`, `app/build.gradle.kts`,
+  `app/src/test/java/com/sazon/app/ui/theme/DesignTokensTest.kt`, `docs/licenses/{manrope,inter}-OFL.txt`,
+  `.gitattributes`, `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
+  `docs/specs/design-tokens-and-theme.md` (hallazgos), `feature_list.json` y este registro.
+- Hallazgos relevantes: la spec cita un "riesgo 1" y un plan de respaldo inexistentes; se resolvió sin
+  respaldo instanciando las fuentes variables oficiales con `fontTools`. `colors.text` se mapea a
+  `onBackground` y `onSurface`. Se añadió `SazonOnAccent` explícito y `*.ttf binary` en `.gitattributes`.
+  La primera compilación del test falló por usos de API de Compose (`toArgb` necesita import,
+  `topStart` es `CornerSize` no `Dp`, `TextStyle.fontWeight` es nullable); corregido en el test, sin
+  tocar el código de main.
+- Riesgo o incógnita abierta: ninguno nuevo. Los roles oscuros derivados (`*Container`, `inverse*`,
+  `surfaceVariant`, `outlineVariant`) y el repaso visual del modo oscuro/contraste quedan para revisión
+  manual de la persona tras el merge (la spec lo asume; un defecto visual se corrige con feature
+  correctiva). Quedan sin ejecutar las dos pruebas manuales de emulador (fondo de pantalla y modo
+  oscuro), que AGENTS.md reserva a la persona.
+- Siguiente paso: validación independiente de `design-tokens-and-theme` con `feature-validator`.
+
+### Sesión 023
+
+- Fecha: 2026-10-07
+- Objetivo: validar `design-tokens-and-theme` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks`; parseó por su cuenta los XML de resultados y el informe de lint, e
+  inspeccionó los recursos y las fuentes directamente.
+- Evidencia capturada: 67 tests, 0 fallos/errores/saltados (`DesignTokensTest` 6,
+  `RecipeValidatorTest` 12, `PromptBuilderTest` 10, `RoomProfileRepositoryTest` 9,
+  `PreferenceSignatureTest` 8, `FakeRecipeGeneratorTest` 6, `SeedRecipeCatalogTest` 6,
+  `TaxonomyIntegrityTest` 5, `RecipeSerializationTest` 4, `AssetSeedRecipeSourceTest` 1); lint 0 errores
+  y 13 warnings (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), sin issues en ficheros de la feature y con la desaparición de los 7 `UnusedResources`
+  de plantilla y del `RedundantLabel`; el validador comprobó los escenarios 1, 2, 4 y 5, que el caso
+  negativo falla de verdad, la ausencia de rutas `dynamicColor`/`LocalContext` y de purple/pink/teal,
+  que los `.ttf` no están ignorados por git y llevan OFL real, y la disciplina de alcance.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (4 Low, informativos, ninguno bloqueante): nombres internos `nameID` obsoletos
+  en los `.ttf` pese a `OS/2.usWeightClass` correcto (el render es correcto); cobertura parcial de roles
+  en la comprobación negativa de plantilla; precisión de un enunciado de evidencia; `Validator Checklist`
+  de la spec sin marcar.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge el
+  repaso visual del modo oscuro/contraste y las dos pruebas de emulador (fondo de pantalla y modo
+  oscuro); un defecto visual se corrige con feature correctiva.
+- Siguiente paso: commit local de la rama `feature/design-tokens-and-theme` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `onboarding-shell-and-identity`
+  (depende de `profile-persistence` y `taxonomy-in-code`, ya `accepted`) o `suggestion-batch-cache`.
+

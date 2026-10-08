@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Sazon" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Sazon" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/sazon_window_background</item>
+        <!-- Sin color dinámico de Material You: el tema del sistema no oscurece la app por su cuenta. -->
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
 </resources>
