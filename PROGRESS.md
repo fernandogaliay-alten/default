@@ -9,17 +9,18 @@
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
-  `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity` y
-  `onboarding-diet-style-cuisines` (validador independiente, veredicto `accept`)
-- Siguiente feature lista en orden de lista con dependencias satisfechas:
-  `onboarding-ingredients-safety-kitchen` (depende de `onboarding-diet-style-cuisines`, ya `accepted`);
+  `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
+  `onboarding-diet-style-cuisines` y `onboarding-ingredients-safety-kitchen` (validador independiente,
+  veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar.
+- Siguiente feature lista en orden de lista con dependencias satisfechas (sin empezar):
   `suggestion-batch-cache` (dependencias `preference-signature`, `fake-recipe-generator` y
-  `seed-recipe-catalog`, ya `accepted`) también está lista
+  `seed-recipe-catalog`, ya `accepted`)
 - Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-08 (`onboarding-diet-style-cuisines`: `init.sh` exit 0, 93 tests/0
-  fallos, 8 nuevos — `OnboardingPreferencesDraftTest` 8; lint 0 errores y 13 warnings preexistentes,
-  ninguno en ficheros de la feature; validación independiente `accept`)
+- Última verificación: 2026-10-08 (`onboarding-ingredients-safety-kitchen`: `init.sh` exit 0, 110
+  tests/0 fallos, 17 nuevos — `OnboardingIngredientsDraftTest` 9, `OnboardingProfileBuilderTest` 4 e
+  `IngredientsFilterTest` 4; lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la
+  feature; validación independiente `accept`)
 
 ## Registro de sesiones
 
@@ -830,4 +831,101 @@
   verifica `onboarding-ingredients-safety-kitchen`).
 - Siguiente paso: commit local de la rama `feature/onboarding-diet-style-cuisines` y publicación por
   `github-flow` (push + PR). Después, `onboarding-ingredients-safety-kitchen` o `suggestion-batch-cache`.
+
+### Sesión 028
+
+- Fecha: 2026-10-08
+- Objetivo: implementar `onboarding-ingredients-safety-kitchen` (pasos 5–7 reales del onboarding y
+  cierre que persiste el `UserProfile`) según `docs/specs/onboarding-ingredients-safety-kitchen.md`,
+  la feature que cierra el onboarding.
+- Completado:
+  - Borrador **puro** `OnboardingPreferencesDraft` ampliado con `preferredIngredientIds`,
+    `dislikedIngredientIds`, `hardRestrictionIds`, `difficultyId`, `timeBucketId` y `defaultServings`;
+    operaciones inmutables (`copy`) con **exclusión mutua** de ingredientes (`togglePreferredIngredient`/
+    `toggleDislikedIngredient`), restricciones con `toggleHardRestriction`/`clearHardRestrictions`/
+    `hasNoRestrictions`, y cocina con `selectDifficulty`/`selectTimeBucket`/`setServings(limits)`
+    (recorte a `min..max`); `initial(taxonomy)` añade `easy`, `lte_15` y `servings.default` (2).
+  - Constructor **puro** `OnboardingProfileBuilder.build(displayName, avatarColorId, draft, now)`:
+    valida/normaliza con `ProfileName`, inyecta `now` en `createdAt`/`updatedAt` y copia todos los
+    campos a `PreferenceProfile`; nombre inválido → `IllegalArgumentException`.
+  - Filtro **puro** `IngredientsFilter.matching(ingredients, query)`: subcadena por `label`, sin
+    distinguir mayúsculas ni acentos; consulta en blanco = todas.
+  - Cinco editores **reutilizables y sin estado** en `ui.preferences`: `IngredientsEditor` (buscador +
+    grupos "Me gusta" terracota y "Evito" oliva con helper y nota de compartición), `HardRestrictionsEditor`
+    (banner ámbar + chips multi-select + "Ninguna"; rol `tertiary`, nunca error/rojo),
+    `DifficultyEditor`, `TimeBucketEditor` y `ServingsStepper` (`− value +` con cifras tabulares y
+    límites deshabilitados).
+  - `OnboardingFlow`: Saver ampliado a todos los campos (cada lista como `[conteo, ...elementos]`),
+    enrutado de `INGREDIENTS`/`RESTRICTIONS`/`KITCHEN` y `onFinished` cambiado a
+    `(UserProfile) -> Unit`; el Perfil se construye con `System.currentTimeMillis()`.
+  - `SazonApp`: `rememberCoroutineScope` + `ProfileRepository.save(profile)` en el `onFinished`; la
+    observación existente hace que `AppGate.decide` pase a `MAIN` y el onboarding desaparezca.
+  - Tests JVM con casos negativos: `OnboardingIngredientsDraftTest` (escenarios 1–9),
+    `OnboardingProfileBuilderTest` (escenarios 10 y 12) e `IngredientsFilterTest`. Sin dependencias
+    nuevas: no se tocan `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados y del informe
+  `lint-results-debug.xml`; inspección de imports de la lógica pura, de la ausencia de estado en los
+  editores, de que `HardRestrictionsEditor` no usa el rol `error` y de que el build/lockfile no cambian.
+- Evidencia capturada: **110 tests, 0 fallos/errores/saltados** (17 nuevos:
+  `OnboardingIngredientsDraftTest` 9, `OnboardingProfileBuilderTest` 4, `IngredientsFilterTest` 4; 93
+  preexistentes, todos en verde, incluidos `OnboardingPreferencesDraftTest`, `OnboardingIdentityStateTest`,
+  `OnboardingProgressTest` y `RoomProfileRepositoryTest`); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; `init.sh` con código 0; `OnboardingPreferencesDraft` y
+  `OnboardingProfileBuilder` sin imports Compose/Android; editores sin `remember`/`mutableState`.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/onboarding/{OnboardingPreferencesDraft,OnboardingFlow}.kt`
+  (modificados), `app/src/main/java/com/sazon/app/ui/onboarding/OnboardingProfileBuilder.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/preferences/{IngredientsEditor,HardRestrictionsEditor,
+  DifficultyEditor,TimeBucketEditor,ServingsStepper,IngredientsFilter}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/SazonApp.kt` (modificado),
+  `app/src/test/java/com/sazon/app/ui/onboarding/{OnboardingIngredientsDraftTest,
+  OnboardingProfileBuilderTest}.kt` y `app/src/test/java/com/sazon/app/ui/preferences/IngredientsFilterTest.kt`
+  (nuevos), `docs/technical-discovery.md`, `feature_list.json` y este registro. No se tocaron
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento; el contrato de la spec compiló con las APIs reales
+  del repositorio (`ProfileName.normalize`/`isValid`, `ProfileRepository.save`, las firmas de la
+  Taxonomía y `PreferenceProfile`), sin adaptaciones. `primaryEnabled` se mantiene ligado a la validez
+  del nombre del paso 1 para todo el flujo, de modo que un nombre inválido deja el primario
+  deshabilitado también en el último paso (escenario 12), coherente con el borrador.
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge las tres pruebas
+  de emulador (elegir en "Me gusta" quita de "Evito" y el buscador filtra; chips de alérgenos en ámbar
+  y nunca en rojo; el onboarding no reaparece al reabrir) y el acabado visual de los pasos 5–7; un
+  defecto visual se corrige con una feature correctiva. El round-trip del `Saver` ampliado no se testea
+  en JVM (vive en la capa Compose); se verifica por inspección y retención manual, como en los pasos 2–4.
+- Siguiente paso: validación independiente de `onboarding-ingredients-safety-kitchen` con
+  `feature-validator`; después, commit local (orquestador de `feature-flow`) y publicación por
+  `github-flow`. La siguiente feature sin empezar es `suggestion-batch-cache`.
+
+### Sesión 029
+
+- Fecha: 2026-10-08
+- Objetivo: validar `onboarding-ingredients-safety-kitchen` de forma independiente y persistir la
+  aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Con esta feature el onboarding de 7 pasos queda **completo**.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0), `./gradlew
+  testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks` (28/28 tareas);
+  parseó por su cuenta los XML de resultados y el informe de lint, e inspeccionó el código (exclusión
+  mutua, ámbar sin rojo, recorte del stepper, cierre que persiste, pureza de la lógica).
+- Evidencia capturada: 110 tests, 0 fallos/errores/saltados (nuevos: `OnboardingIngredientsDraftTest`
+  9, `OnboardingProfileBuilderTest` 4, `IngredientsFilterTest` 4; 93 preexistentes); lint 0 errores y
+  13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; escenarios 1–12 y `Validator Checklist` en PASS;
+  exclusión mutua "Me gusta"/"Evito" con intersección vacía; restricciones con "Ninguna" sin residuo;
+  chips de alérgenos en `tertiary`/`tertiaryContainer` y nunca `error`; stepper recortado a 1..12;
+  opciones exactamente de la Taxonomía (95 ingredientes, 11 restricciones, 3 dificultades, 5 franjas,
+  `servings` 1..12 default 2); cierre que persiste el `UserProfile` y pasa `AppGate` a `MAIN`; build y
+  lockfile intactos.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (2 Low + 2 informativos, ninguno bloqueante): `ServingsStepper` usa
+  `Arrangement.spacedBy(16.dp)` en vez de `SazonSpacing.md`; comentario obsoleto en `OnboardingStep.kt`
+  (los pasos 2–7 ya no son marcadores); el round-trip del `Saver` ampliado no se testea en JVM (capa
+  Compose, manual); densidad visual del paso 5 (95 chips en dos grupos), mitigada por el buscador.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge
+  las tres pruebas de emulador y el acabado visual de los pasos 5–7.
+- Siguiente paso: commit local de la rama `feature/onboarding-ingredients-safety-kitchen` y publicación
+  por `github-flow` (push + PR). Después, `suggestion-batch-cache`.
 

@@ -8,11 +8,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.sazon.app.data.AssetTaxonomySource
 import com.sazon.app.domain.profile.ProfileRepository
 import com.sazon.app.ui.onboarding.OnboardingFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * Raiz de la app y puerta de primer arranque.
@@ -22,9 +24,10 @@ import kotlinx.coroutines.flow.map
  * navegacion ni inyeccion de dependencias: el cambio de destino es este estado minimo. Mientras el
  * Perfil aun no se ha resuelto (`null`) se pinta solo el fondo del tema.
  *
- * La costura `onFinished` no tiene efecto en esta feature: el guardado y cierre del onboarding
- * llegan en `onboarding-ingredients-safety-kitchen`, de modo que la puerta sigue mostrando el
- * onboarding hasta entonces.
+ * La costura [onFinished] del onboarding persiste el Perfil construido en el ultimo paso con
+ * [ProfileRepository.save]: como `SazonApp` observa `profileRepository.observe()`, tras el `save` el
+ * flujo emite el Perfil y `AppGate.decide` pasa a `MAIN`; el onboarding desaparece sin navegacion
+ * adicional.
  */
 @Composable
 fun SazonApp(
@@ -48,9 +51,10 @@ fun SazonApp(
 
         AppDestination.ONBOARDING -> {
             val taxonomy = remember { taxonomySource.load() }
+            val scope = rememberCoroutineScope()
             OnboardingFlow(
                 taxonomy = taxonomy,
-                onFinished = { /* Sin efecto: el cierre del onboarding es de una feature posterior. */ },
+                onFinished = { profile -> scope.launch { profileRepository.save(profile) } },
                 modifier = modifier,
             )
         }

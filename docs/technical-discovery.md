@@ -114,28 +114,48 @@ no saltable; con Perfil, el destino principal (`HomePlaceholder`, sustituido por
 pueda desincronizarse) ni una librería de navegación: el cambio de destino es un estado mínimo
 (`AppDestination`), adoptable más tarde sin cambiar los contratos puros. El onboarding entrega el
 **armazón reutilizable** (`OnboardingScaffold`: progreso "Paso N de 7" con puntos, "Atrás" y primario
-anclado) y el **paso 1 (identidad)**, con lógica pura en `com.sazon.app.ui.onboarding`
-(`OnboardingStep`, `OnboardingProgress`, `AvatarInitials`, `OnboardingIdentityState`) testeada en JVM;
-los pasos 2–7 son marcadores y el borrador (nombre y color) vive en `rememberSaveable`, sin persistir
-un Perfil inventado. `MainActivity` monta `ProfileDatabase.build(applicationContext)` →
+anclado) y los **7 pasos reales** (paso 1 identidad; pasos 2–7 dieta, estilo, cocinas, ingredientes,
+restricciones duras y cocina), con lógica pura en `com.sazon.app.ui.onboarding`
+(`OnboardingStep`, `OnboardingProgress`, `AvatarInitials`, `OnboardingIdentityState`,
+`OnboardingPreferencesDraft`, `OnboardingProfileBuilder`) testeada en JVM. El borrador vive en
+`rememberSaveable` y al cerrar se construye y persiste el Perfil. `MainActivity` monta
+`ProfileDatabase.build(applicationContext)` →
 `RoomProfileRepository` + `AssetTaxonomySource` y compone `SazonTheme { SazonApp(...) }`. Ver
 `docs/specs/onboarding-shell-and-identity.md`.
 
-El borrador en memoria de los pasos 2–4 (dieta, estilo y cocinas) vive en
+El borrador en memoria de los pasos 2–7 vive en
 `com.sazon.app.ui.onboarding.OnboardingPreferencesDraft`, una data class **pura** sin imports de
 Compose ni Android (se testea en JVM): `dietPatternId` (single-select, por defecto el primer
-`dietPatterns` de la Taxonomía, `omnivore`), `softPreferenceIds` y `cuisineIds` (listas con semántica
-de conjunto, sin duplicados) y las operaciones `selectDietPattern`, `toggleSoftPreference`,
-`toggleCuisine`, `clearSoftPreferences` e `isStyleNone` ("Ninguno" = lista vacía). `OnboardingFlow` lo
-guarda con `rememberSaveable` (Saver en la capa Compose) y enruta `DIET`/`STYLE`/`CUISINES` a los
-editores; los pasos 5–7 siguen como marcadores y `onFinished` sigue sin efecto (el cierre y la
-persistencia del Perfil llegan en `onboarding-ingredients-safety-kitchen`). Los tres editores son
-**componentes reutilizables y sin estado** en `com.sazon.app.ui.preferences` (`DietPatternEditor`,
-`SoftPreferencesEditor` con chip "Ninguno", `CuisinesEditor` en rejilla de 2 columnas), reciben las
-listas de la Taxonomía y `value` + callbacks, y no conocen el onboarding ni el Perfil: materializan la
-regla "un editor, dos entradas" que `profile-screen` reutilizará. No renderizan iconos (el repositorio
-no tiene assets ni dependencia de iconos) y usan solo tokens del tema. Ver
-`docs/specs/onboarding-diet-style-cuisines.md`.
+`dietPatterns` de la Taxonomía, `omnivore`), `softPreferenceIds`, `cuisineIds`,
+`preferredIngredientIds` y `dislikedIngredientIds` (listas con semántica de conjunto, sin duplicados),
+`hardRestrictionIds` (multi-select con "Ninguna" = lista vacía) y `difficultyId`, `timeBucketId` y
+`defaultServings` (por defecto el primer `difficulties`/`timeBuckets` y `servings.default` de la
+Taxonomía). Las operaciones son inmutables (`copy`): `selectDietPattern`,
+`toggleSoftPreference`/`clearSoftPreferences`/`isStyleNone`, `toggleCuisine`,
+`togglePreferredIngredient`/`toggleDislikedIngredient` (**exclusión mutua**: elegir un ingrediente en
+un grupo lo quita del otro, de modo que la intersección nunca se solapa), `toggleHardRestriction`/
+`clearHardRestrictions`/`hasNoRestrictions`, `selectDifficulty`, `selectTimeBucket` y
+`setServings(limits)` (recorta al rango `min..max`). `OnboardingFlow` lo guarda con `rememberSaveable`
+(Saver en la capa Compose, ampliado a todos los campos) y enruta los pasos 2–7 a los editores. Los
+editores son **componentes reutilizables y sin estado** en `com.sazon.app.ui.preferences`
+(`DietPatternEditor`, `SoftPreferencesEditor` con chip "Ninguno", `CuisinesEditor` en rejilla,
+`IngredientsEditor` con buscador y dos grupos "Me gusta" (terracota) y "Evito" (oliva),
+`HardRestrictionsEditor` con banner ámbar y chip "Ninguna", `DifficultyEditor`, `TimeBucketEditor` y
+`ServingsStepper`), reciben las listas de la Taxonomía y `value` + callbacks, y no conocen el
+onboarding ni el Perfil: materializan la regla "un editor, dos entradas" que `profile-screen`
+reutilizará. `IngredientsFilter.matching(ingredients, query)` (puro) filtra por `label` sin distinguir
+mayúsculas ni acentos. Los chips de alérgenos usan el rol **tertiary** (ámbar) y **nunca** el rol de
+error/rojo; el stepper muestra cifras tabulares y deshabilita `−`/`+` en los límites. No renderizan
+iconos (el repositorio no tiene assets ni dependencia de iconos) y usan solo tokens del tema.
+
+El cierre del onboarding es **puro** en `OnboardingProfileBuilder.build(displayName, avatarColorId,
+draft, now)`: valida y normaliza el nombre con `ProfileName` (mismo contrato que
+`RoomProfileRepository.save`), inyecta el instante del cierre (`createdAt`/`updatedAt`) y copia todos
+los campos del borrador a `PreferenceProfile`; un nombre inválido lanza `IllegalArgumentException` y no
+se escribe ninguna fila. `OnboardingFlow` cambia `onFinished` a `(UserProfile) -> Unit` y construye el
+Perfil al pulsar "Empezar a cocinar"; `SazonApp` lo persiste con `ProfileRepository.save` en un
+`rememberCoroutineScope`, de modo que la observación existente hace que `AppGate.decide` pase a `MAIN`
+y el onboarding no vuelva a aparecer. Ver `docs/specs/onboarding-ingredients-safety-kitchen.md`.
 
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
 `docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.
