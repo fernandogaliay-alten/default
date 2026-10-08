@@ -9,17 +9,16 @@
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
-  `seed-recipe-catalog`, `design-tokens-and-theme` y `onboarding-shell-and-identity` (validador
-  independiente, veredicto `accept`)
+  `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity` y
+  `onboarding-diet-style-cuisines` (validador independiente, veredicto `accept`)
 - Siguiente feature lista en orden de lista con dependencias satisfechas:
-  `onboarding-diet-style-cuisines` (depende de `onboarding-shell-and-identity`, ya `accepted`);
+  `onboarding-ingredients-safety-kitchen` (depende de `onboarding-diet-style-cuisines`, ya `accepted`);
   `suggestion-batch-cache` (dependencias `preference-signature`, `fake-recipe-generator` y
   `seed-recipe-catalog`, ya `accepted`) también está lista
 - Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-08 (`onboarding-shell-and-identity`: `init.sh` exit 0, 85 tests/0
-  fallos, 18 nuevos — `OnboardingProgressTest` 5, `AvatarInitialsTest` 5,
-  `OnboardingIdentityStateTest` 6 y `AppGateTest` 2; lint 0 errores y 13 warnings preexistentes,
+- Última verificación: 2026-10-08 (`onboarding-diet-style-cuisines`: `init.sh` exit 0, 93 tests/0
+  fallos, 8 nuevos — `OnboardingPreferencesDraftTest` 8; lint 0 errores y 13 warnings preexistentes,
   ninguno en ficheros de la feature; validación independiente `accept`)
 
 ## Registro de sesiones
@@ -753,4 +752,82 @@
   con una feature correctiva.
 - Siguiente paso: commit local de la rama `feature/onboarding-shell-and-identity` y publicación por
   `github-flow` (push + PR). Después, `onboarding-diet-style-cuisines` o `suggestion-batch-cache`.
+
+### Sesión 026
+
+- Fecha: 2026-10-08
+- Objetivo: implementar `onboarding-diet-style-cuisines` (pasos 2–4 reales del onboarding: dieta,
+  estilo y cocinas) según `docs/specs/onboarding-diet-style-cuisines.md`, sobre el armazón aceptado en
+  `onboarding-shell-and-identity`.
+- Completado: borrador **puro** `com.sazon.app.ui.onboarding.OnboardingPreferencesDraft`
+  (`dietPatternId` single-select con `initial(taxonomy)` = primer `dietPatterns`, `softPreferenceIds`
+  y `cuisineIds` como conjuntos sin duplicados, `selectDietPattern`, `toggleSoftPreference`,
+  `toggleCuisine`, `clearSoftPreferences` e `isStyleNone` = lista vacía). Tres editores reutilizables
+  y **sin estado** en `com.sazon.app.ui.preferences`: `DietPatternEditor` (tarjetas 24dp con
+  `label`+`description`), `SoftPreferencesEditor` (chips píldora + helper "Opcional..." + chip
+  "Ninguno" seleccionado cuando la lista está vacía) y `CuisinesEditor` (rejilla de 2 columnas de
+  tiles, objetivo táctil ≥64dp). Cableado en `OnboardingFlow`: borrador con `rememberSaveable` y
+  `OnboardingPreferencesDraftSaver` (Saver en la capa Compose, formato
+  `[dietPatternId, softCount, ...soft, ...cuisines]`), enrutado de `DIET`/`STYLE`/`CUISINES` a los
+  editores con las listas de la Taxonomía, enunciado del paso en el flujo (los editores no conocen el
+  onboarding), y pasos 5–7 como marcadores; `primaryEnabled` sigue siendo `true` en los pasos 2–4 y
+  `onFinished` sigue sin efecto. `OnboardingPreferencesDraftTest` con los escenarios 1–8 y casos
+  negativos. Sin dependencias, sin persistir Perfil, sin DataStore, sin iconos, sin navegación ni DI
+  (no-goals).
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados y del informe
+  `lint-results-debug.xml`; inspección de imports y de que no cambian `app/build.gradle.kts` ni
+  `gradle/libs.versions.toml`.
+- Evidencia capturada: **93 tests, 0 fallos/errores/saltados** (8 nuevos:
+  `OnboardingPreferencesDraftTest` 8; el resto son los 85 preexistentes); lint 0 errores y 13 warnings
+  preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; `init.sh` con código 0; `OnboardingPreferencesDraft`
+  sin imports de Compose/Android (solo `domain.taxonomy`); los editores no usan `remember`/
+  `mutableState`; sin hex sueltos ni iconos.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/onboarding/OnboardingPreferencesDraft.kt`,
+  `app/src/main/java/com/sazon/app/ui/preferences/{DietPatternEditor,SoftPreferencesEditor,
+  CuisinesEditor}.kt`, `app/src/main/java/com/sazon/app/ui/onboarding/OnboardingFlow.kt`,
+  `app/src/test/java/com/sazon/app/ui/onboarding/OnboardingPreferencesDraftTest.kt`,
+  `docs/technical-discovery.md`, `feature_list.json` y este registro. No se tocaron
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento. El enunciado del paso (`step.title`) se pinta en
+  `OnboardingFlow` para mantener los editores agnósticos del onboarding (reutilizables por Perfil).
+- Riesgo o incógnita abierta: la persistencia entre reinicios queda fuera de alcance por diseño (la
+  verifica `onboarding-ingredients-safety-kitchen`); el borrador sobrevive a cambios de
+  configuración/proceso dentro de la sesión. Queda para revisión manual de la persona el acabado
+  visual de los pasos 2–4 (tarjetas, chips, rejilla, claro/oscuro) y que las opciones coincidan con la
+  Taxonomía conservando la selección al ir y volver (AGENTS.md no automatiza UI de emulador).
+- Siguiente paso: validación independiente de `onboarding-diet-style-cuisines` con
+  `feature-validator`; después, commit local (orquestador de `feature-flow`) y publicación por
+  `github-flow`.
+
+### Sesión 027
+
+- Fecha: 2026-10-08
+- Objetivo: validar `onboarding-diet-style-cuisines` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0), `./gradlew
+  testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks` (28/28 tareas);
+  parseó por su cuenta los XML de resultados y el informe de lint, e inspeccionó el código (opciones
+  desde la Taxonomía, editores sin estado, ausencia de hex/iconos/persistencia).
+- Evidencia capturada: 93 tests, 0 fallos/errores/saltados (nuevo: `OnboardingPreferencesDraftTest` 8;
+  85 preexistentes); lint 0 errores y 13 warnings preexistentes (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en ficheros de la feature;
+  escenarios 1–8 y `Validator Checklist` en PASS; opciones exactamente de
+  `dietPatterns`/`softPreferences`/`cuisines` sin listas duplicadas ni labels hardcodeados; editores
+  sin estado en `ui.preferences` reutilizables por `profile-screen`; sin persistencia; build y lockfile
+  intactos; `OnboardingStep`/`OnboardingScaffold`/`SazonApp`/`AppGate`/`MainActivity` no tocados.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (3 Low informativos, ninguno bloqueante): la retención del `OnboardingPreferencesDraftSaver`
+  no tiene test de round-trip (correcto por inspección; la retención Compose es revisión manual); los
+  conteos 5/7+1/10 no se asertan en el test porque se garantizan estructuralmente (Taxonomía + su
+  `TaxonomyIntegrityTest`); `Validator Checklist` de la spec sin marcar.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda para revisión manual de la persona tras el merge el
+  acabado visual de los pasos 2–4 y la persistencia entre reinicios (fuera de alcance por diseño; la
+  verifica `onboarding-ingredients-safety-kitchen`).
+- Siguiente paso: commit local de la rama `feature/onboarding-diet-style-cuisines` y publicación por
+  `github-flow` (push + PR). Después, `onboarding-ingredients-safety-kitchen` o `suggestion-batch-cache`.
 

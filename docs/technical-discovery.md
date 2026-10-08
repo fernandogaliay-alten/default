@@ -121,6 +121,22 @@ un Perfil inventado. `MainActivity` monta `ProfileDatabase.build(applicationCont
 `RoomProfileRepository` + `AssetTaxonomySource` y compone `SazonTheme { SazonApp(...) }`. Ver
 `docs/specs/onboarding-shell-and-identity.md`.
 
+El borrador en memoria de los pasos 2–4 (dieta, estilo y cocinas) vive en
+`com.sazon.app.ui.onboarding.OnboardingPreferencesDraft`, una data class **pura** sin imports de
+Compose ni Android (se testea en JVM): `dietPatternId` (single-select, por defecto el primer
+`dietPatterns` de la Taxonomía, `omnivore`), `softPreferenceIds` y `cuisineIds` (listas con semántica
+de conjunto, sin duplicados) y las operaciones `selectDietPattern`, `toggleSoftPreference`,
+`toggleCuisine`, `clearSoftPreferences` e `isStyleNone` ("Ninguno" = lista vacía). `OnboardingFlow` lo
+guarda con `rememberSaveable` (Saver en la capa Compose) y enruta `DIET`/`STYLE`/`CUISINES` a los
+editores; los pasos 5–7 siguen como marcadores y `onFinished` sigue sin efecto (el cierre y la
+persistencia del Perfil llegan en `onboarding-ingredients-safety-kitchen`). Los tres editores son
+**componentes reutilizables y sin estado** en `com.sazon.app.ui.preferences` (`DietPatternEditor`,
+`SoftPreferencesEditor` con chip "Ninguno", `CuisinesEditor` en rejilla de 2 columnas), reciben las
+listas de la Taxonomía y `value` + callbacks, y no conocen el onboarding ni el Perfil: materializan la
+regla "un editor, dos entradas" que `profile-screen` reutilizará. No renderizan iconos (el repositorio
+no tiene assets ni dependencia de iconos) y usan solo tokens del tema. Ver
+`docs/specs/onboarding-diet-style-cuisines.md`.
+
 Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy-in-code.md`,
 `docs/adr/0002-local-first-no-backend.md` y `docs/adr/0003-ai-provider.md`.
 
