@@ -161,10 +161,6 @@ Una feature está hecha solo si se cumplen todas:
   `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
   solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
-- **Monitoreo en vivo (TUI)**: el orquestador **se asegura de que el backend esté arriba** —si el puerto
-  4096 no escucha, arranca `bash scripts/serve.sh`— antes de lanzar cada feature con
-  `opencode run --attach http://localhost:4096 ...`. Para observarlo tú:
-  `opencode attach http://localhost:4096` en Windows Terminal.
 - **Segfault de opencode (Bun) en Windows**: el CLI puede abortar **al cerrar** de forma intermitente.
   No afecta al trabajo ya persistido; se tolera y la verificación se hace por artefactos
   (git/`feature_list`/PR), no por el código de salida. Reanudar con `--continue` si muere a media
