@@ -8,6 +8,8 @@ permission:
     "**": deny
     "docs/specs/*": allow
     "docs/specs/**": allow
+    "**/docs/specs/*": allow
+    "**/docs/specs/**": allow
   bash: deny
   task: deny
   webfetch: deny
