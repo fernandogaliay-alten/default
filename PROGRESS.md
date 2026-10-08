@@ -13,14 +13,15 @@
   `onboarding-diet-style-cuisines`, `onboarding-ingredients-safety-kitchen` y `suggestion-batch-cache`
   (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste
   el Perfil al cerrar.
-- Siguiente feature lista en orden de lista con dependencias satisfechas: `home-offline-blocks`
-  (depende de `suggestion-batch-cache`, ya `accepted`)
-- Feature en curso: ninguna (0 `in_progress`, 0 `passing`)
+- Siguiente feature en orden de lista: `local-result-filters` / `generator-ingredients-step`
+  (dependen de `home-offline-blocks`); se desbloquean cuando esta se acepte.
+- Feature en curso: `home-offline-blocks` (`passing`: implementada y autoverificada, pendiente de
+  validación independiente). WIP = 1.
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-08 (`suggestion-batch-cache`: `init.sh` exit 0, 132 tests/0 fallos,
-  22 nuevos — `SuggestionBatchPolicyTest` 8, `SuggestionBatchServiceTest` 9 y
-  `RoomSuggestionBatchRepositoryTest` 5; lint 0 errores y 13 warnings preexistentes, ninguno en
-  ficheros de la feature; validación independiente `accept`)
+- Última verificación: 2026-10-08 (`home-offline-blocks`: `init.sh` exit 0, **159 tests/0 fallos** en
+  27 suites, 27 nuevos — `HomeGreetingTest` 7, `MainNavigationStateTest` 6, `HomeIdentityTest` 4,
+  `RecipeCardFormatTest` 4, `HomeRecipesTest` 3, `HomeSuggestionsTest` 3; lint 0 errores y 13 warnings
+  preexistentes, ninguno en ficheros de la feature)
 
 ## Registro de sesiones
 
@@ -1026,4 +1027,108 @@
   generador) y la deuda de consolidar `sazon.db` + `suggestion_batch.db` con migración probada.
 - Siguiente paso: commit local de la rama `feature/suggestion-batch-cache` y publicación por
   `github-flow` (push + PR). Después, `home-offline-blocks`.
+
+### Sesión 032
+
+- Fecha: 2026-10-08
+- Objetivo: implementar `home-offline-blocks` (Home real con sus cuatro bloques locales y armazón
+  principal con barra inferior + FAB) según `docs/specs/home-offline-blocks.md`, y compone por primera
+  vez el Lote de sugerencias en la app.
+- Completado:
+  - Lógica/estado **puro** en `com.sazon.app.ui.home`: `HomeGreeting.text(name, hour)` (bandas
+    5..11/12..20/21..4 y fallback `"Buenas tardes"` sin nombre), `HomeIdentity.from(profile, taxonomy)`
+    (hex del `avatarColorId` con respaldo al primer `avatarColors`; iniciales vía `AvatarInitials`),
+    `HomeSuggestions.visible(batchRecipes, seedRecipes)` (`?:`, respaldo inmediato a semilla) y
+    `HomeRecipes(saved, recentlyOpened)` con `isEmpty`; y `RecipeCardFormat.metaLine`/`matchBadge`.
+  - Navegación **pura** en `com.sazon.app.ui.navigation`: `MainTab` (Inicio · Favoritos · Perfil),
+    `PushedScreen` (GENERATOR) y `MainNavigationState` (`selectTab`/`push`/`pop` inmutables).
+  - Capa Compose delgada: `HomeScreen` (bloques 1, 3, 4 y 5 en `LazyColumn`), `RecipeCard` (bloque
+    degradado melocotón→oliva + glifo de plato con `Canvas`, `metaLine` y píldora de coincidencia
+    opcional), `SectionPlaceholder` (Favoritos/Perfil/Generador con botón atrás) y `MainShell`
+    (`Scaffold` con `NavigationBar` de 80dp y FAB "＋ Crear receta"; glifos casa/marca/persona
+    dibujados con Compose; `Saver` de `MainNavigationState` para `rememberSaveable`).
+  - Integración en la app: `MainActivity` monta `SuggestionBatchDatabase` +
+    `RoomSuggestionBatchRepository` + `SuggestionBatchService(FakeRecipeGenerator())` + la Taxonomía y
+    el catálogo semilla; `SazonApp` observa el `UserProfile` completo (con estado de carga propio para
+    no pintar el onboarding antes de resolver) y monta `MainShell`. `MainShell` consume el Lote tal
+    cual: `observe()` alimenta el carrusel y `ensureBatch` se llama una vez al entrar (cache-first),
+    con `HomeSuggestions` de respaldo inmediato; la Home se pinta poblada sin pantalla de carga.
+  - `ui/HomePlaceholder.kt` eliminado. Sin dependencias nuevas, sin `navigation-compose`, sin iconos ni
+    imágenes externas; `domain.suggestions`/`data.suggestions` intactos.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados y agrupación del
+  informe `lint-results-debug.xml`; inspección de imports de la lógica pura y de que no cambian
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Evidencia capturada: **159 tests, 0 fallos/errores/saltados** en 27 suites (27 nuevos:
+  `HomeGreetingTest` 7, `MainNavigationStateTest` 6, `HomeIdentityTest` 4, `RecipeCardFormatTest` 4,
+  `HomeRecipesTest` 3, `HomeSuggestionsTest` 3; 132 preexistentes en verde); lint 0 errores y 13
+  warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; `init.sh` con código 0; `ui.navigation` sin imports
+  Compose/Android y los cinco ficheros puros de `ui.home` tampoco (Compose solo en `HomeScreen`,
+  `RecipeCard`, `MainShell` y `SectionPlaceholder`).
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/home/{HomeGreeting,HomeIdentity,HomeSuggestions,HomeRecipes,
+  RecipeCardFormat,HomeScreen,RecipeCard}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/navigation/MainNavigationState.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/{MainShell,SectionPlaceholder}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/{MainActivity,SazonApp}.kt` (modificados),
+  `app/src/main/java/com/sazon/app/ui/HomePlaceholder.kt` (eliminado),
+  `app/src/test/java/com/sazon/app/ui/home/{HomeGreetingTest,HomeIdentityTest,HomeSuggestionsTest,
+  HomeRecipesTest,RecipeCardFormatTest}.kt`,
+  `app/src/test/java/com/sazon/app/ui/navigation/MainNavigationStateTest.kt` (nuevos),
+  `docs/technical-discovery.md`, `feature_list.json` y este registro. No se tocaron
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: para distinguir "Perfil aún cargando" de "sin Perfil" (la spec decía "mientras
+  es `null` pinta el fondo"), `SazonApp` usa un estado privado `ProfileObservation` con `Loading` /
+  `Loaded(profile)`: sin él, un `null` inicial mostraría el onboarding antes de resolver el Perfil.
+  `MainShell` (no `HomeScreen`) es quien observa el Lote y llama a `ensureBatch`, manteniendo
+  `HomeScreen` sin estado y con la firma de la spec (`profile, taxonomy, suggestions, recipes,
+  onOpenGenerator`); el comportamiento observable es el descrito en la spec. En el bloque "Tus
+  recetas" se pintan siempre los títulos de grupo "Guardadas" y "Abiertas hace poco" y, si
+  `isEmpty`, la línea de estado vacío, para cumplir el escenario 5 literalmente (la spec sugería que un
+  grupo vacío no pinta nada; el escenario pide ver las dos etiquetas). Correcciones de compilación:
+  `${band(hour)}` en el template de `HomeGreeting` y la factoría `RoundRect(rect=…, topLeft=…)` frente
+  al constructor con `topLeftCornerRadius`.
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge el acabado
+  visual (degradado y glifo de las tarjetas, barra activa/inactiva, densidad del carrusel, claro/oscuro)
+  y las dos pruebas manuales de emulador sin red (bloques 1, 3, 4 y 5 se ven y navegan; Home poblada de
+  inmediato sin pantalla de carga). Un defecto visual se corrige con una feature correctiva. La deuda de
+  consolidar `sazon.db` + `suggestion_batch.db` con migración probada sigue anotada.
+- Siguiente paso: validación independiente de `home-offline-blocks` con `feature-validator`; después,
+  commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 033
+
+- Fecha: 2026-10-08
+- Objetivo: validar `home-offline-blocks` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Quedan desbloqueadas `local-result-filters`, `generator-ingredients-step` y
+  `profile-screen`.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0), `./gradlew
+  testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks` (28/28 tareas);
+  parseó por su cuenta los XML de resultados e informes de lint e inspeccionó el código (pureza,
+  integración del Lote, alcance y las tres desviaciones documentadas).
+- Evidencia capturada: 159 tests, 0 fallos/errores/saltados (nuevos: `HomeGreetingTest` 7,
+  `MainNavigationStateTest` 6, `HomeIdentityTest` 4, `RecipeCardFormatTest` 4, `HomeRecipesTest` 3,
+  `HomeSuggestionsTest` 3; 132 preexistentes); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; escenarios 1-8 y `Validator Checklist` en PASS; `domain.suggestions`/
+  `data.suggestions`, `ProfileDatabase`, `data.profile/**`, `domain.profile/**` y el build intactos;
+  `ui/home`/`ui/navigation` puros sin imports Android/Compose; `HomePlaceholder.kt` eliminado sin
+  referencias colgantes.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (4 Low informativos, ninguno bloqueante): el paréntesis del plan de
+  verificación de `HomeSuggestionsTest` en la spec ("la lista vacía no sustituye a las semillas") es
+  ambiguo frente al contrato `?:` (la implementación sigue el contrato y lo documenta); el
+  `Validator Checklist` de la spec queda sin marcar (por diseño); los escenarios 4/6/7 y el estilo
+  activo/inactivo se verifican por inspección (AGENTS.md no automatiza UI); la hora se captura una vez
+  con `remember`, intencional.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge
+  el acabado visual (degradado/glifo, barra activa/inactiva, densidad del carrusel, claro/oscuro) y las
+  dos pruebas de emulador sin red; un defecto visual se corrige con una feature correctiva. La deuda de
+  consolidar `sazon.db` + `suggestion_batch.db` con migración probada sigue anotada.
+- Siguiente paso: commit local de la rama `feature/home-offline-blocks` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `local-result-filters`,
+  `generator-ingredients-step` o `profile-screen`.
 
