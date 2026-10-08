@@ -93,8 +93,27 @@ seed-only persistido (modo esperado, sin tragarse `CancellationException`). La p
 `com.sazon.app.data.suggestions` sobre Room, en una base **propia** (`suggestion_batch.db`, version 1,
 una fila con las recetas como columna JSON via `RecipeJson.encodeList`/`parseList`) para no migrar la
 base aceptada del Perfil. Testeado en JVM (`SuggestionBatchPolicyTest`, `SuggestionBatchServiceTest` y
-`RoomSuggestionBatchRepositoryTest`). Sin composicion en la app todavia: la monta `home-offline-blocks`.
-Ver `docs/specs/suggestion-batch-cache.md`.
+`RoomSuggestionBatchRepositoryTest`). La composicion **si** ocurre ya en la app: la realiza
+`home-offline-blocks`. Ver `docs/specs/suggestion-batch-cache.md`.
+
+La **Home real y el armazon principal** viven en `com.sazon.app.ui`: `MainShell` es un `Scaffold` con
+la **barra de navegacion inferior** de tres destinos (Inicio · Favoritos · Perfil, `MainTab`) y el
+**FAB** "＋ Crear receta", y enruta el contenido por pestana (`ui.home.HomeScreen` para Inicio y
+`SectionPlaceholder` para Favoritos/Perfil/Generador). `HomeScreen` pinta los cuatro bloques **locales**
+de `DESIGN.md` (el bloque 2, Búsqueda con IA, es de `ai-search`): cabecera con saludo por franja
+horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas" con su
+estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com.sazon.app.ui.home`
+(`HomeGreeting`, `HomeIdentity`, `HomeSuggestions`, `HomeRecipes`, `RecipeCardFormat`) y en
+`com.sazon.app.ui.navigation` (`MainTab`, `PushedScreen`, `MainNavigationState`, navegacion sin
+libreria: el `Saver` de `rememberSaveable` vive en la capa Compose). `MainActivity` compone a mano
+(sin DI) `SuggestionBatchDatabase` + `RoomSuggestionBatchRepository` + `SuggestionBatchService`
+(`FakeRecipeGenerator`, sin red) + la Taxonomia y el catalogo semilla; `SazonApp` observa el
+`UserProfile` completo y monta `MainShell`. `MainShell` **consume el Lote tal cual**:
+`SuggestionBatchRepository.observe()` alimenta el carrusel y `SuggestionBatchService.ensureBatch` se
+llama una vez al entrar (politica cache-first ya aceptada); mientras el Lote no se resuelve, la Home
+pinta las recetas semilla empaquetadas (`HomeSuggestions.visible`) y nunca muestra una pantalla de
+carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
+`docs/specs/home-offline-blocks.md`.
 
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
@@ -123,8 +142,7 @@ propiedad de sistema `design.tokens.path`. Ver `docs/specs/design-tokens-and-the
 El punto de entrada real de la app vive en `com.sazon.app.ui`: `SazonApp` compone la raíz y la
 **puerta de primer arranque**, que en esta feature es la **presencia de Perfil** en Room
 (`ProfileRepository.observe()` → `AppGate.decide`): sin Perfil se muestra el onboarding obligatorio y
-no saltable; con Perfil, el destino principal (`HomePlaceholder`, sustituido por
-`home-offline-blocks`). **No** se usa el flag de DataStore (diferido sin segunda fuente de verdad que
+no saltable; con Perfil, el armazon principal (`MainShell`, ver mas arriba). **No** se usa el flag de DataStore (diferido sin segunda fuente de verdad que
 pueda desincronizarse) ni una librería de navegación: el cambio de destino es un estado mínimo
 (`AppDestination`), adoptable más tarde sin cambiar los contratos puros. El onboarding entrega el
 **armazón reutilizable** (`OnboardingScaffold`: progreso "Paso N de 7" con puntos, "Atrás" y primario
@@ -133,9 +151,12 @@ restricciones duras y cocina), con lógica pura en `com.sazon.app.ui.onboarding`
 (`OnboardingStep`, `OnboardingProgress`, `AvatarInitials`, `OnboardingIdentityState`,
 `OnboardingPreferencesDraft`, `OnboardingProfileBuilder`) testeada en JVM. El borrador vive en
 `rememberSaveable` y al cerrar se construye y persiste el Perfil. `MainActivity` monta
-`ProfileDatabase.build(applicationContext)` →
-`RoomProfileRepository` + `AssetTaxonomySource` y compone `SazonTheme { SazonApp(...) }`. Ver
-`docs/specs/onboarding-shell-and-identity.md`.
+`ProfileDatabase.build(applicationContext)` → `RoomProfileRepository` + `AssetTaxonomySource` +
+`AssetSeedRecipeSource` + `SuggestionBatchDatabase.build(applicationContext)` →
+`RoomSuggestionBatchRepository` + `SuggestionBatchService(FakeRecipeGenerator(), …)` y compone
+`SazonTheme { SazonApp(...) }`. `SazonApp` observa el `UserProfile` completo (distingue la carga de la
+ausencia de Perfil) y monta `MainShell`. Ver `docs/specs/onboarding-shell-and-identity.md` y
+`docs/specs/home-offline-blocks.md`.
 
 El borrador en memoria de los pasos 2–7 vive en
 `com.sazon.app.ui.onboarding.OnboardingPreferencesDraft`, una data class **pura** sin imports de

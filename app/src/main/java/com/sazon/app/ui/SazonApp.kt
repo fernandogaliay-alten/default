@@ -7,58 +7,86 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import com.sazon.app.data.AssetTaxonomySource
 import com.sazon.app.domain.profile.ProfileRepository
+import com.sazon.app.domain.profile.UserProfile
+import com.sazon.app.domain.recipe.Recipe
+import com.sazon.app.domain.suggestions.SuggestionBatchRepository
+import com.sazon.app.domain.suggestions.SuggestionBatchService
+import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.onboarding.OnboardingFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
  * Raiz de la app y puerta de primer arranque.
  *
- * Observa el Perfil ([ProfileRepository.observe]) y decide con [AppGate]: sin Perfil muestra el
- * Onboarding obligatorio; con Perfil, el destino principal. No se introduce una libreria de
- * navegacion ni inyeccion de dependencias: el cambio de destino es este estado minimo. Mientras el
- * Perfil aun no se ha resuelto (`null`) se pinta solo el fondo del tema.
+ * Observa el **Perfil completo** ([ProfileRepository.observe]) y distingue la carga de la ausencia de
+ * Perfil: mientras no ha emitido ([ProfileObservation.Loading]) pinta solo el fondo del tema; tras
+ * emitir decide con [AppGate]. Sin Perfil monta el Onboarding obligatorio; con Perfil, el armazon
+ * principal ([MainShell]) ya con la Taxonomia y las dependencias del Lote compuestas en `MainActivity`
+ * (sin DI).
  *
- * La costura [onFinished] del onboarding persiste el Perfil construido en el ultimo paso con
- * [ProfileRepository.save]: como `SazonApp` observa `profileRepository.observe()`, tras el `save` el
- * flujo emite el Perfil y `AppGate.decide` pasa a `MAIN`; el onboarding desaparece sin navegacion
- * adicional.
+ * La costura `onFinished` del onboarding persiste el Perfil con [ProfileRepository.save]: como se
+ * observa `observe()`, tras el `save` llega el Perfil y `AppGate.decide` pasa a `MAIN`.
  */
 @Composable
 fun SazonApp(
     profileRepository: ProfileRepository,
-    taxonomySource: AssetTaxonomySource,
+    taxonomy: Taxonomy,
+    suggestionBatchRepository: SuggestionBatchRepository,
+    suggestionBatchService: SuggestionBatchService,
+    seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
 ) {
-    val destination by produceState<AppDestination?>(initialValue = null, profileRepository) {
-        profileRepository.observe()
-            .map { AppGate.decide(it) }
-            .collect { value = it }
+    val state by produceState<ProfileObservation>(
+        initialValue = ProfileObservation.Loading,
+        profileRepository,
+    ) {
+        profileRepository.observe().collect { profile ->
+            value = ProfileObservation.Loaded(profile)
+        }
     }
 
-    when (destination) {
-        null -> Surface(
-            modifier = modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
-            Box(modifier = Modifier.fillMaxSize())
-        }
+    when (val current = state) {
+        ProfileObservation.Loading -> SazonBackground(modifier = modifier)
 
-        AppDestination.ONBOARDING -> {
-            val taxonomy = remember { taxonomySource.load() }
-            val scope = rememberCoroutineScope()
-            OnboardingFlow(
+        is ProfileObservation.Loaded -> when (AppGate.decide(current.profile)) {
+            AppDestination.ONBOARDING -> {
+                val scope = rememberCoroutineScope()
+                OnboardingFlow(
+                    taxonomy = taxonomy,
+                    onFinished = { profile -> scope.launch { profileRepository.save(profile) } },
+                    modifier = modifier,
+                )
+            }
+
+            AppDestination.MAIN -> MainShell(
+                profile = checkNotNull(current.profile) { "MAIN exige un Perfil" },
                 taxonomy = taxonomy,
-                onFinished = { profile -> scope.launch { profileRepository.save(profile) } },
+                suggestionBatchRepository = suggestionBatchRepository,
+                suggestionBatchService = suggestionBatchService,
+                seedRecipes = seedRecipes,
+                savedRecipes = emptyList(),
+                recentlyOpenedRecipes = emptyList(),
                 modifier = modifier,
             )
         }
+    }
+}
 
-        AppDestination.MAIN -> HomePlaceholder(modifier = modifier)
+/** Estado de la observacion del Perfil: distingue "aun cargando" de "sin Perfil". */
+private sealed interface ProfileObservation {
+    data object Loading : ProfileObservation
+    data class Loaded(val profile: UserProfile?) : ProfileObservation
+}
+
+@Composable
+private fun SazonBackground(modifier: Modifier) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Box(modifier = Modifier.fillMaxSize())
     }
 }
