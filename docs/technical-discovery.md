@@ -33,7 +33,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Perfil de preferencias | Room (1 fila); el flag de onboarding en DataStore queda **diferido** (la puerta usa la presencia de Perfil, ver más abajo) | Estado mutable del usuario; fuente de la firma |
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
-| Lote de sugerencias y recetas `ai` | Room | Evita llamadas repetidas a la IA y da soporte offline |
+| Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | Assets locales (`assets/icons/**`, `assets/img/recipes/**`) | Determinista, offline, sin coste |
 | Clave de IA | `BuildConfig`, desde `local.properties` | Decisión de demo; ver riesgos |
 
@@ -78,9 +78,23 @@ datos en memoria, sin emulador. Ver `docs/specs/profile-persistence.md`.
 
 La Firma de preferencias vive en `com.sazon.app.domain.profile.PreferenceSignature.of(preferences)`:
 un hash SHA-256 determinista sobre una cadena canonica (listas tratadas como conjuntos) que **excluye**
-la identidad (nombre y color de avatar) y `updatedAt`. Logica pura sin Android, testeada en JVM. Aun
-no se persiste ni se conecta al Lote de sugerencias (eso es `suggestion-batch-cache`). Ver
-`docs/specs/preference-signature.md`.
+la identidad (nombre y color de avatar) y `updatedAt`. Logica pura sin Android, testeada en JVM. El
+Lote de sugerencias la **consume** (`SuggestionBatchService`) y la guarda como metadato de la cache
+(su clave), sin almacen separado de firmas. Ver `docs/specs/preference-signature.md`.
+
+El Lote de sugerencias vive en `com.sazon.app.domain.suggestions` como logica pura
+(`SuggestionBatch`, `BatchRefreshReason`, `BatchDecision`, `SuggestionBatchPolicy` con
+`BATCH_TTL_MILLIS` de 7 dias en un unico sitio, el puerto `SuggestionBatchRepository` y
+`SuggestionBatchService.ensureBatch`). El servicio es **cache-first**: consume
+`PreferenceSignature.of(profile)` y solo llama al Generador cuando la politica decide
+`MISSING`/`SIGNATURE_CHANGED`/`EXPIRED`/`FORCED`; filtra las recetas `ai` con `RecipeValidator`,
+deduplica por titulo normalizado (gana la `seed`) y, si el Generador falla, degrada a un lote
+seed-only persistido (modo esperado, sin tragarse `CancellationException`). La persistencia esta en
+`com.sazon.app.data.suggestions` sobre Room, en una base **propia** (`suggestion_batch.db`, version 1,
+una fila con las recetas como columna JSON via `RecipeJson.encodeList`/`parseList`) para no migrar la
+base aceptada del Perfil. Testeado en JVM (`SuggestionBatchPolicyTest`, `SuggestionBatchServiceTest` y
+`RoomSuggestionBatchRepositoryTest`). Sin composicion en la app todavia: la monta `home-offline-blocks`.
+Ver `docs/specs/suggestion-batch-cache.md`.
 
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige

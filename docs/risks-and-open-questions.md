@@ -41,7 +41,8 @@ las citas con la numeración de su momento; la tabla se mantiene posicional.
   que se pueda. Ver `docs/specs/recipe-domain-model.md`.
 - **Nº de recetas por generación** (antes pregunta 2): **6** recetas por petición (compromiso
   coste/latencia/UI). El contrato del prompt (`prompt-builder`) pedirá ese número.
-- **Caducidad del Lote de sugerencias** (antes pregunta 3): **7 días**, en un único sitio configurable.
+- **Caducidad del Lote de sugerencias** (antes pregunta 3): **7 días**, en un único sitio configurable:
+  `SuggestionBatchPolicy.BATCH_TTL_MILLIS` en `com.sazon.app.domain.suggestions` (`docs/specs/suggestion-batch-cache.md`).
 - **Cálculo de `matchScore`** (antes pregunta 4): lo calcula **la app** (derivado, **no persistido**);
   la app lo recalcula al mostrar resultados. La fórmula se fija en `results-screen`.
 - **Formato de las recetas semilla** (antes pregunta 7): **JSON en assets**

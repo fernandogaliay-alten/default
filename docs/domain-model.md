@@ -63,8 +63,12 @@ derivado y **no persistido**, ver `docs/risks-and-open-questions.md`).
 
 ### Lote de sugerencias (SuggestionBatch)
 Conjunto persistido que alimenta Home:
-`preferenceSignature`, `generatedAt`, `status` (`fresh` | `stale`), y `recipeIds[]`.
-Contiene recetas `seed` siempre, y recetas `ai` solo si se ha podido generar.
+`preferenceSignature`, `generatedAt` y sus recetas. El lote **persiste sus recetas** (`seed` + `ai`),
+no solo `recipeIds[]`, para que la lectura sea autocontenida offline.
+Contiene recetas `seed` siempre, y recetas `ai` solo si se han podido generar y han pasado el
+Validador. El `status` (`fresh` | `stale`) es **derivado** por la política de frescura
+(`SuggestionBatchPolicy.decide`), no una columna persistida: una firma distinta o la caducidad
+(**7 días**, `BATCH_TTL_MILLIS`) lo marcan `stale`.
 
 ### Favorito (Favorite)
 Marcador del usuario sobre una Receta. Persiste `recipeId` + una copia de la Receta (para que siga
