@@ -11,16 +11,17 @@
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
-  `home-offline-blocks`, `local-result-filters` y `generator-ingredients-step` (validador
-  independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil
-  al cerrar; el Generador tiene ya su paso 1 real ("¿Qué tienes?").
+  `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step` y `profile-screen`
+  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste
+  el Perfil al cerrar; el Generador tiene ya su paso 1 real ("¿Qué tienes?") y la pestaña Perfil es real
+  (identidad + preferencias editables reutilizando los editores del onboarding).
 - Siguiente feature en orden de lista: `generator-settings-step` (depende de
   `generator-ingredients-step`, ya `accepted`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-09 (`generator-ingredients-step`, validación independiente `accept`:
-  `init.sh` exit 0, **189 tests/0 fallos** en 30 suites, 17 nuevos — `GeneratorIngredientsStateTest` 12
-  y `GeneratorStepTest` 5; lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la feature)
+- Última verificación (validación independiente, 2026-10-09, `profile-screen`): `init.sh` con Git Bash
+  exit 0, **198 tests/0 fallos/errores/saltados** en 31 suites, 9 nuevos (`ProfileEditStateTest` 9);
+  lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la feature; veredicto `accept`.
 
 ## Registro de sesiones
 
@@ -1321,5 +1322,104 @@
   ("Continuar" deshabilitado con cero ingredientes y el contador se actualiza al añadir y quitar); un
   defecto visual se corrige con una feature correctiva.
 - Siguiente paso: commit local de la rama `feature/generator-ingredients-step` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `generator-settings-step`.
+
+### Sesión 038
+
+- Fecha: 2026-10-09
+- Objetivo: implementar `profile-screen` (pestaña Perfil con identidad y preferencias editables) según
+  `docs/specs/profile-screen.md`, sustituyendo el `SectionPlaceholder("Perfil")`. Feature elegida por
+  el orquestador fuera del orden de lista (aprovechando que la rama `feature/profile-screen` ya existe y
+  su spec está lista).
+- Completado:
+  - `OnboardingPreferencesDraft` ampliado **aditivo** con `from(preferences: PreferenceProfile)` y
+    `toPreferences(updatedAt: Long)`: el Perfil usa el **mismo** motor de selección que el onboarding.
+  - Estado de edición **puro** `com.sazon.app.ui.profile.ProfileEditState` (identidad + borrador) con
+    `from(profile, taxonomy)`, `withDisplayName`/`withAvatarColorId`/`withPreferencesDraft`,
+    `isNameValid` y `toProfile(base, now)`. Sin imports Compose/Android. `toProfile` conserva
+    `base.preferences` tal cual (mismo `updatedAt`) si el borrador no cambió, de modo que editar solo la
+    identidad **no** cambia la firma ni invalida el Lote; si cambia una preferencia, reconstruye
+    `PreferenceProfile` con `updatedAt = now`; conserva `createdAt` y normaliza el nombre
+    (`ProfileName`); nombre inválido → `IllegalArgumentException`.
+  - Capa Compose delgada: `ProfileScreen` (LazyColumn, secciones "Mis preferencias", "Alergias e
+    intolerancias" y "Mi cocina", estado `rememberSaveable` + `ProfileEditStateSaver`,
+    `LaunchedEffect(profile)` y guardado por `onSaveProfile`), `ProfileIdentityEditor` (reutiliza
+    `AvatarPreview`, campo + helper + 8 muestras de `avatarColors` con anillo terracota y "Guardar"
+    deshabilitado con nombre inválido), `ProfileSectionRow` (resumen con labels de la Taxonomía y
+    chevron) y `ProfileEditorSheet` (hoja inferior `ModalBottomSheet` + enum `ProfileSection` que
+    envuelve **sin cambios** los ocho editores de `ui.preferences`).
+  - Integración: `MainShell` recibe `onSaveProfile` y enruta `MainTab.PROFILE -> ProfileScreen`
+    (Favoritos sigue con `SectionPlaceholder`); `SazonApp` guarda con `ProfileRepository.save` en un
+    `rememberCoroutineScope`; la observación existente recompone el armazón. Sin tocar dominio, Room,
+    la Firma, la Taxonomía, `app/build.gradle.kts` ni `gradle/libs.versions.toml`; sin dependencias
+    nuevas (la hoja usa `ModalBottomSheet` de Material 3, con `@OptIn(ExperimentalMaterial3Api::class)`).
+  - Test JVM `ProfileEditStateTest` (9 tests) con los escenarios 2-4 y 6-10 más la semántica del 8, con
+    casos negativos que no pasan en vacío.
+- Verificación ejecutada: `./gradlew testDebugUnitTest --tests "com.sazon.app.ui.profile.*"` (enfocado,
+  BUILD SUCCESSFUL) y `bash init.sh` (exit 0, `./gradlew test` + `./gradlew lint`, sin procesos largos);
+  parseo propio de los XML de resultados y del informe `lint-results-debug.xml`; inspección de imports
+  de `ProfileEditState`, de `git status` (solo cambian los ficheros previstos) y de que
+  `ui.preferences`, `app/build.gradle.kts` y `gradle/libs.versions.toml` no cambian.
+- Evidencia capturada: **198 tests, 0 fallos/errores/saltados** en 31 suites (9 nuevos:
+  `ProfileEditStateTest` 9; 189 preexistentes en verde); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; `init.sh` con código 0; `ProfileEditState` sin imports Compose/Android;
+  escenarios 2-4 y 6-10 verificados con firma (`PreferenceSignature`) real.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/profile/{ProfileEditState,ProfileScreen,ProfileIdentityEditor,
+  ProfileEditorSheet,ProfileSectionRow}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/onboarding/OnboardingPreferencesDraft.kt` (aditivo),
+  `app/src/main/java/com/sazon/app/ui/{MainShell,SazonApp}.kt` (modificados),
+  `app/src/test/java/com/sazon/app/ui/profile/ProfileEditStateTest.kt` (nuevo),
+  `docs/technical-discovery.md`, `docs/specs/profile-screen.md` (spec del planner, ya presente),
+  `feature_list.json` y este registro.
+- Hallazgos relevantes: la spec no incluye callbacks para entrar/salir del modo edición de identidad;
+  `ProfileIdentityEditor` añade `onEdit`/`onCancel` (necesarios para la UX del "Editar"/"Cancelar" de
+  `DESIGN.md`/`stitch-prompt`) sin cambiar los contratos puros. `ModalBottomSheet` sigue requiriendo
+  `@OptIn(ExperimentalMaterial3Api::class)` en el BOM actual (2026.02.01). La spec sugería
+  `ProfileEditorSheet(section, state, ...)`; se respeta esa firma.
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge el acabado visual
+  (hojas inferiores, chips, muestras, contraste, claro/oscuro) y las dos pruebas manuales exigidas
+  (editar una preferencia desde el Perfil se refleja igual que en el onboarding; cambiar nombre/avatar no
+  invalida el Lote); un defecto visual se corrige con feature correctiva. El round-trip del
+  `ProfileEditStateSaver` no se testea en JVM (capa Compose; retención manual), como en features previas.
+  La sección "Resumen de actividad", "Actualizar sugerencias", los ajustes y "Borrar mis datos" quedan
+  fuera de alcance por diseño (features propias).
+- Siguiente paso: validación independiente de `profile-screen` con `feature-validator`; después, commit
+  local de la rama `feature/profile-screen` (orquestador de `feature-flow`) y publicación por
+  `github-flow`.
+
+### Sesión 039
+
+- Fecha: 2026-10-09
+- Objetivo: validar `profile-screen` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Queda desbloqueada `activity-summary` (a la espera de `favorites`) y avanzada la ruta de
+  `manual-suggestions-refresh`.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); al ver la primera pasada en `UP-TO-DATE`, forzó
+  `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks` (28/28
+  tareas); parseó por su cuenta los XML de resultados y el informe `lint-results-debug.xml`, e
+  inspeccionó el código (pureza, reutilización de editores, integración en `MainShell`, alcance y
+  build/lockfile intactos).
+- Evidencia capturada: 31 suites, 198 tests, 0 fallos/errores/saltados (9 nuevos: `ProfileEditStateTest`
+  9; 189 preexistentes en verde); lint 0 errores y 13 warnings preexistentes, 0 referencias a `ui/profile`.
+  Escenarios 2-4 y 6-10 confirmados con casos negativos reales; verificación exigida #2: `PreferenceSignature.of`
+  igual al cambiar solo nombre o avatar y distinta al cambiar una preferencia, y `MainShell.kt:84` mantiene
+  `LaunchedEffect(profile.preferences)` de modo que la identidad sola no relanza `ensureBatch`; verificación
+  exigida #1: mismo motor `OnboardingPreferencesDraft` que el onboarding. `ProfileEditState` sin imports
+  Compose/Android; `ui.preferences/**` sin cambios; `OnboardingPreferencesDraft` aditivo; sin tocar dominio,
+  Room, Firma, Taxonomía, assets, `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (3 Low informativos, ninguno bloqueante): un nombre sin confirmar en el editor de
+  identidad puede arrastrarse a un guardado de preferencias (borde de UX, candidato a feature correctiva);
+  `ProfileEditStateSaver.restore` no es defensivo ante un estado guardado corrupto (patrón heredado);
+  KDoc obsoleto en `SectionPlaceholder.kt` que aún cita Perfil/Generador como placeholders.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge el
+  acabado visual (hojas inferiores, chips, muestras, contraste, claro/oscuro) y las dos pruebas manuales
+  exigidas (una preferencia editada desde el Perfil se refleja como en el onboarding; cambiar nombre/avatar
+  no invalida el Lote); un defecto visual se corrige con feature correctiva.
+- Siguiente paso: commit local de la rama `feature/profile-screen` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `generator-settings-step`.
 

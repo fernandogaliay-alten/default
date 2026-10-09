@@ -1,5 +1,6 @@
 package com.sazon.app.ui.onboarding
 
+import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.taxonomy.Servings
 import com.sazon.app.domain.taxonomy.Taxonomy
 
@@ -97,6 +98,25 @@ data class OnboardingPreferencesDraft(
     fun setServings(servings: Int, limits: Servings): OnboardingPreferencesDraft =
         copy(defaultServings = servings.coerceIn(limits.min, limits.max))
 
+    /**
+     * Reconstruye un [PreferenceProfile] con los nueve campos de preferencia del borrador y el
+     * [updatedAt] dado. Es la vuelta de [from]: permite al Perfil editar preferencias y volver a
+     * persistir el Perfil reutilizando el **mismo** motor de seleccion que el onboarding.
+     */
+    fun toPreferences(updatedAt: Long): PreferenceProfile =
+        PreferenceProfile(
+            dietPatternId = dietPatternId,
+            hardRestrictionIds = hardRestrictionIds,
+            softPreferenceIds = softPreferenceIds,
+            cuisineIds = cuisineIds,
+            preferredIngredientIds = preferredIngredientIds,
+            dislikedIngredientIds = dislikedIngredientIds,
+            difficultyId = difficultyId,
+            timeBucketId = timeBucketId,
+            defaultServings = defaultServings,
+            updatedAt = updatedAt,
+        )
+
     companion object {
         /**
          * Borrador inicial valido y derivado de la Taxonomia: primer `dietPatterns` por defecto
@@ -115,6 +135,24 @@ data class OnboardingPreferencesDraft(
                 difficultyId = taxonomy.difficulties.first().id,
                 timeBucketId = taxonomy.timeBuckets.first().id,
                 defaultServings = taxonomy.servings.default,
+            )
+
+        /**
+         * Deriva el borrador desde un [PreferenceProfile] ya persistido (Perfil editable). Copia los
+         * nueve campos de preferencia y **descarta** `updatedAt`, que no es una preferencia. Es
+         * aditivo: no altera [initial] ni ninguna operacion existente.
+         */
+        fun from(preferences: PreferenceProfile): OnboardingPreferencesDraft =
+            OnboardingPreferencesDraft(
+                dietPatternId = preferences.dietPatternId,
+                softPreferenceIds = preferences.softPreferenceIds,
+                cuisineIds = preferences.cuisineIds,
+                preferredIngredientIds = preferences.preferredIngredientIds,
+                dislikedIngredientIds = preferences.dislikedIngredientIds,
+                hardRestrictionIds = preferences.hardRestrictionIds,
+                difficultyId = preferences.difficultyId,
+                timeBucketId = preferences.timeBucketId,
+                defaultServings = preferences.defaultServings,
             )
     }
 }
