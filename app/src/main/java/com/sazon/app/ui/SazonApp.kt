@@ -61,16 +61,20 @@ fun SazonApp(
                 )
             }
 
-            AppDestination.MAIN -> MainShell(
-                profile = checkNotNull(current.profile) { "MAIN exige un Perfil" },
-                taxonomy = taxonomy,
-                suggestionBatchRepository = suggestionBatchRepository,
-                suggestionBatchService = suggestionBatchService,
-                seedRecipes = seedRecipes,
-                savedRecipes = emptyList(),
-                recentlyOpenedRecipes = emptyList(),
-                modifier = modifier,
-            )
+            AppDestination.MAIN -> {
+                val scope = rememberCoroutineScope()
+                MainShell(
+                    profile = checkNotNull(current.profile) { "MAIN exige un Perfil" },
+                    taxonomy = taxonomy,
+                    suggestionBatchRepository = suggestionBatchRepository,
+                    suggestionBatchService = suggestionBatchService,
+                    seedRecipes = seedRecipes,
+                    savedRecipes = emptyList(),
+                    recentlyOpenedRecipes = emptyList(),
+                    onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
+                    modifier = modifier,
+                )
+            }
         }
     }
 }

@@ -47,6 +47,7 @@ import com.sazon.app.ui.home.HomeSuggestions
 import com.sazon.app.ui.navigation.MainNavigationState
 import com.sazon.app.ui.navigation.MainTab
 import com.sazon.app.ui.navigation.PushedScreen
+import com.sazon.app.ui.profile.ProfileScreen
 import com.sazon.app.ui.theme.SazonComponents
 
 /**
@@ -59,9 +60,10 @@ import com.sazon.app.ui.theme.SazonComponents
  * resuelve, el carrusel pinta las recetas semilla empaquetadas ([HomeSuggestions]); no hay pantalla de
  * carga. La Home es offline: el unico generador conectado es `FakeRecipeGenerator` (sin red).
  *
- * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. Favoritos
- * y Perfil son todavia [SectionPlaceholder]; el Generador es real ([GeneratorFlow], pasos de ingredientes
- * y de ajustes).
+ * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. La
+ * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile]);
+ * Favoritos sigue siendo [SectionPlaceholder]. El Generador es real ([GeneratorFlow], pasos de
+ * ingredientes y de ajustes).
  */
 @Composable
 fun MainShell(
@@ -72,6 +74,7 @@ fun MainShell(
     seedRecipes: List<Recipe>,
     savedRecipes: List<Recipe>,
     recentlyOpenedRecipes: List<Recipe>,
+    onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var navigation by rememberSaveable(stateSaver = MainNavigationStateSaver) {
@@ -127,7 +130,11 @@ fun MainShell(
 
                         MainTab.FAVORITES -> SectionPlaceholder(title = "Favoritos")
 
-                        MainTab.PROFILE -> SectionPlaceholder(title = "Perfil")
+                        MainTab.PROFILE -> ProfileScreen(
+                            profile = profile,
+                            taxonomy = taxonomy,
+                            onSaveProfile = onSaveProfile,
+                        )
                     }
                 }
             }

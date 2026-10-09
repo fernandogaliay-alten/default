@@ -98,8 +98,9 @@ base aceptada del Perfil. Testeado en JVM (`SuggestionBatchPolicyTest`, `Suggest
 
 La **Home real y el armazon principal** viven en `com.sazon.app.ui`: `MainShell` es un `Scaffold` con
 la **barra de navegacion inferior** de tres destinos (Inicio · Favoritos · Perfil, `MainTab`) y el
-**FAB** "＋ Crear receta", y enruta el contenido por pestana (`ui.home.HomeScreen` para Inicio y
-`SectionPlaceholder` para Favoritos/Perfil/Generador). `HomeScreen` pinta los cuatro bloques **locales**
+**FAB** "＋ Crear receta", y enruta el contenido por pestana (`ui.home.HomeScreen` para Inicio,
+`ui.profile.ProfileScreen` para Perfil, `ui.generator.GeneratorFlow` en el Generador empujado y
+`SectionPlaceholder` para Favoritos). `HomeScreen` pinta los cuatro bloques **locales**
 de `DESIGN.md` (el bloque 2, Búsqueda con IA, es de `ai-search`): cabecera con saludo por franja
 horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas" con su
 estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com.sazon.app.ui.home`
@@ -148,7 +149,7 @@ asi se conserva al ir y volver del paso 2) y `GeneratorIngredientsScreen` (input
 chips de los anadidos con "×", contador con cifras tabulares y nube **colapsable** "Ingredientes
 sugeridos", sin iconos: "×" y "Atras" son texto). No se persiste el borrador en disco (asistente
 efimero). `MainShell` monta `GeneratorFlow` en el destino `GENERATOR` en lugar del `SectionPlaceholder`
-(que se sigue usando para Favoritos/Perfil). Ver `docs/specs/generator-ingredients-step.md`.
+(que se sigue usando para Favoritos). Ver `docs/specs/generator-ingredients-step.md`.
 
 El **paso de ajustes del Generador** ("Ajusta tu receta") vive en el mismo `com.sazon.app.ui.generator`.
 La logica/estado es **pura** y testeable en JVM: `GeneratorSettingsState` (`servings`, `mealTypeId`
@@ -170,6 +171,27 @@ callback de Perfil (`onEditProfile`) y guarda el borrador de ajustes con `rememb
 `profile-screen`). El primario "Generar recetas" no tiene efecto: la generacion es de
 `generation-flow-with-validation`; el estado **no** se convierte a `GenerationConstraints`. Ver
 `docs/specs/generator-settings-step.md`.
+
+La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
+en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,
+con `from(profile, taxonomy)` (normaliza el nombre y degrada un `avatarColorId` corrupto al primer
+`avatarColors`), las copias inmutables `withDisplayName`/`withAvatarColorId`/`withPreferencesDraft`,
+`isNameValid` y `toProfile(base, now)`. Materializa la regla "un editor, dos entradas": cada grupo de
+preferencias abre una **hoja inferior** (`ModalBottomSheet` de Material 3, `ProfileEditorSheet` con
+`ProfileSection`) que envuelve **sin cambios** los editores sin estado de `ui.preferences`
+(`DietPatternEditor`, `SoftPreferencesEditor`, `CuisinesEditor`, `IngredientsEditor`,
+`HardRestrictionsEditor`, `DifficultyEditor`, `TimeBucketEditor`, `ServingsStepper`);
+`ProfileIdentityEditor` reutiliza `AvatarPreview` y las ocho muestras de `avatarColors`, y las filas de
+resumen (`ProfileSectionRow`) resuelven labels de la Taxonomia con respaldo al `id`. La garantia clave:
+`toProfile` **conserva** `base.preferences` tal cual (mismo `updatedAt`) si el borrador no cambio, de
+modo que editar solo la identidad **no** cambia la Firma ni invalida el Lote; cambiar una preferencia
+reconstruye el `PreferenceProfile` con `updatedAt = now` y si cambia la firma, y `createdAt` se
+conserva. `OnboardingPreferencesDraft` se amplia **aditivo** con `from(preferences)` y
+`toPreferences(updatedAt)`: el **mismo** motor de seleccion que el onboarding, sin divergencia. El
+guardado usa `ProfileRepository.save` por observacion: `MainShell` recibe `onSaveProfile` y `SazonApp`
+lo cablea con un `rememberCoroutineScope`, de modo que el armazon se recompone. Resumen de actividad,
+"Actualizar sugerencias", los ajustes y "Borrar mis datos" quedan fuera de alcance (features propias).
+Ver `docs/specs/profile-screen.md`.
 
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
