@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.ProfileRepository
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
@@ -36,6 +37,7 @@ fun SazonApp(
     taxonomy: Taxonomy,
     suggestionBatchRepository: SuggestionBatchRepository,
     suggestionBatchService: SuggestionBatchService,
+    generationService: GenerationService,
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
 ) {
@@ -68,6 +70,7 @@ fun SazonApp(
                     taxonomy = taxonomy,
                     suggestionBatchRepository = suggestionBatchRepository,
                     suggestionBatchService = suggestionBatchService,
+                    generationService = generationService,
                     seedRecipes = seedRecipes,
                     savedRecipes = emptyList(),
                     recentlyOpenedRecipes = emptyList(),

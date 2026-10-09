@@ -11,20 +11,19 @@
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
-  `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`
-  y `profile-screen` (validador independiente, veredicto `accept`). El onboarding queda **completo**
-  (7 pasos) y persiste el Perfil al cerrar; el Generador tiene ya sus pasos 1 y 2 reales y la pestaña
-  Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding).
-- Siguiente feature en orden de lista: `generation-flow-with-validation` (depende, entre otras, de
-  `generator-settings-step`, ya `accepted`).
+  `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
+  `profile-screen` y `generation-flow-with-validation` (validador independiente, veredicto `accept`). El
+  onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte
+  vertical principal del MVP (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y la
+  pestaña Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding).
+- Siguiente feature en orden de lista: `results-screen` (su dependencia ya está `accepted`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-09, merge de `origin/main` en `feature/profile-screen`): `init.sh`
-  con Git Bash exit 0, **209 tests/0 fallos/errores/saltados** en 32 suites (9 nuevos
-  `ProfileEditStateTest` y 11 nuevos `GeneratorSettingsStateTest`); lint 0 errores y 13 warnings
-  preexistentes. Ambas features tenían veredicto `accept` de validador independiente
-  (`generator-settings-step`: 200 tests; `profile-screen`: 198 tests). Merge resuelto conservando
-  ambas aportaciones.
+- Última verificación (2026-10-09, validación independiente de `generation-flow-with-validation`):
+  `init.sh` con Git Bash exit 0, **223 tests/0 fallos/errores/saltados** en 35 suites (14 nuevos:
+  `GenerationServiceTest` 6, `GeneratorRequestFactoryTest` 4, `GeneratorProgressMessagesTest` 4; 209
+  preexistentes en verde); lint 0 errores y 13 warnings preexistentes (0 en ficheros de la feature). El
+  corte vertical principal del MVP queda validado de forma independiente con veredicto `accept`.
 
 ## Registro de sesiones
 
@@ -1526,4 +1525,118 @@
   un defecto visual se corrige con una feature correctiva.
 - Siguiente paso: commit local de la rama `feature/generator-settings-step` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `generation-flow-with-validation`.
+
+### Sesión 042
+
+- Fecha: 2026-10-09
+- Objetivo: implementar `generation-flow-with-validation` (corte vertical principal del MVP: al pulsar
+  "Generar recetas", pedir recetas al generador, descartar las inseguras con el `RecipeValidator` y
+  mostrar solo las aceptadas, con un estado de carga cancelable) según
+  `docs/specs/generation-flow-with-validation.md`.
+- Completado:
+  - Orquestación **pura** en `com.sazon.app.domain.generation`: `GenerationResult` (`accepted`,
+    `discarded`, `aiUnavailable`) y `GenerationService(generator, taxonomy).generate(ingredients,
+    constraints)`, que construye las `RecipeConstraints` con el `profile` **efectivo** de las
+    `GenerationConstraints`, llama a `RecipeGenerator.generateFromIngredients`, valida **receta a
+    receta** con `RecipeValidator.validateRecipe` (no usa `validateResponse`), re-lanza
+    `CancellationException` y convierte cualquier otra `Exception` en `aiUnavailable = true` con listas
+    vacías, sin propagar. Sin imports Compose/Android.
+  - Mapeo y microcopy **puros** en `com.sazon.app.ui.generator`: `GeneratorRequestFactory.ingredients`
+    (`quantity = 0.0`, `unit = null`, `isPantry = false`, conservando `name`/`ingredientId`) y
+    `GeneratorRequestFactory.constraints` (Perfil efectivo con `hardRestrictionIds` del paso de ajustes,
+    notas en blanco → `null`); `GeneratorProgressMessages` (cabecera fija + sublíneas rotatorias desde
+    la Taxonomía y los ajustes).
+  - Capa Compose **delgada**: `GeneratorGeneratingScreen` (animación terracota dibujada con `Canvas`,
+    titular Manrope, sublíneas rotatorias con `LaunchedEffect`+`delay` y "Cancelar" secundario) y
+    `GeneratorResultsPreview` (seam mínimo: **solo** `accepted` con título + `RecipeCardFormat.metaLine`,
+    aviso ámbar `tertiaryContainer` si `aiUnavailable` y estado vacío; acciones "Cambiar ingredientes" y
+    "Atrás").
+  - `GeneratorFlow` recibe `generationService`, guarda `result`/`generationId` en `remember` (no
+    `rememberSaveable`), dispara la generación desde "Generar recetas" en `SETTINGS`, respeta
+    `MIN_VISIBLE_MILLIS` (~900 ms), cancela poniendo el token a `null` y pinta por *stage* (preview →
+    generación → asistente). `MainShell`, `SazonApp` y `MainActivity` encadenan
+    `GenerationService(generator = FakeRecipeGenerator(), taxonomy = taxonomy)` (sin DI).
+  - Tests JVM con casos negativos: `GenerationServiceTest` (escenarios 1-4, 6-7, incluido el **caso
+    negativo obligatorio**), `GeneratorRequestFactoryTest` y `GeneratorProgressMessagesTest`. Sin
+    dependencias nuevas; no se tocan `app/build.gradle.kts`, `gradle/libs.versions.toml`,
+    `domain.generator` (`GenerationConstraints`), `domain.validation`, `domain.prompt`,
+    `domain.suggestions`, `data/**`, la Taxonomía, `seed-recipes.json` ni `init.sh`.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); `./gradlew testDebugUnitTest --tests ...` enfocado (BUILD
+  SUCCESSFUL); parseo propio de los XML de resultados y del informe `lint-results-debug.xml`;
+  inspección de imports de la lógica pura y de `git status` (solo cambian los ficheros previstos).
+- Evidencia capturada: **223 tests, 0 fallos/errores/saltados** en 35 suites (14 nuevos:
+  `GenerationServiceTest` 6, `GeneratorRequestFactoryTest` 4, `GeneratorProgressMessagesTest` 4; 209
+  preexistentes en verde); lint 0 errores y 13 warnings preexistentes (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en ficheros de la feature;
+  `init.sh` con código 0; `domain.generation` y `GeneratorRequestFactory`/`GeneratorProgressMessages`
+  sin imports Compose/Android. Corregido un `AutoboxingStateCreation` (Hint) usando `mutableIntStateOf`
+  para volver a los 13 warnings preexistentes.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/domain/generation/{GenerationResult,GenerationService}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/generator/{GeneratorRequestFactory,GeneratorProgressMessages,
+  GeneratorGeneratingScreen,GeneratorResultsPreview}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/generator/GeneratorFlow.kt` (modificado),
+  `app/src/main/java/com/sazon/app/ui/{MainShell,SazonApp}.kt` y `MainActivity.kt` (modificados),
+  `app/src/test/java/com/sazon/app/domain/generation/GenerationServiceTest.kt`,
+  `app/src/test/java/com/sazon/app/ui/generator/{GeneratorRequestFactoryTest,
+  GeneratorProgressMessagesTest}.kt` (nuevos), `docs/technical-discovery.md`, `feature_list.json` y
+  este registro.
+- Hallazgos relevantes: ninguno de comportamiento; las firmas de la spec compilaron con las APIs reales
+  (`RecipeGenerator`, `GenerationConstraints`, `RecipeValidator`, `Taxonomy.timeBucket`, los tokens del
+  tema) sin adaptaciones. El fixture "Pollo al ajillo" se descarta por `INCOHERENT` (sus pasos suman 25
+  min frente a `totalMinutes = 35`), tal y como la spec ya documentó: en el camino feliz entran tres
+  recetas, no cuatro. Se creó un único `FakeRecipeGenerator` compartido por el Lote y la generación en
+  `MainActivity`. El resultado no se persiste ni se ordena (no-goals).
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge el acabado visual
+  (animación, ritmo de las sublíneas, densidad del preview, claro/oscuro) y las dos pruebas de emulador
+  exigidas ("Cancelar" responde volviendo a los ajustes; sin Cancelar solo se listan recetas aceptadas y
+  el "Bocadillo de tomate" del falso no aparece con gluten); un defecto visual se corrige con una feature
+  correctiva. Rotar durante la generación o el preview vuelve a los ajustes (el resultado vive en
+  `remember`), como documenta la spec.
+- Siguiente paso: validación independiente de `generation-flow-with-validation` con `feature-validator`;
+  después, commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`. La
+  siguiente feature en lista es `results-screen`.
+
+### Sesión 043
+
+- Fecha: 2026-10-09
+- Objetivo: validar `generation-flow-with-validation` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente; registrado el detalle en
+  `docs/validations/generation-flow-with-validation.md`. Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`), `./gradlew testDebugUnitTest --rerun-tasks --no-daemon` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks` (28/28 tareas); parseó por su cuenta los XML de resultados y el informe
+  de lint, e inspeccionó el diff completo.
+- Evidencia capturada: 35 suites, **223 tests, 0 fallos/errores/saltados** (`GenerationServiceTest` 6,
+  `GeneratorRequestFactoryTest` 4, `GeneratorProgressMessagesTest` 4 y 209 preexistentes); lint 0 errores
+  y 13 warnings preexistentes, 0 en ficheros de la feature; el validador confirmó el caso negativo
+  obligatorio (Pan libre con gluten → "Bocadillo de tomate" descartado con `HARD_RESTRICTION` y nunca en
+  `accepted`, con `.single{}` que no pasa en vacío), los escenarios 1/3/4/6/7 (Pollo al ajillo por
+  `INCOHERENT` y por `DIET_PATTERN` vegetarian; restricciones del Perfil efectivo en ambos sentidos;
+  `CancellationException` re-lanzada antes del `catch(Exception)`; generador que lanza → `aiUnavailable`
+  sin propagar), la pureza de `domain.generation` y de
+  `GeneratorRequestFactory`/`GeneratorProgressMessages` (sin imports Android/Compose), el seam
+  `GeneratorResultsPreview` que pinta solo `accepted` sin pre-empting `results-screen`
+  (`PushedScreen.RESULTS` sin añadir) y la disciplina de alcance (sin cambios en build/lockfile,
+  `domain.generator`, `domain.validation`, `domain.recipe`, `domain.prompt`, `domain.suggestions`,
+  `data/**`, la Taxonomía, `seed-recipes.json` ni `init.sh`).
+- Ficheros actualizados: `feature_list.json`, `docs/validations/generation-flow-with-validation.md` y este
+  registro.
+- Hallazgos del validador (3 Low, informativos, ninguno bloqueante): cualquier `Exception` se mapea a
+  `aiUnavailable` (decisión de la spec y pregunta abierta 1); el `Validator Checklist` de la spec queda
+  sin marcar; los escenarios 5 (Cancelar) y los *stages* Compose no se testean en JVM (para revisión
+  manual, según AGENTS.md). Nota de entorno: una pasada forzada murió con
+  `Gradle build daemon has been stopped` (probable `--stop` de otro worktree); la re-ejecución con
+  `--no-daemon` quedó en verde, sin relación con la feature.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge el
+  acabado visual (animación, ritmo de las sublíneas, densidad del preview, claro/oscuro) y las dos pruebas
+  de emulador exigidas ("Cancelar" responde volviendo a los ajustes; sin Cancelar solo se listan recetas
+  aceptadas y el "Bocadillo de tomate" del falso no aparece con gluten); un defecto visual se corrige con
+  una feature correctiva. Rotar durante la generación o el preview vuelve a los ajustes (el resultado vive
+  en `remember`), como documenta la spec.
+- Siguiente paso: commit local de la rama `feature/generation-flow-with-validation` (lo hace el
+  orquestador de `feature-flow`); la publicación queda para `github-flow`. Después, especificar
+  `results-screen` (su dependencia ya está `accepted`) con `feature-spec`.
 

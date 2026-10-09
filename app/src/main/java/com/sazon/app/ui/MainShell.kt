@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
@@ -63,7 +64,7 @@ import com.sazon.app.ui.theme.SazonComponents
  * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. La
  * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile]);
  * Favoritos sigue siendo [SectionPlaceholder]. El Generador es real ([GeneratorFlow], pasos de
- * ingredientes y de ajustes).
+ * ingredientes y de ajustes) y dispara la generacion validada a traves de [GenerationService].
  */
 @Composable
 fun MainShell(
@@ -71,6 +72,7 @@ fun MainShell(
     taxonomy: Taxonomy,
     suggestionBatchRepository: SuggestionBatchRepository,
     suggestionBatchService: SuggestionBatchService,
+    generationService: GenerationService,
     seedRecipes: List<Recipe>,
     savedRecipes: List<Recipe>,
     recentlyOpenedRecipes: List<Recipe>,
@@ -147,6 +149,7 @@ fun MainShell(
                 GeneratorFlow(
                     taxonomy = taxonomy,
                     preferences = profile.preferences,
+                    generationService = generationService,
                     onClose = { navigation = navigation.pop() },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                 )

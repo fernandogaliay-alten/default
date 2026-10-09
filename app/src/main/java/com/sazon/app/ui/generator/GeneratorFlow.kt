@@ -14,18 +14,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.sazon.app.domain.generation.GenerationResult
+import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonSpacing
+import kotlinx.coroutines.delay
+
+/** Duracion minima visible del estado de carga para que "Cancelar" sea observable (UX). */
+private const val MIN_VISIBLE_MILLIS = 900L
 
 /**
  * Huesped del asistente del Generador dentro de la pagina empujada [PushedScreen.GENERATOR]
@@ -37,17 +45,23 @@ import com.sazon.app.ui.theme.SazonSpacing
  * titulo del paso y el primario anclado (`step.primaryLabel`), deshabilitado en [GeneratorStep.INGREDIENTS]
  * mientras `!ingredients.canContinue`.
  *
- * "Atras" es `step.previous() ?: onClose()` (desde el paso 1 cierra el Generador, desde el 2 vuelve al 1
- * conservando los ingredientes). El primario es `step.next()`: en [GeneratorStep.SETTINGS] no tiene
- * efecto (la generacion es de `generation-flow-with-validation`).
+ * En [GeneratorStep.SETTINGS] el primario "Generar recetas" **dispara** la generacion: incrementa el token
+ * `generationId`, que relanza el `LaunchedEffect`. Este llama a [GenerationService.generate] con los
+ * ingredientes y las constraints mapeados por [GeneratorRequestFactory], respeta la duracion minima
+ * visible y fija el [GenerationResult]. El pintado va por *stage*: el preview si hay resultado, la
+ * pantalla de generacion si hay token, y si no el asistente de edicion.
  *
- * El paso 1 ([GeneratorIngredientsScreen]) y el paso 2 ([GeneratorSettingsScreen]) son de esta feature;
- * `onEditProfile` navega a la pestana Perfil (el Perfil real es de `profile-screen`).
+ * "Cancelar" pone el token a `null` (cancela la corrutina; [GenerationService] re-lanza la
+ * `CancellationException`) y limpia el resultado; "Cambiar ingredientes" del preview hace lo mismo para
+ * volver a los ajustes. El paso 1 ([GeneratorIngredientsScreen]) y el paso 2 ([GeneratorSettingsScreen])
+ * son las pantallas de edicion; `onEditProfile` navega a la pestana Perfil (el Perfil real es de
+ * `profile-screen`).
  */
 @Composable
 fun GeneratorFlow(
     taxonomy: Taxonomy,
     preferences: PreferenceProfile,
+    generationService: GenerationService,
     onClose: () -> Unit,
     onEditProfile: () -> Unit,
     modifier: Modifier = Modifier,
@@ -61,56 +75,100 @@ fun GeneratorFlow(
     var settings by rememberSaveable(stateSaver = GeneratorSettingsStateSaver) {
         mutableStateOf(GeneratorSettingsState.initial(preferences, taxonomy.servings))
     }
+    // El resultado y el token de generacion viven en `remember` (no `rememberSaveable`): `Recipe` no es
+    // serializable trivialmente y rotar vuelve a los ajustes (Unknown de la spec).
+    var result by remember { mutableStateOf<GenerationResult?>(null) }
+    var generationId by remember { mutableStateOf<Int?>(null) }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            GeneratorHeader(
-                title = step.title,
-                onBack = {
-                    val previous = step.previous()
-                    if (previous != null) step = previous else onClose()
-                },
-            )
-        },
-        bottomBar = {
-            GeneratorPrimaryBar(
-                label = step.primaryLabel,
-                enabled = step != GeneratorStep.INGREDIENTS || ingredients.canContinue,
-                onClick = { step.next()?.let { step = it } },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = SazonSpacing.lg),
-        ) {
-            when (step) {
-                GeneratorStep.INGREDIENTS -> GeneratorIngredientsScreen(
-                    state = ingredients,
-                    taxonomy = taxonomy,
-                    onQueryChange = { ingredients = ingredients.typeQuery(it) },
-                    onAddFree = { ingredients = ingredients.addFree() },
-                    onToggleTaxonomy = { ingredients = ingredients.toggleTaxonomy(it) },
-                    onRemove = { ingredients = ingredients.remove(it) },
-                )
+    LaunchedEffect(generationId) {
+        generationId ?: return@LaunchedEffect
+        val startedAt = System.currentTimeMillis()
+        val generated = generationService.generate(
+            ingredients = GeneratorRequestFactory.ingredients(ingredients),
+            constraints = GeneratorRequestFactory.constraints(settings, preferences),
+        )
+        val elapsed = System.currentTimeMillis() - startedAt
+        if (elapsed < MIN_VISIBLE_MILLIS) delay(MIN_VISIBLE_MILLIS - elapsed)
+        result = generated
+    }
 
-                GeneratorStep.SETTINGS -> GeneratorSettingsScreen(
-                    state = settings,
-                    taxonomy = taxonomy,
-                    onServingsChange = { settings = settings.setServings(it, taxonomy.servings) },
-                    onMealTypeSelect = { settings = settings.selectMealType(it) },
-                    onTimeBucketSelect = { settings = settings.selectTimeBucket(it) },
-                    onDifficultySelect = { settings = settings.selectDifficulty(it) },
-                    onToggleRestriction = { settings = settings.toggleHardRestriction(it) },
-                    onClearRestrictions = { settings = settings.clearHardRestrictions() },
-                    onNotesChange = { settings = settings.typeNotes(it) },
-                    onEditProfile = onEditProfile,
+    when {
+        result != null -> GeneratorResultsPreview(
+            result = checkNotNull(result),
+            taxonomy = taxonomy,
+            onBack = onClose,
+            onChangeIngredients = {
+                generationId = null
+                result = null
+            },
+            modifier = modifier,
+        )
+
+        generationId != null -> GeneratorGeneratingScreen(
+            headline = GeneratorProgressMessages.HEADLINE,
+            subLines = GeneratorProgressMessages.subLines(settings, taxonomy),
+            onCancel = {
+                generationId = null
+                result = null
+            },
+            modifier = modifier,
+        )
+
+        else -> Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                GeneratorHeader(
+                    title = step.title,
+                    onBack = {
+                        val previous = step.previous()
+                        if (previous != null) step = previous else onClose()
+                    },
                 )
+            },
+            bottomBar = {
+                GeneratorPrimaryBar(
+                    label = step.primaryLabel,
+                    enabled = step != GeneratorStep.INGREDIENTS || ingredients.canContinue,
+                    onClick = {
+                        when (step) {
+                            GeneratorStep.INGREDIENTS -> step.next()?.let { step = it }
+                            GeneratorStep.SETTINGS -> generationId = (generationId ?: 0) + 1
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = SazonSpacing.lg),
+            ) {
+                when (step) {
+                    GeneratorStep.INGREDIENTS -> GeneratorIngredientsScreen(
+                        state = ingredients,
+                        taxonomy = taxonomy,
+                        onQueryChange = { ingredients = ingredients.typeQuery(it) },
+                        onAddFree = { ingredients = ingredients.addFree() },
+                        onToggleTaxonomy = { ingredients = ingredients.toggleTaxonomy(it) },
+                        onRemove = { ingredients = ingredients.remove(it) },
+                    )
+
+                    GeneratorStep.SETTINGS -> GeneratorSettingsScreen(
+                        state = settings,
+                        taxonomy = taxonomy,
+                        onServingsChange = { settings = settings.setServings(it, taxonomy.servings) },
+                        onMealTypeSelect = { settings = settings.selectMealType(it) },
+                        onTimeBucketSelect = { settings = settings.selectTimeBucket(it) },
+                        onDifficultySelect = { settings = settings.selectDifficulty(it) },
+                        onToggleRestriction = { settings = settings.toggleHardRestriction(it) },
+                        onClearRestrictions = { settings = settings.clearHardRestrictions() },
+                        onNotesChange = { settings = settings.typeNotes(it) },
+                        onEditProfile = onEditProfile,
+                    )
+                }
             }
         }
     }
