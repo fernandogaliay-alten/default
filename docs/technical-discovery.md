@@ -111,9 +111,10 @@ libreria: el `Saver` de `rememberSaveable` vive en la capa Compose). `MainActivi
 (`FakeRecipeGenerator`, sin red) + la Taxonomia y el catalogo semilla; `SazonApp` observa el
 `UserProfile` completo y monta `MainShell`. `MainShell` **consume el Lote tal cual**:
 `SuggestionBatchRepository.observe()` alimenta el carrusel y `SuggestionBatchService.ensureBatch` se
-llama una vez al entrar (politica cache-first ya aceptada); mientras el Lote no se resuelve, la Home
-pinta las recetas semilla empaquetadas (`HomeSuggestions.visible`) y nunca muestra una pantalla de
-carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
+llama una vez al entrar (politica cache-first ya aceptada); el usuario tambien puede **forzarlo** desde
+la seccion "Sugerencias" del Perfil (`ensureBatch(..., force = true)`), que reusa el mismo Lote
+observado. Mientras el Lote no se resuelve, la Home pinta las recetas semilla empaquetadas
+(`HomeSuggestions.visible`) y nunca muestra una pantalla de carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
 `docs/specs/home-offline-blocks.md`.
 
 El **filtrado local de "Tus recetas"** vive en `com.sazon.app.ui.filters`: `LocalResultFilter` (seleccion
@@ -189,9 +190,16 @@ reconstruye el `PreferenceProfile` con `updatedAt = now` y si cambia la firma, y
 conserva. `OnboardingPreferencesDraft` se amplia **aditivo** con `from(preferences)` y
 `toPreferences(updatedAt)`: el **mismo** motor de seleccion que el onboarding, sin divergencia. El
 guardado usa `ProfileRepository.save` por observacion: `MainShell` recibe `onSaveProfile` y `SazonApp`
-lo cablea con un `rememberCoroutineScope`, de modo que el armazon se recompone. Resumen de actividad,
-"Actualizar sugerencias", los ajustes y "Borrar mis datos" quedan fuera de alcance (features propias).
-Ver `docs/specs/profile-screen.md`.
+lo cablea con un `rememberCoroutineScope`, de modo que el armazon se recompone. La seccion
+**"Sugerencias"** (`ProfileSuggestionsSection`) se pinta tras la cabecera de identidad y antes de "Mis
+preferencias": muestra la antiguedad del Lote observado y ofrece el refresco manual. Su formateo de
+antiguedad (`SuggestionsRefreshFormat`, puro, sin Compose/Android) deriva "hoy"/"hace N dias" de
+`SuggestionBatch.generatedAt`; `MainShell` pasa `batch?.generatedAt`, un estado de UI "en vuelo" (que
+deshabilita el boton y evita dobles disparos) y un callback que llama a
+`SuggestionBatchService.ensureBatch(profile.preferences, force = true)` **sin** tocar
+`ProfileRepository` (el refresco no cambia ninguna preferencia). Resumen de actividad, los ajustes y
+"Borrar mis datos" quedan fuera de alcance (features propias).
+Ver `docs/specs/profile-screen.md` y `docs/specs/manual-suggestions-refresh.md`.
 
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
