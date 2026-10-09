@@ -74,6 +74,16 @@ Run the repo standard gate and focused checks when practical. If checks are expe
 
 If `init.sh` exists after a runnable baseline has been created, treat it as the standard non-blocking startup/verification gate. It should execute the relevant checks and fail on errors. If it only prints commands while the repo is already bootstrapped, raise a `revise` finding with a concrete repair brief. It must not start long-running processes such as a dev server.
 
+#### Gradle daemon hygiene
+
+`init.sh` already stops the Gradle daemons at exit. When you run `./gradlew` **directly** for verification (e.g. `--rerun-tasks`), stop the daemon in the same shell command so the command's process tree empties; otherwise a long-lived Gradle daemon can leave the shell tool hanging. Wrap each direct invocation like this:
+
+```bash
+trap './gradlew --stop >/dev/null 2>&1 || true' EXIT
+timeout "${SAZON_BUILD_TIMEOUT:-1800}" ./gradlew testDebugUnitTest --rerun-tasks
+timeout "${SAZON_BUILD_TIMEOUT:-1800}" ./gradlew lint --rerun-tasks
+```
+
 Use this hierarchy:
 
 1. static/syntax checks,
