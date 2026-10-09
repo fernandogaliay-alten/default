@@ -17,7 +17,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.filters.LocalResultFilter
+import com.sazon.app.ui.filters.LocalResultFilters
+import com.sazon.app.ui.filters.ResultFilterRow
 import com.sazon.app.ui.onboarding.AvatarPreview
 import com.sazon.app.ui.theme.SazonInversePrimary
 import com.sazon.app.ui.theme.SazonPillShape
@@ -58,6 +67,9 @@ fun HomeScreen(
 ) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val identity = remember(profile, taxonomy) { HomeIdentity.from(profile, taxonomy) }
+    var filter by rememberSaveable(stateSaver = LocalResultFilterSaver) {
+        mutableStateOf<LocalResultFilter>(LocalResultFilter.All)
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -72,7 +84,14 @@ fun HomeScreen(
         }
         item { HeroCard(onOpenGenerator = onOpenGenerator) }
         item { SuggestionsSection(suggestions = suggestions, taxonomy = taxonomy) }
-        item { RecipesSection(recipes = recipes, taxonomy = taxonomy) }
+        item {
+            RecipesSection(
+                recipes = recipes,
+                taxonomy = taxonomy,
+                filter = filter,
+                onSelect = { filter = it },
+            )
+        }
     }
 }
 
@@ -172,7 +191,13 @@ private fun SuggestionsSection(
 private fun RecipesSection(
     recipes: HomeRecipes,
     taxonomy: Taxonomy,
+    filter: LocalResultFilter,
+    onSelect: (LocalResultFilter) -> Unit,
 ) {
+    val allRecipes = recipes.saved + recipes.recentlyOpened
+    val categories = LocalResultFilters.categoriesIn(allRecipes, taxonomy)
+    val filtered = recipes.filteredBy(filter, taxonomy)
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(SazonSpacing.sm),
@@ -182,22 +207,37 @@ private fun RecipesSection(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        HomeRecipesGroup(
-            title = "Guardadas",
-            recipes = recipes.saved,
-            taxonomy = taxonomy,
-        )
-        HomeRecipesGroup(
-            title = "Abiertas hace poco",
-            recipes = recipes.recentlyOpened,
-            taxonomy = taxonomy,
-        )
         if (recipes.isEmpty) {
             Text(
                 text = "Cuando guardes una receta aparecerá aquí.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        } else {
+            ResultFilterRow(
+                taxonomy = taxonomy,
+                categories = categories,
+                selected = filter,
+                onSelect = onSelect,
+            )
+            if (filtered.isEmpty) {
+                Text(
+                    text = "No hay recetas con este filtro.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                HomeRecipesGroup(
+                    title = "Guardadas",
+                    recipes = filtered.saved,
+                    taxonomy = taxonomy,
+                )
+                HomeRecipesGroup(
+                    title = "Abiertas hace poco",
+                    recipes = filtered.recentlyOpened,
+                    taxonomy = taxonomy,
+                )
+            }
         }
     }
 }
@@ -233,3 +273,13 @@ private fun HomeRecipesGroup(
         }
     }
 }
+
+/**
+ * Saver de [LocalResultFilter] para `rememberSaveable`, en la capa Compose: mantiene la logica pura
+ * libre de Compose. Guarda la [LocalResultFilter.key] y la restaura con [LocalResultFilters.fromKey]
+ * (una clave desconocida degrada a "Todas").
+ */
+private val LocalResultFilterSaver: Saver<LocalResultFilter, Any> = listSaver(
+    save = { filter -> listOf(filter.key) },
+    restore = { saved -> LocalResultFilters.fromKey(saved[0] as String) },
+)

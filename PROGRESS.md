@@ -10,18 +10,16 @@
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
-  `onboarding-diet-style-cuisines`, `onboarding-ingredients-safety-kitchen` y `suggestion-batch-cache`
-  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste
-  el Perfil al cerrar.
-- Siguiente feature en orden de lista: `local-result-filters` / `generator-ingredients-step`
-  (dependen de `home-offline-blocks`); se desbloquean cuando esta se acepte.
-- Feature en curso: `home-offline-blocks` (`passing`: implementada y autoverificada, pendiente de
-  validación independiente). WIP = 1.
+  `onboarding-diet-style-cuisines`, `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
+  `home-offline-blocks` y `local-result-filters` (validador independiente, veredicto `accept`). El
+  onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar.
+- Siguiente feature en orden de lista: `generator-ingredients-step` (depende de `home-offline-blocks`,
+  ya `accepted`).
+- Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-08 (`home-offline-blocks`: `init.sh` exit 0, **159 tests/0 fallos** en
-  27 suites, 27 nuevos — `HomeGreetingTest` 7, `MainNavigationStateTest` 6, `HomeIdentityTest` 4,
-  `RecipeCardFormatTest` 4, `HomeRecipesTest` 3, `HomeSuggestionsTest` 3; lint 0 errores y 13 warnings
-  preexistentes, ninguno en ficheros de la feature)
+- Última verificación: 2026-10-09 (`local-result-filters`: `init.sh` exit 0, **172 tests/0 fallos** en
+  28 suites, 13 nuevos — `LocalResultFilterTest` 8, `HomeRecipesTest` 8 (+5 de `filteredBy`); lint 0
+  errores y 13 warnings preexistentes, ninguno en ficheros de la feature)
 
 ## Registro de sesiones
 
@@ -1131,4 +1129,106 @@
 - Siguiente paso: commit local de la rama `feature/home-offline-blocks` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `local-result-filters`,
   `generator-ingredients-step` o `profile-screen`.
+
+### Sesión 034
+
+- Fecha: 2026-10-09
+- Objetivo: implementar `local-result-filters` (filtrado local, sin red, de las recetas del dispositivo
+  en el bloque "Tus recetas": categoría + derivados "Rápido"/"Vegetariano") según
+  `docs/specs/local-result-filters.md`. Sesión reanudada: la ejecución previa dejó el trabajo sin
+  commitear; esta sesión lo revisa, completa lo que faltaba (documentación) y lo autoverifica sin
+  rehacer lo ya válido.
+- Completado:
+  - Lógica **pura** en `com.sazon.app.ui.filters`: `LocalResultFilter` (selección única `All`,
+    `Category(categoryId)`, `Fast` y `Vegetarian`, cada una con `key` estable) y el `object`
+    `LocalResultFilters` con `visible(recipes, filter, taxonomy)` (los cuatro predicados, orden
+    preservado), `vegetarianTags(taxonomy)` (derivado de `dietPatterns[vegetarian].excludedTags` con
+    respaldo constante `meat`/`poultry`/`fish`/`seafood`), `categoriesIn(recipes, taxonomy)` (categorías
+    presentes, sin duplicados, en orden de `taxonomy.recipeCategories`, ignorando ids desconocidos),
+    `label(...)`, `isDerived(...)`, `fromKey(...)` y `FAST_MAX_MINUTES = 30`. Sin imports de
+    Compose/Android (solo `domain.recipe`/`domain.taxonomy`), testeable en JVM.
+  - Fila de chips `ResultFilterRow` (`FilterChip` de Material 3, sin dependencias nuevas): "Todas"
+    primero, una chip por categoría presente, y "Rápido"/"Vegetariano" agrupados al final (tras un
+    separador) y con el acento **oliva** (`secondary`) al seleccionarse, frente al terracota
+    (`primary`) de las categorías; etiquetas vía `LocalResultFilters.label`, tokens del tema sin hex
+    sueltos.
+  - Integración en la Home: `HomeRecipes.filteredBy(filter, taxonomy)` (puro) acota `saved` y
+    `recentlyOpened` de forma independiente; `HomeScreen` guarda la selección con
+    `rememberSaveable(stateSaver = LocalResultFilterSaver)` (Saver en la capa Compose sobre `key`/
+    `fromKey`) y `RecipesSection` construye las categorías presentes, pinta la fila y, si el filtrado
+    queda vacío, la línea "No hay recetas con este filtro."; si el bloque **sin filtrar** llega vacío
+    solo pinta la línea de usuario nuevo (sin chips).
+  - Tests JVM: `LocalResultFilterTest` (escenarios 1-5 y claves, con frontera 30/31 y caso negativo de
+    tags animales) y `HomeRecipesTest` ampliado (casos de `filteredBy`). Sin Favoritos, sin buscador por
+    texto, sin red, sin persistencia y sin tocar `Recipe`/la Taxonomía/`seed-recipes.json`/
+    `domain.suggestions`; sin dependencias nuevas.
+  - `docs/technical-discovery.md` ampliado con la ubicación y garantías de `ui.filters` y su aplicación
+    al bloque "Tus recetas".
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados
+  (`test-results/testDebugUnitTest/TEST-*.xml`) y agrupación del informe `lint-results-debug.xml`;
+  inspección de imports de la lógica pura, de que no cambian `app/build.gradle.kts` ni
+  `gradle/libs.versions.toml` y de que no se tocan `Recipe`, la Taxonomía, `seed-recipes.json` ni
+  `domain.suggestions`/`data.suggestions`.
+- Evidencia capturada: **172 tests, 0 fallos/errores/saltados** en 28 suites (13 nuevos:
+  `LocalResultFilterTest` 8 y `HomeRecipesTest` 8 — de 3 a 8, +5 de `filteredBy`; 159 preexistentes en
+  verde); lint 0 errores y 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en ficheros de la feature; `init.sh` con código 0;
+  `LocalResultFilter` sin imports Compose/Android; `HomeRecipes.filteredBy` puro; sin dependencias
+  nuevas ni cambios en el build/lockfile ni en el dominio/catálogo.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/filters/{LocalResultFilter,ResultFilterRow}.kt` (nuevos),
+  `app/src/test/java/com/sazon/app/ui/filters/LocalResultFilterTest.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/home/{HomeRecipes,HomeScreen}.kt` (modificados),
+  `app/src/test/java/com/sazon/app/ui/home/HomeRecipesTest.kt` (modificado),
+  `docs/technical-discovery.md`, `feature_list.json` y este registro. No se tocaron
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento; las firmas de la spec compilaron con las APIs reales
+  del repositorio (`Taxonomy.ingredient`/`recipeCategory`/`recipeCategories`, `Recipe.categoryId`/
+  `totalMinutes`, `dietPattern("vegetarian")?.excludedTags`). `fromKey` degrada una clave desconocida a
+  `All` (defensivo ante un estado restaurado corrupto). El bloque "Tus recetas" sigue llegando vacío
+  desde `MainShell` (costura de `home-offline-blocks`; la llenarán `favorites`/`recipe-detail-screen`),
+  así que hoy solo se observa el estado de usuario nuevo; el filtro puro es lo verificado en JVM ahora.
+- Riesgo o incógnita abierta: se mantienen los residuales de la spec: la detección es por **tags, no
+  por keywords** (un ingrediente libre que sea violación de dieta no se excluye); el microcopy "No hay
+  recetas con este filtro." es provisional; la distinción visual exacta de los derivados (oliva +
+  agrupación) y el efecto del bloque poblado quedan para revisión manual de la persona tras el merge
+  (AGENTS.md no automatiza UI de emulador). La secuencia (bloque vacío hoy) se anota sin reordenar
+  `feature_list.json`.
+- Siguiente paso: validación independiente de `local-result-filters` con `feature-validator`; después,
+  commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 035
+
+- Fecha: 2026-10-09
+- Objetivo: validar `local-result-filters` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Quedan desbloqueadas las features que dependían de esta.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos) y `./gradlew testDebugUnitTest --rerun-tasks`; parseó por su
+  cuenta los XML de resultados y el informe de lint, e inspeccionó el código (pureza, predicados,
+  ausencia de hex sueltos, alcance y build/lockfile intactos).
+- Evidencia capturada: 172 tests, 0 fallos/errores/saltados en 28 suites (13 nuevos:
+  `LocalResultFilterTest` 8 y `HomeRecipesTest` 8 — de 3 a 8, +5 de `filteredBy`; 159 preexistentes en
+  verde, sin regresiones); lint 0 errores y 13 warnings preexistentes (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en ficheros de la feature;
+  escenarios exigidos 3 (frontera `<= 30`) y 4 (tags `meat`/`poultry`/`fish`/`seafood`, caso negativo
+  que no pasa en vacío) confirmados; `All` preserva orden, `Category` usa `categoryId` y categoría
+  inexistente da vacío; `LocalResultFilter` sin imports Compose/Android y `ResultFilterRow` la única
+  capa Compose; `app/build.gradle.kts` y `gradle/libs.versions.toml` sin cambios.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (4 Low + 1 informativo, ninguno bloqueante): el nombre del test del escenario
+  6 está desalineado con la spec (cubre claves/labels/isDerived, no la fila de chips); una aserción
+  redundante en el escenario 4; `FALLBACK_VEGETARIAN_TAGS` podría ser `private`; un flake transitorio de
+  resultados de test en la primera pasada de `init.sh` tras el `./gradlew --stop` del trap de salida
+  (la segunda pasada pasó en verde; anotado como robustez de harness); el `Validator Checklist` de la
+  spec queda sin marcar (por diseño).
+- Riesgo o incógnita abierta: ninguno nuevo. Se mantienen los residuales de la spec: detección por
+  **tags, no keywords** (ingrediente libre no se excluye); microcopy "No hay recetas con este filtro."
+  provisional; la distinción visual exacta de los derivados y el efecto del bloque poblado quedan para
+  revisión manual de la persona tras el merge; hoy la costura `HomeRecipes` llega vacía desde
+  `MainShell`.
+- Siguiente paso: commit local de la rama `feature/local-result-filters` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `generator-ingredients-step`.
 
