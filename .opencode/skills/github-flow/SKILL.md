@@ -73,7 +73,11 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
 4. For each ready feature, independently:
    1. Reuse or create the issue (lookup first).
    2. Reuse or create the worktree and branch from `base_sha`: `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`.
-   3. Launch exactly one session: `opencode run --dir <worktrees-root>/<feature-id> "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."` Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
+   3. Launch exactly one session with the documented command, quoting the worktree path and the prompt because both contain spaces:
+      ```bash
+      opencode run --dir "<worktrees-root>/<feature-id>" "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."
+      ```
+      Run it as-is, from a shell that handles quoting (on Windows, Git Bash). Do NOT invent a custom launcher: no `Start-Process`, no detached/background process, no redirecting output to log files you create, and never redirect into a directory that may not exist. Those improvisations have repeatedly broken the launch (argument splitting on spaces, missing directories, orphan processes). Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
    4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`) and the local commit created on accept.
    5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line. Never merge.
    6. Keep the issue body updated with status and evidence.
