@@ -44,8 +44,11 @@ Antes de escribir código:
   `implementer` y `feature-flow` se **detienen y las piden** a la persona; además, el agente **crea la
   subcarpeta** `docs/design/concepts/<feature-id>/` con un `README.md` que lista los ficheros esperados
   (y qué es cada uno), para que la persona solo tenga que dejarlos ahí. La feature queda `blocked` hasta
-  que estén disponibles. `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas
-  son dirección visual obligatoria, no opcional.
+  que estén disponibles. Cuando la persona aporte las capturas, la feature se **reanuda re-ejecutando
+  `github-flow execute <feature-id>`** (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
+  **no** se reanuda con un `feature-flow` suelto, que dejaría la publicación fuera de `github-flow`.
+  `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección visual
+  obligatoria, no opcional.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
 ## Acuerdos de trabajo con la persona

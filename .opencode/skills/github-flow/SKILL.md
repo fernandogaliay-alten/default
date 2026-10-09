@@ -31,14 +31,15 @@ All four inputs are required. If any is missing, ask before doing anything.
 
 ## Preconditions
 
-Checked before `execute` is allowed to mutate anything. `plan` runs the same checks read-only. Every feature to execute must pass all four:
+Checked before `execute` is allowed to mutate anything. `plan` runs the same checks read-only. Every feature to execute must pass all five:
 
 1. Dependencies accepted: every id in `depends_on` has status `accepted` in `feature_list.json`.
 2. Clean base: the base checkout has no staged, modified, or deleted tracked files (`git status --porcelain` has no tracked entries; untracked files are allowed and reported), no merge/rebase in progress, and `base_branch` resolves.
 3. Permissions: `gh auth status` shows an account that can manage issues and PRs in the repository. Push/PR is automatic after acceptance (standing permission); there is no per-run push grant.
 4. Independent environments: one worktree per feature outside the base checkout, one session per worktree, no shared mutable state between features (each worktree runs its own `./init.sh` and local database).
+5. Required external inputs present: a feature with UI (`area: ui` or any screen/visual behavior) must have its mandatory captures under `docs/design/concepts/<feature-id>/`, named by the spec, already present. If any is missing, the feature is `blocked` (reason: missing UI captures) and no worktree, branch, or session is created for it.
 
-If any precondition fails, report the failing features and stop before mutating anything.
+If any precondition fails, report the failing features with the concrete missing inputs and stop before mutating anything. A precondition that depends on a person (missing captures, missing credentials) is a `blocked` feature, not a failure: see `## Blocked → Resume`.
 
 ## Deterministic Identities (reuse keys)
 
@@ -58,7 +59,7 @@ Reuse lookup before any creation (read-only):
 Read-only. Produce the plan report only.
 
 1. Resolve inputs; read `feature_list.json`, `PROGRESS.md`, git state (`git status --porcelain`, `git rev-parse <base_branch>`, `git worktree list`, `git branch --list`) and gh state (`gh auth status`, issue and PR lookups). Never `git fetch`.
-2. Evaluate the four preconditions per feature. For blocked features, report the missing `accepted` dependency ids.
+2. Evaluate the five preconditions per feature. For blocked features, report the concrete missing inputs: `accepted` dependency ids and/or missing UI capture paths under `docs/design/concepts/<feature-id>/`.
 3. Planned base SHA = current `git rev-parse <base_branch>`.
 4. For each ready feature, resolve reuse targets (issue, worktree, branch, PR) and the planned session command `opencode run --dir <worktree> ...`.
 5. Emit the output report with status `planned` and `pr: none`. Nothing is created.
@@ -67,7 +68,7 @@ Read-only. Produce the plan report only.
 
 Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch`; never prune a feature that is not merged. This is what keeps orphan worktrees from accumulating between runs.
 
-1. Run the precondition gate. Split the request into ready and blocked features and report both lists; continue with ready features only.
+1. Run the precondition gate. Split the request into ready and blocked features and report both lists; continue with ready features only. For a feature blocked by missing UI captures, report the missing paths and the resume command `github-flow execute <feature-id>`, and create the request folder plus `README.md` under `docs/design/concepts/<feature-id>/` (idempotent; skip if present) so the person knows where to drop the exports — but create no worktree, branch, or session for it.
 2. Fix the common base SHA: `git fetch origin <base_branch>` then `base_sha=$(git rev-parse origin/<base_branch>)`. Every worktree branches from this exact SHA.
 3. Push/PR is standing and automatic after acceptance. Do not ask for a per-run push grant.
 4. For each ready feature, independently:
@@ -78,19 +79,29 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
       opencode run --dir "<worktrees-root>/<feature-id>" "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."
       ```
       Run it as-is, from a shell that handles quoting (on Windows, Git Bash). Do NOT invent a custom launcher: no `Start-Process`, no detached/background process, no redirecting output to log files you create, and never redirect into a directory that may not exist. Those improvisations have repeatedly broken the launch (argument splitting on spaces, missing directories, orphan processes). Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
-   4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`) and the local commit created on accept.
+   4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`). On `accept`, confirm the feature branch has the acceptance commit; if the session returned `accept` but left the work uncommitted (for example it crashed before committing), complete the single acceptance commit on `feature/<feature-id>` before publishing.
    5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line. Never merge.
    6. Keep the issue body updated with status and evidence.
 5. Emit the output report.
+
+## Blocked → Resume
+
+A feature is `blocked` when it fails a precondition for a reason outside the agents' control (missing UI captures under `docs/design/concepts/<feature-id>/`, missing credentials, or a decision only the person can make). Blocking is not failure: it is the correct stop, and it is resumable.
+
+- Report the block with the concrete missing inputs (paths) and the exact resume command: `github-flow execute <feature-id>`.
+- When the missing input exists, resume by re-running `github-flow execute <feature-id>`. The run is idempotent: it reuses the existing issue, worktree, and branch (never duplicates) and relaunches exactly one `feature-flow` session, which now passes the gate and continues from the persisted spec/implementation. Do not ask for a new push grant; standing permission still applies.
+- For a UI block, create the request folder plus `README.md` under `docs/design/concepts/<feature-id>/` (idempotent; skip if present) so the person knows where to drop the exports. Create nothing else for a blocked feature: no worktree, branch, or session.
+- Never resume a `github-flow`-owned feature with a standalone `feature-flow` run. Issue, worktree, branch, and PR ownership live in `github-flow`; a bare `feature-flow` run leaves the acceptance commit local and skips publishing. When a `feature-flow` session discovers the block, it hands the feature back to `github-flow`.
 
 ## Mode: publish (publicar)
 
 0. Prune first: run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch` before publishing; never prune a feature that is not merged.
 1. Acceptance gate: every feature must be `accepted` in `feature_list.json`. If any is not, refuse that feature: without acceptance there is no publish. `passing` does not qualify.
 2. Push is standing (automatic after acceptance); there is no per-run push gate. Refuse only if the feature is not `accepted`.
-3. Sync with base (single-integrator rule): in the feature worktree, `git fetch origin <base_branch>` then `git merge --no-edit origin/<base_branch>`. Resolve any conflict in shared state/docs by keeping the feature's additions alongside the base's, then commit. Never rebase and never force-push. Prefer `scripts/sync-worktree.sh <feature-id>` when present.
-4. Push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line.
-5. Never merge. Report the PR URL per published feature.
+3. Commit gate: the feature branch must contain the acceptance commit. If `feature_list.json` says `accepted` but the branch has no commit (for example the `feature-flow` session crashed before committing), create the single Conventional Commit naming the feature before pushing; never push an uncommitted branch.
+4. Sync with base (single-integrator rule): in the feature worktree, `git fetch origin <base_branch>` then `git merge --no-edit origin/<base_branch>`. Resolve any conflict in shared state/docs by keeping the feature's additions alongside the base's, then commit. Never rebase and never force-push. Prefer `scripts/sync-worktree.sh <feature-id>` when present.
+5. Push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line.
+6. Never merge. Report the PR URL per published feature.
 
 ## Mode: prune (limpiar)
 

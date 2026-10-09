@@ -66,7 +66,12 @@ For the selected feature:
    confirm the spec names capture file(s) under `../../../docs/design/concepts/<feature-id>/` and that
    those files exist. If any is missing, do NOT run `implementer`: create the folder
    `../../../docs/design/concepts/<feature-id>/` with a `README.md` listing the expected files, stop,
-   mark the feature `blocked` with the missing capture paths, and request them from the person.
+   mark the feature `blocked` with the missing capture paths, and request them from the person. In the
+   block report, name the resume entry point: `github-flow execute <feature-id>` when the feature is
+   owned by a `github-flow` plan (it reuses the issue/worktree/branch); never resume a
+   `github-flow`-owned feature with a standalone `feature-flow` run. Note that when this skill runs
+   inside the `planner` subagent, that subagent can only write under `docs/specs/`, so the orchestrator
+   (main agent) creates the captures request folder + `README.md`.
 3. Else if the feature is neither `passing` nor `accepted`, run `implementer`.
 4. Else if the feature is `passing`, run `validator`.
 

@@ -15,16 +15,20 @@ Use this skill to turn one harness feature into an implementation-ready contract
 - Do not generate specs for every feature unless the user explicitly asks after this skill finishes.
 - Create or update only `../../../docs/specs/<feature-id>.md` by default; the single exception is the
   captures request under `../../../docs/design/concepts/<feature-id>/` (folder + `README.md`) required
-  by the UI gate below.
+  by the UI gate below. A `planner` subagent restricted to `docs/specs/` cannot write there, so the
+  orchestrator (main agent) creates the request folder + `README.md` instead; the planner still names
+  the exact expected capture files in the spec.
 - If the feature id is not provided, select the first feature in `feature_list.json` order whose status is neither `passing` nor `accepted` and whose `depends_on` prerequisites are satisfied.
 - If a feature is too broad to plan cleanly, stop and recommend splitting it in `feature_list.json` instead of producing a vague spec. Rough signal: it needs more than one data model plus one user flow, or the spec would clearly exceed the 100-250 line target.
 - Treat the spec as a contract between agents: planner -> implementer -> validator.
 - UI features require captures: if the selected feature has UI (`area: ui` or any screen/visual
-  behavior), the spec MUST name the existing capture file(s) under
-  `../../../docs/design/concepts/<feature-id>/` in `Visual Design Impact`. If they are missing, create
-  that folder with a `README.md` listing the exact expected file names, then stop and request them from
-  the user (report the feature as `blocked` pending captures); do not emit a spec that assumes visuals
-  that do not exist.
+  behavior), the spec MUST name, in `Visual Design Impact`, the capture file(s) under
+  `../../../docs/design/concepts/<feature-id>/` that must exist before implementation. If they are
+  missing, ensure that folder exists with a `README.md` listing the exact expected file names (the
+  orchestrator creates it when the `planner` subagent cannot write outside `docs/specs/`), then stop
+  and request them from the user, reporting the feature as `blocked` pending captures. The spec may
+  still be written and name the required captures; what must not happen is implementation starting, or
+  a spec that invents visuals that do not exist.
 - Prefer concrete repository findings over assumptions. If something was not inspected, say so.
 
 ## Inputs To Read First
@@ -109,9 +113,11 @@ Before finishing, check:
 - If a persistent E2E command exists and the feature changes user-visible behavior, authentication, authorization, routing, or API flows, the verification plan should include adding/updating focused E2E coverage or explicitly justify why unit/integration coverage is enough.
 - For shell scripts such as `init.sh`, the spec states whether the script must execute checks, print guidance, start services, or provide modes. The default harness rule is: `init.sh` executes non-blocking startup/verification checks and must not start long-running dev servers.
 - Durable documentation impact is explicit: `../../../ARCHITECTURE.md`, `../../../CONSTRAINTS.md`, `../../../AGENTS.md`, and other durable docs are each marked create/update/not needed with a reason.
-- For UI features, `Visual Design Impact` names capture file(s) under
-  `../../../docs/design/concepts/<feature-id>/` that already exist in the repo; if they do not, the spec
-  was not emitted, the request folder + `README.md` were created, and the captures were requested instead.
+- For UI features, `Visual Design Impact` names the capture file(s) under
+  `../../../docs/design/concepts/<feature-id>/` that must exist before implementation; if they do not
+  exist yet, the request folder + `README.md` were created, the captures were requested from the
+  person, and the feature is reported `blocked` pending captures (the spec may still be emitted naming
+  the required captures).
 - Non-goals prevent scope creep.
 - Unknowns are explicit and do not hide blocking ambiguity.
 
