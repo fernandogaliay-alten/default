@@ -85,7 +85,7 @@ if [ "$dry_run" -eq 1 ]; then
 fi
 
 if [ -d "$worktree_path" ]; then
-  git -C "$repo_root" worktree remove "$worktree_path"
+  git -c core.longpaths=true -C "$repo_root" worktree remove "$worktree_path"
   echo "worktree eliminado: $worktree_path"
 fi
 

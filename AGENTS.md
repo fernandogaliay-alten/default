@@ -161,6 +161,11 @@ Una feature está hecha solo si se cumplen todas:
   `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
   solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
+- **Rutas largas de Windows al borrar worktrees**: `core.longpaths` está activado a nivel de usuario
+  (`git config --global core.longpaths true`). `scripts/cleanup-worktree.sh` invoca
+  `git -c core.longpaths=true worktree remove` para poder borrar los directorios con rutas > MAX_PATH
+  (p. ej. `build/` y `.gradle/`); sin ello, `worktree remove` falla con `Filename too long` y deja
+  huérfano el directorio aunque quite el registro del worktree.
 - **Segfault de opencode (Bun) en Windows**: el CLI puede abortar **al cerrar** de forma intermitente.
   No afecta al trabajo ya persistido; se tolera y la verificación se hace por artefactos
   (git/`feature_list`/PR), no por el código de salida. Reanudar con `--continue` si muere a media
