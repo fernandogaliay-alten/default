@@ -11,6 +11,7 @@ import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
 import com.sazon.app.data.suggestions.RoomSuggestionBatchRepository
 import com.sazon.app.data.suggestions.SuggestionBatchDatabase
+import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
 import com.sazon.app.ui.theme.SazonTheme
@@ -29,12 +30,14 @@ class MainActivity : ComponentActivity() {
         val suggestionBatchDatabase = SuggestionBatchDatabase.build(applicationContext)
         val suggestionBatchRepository =
             RoomSuggestionBatchRepository(suggestionBatchDatabase.suggestionBatchDao())
+        val generator = FakeRecipeGenerator()
         val suggestionBatchService = SuggestionBatchService(
-            generator = FakeRecipeGenerator(),
+            generator = generator,
             repository = suggestionBatchRepository,
             taxonomy = taxonomy,
             seedRecipes = seedRecipes,
         )
+        val generationService = GenerationService(generator = generator, taxonomy = taxonomy)
 
         setContent {
             SazonTheme {
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
                     taxonomy = taxonomy,
                     suggestionBatchRepository = suggestionBatchRepository,
                     suggestionBatchService = suggestionBatchService,
+                    generationService = generationService,
                     seedRecipes = seedRecipes,
                 )
             }
