@@ -10,16 +10,17 @@
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
-  `onboarding-diet-style-cuisines`, `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
-  `home-offline-blocks` y `local-result-filters` (validador independiente, veredicto `accept`). El
-  onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar.
-- Siguiente feature en orden de lista: `generator-ingredients-step` (depende de `home-offline-blocks`,
-  ya `accepted`).
+  `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
+  `home-offline-blocks`, `local-result-filters` y `generator-ingredients-step` (validador
+  independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil
+  al cerrar; el Generador tiene ya su paso 1 real ("¿Qué tienes?").
+- Siguiente feature en orden de lista: `generator-settings-step` (depende de
+  `generator-ingredients-step`, ya `accepted`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación: 2026-10-09 (`local-result-filters`: `init.sh` exit 0, **172 tests/0 fallos** en
-  28 suites, 13 nuevos — `LocalResultFilterTest` 8, `HomeRecipesTest` 8 (+5 de `filteredBy`); lint 0
-  errores y 13 warnings preexistentes, ninguno en ficheros de la feature)
+- Última verificación: 2026-10-09 (`generator-ingredients-step`, validación independiente `accept`:
+  `init.sh` exit 0, **189 tests/0 fallos** en 30 suites, 17 nuevos — `GeneratorIngredientsStateTest` 12
+  y `GeneratorStepTest` 5; lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la feature)
 
 ## Registro de sesiones
 
@@ -1231,4 +1232,94 @@
   `MainShell`.
 - Siguiente paso: commit local de la rama `feature/local-result-filters` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `generator-ingredients-step`.
+
+### Sesión 036
+
+- Fecha: 2026-10-09
+- Objetivo: implementar `generator-ingredients-step` (paso 1 real del Generador, "¿Qué tienes?") según
+  `docs/specs/generator-ingredients-step.md`, sustituyendo el `SectionPlaceholder` de
+  `PushedScreen.GENERATOR`.
+- Completado:
+  - Logica/estado **puro** en `com.sazon.app.ui.generator`: `GeneratorIngredient` (ingrediente anadido:
+    de Taxonomia si `ingredientId != null`, libre si `null`), `GeneratorIngredientsState`
+    (`typeQuery`, `toggleTaxonomy` con dedupe por `ingredientId` y alternancia, `addFree` con dedupe por
+    nombre normalizado `trim`+minusculas+sin acentos y vaciado de la query, `remove`, `count`,
+    `isEmpty`, `canContinue` y `countLabel` con singular/plural) y `GeneratorStep` (`INGREDIENTS`
+    "¿Qué tienes?"/"Continuar" y `SETTINGS` "Ajusta tu receta"/"Generar recetas" con `next`/`previous`/
+    `isLast`). Sin imports de Compose/Android (solo `domain.taxonomy` y `java.text.Normalizer`).
+  - Capa Compose delgada: `GeneratorIngredientsScreen` (helper, `OutlinedTextField` pildora con "Añadir"
+    en el `trailingIcon` deshabilitado con texto en blanco, chips de los anadidos con "×", contador con
+    cifras tabulares y nube **colapsable** "Ingredientes sugeridos" desde `taxonomy.ingredients`
+    filtrada con `IngredientsFilter.matching`, chip seleccionado si su `id` esta entre los anadidos) y
+    `GeneratorFlow` (`Scaffold` con barra superior "Atras" + titulo del paso y primario anclado,
+    deshabilitado con `!canContinue` en el paso 1; `Saver` de `rememberSaveable` para el paso y el
+    borrador; paso 2 como marcador). Sin iconos: "×" y "Atras" son texto.
+  - Integracion en `MainShell`: `PushedScreen.GENERATOR` monta `GeneratorFlow(taxonomy, onClose = pop)`;
+    `SectionPlaceholder` sigue existiendo para Favoritos/Perfil.
+  - Tests JVM con casos negativos: `GeneratorIngredientsStateTest` (escenarios 1-6) y
+    `GeneratorStepTest` (escenario 7 y microcopy). Sin dependencias nuevas: no se tocan
+    `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Verificación ejecutada: `./gradlew testDebugUnitTest --tests "com.sazon.app.ui.generator.*"`
+  (enfocado, BUILD SUCCESSFUL), `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test`
+  + `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados y del informe
+  `lint-results-debug.xml`; inspeccion de imports de la logica pura, de la reutilizacion sin cambios de
+  `IngredientsFilter`, de la ausencia de cambios en el build/lockfile y de `git status`.
+- Evidencia capturada: **189 tests, 0 fallos/errores/saltados** en 30 suites (17 nuevos:
+  `GeneratorIngredientsStateTest` 12 y `GeneratorStepTest` 5; 172 preexistentes en verde); lint 0 errores
+  y 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; `init.sh` con código 0; `GeneratorIngredient`/
+  `GeneratorIngredientsState`/`GeneratorStep` sin imports Compose/Android; `app/build.gradle.kts` y
+  `gradle/libs.versions.toml` sin cambios.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/generator/{GeneratorIngredient,GeneratorIngredientsState,
+  GeneratorStep,GeneratorIngredientsScreen,GeneratorFlow}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/MainShell.kt` (modificado),
+  `app/src/test/java/com/sazon/app/ui/generator/{GeneratorIngredientsStateTest,GeneratorStepTest}.kt`
+  (nuevos), `docs/technical-discovery.md`, `feature_list.json` y este registro. No se tocaron
+  `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
+- Hallazgos relevantes: ninguno de comportamiento; las firmas de la spec compilaron con las APIs reales
+  (`Ingredient`, `Taxonomy.ingredients`, `IngredientsFilter.matching`, tokens del tema) sin adaptaciones.
+  El `Saver` del borrador usa el formato `[query, count, name, id]...` de la spec y el paso se guarda por
+  nombre de enum (`GeneratorStepSaver`). El `Scaffold` de `GeneratorFlow` vive dentro del `Box` de
+  `MainShell` que ya aplica `windowInsetsPadding(safeDrawing)`, de modo que no hay doble inset.
+- Riesgo o incógnita abierta: quedan para revision manual de la persona tras el merge el acabado visual
+  (chips, densidad de la nube, claro/oscuro) y la prueba manual de emulador exigida ("Continuar"
+  deshabilitado con cero ingredientes, contador al anadir/quitar y "×"); un defecto visual se corrige con
+  una feature correctiva. El round-trip del `Saver` no se testea en JVM (capa Compose; retencion manual),
+  como en features previas. El microcopy del placeholder del input libre es provisional.
+- Siguiente paso: validacion independiente de `generator-ingredients-step` con `feature-validator`;
+  despues, commit local de la rama `feature/generator-ingredients-step` (orquestador de `feature-flow`) y
+  publicacion por `github-flow`. La siguiente feature en lista es `generator-settings-step`.
+
+### Sesión 037
+
+- Fecha: 2026-10-09
+- Objetivo: validar `generator-ingredients-step` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Queda desbloqueada `generator-settings-step`.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos) y `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas);
+  parseó por su cuenta los XML de resultados y el informe `lint-results-debug.xml`, e inspeccionó el
+  código (pureza, dedupe, integración en `MainShell`, alcance y build/lockfile intactos).
+- Evidencia capturada: 30 suites, 189 tests, 0 fallos/errores/saltados (17 nuevos:
+  `GeneratorIngredientsStateTest` 12 y `GeneratorStepTest` 5; 172 preexistentes en verde); lint 0 errores
+  y 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), 0 en ficheros de la feature; escenarios 1–8 confirmados; `ui.generator` sin imports
+  Compose/Android; `MainShell` sustituye el `SectionPlaceholder` del Generador por `GeneratorFlow`;
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `build.gradle.kts` y `gradle.properties` sin
+  cambios; `IngredientsFilter`, `domain/**`, `data/**`, la Taxonomía y `seed-recipes.json` intactos.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (4 Low informativos, ninguno bloqueante): un duplicado cruzado de libre a
+  Taxonomía no queda cubierto por el contrato literal de la spec (si se añade el libre "Tomate" y luego
+  el chip "Tomate", se crean dos chips homónimos; candidato a feature correctiva); el round-trip del
+  `Saver` no se testea en JVM (capa Compose, retención manual); posible doble inset del `Scaffold` de
+  `GeneratorFlow` dentro del `Box` de `MainShell`, visual; `Validator Checklist` de la spec sin marcar
+  (por diseño).
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge el
+  acabado visual (chips, densidad de la nube, claro/oscuro) y la prueba manual de emulador exigida
+  ("Continuar" deshabilitado con cero ingredientes y el contador se actualiza al añadir y quitar); un
+  defecto visual se corrige con una feature correctiva.
+- Siguiente paso: commit local de la rama `feature/generator-ingredients-step` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `generator-settings-step`.
 
