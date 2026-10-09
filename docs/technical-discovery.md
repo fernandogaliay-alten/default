@@ -133,6 +133,24 @@ taxonomy)` acota cada grupo de forma independiente y `HomeScreen` guarda la sele
 filtro"; si el bloque llega **vacio** solo pinta la linea de usuario nuevo (sin chips). La logica es
 **reutilizable** por `favorites`. Ver `docs/specs/local-result-filters.md`.
 
+El **paso de ingredientes del Generador** vive en `com.sazon.app.ui.generator`. La logica/estado es
+**pura** y testeable en JVM: `GeneratorIngredient` (ingrediente anadido: de la Taxonomia si
+`ingredientId != null`, **libre** si `null`), `GeneratorIngredientsState` (`typeQuery`, `toggleTaxonomy`,
+`addFree`, `remove`, `count`, `canContinue` y `countLabel` con singular/plural) y `GeneratorStep`
+(`INGREDIENTS` "¿Qué tienes?" y `SETTINGS` "Ajusta tu receta", con `next`/`previous`/`isLast`). Las
+reglas: dedupe de Taxonomia por `ingredientId` (el segundo toque quita), dedupe de libres por **nombre
+normalizado** (`trim` + minusculas + sin acentos) tambien contra los ya anadidos, y un texto en blanco
+como **no-op**; `IngredientsFilter` (ya en `ui.preferences`) se reutiliza sin cambios para la nube de
+sugeridos, que sale siempre de `taxonomy.ingredients` (la UI no diverge de la Taxonomia). La capa Compose
+es `GeneratorFlow` (armazon del asistente dentro de `PushedScreen.GENERATOR`: barra superior con "Atras"
+y el titulo del paso, primario anclado y `Saver` de `rememberSaveable` para el paso y el borrador, que
+asi se conserva al ir y volver del paso 2) y `GeneratorIngredientsScreen` (input libre con "Añadir",
+chips de los anadidos con "×", contador con cifras tabulares y nube **colapsable** "Ingredientes
+sugeridos", sin iconos: "×" y "Atras" son texto). No se persiste el borrador en disco (asistente
+efimero). `MainShell` monta `GeneratorFlow` en el destino `GENERATOR` en lugar del `SectionPlaceholder`
+(que se sigue usando para Favoritos/Perfil); el paso 2 es un **marcador** hasta
+`generator-settings-step`. Ver `docs/specs/generator-ingredients-step.md`.
+
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
 el contrato de `docs/domain/taxonomy.md` seccion 4 con `id` de la Taxonomia y garantiza que el patron

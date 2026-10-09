@@ -40,6 +40,7 @@ import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.generator.GeneratorFlow
 import com.sazon.app.ui.home.HomeRecipes
 import com.sazon.app.ui.home.HomeScreen
 import com.sazon.app.ui.home.HomeSuggestions
@@ -135,9 +136,9 @@ fun MainShell(
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing),
             ) {
-                SectionPlaceholder(
-                    title = "Generador",
-                    onBack = { navigation = navigation.pop() },
+                GeneratorFlow(
+                    taxonomy = taxonomy,
+                    onClose = { navigation = navigation.pop() },
                 )
             }
         }
