@@ -12,21 +12,23 @@
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
-  `profile-screen`, `generation-flow-with-validation` y `manual-suggestions-refresh` (validador
-  independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil al
-  cerrar; el Generador ya ejecuta el corte vertical principal del MVP (generar -> validar -> mostrar solo
-  aceptadas, con carga cancelable), la pestaña Perfil es real (identidad + preferencias editables
-  reutilizando los editores del onboarding) y permite forzar el refresco del Lote.
-- Siguiente feature en orden de lista: `results-screen` (su dependencia ya está `accepted`).
+  `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh` y `results-screen`
+  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el
+  Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP (generar -> validar ->
+  mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados real (fórmula de
+  `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña Perfil es real
+  (identidad + preferencias editables reutilizando los editores del onboarding) y permite forzar el
+  refresco del Lote.
+- Siguiente feature en orden de lista: `recipe-detail-screen` (depende de `results-screen`, ya `accepted`).
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
+  `results-screen` ya aporta su única captura (`docs/design/concepts/results-screen/resultados/`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-09, merge de `origin/main` en `feature/manual-suggestions-refresh`):
-  `init.sh` con Git Bash exit 0, **234 tests/0 fallos/errores/saltados** en 36 suites (223 preexistentes
-  de `generation-flow-with-validation` + 11 nuevos `SuggestionsRefreshFormatTest`); lint 0 errores y 13
-  warnings preexistentes. Ambas features conservan su veredicto `accept` y el merge del log de sesiones
-  conservó las dos aportaciones (generación 042/043, manual 044/045).
+- Última verificación (2026-10-09, `results-screen`): `init.sh` con Git Bash exit 0,
+  **255 tests/0 fallos/errores/saltados** en 39 suites (234 preexistentes + 21 nuevos de
+  `MatchScoreTest`/`ResultsHeaderTest`/`ResultsStatusTest`); lint 0 errores y 13 warnings preexistentes.
+  Veredicto independiente `accept`; commit local de `feature/results-screen` (publica `github-flow`).
 
 ## Registro de sesiones
 
@@ -1792,3 +1794,87 @@
   corresponden a features aún `not_started` (igual que en el prompt original).
 - Siguiente paso: la persona pega las partes en Stitch en orden y guarda cada export en
   `docs/design/concepts/<feature-id>/<pantalla>/`; después, **Fase 2** de reconciliación una a una.
+
+### Sesión 048
+
+- Fecha: 2026-10-09
+- Objetivo: ejecutar `feature-flow` para la feature `results-screen` (única seleccionada), en modo
+  hasta-aceptación. Solo planner/implementer/validator; **sin push ni PR** (publica `github-flow`).
+- Completado:
+  - Selección: `results-screen` (`area: ui`, `depends_on: generation-flow-with-validation` ya
+    `accepted`), sin spec previa. Rol 1 ejecutado: **planner** (`feature-spec`).
+  - Spec creada: `docs/specs/results-screen.md` (514 líneas). Fija la fórmula de `matchScore`
+    (derivada, en memoria, no persistida; media ponderada de cobertura/gustados/cocina/tiempo/
+    dificultad menos penalización por evitados; ejemplo dorado 86/76), los estados poblado/vacío/
+    `Unavailable` (con "Reintentar") y el subtítulo de búsqueda. Sustituye y elimina
+    `GeneratorResultsPreview`.
+  - **Gate de UI**: la spec es de UI y exige capturas de referencia en
+    `docs/design/concepts/results-screen/` antes de implementar. No existen. Se crea la carpeta con
+    `docs/design/concepts/results-screen/README.md` (petición) y se **detiene** el flujo, marcando la
+    feature `blocked` (regla de `feature-flow` y `AGENTS.md`): no se lanza el `implementer`.
+- Verificación ejecutada: ninguna de código (no hay implementación). Revisión de artefactos: la spec
+  nombra las cuatro pantallas con sus tres ficheros cada una; `docs/design/concepts/results-screen/`
+  solo contiene el `README.md` de petición; `git status` sin cambios fuera de la spec, el README y el
+  harness.
+- Ficheros creados/cambiados: `docs/specs/results-screen.md` (planner),
+  `docs/design/concepts/results-screen/README.md` (nuevo), `feature_list.json` (`results-screen` a
+  `blocked`) y este registro.
+- Hallazgos relevantes: el planner (rol limitado a `docs/specs/`) nombra las capturas pero no crea la
+  carpeta; esa petición la materializa el orquestador, como exige el gate de UI. El bloqueo es de
+  entrada, no técnico: falta que la persona exporte de Stitch las cuatro pantallas.
+- Riesgo o incógnita abierta: **bloqueada** `results-screen` hasta que existan las capturas de
+  `docs/design/concepts/results-screen/{resultados,resultados-busqueda,resultados-vacio,resultados-error}/`
+  (cada una con `.png`, `.html` y `design.md`). Sigue pendiente además la Fase 2 de reconciliación de
+  las 11 features de UI ya aceptadas (sesión 046).
+- Siguiente paso: la persona pega en Stitch la parte `resultados` (más los estados vacío/error) y deja
+  los exports en `docs/design/concepts/results-screen/`; entonces se desbloquea la feature y el
+  orquestador lanza el `implementer`.
+
+### Sesión 049
+
+- Fecha: 2026-10-09
+- Objetivo: implementar `results-screen` (pantalla de Resultados real) según
+  `docs/specs/results-screen.md`. Sesión reanudada: el trabajo ya existía en disco sin commitear y sin
+  los artefactos de harness/docs; esta sesión lo revisa, lo reconcilia con la spec, completa lo que
+  faltaba y verifica. El gate de capturas de UI (que bloqueaba la sesión 048) queda satisfecho: existe
+  `docs/design/concepts/results-screen/resultados/` con sus tres ficheros.
+- Completado: `com.sazon.app.ui.results` como lógica **pura** testeable en JVM más capa Compose delgada.
+  `MatchScore.of(...)` fija la fórmula **derivada y no persistida** de `matchScore` (media ponderada
+  `Σ(w·f)/Σw` de cobertura/`W_COVERAGE`, gustados/`W_LIKED`, cocina/`W_CUISINE`, tiempo/`W_TIME` y
+  dificultad/`W_DIFFICULTY`, menos `DISLIKE_PENALTY` por evitado presente; ejemplo dorado 86/76; sin
+  `Random` ni reloj). `ResultsStatus.from(...)` puntúa las aceptadas con `copy(matchScore = ...)` y las
+  ordena por relevancia (`Content`/`Empty`/`Unavailable`); `ResultsHeader`/`ResultsOrigin`/`ResultsHeaders.of`
+  formatean el encabezado (Generador con singular/plural y franja, o Búsqueda con la consulta entre
+  comillas). Compose: `ResultsScreen` (`Scaffold`: topBar "Atrás" + título/subtítulo, bottomBar "Cambiar
+  ingredientes", estados poblado/vacío/degradado con "Reintentar") y `ResultRecipeCard` (degradado+glifo
+  16:10, título, descripción, meta tabular y píldora de coincidencia; sin corazón ni click). Integración:
+  `MainShell` pasa `seedRecipes` a `GeneratorFlow`, que en `result != null` monta `ResultsScreen` con
+  `onBack` (→ ajustes), `onChangeIngredients` (→ ingredientes) y `onRetry` (incrementa el token); se
+  elimina `GeneratorResultsPreview.kt`.
+- Verificación ejecutada: `init.sh` con Git Bash (exit 0, `./gradlew test` + `./gradlew lint`, sin
+  procesos largos); antes, `./gradlew testDebugUnitTest --tests "com.sazon.app.ui.results.*"` con parseo
+  propio de los XML. Inspección de pureza, del fichero eliminado, de que no cambian build/lockfile/
+  dominio/`data`/Taxonomía/`seed-recipes.json`/`MainNavigationState.kt`/`init.sh` y de que no hay hex
+  sueltos.
+- Evidencia capturada: **255 tests en 39 suites, 0 fallos/errores/saltados** (234 preexistentes + 21
+  nuevos: `MatchScoreTest` 8, `ResultsHeaderTest` 7, `ResultsStatusTest` 6); lint 0 errores y 13 warnings
+  preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), ninguno en ficheros de la feature; `init.sh` con código 0; `GeneratorResultsPreview.kt`
+  eliminado y sin referencias en `app/src`; `MatchScore`/`ResultsStatus`/`ResultsHeader` solo importan
+  `domain.*`/`java.text.Normalizer`; sin dependencias nuevas ni cambios en el build, el lockfile, el
+  dominio, `data/**`, la Taxonomía, `seed-recipes.json` ni `init.sh`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/results/{MatchScore,ResultsStatus,ResultsHeader,ResultsScreen,ResultRecipeCard}.kt`,
+  `app/src/test/java/com/sazon/app/ui/results/{MatchScoreTest,ResultsStatusTest,ResultsHeaderTest}.kt`,
+  `app/src/main/java/com/sazon/app/ui/generator/GeneratorFlow.kt` y `app/src/main/java/com/sazon/app/ui/MainShell.kt`
+  (integración), `GeneratorResultsPreview.kt` (eliminado), `docs/technical-discovery.md`,
+  `docs/domain-model.md`, `docs/risks-and-open-questions.md`, `DESIGN.md` (`results-screen/resultados`),
+  `feature_list.json` (`results-screen` a `passing`) y este registro.
+- Hallazgos relevantes: la fórmula y los estados ya estaban implementados y en verde; no hubo que
+  corregir código, solo completar los artefactos de harness/docs y verificar. `./gradlew testDebugUnitTest
+  --tests "...ui.results.*"` deja el daemon vivo (el `trap` de `init.sh` lo evita); se paró con `./gradlew --stop`.
+- Riesgo o incógnita abierta: falta la **revisión manual** de emulador que `AGENTS.md` reserva a la
+  persona (estado vacío; error con "Reintentar"; "Cambiar ingredientes" conservando el borrador; acabado
+  contra `docs/design/concepts/results-screen/resultados/`). Sigue pendiente además la Fase 2 de
+  reconciliación de capturas de features de UI ya aceptadas (sesión 046).
+- Siguiente paso: validación independiente de `results-screen` con `feature-validator`; después, commit
+  local (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.

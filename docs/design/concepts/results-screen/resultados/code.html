@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sazón — Resultados (Claro & Oscuro)</title>
+  <!-- Google Fonts: Manrope & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            manrope: ['Manrope', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            terracotta: {
+              DEFAULT: '#D9552B',
+              hover: '#C24720',
+              container: '#FFDCCF',
+              dark: '#E0643B'
+            },
+            olive: {
+              DEFAULT: '#5F7A3D',
+              container: '#E8EEDF'
+            },
+            honey: {
+              DEFAULT: '#F2A93B',
+              container: '#FFF2DD',
+              dark: '#4A3414'
+            },
+            surface: {
+              cream: '#FFF8F0',
+              card: '#FFFFFF',
+              darkBg: '#18120E',
+              darkCard: '#241C16',
+              darkCardHigh: '#2F241D',
+              darkBorder: '#3D3027'
+            },
+            textMain: '#2B2118',
+            textMuted: '#7D6F63',
+            darkTextMain: '#F8EFEA',
+            darkTextMuted: '#AFA196',
+            outlineWarm: '#E8DDD3'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(140, 120, 105, 0.25);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-[#F5EDE4] text-textMain font-inter min-h-screen py-10 px-4 md:px-8 selection:bg-terracotta selection:text-white">
+
+  <!-- Main Canvas Board Header -->
+  <header class="max-w-7xl mx-auto mb-10 bg-white/80 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-outlineWarm/80 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+      <div class="flex items-center gap-3">
+        <span class="px-3.5 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-terracotta/10 text-terracotta border border-terracotta/20">
+          Página Completa Sobre Pestañas (Full-Screen Stack)
+        </span>
+        <span class="text-xs text-textMuted font-medium">Pixel 390×844 • Android Material 3</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Especificación canónica completa
+        </span>
+      </div>
+    </div>
+    <h1 class="text-3xl md:text-4xl font-extrabold font-manrope text-textMain tracking-tight mb-2">
+      Sazón — Resultados <span class="text-terracotta">"Estas son tus recetas"</span>
+    </h1>
+    <p class="text-sm md:text-base text-textMuted max-w-4xl leading-relaxed">
+      Pantalla a pantalla completa que se sobrepone a las pestañas inferiores (<em class="text-textMain font-medium">pushed above the tabs</em>). Incluye botón flotante circular de retroceso, cabecera de contexto, barra de ordenación por chips, tarjetas visuales de recetas con % de coincidencia y botón secundario fijado al pie. Se visualiza la comparativa en <strong>Modo Claro</strong> (procedente de búsqueda IA) y <strong>Modo Oscuro</strong> (procedente de generador de ingredientes), además de la galería canónica de estados: bloqueado por perfil, vacío, error de conexión y modo IA no disponible con catálogo local.
+    </p>
+  </header>
+
+  <!-- Dual Device Showcase Container -->
+  <main class="max-w-7xl mx-auto flex flex-col xl:flex-row items-center xl:items-start justify-center gap-10 mb-16">
+
+    <!-- ==========================================
+         DEVICE 1: MODO CLARO (Origen: Búsqueda IA)
+         ========================================== -->
+    <div class="flex flex-col items-center">
+      <!-- Device Label & Context Tag -->
+      <div class="flex items-center justify-between w-[390px] mb-3 px-2">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-terracotta shadow-sm"></span>
+          <span class="font-manrope font-bold text-sm tracking-wide text-textMain uppercase">Modo Claro</span>
+        </div>
+        <span class="text-xs font-semibold text-terracotta bg-terracotta-container/80 px-2.5 py-0.5 rounded-full border border-terracotta/20">
+          Vía Búsqueda IA: "algo con pollo y arroz"
+        </span>
+      </div>
+
+      <!-- Smartphone Frame 390x844 -->
+      <div class="w-[390px] h-[844px] bg-surface-cream rounded-[48px] p-3 shadow-2xl ring-1 ring-black/10 relative overflow-hidden flex flex-col border-[6px] border-[#31261F]">
+        
+        <!-- Inner Screen -->
+        <div class="relative w-full h-full bg-surface-cream rounded-[40px] overflow-hidden flex flex-col">
+          
+          <!-- Android Status Bar -->
+          <div class="h-10 pt-2 px-6 flex justify-between items-center text-xs font-semibold text-textMain shrink-0 z-20">
+            <span class="tabular-nums">09:41</span>
+            <div class="flex items-center gap-1.5 text-textMain">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A9.957 9.957 0 012 12C2 6.48 6.48 2 12 2s10 4.48 10 10c0 2.32-.79 4.45-2.12 6.16l-.62-.62C20.35 16.03 21 14.1 21 12c0-4.97-4.03-9-9-9z"/><circle cx="12" cy="12" r="4"/></svg>
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+              <div class="w-5 h-2.5 border border-current rounded-sm p-0.5 flex items-center">
+                <div class="h-full w-full bg-current rounded-2xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top App Bar with Floating Circular Back Button -->
+          <div class="px-4 pt-1 pb-3 flex items-start gap-3 shrink-0 z-10">
+            <!-- Floating circular back button (Material 3 standard) -->
+            <button class="w-10 h-10 rounded-full bg-white text-textMain shadow-md flex items-center justify-center border border-outlineWarm/60 hover:bg-neutral-50 active:scale-95 transition-transform shrink-0 mt-0.5" aria-label="Volver">
+              <svg class="w-5 h-5 text-textMain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </button>
+
+            <!-- Header Titles (Derived from AI Search Query) -->
+            <div class="flex-1 min-w-0 pr-1">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <span class="text-xs font-semibold text-terracotta flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/></svg>
+                  Búsqueda con IA Sazón
+                </span>
+              </div>
+              <h2 class="text-[22px] font-extrabold font-manrope text-textMain leading-tight tracking-tight">
+                Resultados de tu búsqueda
+              </h2>
+              <p class="text-xs text-textMuted font-medium truncate mt-0.5">
+                “algo con pollo y arroz”
+              </p>
+            </div>
+          </div>
+
+          <!-- Horizontal Ordering Chip Row -->
+          <div class="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs custom-scrollbar">
+            <!-- Active chip -->
+            <button class="px-3.5 py-1.5 rounded-full bg-terracotta text-white font-semibold shadow-sm shrink-0 flex items-center gap-1">
+              Relevancia
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-white text-textMain font-medium border border-outlineWarm hover:border-textMuted shrink-0">
+              Más rápida
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-white text-textMain font-medium border border-outlineWarm hover:border-textMuted shrink-0">
+              Más fácil
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-white text-textMain font-medium border border-outlineWarm hover:border-textMuted shrink-0">
+              Mejor valoradas
+            </button>
+            <!-- Ajustar chip with sliders icon -->
+            <button class="px-3 py-1.5 rounded-full bg-white text-textMain font-semibold border border-outlineWarm flex items-center gap-1.5 shrink-0 hover:bg-neutral-50 shadow-2xs">
+              <svg class="w-3.5 h-3.5 text-textMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+              </svg>
+              Ajustar
+            </button>
+          </div>
+
+          <!-- Vertical List of RecipeCards (Scrollable Body) -->
+          <div class="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-4 custom-scrollbar">
+
+            <!-- RecipeCard 1: Coincidencia 92% (Arroz con pollo) -->
+            <article class="bg-white rounded-[24px] overflow-hidden border border-outlineWarm/80 shadow-[0_4px_16px_rgba(43,33,24,0.06)] hover:shadow-md transition-shadow">
+              <!-- Food Image with 24px radius, Floating Heart Button & Badge -->
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-100">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfXNiuloA5erhzJqHy6-Doa8IHGJ-MYTaYejT5ImAF5JdSaTClGsJCVxscSyR2asx_zCkL2KSYBB9ZuI6_FYGi3k6djPNjCbzdyWTq6_xi6bjTal8FhYIthAS84a5C5emFkDSFAkzdUjpoAVRCHLBn7VCuCl4ulObP0BKK6B9caZSLzDJRfqczHrHuYaRqr5hJCJf8piuCrFM_CM8faBYKNoju_sAAVEoDP2fBCIHyLOH4HvZZe7T65Q" alt="Arroz con pollo a la cazuela" class="w-full h-full object-cover">
+                <!-- Floating Heart / Save Button -->
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-textMain shadow-md flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all" aria-label="Guardar en favoritos">
+                  <svg class="w-4 h-4 text-terracotta fill-terracotta" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <!-- Coincidencia Pill Floating over Image -->
+                <div class="absolute bottom-3 left-3 bg-terracotta text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                  92% coincidencia
+                </div>
+              </div>
+
+              <!-- Card Content -->
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-textMain tracking-tight leading-snug mb-1">
+                  Arroz meloso con pollo y pimientos
+                </h3>
+                <p class="text-xs text-textMuted leading-relaxed mb-3 line-clamp-1">
+                  Guiso tradicional reconfortante con sofrito aromático y arroz al punto.
+                </p>
+
+                <!-- Meta Row of Icons + Text -->
+                <div class="flex items-center justify-between pt-2 border-t border-outlineWarm/50 text-xs text-textMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <!-- Clock Icon -->
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-textMain">25 min</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-olive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Fácil</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-textMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- RecipeCard 2: Pechuga a la sartén -->
+            <article class="bg-white rounded-[24px] overflow-hidden border border-outlineWarm/80 shadow-[0_4px_16px_rgba(43,33,24,0.06)] hover:shadow-md transition-shadow">
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-100">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmzl1L3D_1EjahZ8-YJ8QcgSqn1EJAPHoIAAu0-jJRm91m-LoBjHall5JUDuhe6ZtPJolnJLkXgrUIfW6DaFw846WzYUOFXM6s43QWihz2k8HmOzn3C3joQ57krZpb_WVC_gRnxR_K3bzXXt5dAZ69b-2d_m52kq2g8Oeqt-yS2v2V2be3wzI2VaobarHqR6o_NB_sIenoKMgCIYolg3DMnyZeGVk5YT5vNqXfVDNWLXFWt0VfDAUGgw" alt="Pechuga al ajillo con crema" class="w-full h-full object-cover">
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-textMain shadow-md flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all" aria-label="Guardar en favoritos">
+                  <svg class="w-4 h-4 text-textMuted hover:text-terracotta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-terracotta text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                  88% coincidencia
+                </div>
+              </div>
+
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-textMain tracking-tight leading-snug mb-1">
+                  Pollo dorado al romero y cherrys
+                </h3>
+                <p class="text-xs text-textMuted leading-relaxed mb-3 line-clamp-1">
+                  Sartén exprés con reducción de ajos asados y tomates confitados.
+                </p>
+
+                <div class="flex items-center justify-between pt-2 border-t border-outlineWarm/50 text-xs text-textMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-textMain">18 min</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-olive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Fácil</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-textMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- RecipeCard 3: Guiso de verduras y garbanzos -->
+            <article class="bg-white rounded-[24px] overflow-hidden border border-outlineWarm/80 shadow-[0_4px_16px_rgba(43,33,24,0.06)]">
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-100">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDektJtscPZaieqZIlXu551kwSgQ0Y2xr0iZAyMMPZdLA7Bqk1DybUc7-ltnMzvbRMovZQ0r4wX3CVglQN-nAgdorC_71VlNXivT5OqpN1cID0Ls3BxpuK4NqU-9Wy2KCzBrifZcsAl6psfAn0lYjd7egil5IFGMNxFw1c6HVlGlQnMy1KLydn2J2eFLSYbGx44XQ3BtqXz33ZMt3whGhRbzIc5DnNPQPG87aRGWBFDPfUAjGhpOrlWaQ" alt="Cazuela de garbanzos" class="w-full h-full object-cover">
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-md text-textMain shadow-md flex items-center justify-center hover:bg-white" aria-label="Guardar en favoritos">
+                  <svg class="w-4 h-4 text-textMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-terracotta text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  85% coincidencia
+                </div>
+              </div>
+
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-textMain tracking-tight leading-snug mb-1">
+                  Guiso mediterráneo de garbanzos y espinacas
+                </h3>
+                <p class="text-xs text-textMuted leading-relaxed mb-3 line-clamp-1">
+                  Cazuela tibia en barro con fondo de tomate asado y aceite virgen.
+                </p>
+
+                <div class="flex items-center justify-between pt-2 border-t border-outlineWarm/50 text-xs text-textMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-textMain">30 min</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-olive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Media</span>
+                  </div>
+                  <span class="text-outlineWarm">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-textMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+          </div>
+
+          <!-- Sticky Secondary Button at the Bottom: "Cambiar ingredientes" -->
+          <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-surface-cream via-surface-cream/95 to-transparent pt-6 z-20 flex justify-center">
+            <button class="w-full py-3.5 px-5 rounded-full bg-white text-textMain font-manrope font-bold text-sm border-2 border-outlineWarm/80 shadow-[0_4px_14px_rgba(43,33,24,0.08)] hover:bg-neutral-50 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-terracotta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Cambiar ingredientes
+            </button>
+          </div>
+
+          <!-- Android Gesture Pill Bar -->
+          <div class="h-4 pb-1 flex justify-center items-center shrink-0 z-30">
+            <div class="w-32 h-1 bg-textMain/30 rounded-full"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         DEVICE 2: MODO OSCURO (Origen: Generador)
+         ========================================== -->
+    <div class="flex flex-col items-center">
+      <!-- Device Label & Context Tag -->
+      <div class="flex items-center justify-between w-[390px] mb-3 px-2">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-terracotta-dark shadow-sm"></span>
+          <span class="font-manrope font-bold text-sm tracking-wide text-textMain uppercase">Modo Oscuro</span>
+        </div>
+        <span class="text-xs font-semibold text-neutral-300 bg-[#2D2119] px-2.5 py-0.5 rounded-full border border-neutral-700">
+          Vía Generador: "A partir de 6 ingredientes"
+        </span>
+      </div>
+
+      <!-- Smartphone Frame 390x844 (Dark Theme) -->
+      <div class="w-[390px] h-[844px] bg-surface-darkBg rounded-[48px] p-3 shadow-2xl ring-1 ring-white/10 relative overflow-hidden flex flex-col border-[6px] border-[#31261F]">
+        
+        <!-- Inner Screen -->
+        <div class="relative w-full h-full bg-surface-darkBg rounded-[40px] overflow-hidden flex flex-col">
+          
+          <!-- Android Status Bar -->
+          <div class="h-10 pt-2 px-6 flex justify-between items-center text-xs font-semibold text-darkTextMain shrink-0 z-20">
+            <span class="tabular-nums">09:41</span>
+            <div class="flex items-center gap-1.5 text-darkTextMain">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A9.957 9.957 0 012 12C2 6.48 6.48 2 12 2s10 4.48 10 10c0 2.32-.79 4.45-2.12 6.16l-.62-.62C20.35 16.03 21 14.1 21 12c0-4.97-4.03-9-9-9z"/><circle cx="12" cy="12" r="4"/></svg>
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+              <div class="w-5 h-2.5 border border-current rounded-sm p-0.5 flex items-center">
+                <div class="h-full w-full bg-current rounded-2xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top App Bar with Floating Circular Back Button -->
+          <div class="px-4 pt-1 pb-3 flex items-start gap-3 shrink-0 z-10">
+            <!-- Floating circular back button -->
+            <button class="w-10 h-10 rounded-full bg-surface-darkCard text-darkTextMain shadow-md flex items-center justify-center border border-surface-darkBorder hover:bg-surface-darkCardHigh active:scale-95 transition-transform shrink-0 mt-0.5" aria-label="Volver">
+              <svg class="w-5 h-5 text-darkTextMain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </button>
+
+            <!-- Canonical Header Titles (Direct Generator Output) -->
+            <div class="flex-1 min-w-0 pr-1">
+              <h2 class="text-[22px] font-extrabold font-manrope text-darkTextMain leading-tight tracking-tight">
+                Estas son tus recetas
+              </h2>
+              <p class="text-xs text-darkTextMuted font-medium truncate mt-0.5">
+                A partir de 6 ingredientes · 30 min · 2 comensales
+              </p>
+            </div>
+          </div>
+
+          <!-- Horizontal Ordering Chip Row (Dark Theme) -->
+          <div class="px-4 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs custom-scrollbar">
+            <button class="px-3.5 py-1.5 rounded-full bg-terracotta-dark text-white font-semibold shadow-sm shrink-0 flex items-center gap-1">
+              Relevancia
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-surface-darkCard text-darkTextMain font-medium border border-surface-darkBorder hover:bg-surface-darkCardHigh shrink-0">
+              Más rápida
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-surface-darkCard text-darkTextMain font-medium border border-surface-darkBorder hover:bg-surface-darkCardHigh shrink-0">
+              Más fácil
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-surface-darkCard text-darkTextMain font-medium border border-surface-darkBorder hover:bg-surface-darkCardHigh shrink-0">
+              Mejor valoradas
+            </button>
+            <button class="px-3 py-1.5 rounded-full bg-surface-darkCard text-darkTextMain font-semibold border border-surface-darkBorder flex items-center gap-1.5 shrink-0 hover:bg-surface-darkCardHigh">
+              <svg class="w-3.5 h-3.5 text-darkTextMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+              </svg>
+              Ajustar
+            </button>
+          </div>
+
+          <!-- Vertical List of RecipeCards (Scrollable Body) -->
+          <div class="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-4 custom-scrollbar">
+
+            <!-- RecipeCard 1 Dark: Arroz meloso -->
+            <article class="bg-surface-darkCard rounded-[24px] overflow-hidden border border-surface-darkBorder shadow-lg">
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-900">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfXNiuloA5erhzJqHy6-Doa8IHGJ-MYTaYejT5ImAF5JdSaTClGsJCVxscSyR2asx_zCkL2KSYBB9ZuI6_FYGi3k6djPNjCbzdyWTq6_xi6bjTal8FhYIthAS84a5C5emFkDSFAkzdUjpoAVRCHLBn7VCuCl4ulObP0BKK6B9caZSLzDJRfqczHrHuYaRqr5hJCJf8piuCrFM_CM8faBYKNoju_sAAVEoDP2fBCIHyLOH4HvZZe7T65Q" alt="Arroz con pollo" class="w-full h-full object-cover opacity-95">
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white shadow-md flex items-center justify-center hover:bg-black/80" aria-label="Guardar">
+                  <svg class="w-4 h-4 text-terracotta-dark fill-terracotta-dark" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-terracotta-dark text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                  92% coincidencia
+                </div>
+              </div>
+
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-darkTextMain tracking-tight leading-snug mb-1">
+                  Arroz meloso con pollo y pimientos
+                </h3>
+                <p class="text-xs text-darkTextMuted leading-relaxed mb-3 line-clamp-1">
+                  Guiso tradicional reconfortante con sofrito aromático y arroz al punto.
+                </p>
+
+                <div class="flex items-center justify-between pt-2 border-t border-surface-darkBorder text-xs text-darkTextMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-darkTextMain">25 min</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-[#88B058]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Fácil</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-darkTextMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- RecipeCard 2 Dark: Pollo al romero -->
+            <article class="bg-surface-darkCard rounded-[24px] overflow-hidden border border-surface-darkBorder shadow-lg">
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-900">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmzl1L3D_1EjahZ8-YJ8QcgSqn1EJAPHoIAAu0-jJRm91m-LoBjHall5JUDuhe6ZtPJolnJLkXgrUIfW6DaFw846WzYUOFXM6s43QWihz2k8HmOzn3C3joQ57krZpb_WVC_gRnxR_K3bzXXt5dAZ69b-2d_m52kq2g8Oeqt-yS2v2V2be3wzI2VaobarHqR6o_NB_sIenoKMgCIYolg3DMnyZeGVk5YT5vNqXfVDNWLXFWt0VfDAUGgw" alt="Pollo al romero" class="w-full h-full object-cover opacity-95">
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white shadow-md flex items-center justify-center hover:bg-black/80" aria-label="Guardar">
+                  <svg class="w-4 h-4 text-darkTextMuted hover:text-terracotta-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-terracotta-dark text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                  88% coincidencia
+                </div>
+              </div>
+
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-darkTextMain tracking-tight leading-snug mb-1">
+                  Pollo dorado al romero y cherrys
+                </h3>
+                <p class="text-xs text-darkTextMuted leading-relaxed mb-3 line-clamp-1">
+                  Sartén exprés con reducción de ajos asados y tomates confitados.
+                </p>
+
+                <div class="flex items-center justify-between pt-2 border-t border-surface-darkBorder text-xs text-darkTextMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-darkTextMain">18 min</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-[#88B058]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Fácil</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-darkTextMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- RecipeCard 3 Dark: Cazuela mediterránea -->
+            <article class="bg-surface-darkCard rounded-[24px] overflow-hidden border border-surface-darkBorder shadow-lg">
+              <div class="relative h-44 w-full overflow-hidden bg-neutral-900">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDektJtscPZaieqZIlXu551kwSgQ0Y2xr0iZAyMMPZdLA7Bqk1DybUc7-ltnMzvbRMovZQ0r4wX3CVglQN-nAgdorC_71VlNXivT5OqpN1cID0Ls3BxpuK4NqU-9Wy2KCzBrifZcsAl6psfAn0lYjd7egil5IFGMNxFw1c6HVlGlQnMy1KLydn2J2eFLSYbGx44XQ3BtqXz33ZMt3whGhRbzIc5DnNPQPG87aRGWBFDPfUAjGhpOrlWaQ" alt="Guiso de garbanzos" class="w-full h-full object-cover opacity-95">
+                <button class="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white shadow-md flex items-center justify-center hover:bg-black/80" aria-label="Guardar">
+                  <svg class="w-4 h-4 text-darkTextMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                </button>
+                <div class="absolute bottom-3 left-3 bg-terracotta-dark text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                  85% coincidencia
+                </div>
+              </div>
+
+              <div class="p-4">
+                <h3 class="font-manrope font-bold text-lg text-darkTextMain tracking-tight leading-snug mb-1">
+                  Guiso mediterráneo de garbanzos y espinacas
+                </h3>
+                <p class="text-xs text-darkTextMuted leading-relaxed mb-3 line-clamp-1">
+                  Cazuela tibia en barro con fondo de tomate asado y aceite virgen.
+                </p>
+
+                <div class="flex items-center justify-between pt-2 border-t border-surface-darkBorder text-xs text-darkTextMuted font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-honey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="tabular-nums font-semibold text-darkTextMain">30 min</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-[#88B058]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span>Media</span>
+                  </div>
+                  <span class="text-surface-darkBorder">•</span>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-darkTextMuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span class="tabular-nums">2 pers.</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+          </div>
+
+          <!-- Sticky Secondary Button at the Bottom (Dark Mode) -->
+          <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-surface-darkBg via-surface-darkBg/95 to-transparent pt-6 z-20 flex justify-center">
+            <button class="w-full py-3.5 px-5 rounded-full bg-surface-darkCard text-darkTextMain font-manrope font-bold text-sm border-2 border-surface-darkBorder shadow-lg hover:bg-surface-darkCardHigh active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-terracotta-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Cambiar ingredientes
+            </button>
+          </div>
+
+          <!-- Android Gesture Pill Bar -->
+          <div class="h-4 pb-1 flex justify-center items-center shrink-0 z-30">
+            <div class="w-32 h-1 bg-white/30 rounded-full"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==========================================
+       CANONICAL STATES SHOWCASE (Section 4.D Spec)
+       ========================================== -->
+  <section class="max-w-7xl mx-auto mt-6 bg-white/90 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-outlineWarm/80 shadow-sm">
+    <div class="border-b border-outlineWarm/80 pb-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-terracotta">Especificación de Estados Canónicos</span>
+        <h2 class="text-xl md:text-2xl font-bold font-manrope text-textMain mt-0.5">
+          Estados de Excepción y Resiliencia en Resultados
+        </h2>
+      </div>
+      <span class="text-xs text-textMuted bg-neutral-100 px-3 py-1 rounded-full">
+        Cumplimiento estricto de las 4 condiciones de diseño
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      <!-- State 1: Blocked-by-profile state -->
+      <div class="bg-surface-cream rounded-2xl p-5 border border-outlineWarm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+              Perfil Incompatible
+            </span>
+          </div>
+
+          <!-- Honey-tinted card -->
+          <div class="bg-honey-container border-2 border-honey/50 rounded-2xl p-4 text-center">
+            <div class="w-10 h-10 mx-auto rounded-full bg-honey/20 flex items-center justify-center text-honey mb-3">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <h4 class="font-manrope font-bold text-sm text-textMain leading-snug mb-1">
+              Tu perfil no permite esta receta
+            </h4>
+            <p class="text-xs text-textMuted leading-relaxed mb-4">
+              Tu alimentación o tus alergias impiden esta búsqueda.
+            </p>
+            <button class="w-full py-2 px-3 rounded-full bg-white text-textMain font-manrope font-bold text-xs border border-honey/60 hover:bg-neutral-50 shadow-2xs">
+              Revisar mi perfil
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-textMuted mt-3 italic border-t border-outlineWarm/60 pt-2">
+          *Nunca se muestra la receta prohibida (seguridad médica y dietética).
+        </p>
+      </div>
+
+      <!-- State 2: Empty state -->
+      <div class="bg-surface-cream rounded-2xl p-5 border border-outlineWarm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-neutral-200 text-neutral-800">
+              Sin Coincidencias
+            </span>
+          </div>
+
+          <div class="bg-white border border-outlineWarm rounded-2xl p-5 text-center flex flex-col items-center">
+            <!-- Line illustration of empty plate -->
+            <div class="w-12 h-12 rounded-full border-2 border-dashed border-outlineWarm flex items-center justify-center text-textMuted mb-3">
+              <svg class="w-6 h-6 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"></circle>
+                <circle cx="12" cy="12" r="5" stroke-dasharray="2 2"></circle>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+            </div>
+            <h4 class="font-manrope font-bold text-sm text-textMain leading-snug mb-1">
+              No hemos encontrado recetas con esos ingredientes
+            </h4>
+            <p class="text-xs text-textMuted leading-relaxed mb-4">
+              Prueba a añadir básicos como aceite, sal o harina, o reduce descartes.
+            </p>
+            <button class="w-full py-2 px-3 rounded-full bg-terracotta text-white font-manrope font-bold text-xs shadow-sm hover:bg-terracotta-hover">
+              Ajustar mi búsqueda
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-textMuted mt-3 italic border-t border-outlineWarm/60 pt-2">
+          *Ilustración de plato vacío sin saturación ni culpabilización.
+        </p>
+      </div>
+
+      <!-- State 3: Error state -->
+      <div class="bg-surface-cream rounded-2xl p-5 border border-outlineWarm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-100 text-rose-900 border border-rose-200">
+              Error de Red
+            </span>
+          </div>
+
+          <div class="bg-white border border-outlineWarm rounded-2xl p-5 text-center flex flex-col items-center">
+            <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              </svg>
+            </div>
+            <h4 class="font-manrope font-bold text-sm text-textMain leading-snug mb-1">
+              Error de conexión
+            </h4>
+            <p class="text-xs text-textMuted leading-relaxed mb-4">
+              No hemos podido generar las recetas. Revisa tu conexión.
+            </p>
+            <button class="w-full py-2 px-3 rounded-full bg-white text-textMain font-manrope font-bold text-xs border border-outlineWarm hover:bg-neutral-50 flex items-center justify-center gap-1.5 shadow-2xs">
+              <svg class="w-3.5 h-3.5 text-terracotta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              Reintentar
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] text-textMuted mt-3 italic border-t border-outlineWarm/60 pt-2">
+          *Copy exacto del brief con acción directa de reintento.
+        </p>
+      </div>
+
+      <!-- State 4: AI-unavailable state with Local Seed Catalog -->
+      <div class="bg-surface-cream rounded-2xl p-5 border border-outlineWarm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+              Modo Resiliencia Offline
+            </span>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Honey banner -->
+            <div class="bg-honey-container border border-honey/60 rounded-xl p-3 flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-honey shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <p class="text-[11px] text-textMain font-medium leading-snug">
+                Ahora mismo no podemos generar recetas nuevas. Aquí tienes nuestras sugerencias.
+              </p>
+            </div>
+
+            <!-- Seed Local Recipe preview -->
+            <div class="bg-white rounded-xl p-2.5 border border-outlineWarm flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-neutral-100 overflow-hidden shrink-0">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDektJtscPZaieqZIlXu551kwSgQ0Y2xr0iZAyMMPZdLA7Bqk1DybUc7-ltnMzvbRMovZQ0r4wX3CVglQN-nAgdorC_71VlNXivT5OqpN1cID0Ls3BxpuK4NqU-9Wy2KCzBrifZcsAl6psfAn0lYjd7egil5IFGMNxFw1c6HVlGlQnMy1KLydn2J2eFLSYbGx44XQ3BtqXz33ZMt3whGhRbzIc5DnNPQPG87aRGWBFDPfUAjGhpOrlWaQ" alt="Semilla local" class="w-full h-full object-cover">
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="text-[10px] font-bold text-olive uppercase">Catálogo Local</span>
+                <p class="text-xs font-bold font-manrope text-textMain truncate">Guiso de garbanzos</p>
+                <span class="text-[10px] text-textMuted">Disponible sin conexión</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[11px] text-textMuted mt-3 italic border-t border-outlineWarm/60 pt-2">
+          *La pantalla nunca queda vacía: entrega recetas semilla preinstaladas.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Technical Spec & Implementation Footer -->
+  <footer class="max-w-7xl mx-auto mt-8 flex flex-wrap items-center justify-between text-xs text-textMuted px-4 pb-12 border-t border-outlineWarm/60 pt-4">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span>Cumplimiento estricto de especificación: <strong>stitch-prompt.md (Sección 4.D Resultados)</strong></span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span>Cifras tabulares en metadata</span>
+      <span>•</span>
+      <span>Radio de esquinas 24px en tarjetas y fotos</span>
+      <span>•</span>
+      <span>Sazón UI Design System</span>
+    </div>
+  </footer>
+
+</body>
+</html>

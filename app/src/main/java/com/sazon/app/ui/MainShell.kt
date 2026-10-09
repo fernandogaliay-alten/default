@@ -177,6 +177,7 @@ fun MainShell(
                     taxonomy = taxonomy,
                     preferences = profile.preferences,
                     generationService = generationService,
+                    seedRecipes = seedRecipes,
                     onClose = { navigation = navigation.pop() },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                 )
