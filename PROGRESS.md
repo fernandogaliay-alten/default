@@ -12,18 +12,19 @@
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
-  `profile-screen` y `generation-flow-with-validation` (validador independiente, veredicto `accept`). El
-  onboarding queda **completo** (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte
-  vertical principal del MVP (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y la
-  pestaña Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding).
+  `profile-screen`, `generation-flow-with-validation` y `manual-suggestions-refresh` (validador
+  independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el Perfil al
+  cerrar; el Generador ya ejecuta el corte vertical principal del MVP (generar -> validar -> mostrar solo
+  aceptadas, con carga cancelable), la pestaña Perfil es real (identidad + preferencias editables
+  reutilizando los editores del onboarding) y permite forzar el refresco del Lote.
 - Siguiente feature en orden de lista: `results-screen` (su dependencia ya está `accepted`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-09, validación independiente de `generation-flow-with-validation`):
-  `init.sh` con Git Bash exit 0, **223 tests/0 fallos/errores/saltados** en 35 suites (14 nuevos:
-  `GenerationServiceTest` 6, `GeneratorRequestFactoryTest` 4, `GeneratorProgressMessagesTest` 4; 209
-  preexistentes en verde); lint 0 errores y 13 warnings preexistentes (0 en ficheros de la feature). El
-  corte vertical principal del MVP queda validado de forma independiente con veredicto `accept`.
+- Última verificación (2026-10-09, merge de `origin/main` en `feature/manual-suggestions-refresh`):
+  `init.sh` con Git Bash exit 0, **234 tests/0 fallos/errores/saltados** en 36 suites (223 preexistentes
+  de `generation-flow-with-validation` + 11 nuevos `SuggestionsRefreshFormatTest`); lint 0 errores y 13
+  warnings preexistentes. Ambas features conservan su veredicto `accept` y el merge del log de sesiones
+  conservó las dos aportaciones (generación 042/043, manual 044/045).
 
 ## Registro de sesiones
 
@@ -1640,3 +1641,87 @@
   orquestador de `feature-flow`); la publicación queda para `github-flow`. Después, especificar
   `results-screen` (su dependencia ya está `accepted`) con `feature-spec`.
 
+
+### Sesión 044
+
+- Objetivo: implementar `manual-suggestions-refresh` (selección explícita del orquestador, fuera del
+  orden de lista) y dejarla autoverificada para validación independiente.
+- Completado: sección **"Sugerencias"** en la pestaña Perfil (insertada tras la cabecera de identidad y
+  antes de "Mis preferencias") con la antigüedad del Lote observado y un botón "Actualizar sugerencias".
+  Formateador puro `SuggestionsRefreshFormat` (sin Compose/Android) + sección Compose delgada
+  `ProfileSuggestionsSection`. `ProfileScreen` recibe `suggestionsGeneratedAt`, `isRefreshingSuggestions`
+  y `onRefreshSuggestions`; `MainShell` aporta `rememberCoroutineScope` + un boolean "en vuelo" no
+  persistido y cablea `SuggestionBatchService.ensureBatch(profile.preferences, force = true)` sin tocar
+  `ProfileRepository`. El refresco no cambia preferencias/identidad/borrador y reusa el mismo Lote
+  observado, de modo que la fecha y el carrusel de la Home se recomponen solos. `docs/technical-discovery.md`
+  actualizado.
+- Verificación ejecutada: `./gradlew testDebugUnitTest --tests "com.sazon.app.ui.profile.*"` (verde) y
+  el gate estándar `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos). Test XML y `lint-results-debug.xml` parseados a mano.
+- Evidencia capturada: 33 suites, **220 tests, 0 fallos/errores/saltados** (11 nuevos
+  `SuggestionsRefreshFormatTest`; 209 preexistentes en verde). Cubre escenarios 3-5 y límites: respaldo
+  sin Lote, hoy / hace 1 / 2 / 3 / 7 días, `1 día - 1 ms` -> hoy, reloj retrasado -> hoy sin negativos,
+  `generatedAt` más reciente -> etiqueta más corta, microcopy estable; casos negativos con
+  `assertNotEquals`. lint: BUILD SUCCESSFUL, 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature. Inspección: `SuggestionsRefreshFormat` sin ningún import; `force = true` en
+  `MainShell.kt:154-157`; sin `ProfileRepository.save` en el refresco; `domain.suggestions`/`data.suggestions`/
+  `domain.profile`/`data.profile`/`ProfileDatabase`/Taxonomía/`seed-recipes.json`/`SazonApp`/`Home`/
+  `Generator`/`app/build.gradle.kts`/`gradle/libs.versions.toml` intactos; sin dependencias nuevas.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/profile/SuggestionsRefreshFormat.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/profile/ProfileSuggestionsSection.kt` (nuevo),
+  `app/src/test/java/com/sazon/app/ui/profile/SuggestionsRefreshFormatTest.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/profile/ProfileScreen.kt` (modificado),
+  `app/src/main/java/com/sazon/app/ui/MainShell.kt` (modificado),
+  `docs/technical-discovery.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: la primera pasada de `init.sh` falló en `lint` con "Gradle build daemon has been
+  stopped: stop command received"; fue un parón del daemon compartido por otra sesión/worktree (el `trap`
+  de su `init.sh` ejecuta `./gradlew --stop`), no un fallo de la feature: la segunda pasada terminó con
+  exit 0. Se mantiene la incógnita ya registrada en la spec sobre la concurrencia entre el refresco
+  manual y el `ensureBatch` de entrada (no se añade sincronización; el botón deshabilitado evita solo el
+  doble toque manual).
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge la prueba de
+  emulador exigida (pulsar "Actualizar sugerencias" renueva el Lote sin cambiar ninguna preferencia y
+  actualiza la fecha mostrada) y el acabado visual (estado "Actualizando…" deshabilitado, sin Lote la
+  fecha cae al respaldo); un defecto visual se corrige con feature correctiva. El estado "en vuelo" no
+  sobrevive a un cambio de configuración (estado de UI, como `editingIdentity`).
+- Siguiente paso: validación independiente de `manual-suggestions-refresh` con `feature-validator`;
+  después, commit local de la rama `feature/manual-suggestions-refresh` (orquestador de `feature-flow`)
+  y publicación por `github-flow`. La siguiente feature en orden de lista sigue siendo
+  `generation-flow-with-validation`.
+
+
+### Sesión 045
+
+- Objetivo: validar `manual-suggestions-refresh` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks` (28/28 tareas; el primer intento de lint falló por
+  "Gradle build daemon has been stopped" de otro worktree y el reintento pasó); parseó por su cuenta
+  los XML de resultados y el informe de lint, e inspeccionó el código.
+- Evidencia capturada: 33 suites, **220 tests, 0 fallos/errores/saltados** (`SuggestionsRefreshFormatTest`
+  11); lint 0 errores y 13 warnings preexistentes, 0 en ficheros de la feature; escenarios 1–7 y
+  `Validator Checklist` en PASS; verificación exigida #1 (`MainShell.kt:154-156` llama a
+  `ensureBatch(profile.preferences, force = true)`; el de entrada queda sin `force` y sin
+  `ProfileRepository.save` en el refresco) y #2 (la fecha sale de `batch?.generatedAt` del Lote
+  observado, sin segunda fuente de verdad); antigüedad en JVM con límites `1 día - 1 ms` → hoy y reloj
+  retrasado → hoy sin negativos; botón `enabled = !isRefreshing` con guard de doble disparo; formateador
+  sin imports; dominio/persistencia/`ProfileDatabase`/Taxonomía/`seed-recipes.json`/`SazonApp`/Home/
+  Generator/build intactos; sin dependencias nuevas.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (Low informativos, ninguno bloqueante): los checkboxes de `Implementation
+  Tasks`/`Validator Checklist` de la spec quedan sin marcar (convención: el validador no edita ficheros);
+  una línea larga cosmética en `docs/technical-discovery.md`; se mantienen las incógnitas ya documentadas
+  (estado "en vuelo" no persistido, concurrencia con el `ensureBatch` de entrada y `now` capturado una
+  vez).
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge la
+  prueba de emulador exigida (pulsar "Actualizar sugerencias" renueva el Lote sin cambiar ninguna
+  preferencia y actualiza la fecha mostrada) y el acabado visual; un defecto visual se corrige con una
+  feature correctiva.
+- Siguiente paso: commit local de la rama `feature/manual-suggestions-refresh` (orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. La siguiente feature en orden de lista sigue
+  siendo `generation-flow-with-validation`.

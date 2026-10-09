@@ -22,6 +22,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,6 +52,7 @@ import com.sazon.app.ui.navigation.MainTab
 import com.sazon.app.ui.navigation.PushedScreen
 import com.sazon.app.ui.profile.ProfileScreen
 import com.sazon.app.ui.theme.SazonComponents
+import kotlinx.coroutines.launch
 
 /**
  * Armazon principal de la app tras el onboarding: barra de navegacion inferior de tres destinos
@@ -57,7 +60,10 @@ import com.sazon.app.ui.theme.SazonComponents
  *
  * Aqui tambien se **compone** el Lote de sugerencias en la app: observa
  * [SuggestionBatchRepository.observe] y asegura el Lote una vez al entrar con
- * [SuggestionBatchService.ensureBatch] (politica cache-first ya aceptada). Mientras el Lote no se
+ * [SuggestionBatchService.ensureBatch] (politica cache-first ya aceptada). La seccion "Sugerencias"
+ * del Perfil reusa esa costura: su boton fuerza un refresco con `ensureBatch(..., force = true)` y
+ * `MainShell` aporta el estado de UI "en vuelo" que deshabilita el boton (sin `ProfileRepository`:
+ * el refresco no cambia ninguna preferencia). Mientras el Lote no se
  * resuelve, el carrusel pinta las recetas semilla empaquetadas ([HomeSuggestions]); no hay pantalla de
  * carga. La Home es offline: el unico generador conectado es `FakeRecipeGenerator` (sin red).
  *
@@ -84,6 +90,10 @@ fun MainShell(
     }
 
     val batch by suggestionBatchRepository.observe().collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
+    // Refresco manual "en vuelo": es estado de UI (no persistido) para deshabilitar el boton y evitar
+    // dobles disparos; vive aqui porque `MainShell` posee el servicio y el scope.
+    var refreshingSuggestions by remember { mutableStateOf(false) }
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
@@ -136,6 +146,23 @@ fun MainShell(
                             profile = profile,
                             taxonomy = taxonomy,
                             onSaveProfile = onSaveProfile,
+                            suggestionsGeneratedAt = batch?.generatedAt,
+                            isRefreshingSuggestions = refreshingSuggestions,
+                            onRefreshSuggestions = {
+                                if (!refreshingSuggestions) {
+                                    refreshingSuggestions = true
+                                    scope.launch {
+                                        try {
+                                            suggestionBatchService.ensureBatch(
+                                                profile.preferences,
+                                                force = true,
+                                            )
+                                        } finally {
+                                            refreshingSuggestions = false
+                                        }
+                                    }
+                                }
+                            },
                         )
                     }
                 }
