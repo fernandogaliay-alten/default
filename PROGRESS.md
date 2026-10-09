@@ -1768,3 +1768,27 @@
   feature de producto).
 - Siguiente paso: commit + push + PR del chore (publicación por `github-flow`). Después, **Fase 2**:
   reconciliar feature por feature según lleguen los exports.
+
+### Sesión 047
+
+- Fecha: 2026-10-09
+- Objetivo: **chore de harness**: trocear el prompt de Stitch **por pantalla** para que Stitch no lo
+  trunque y genere todas las pantallas (el prompt completo `docs/design/stitch-prompt.md` se truncaba).
+- Completado: nueva carpeta `docs/design/stitch/` con `README.md` (guía de uso + mapa parte → carpeta de
+  `docs/design/concepts/`) y **21 partes** listas para copiar/pegar de una en una en la misma
+  conversación de Stitch: `00-contexto.md` (producto, lenguaje visual, navegación, fuera de alcance y
+  calidad, se pega primero), `01-design-system`, 7 pasos de onboarding, `home`, `home-sin-conexion`,
+  `home-busqueda-ia`, generador (ingredientes, ajustes, cargando), resultados, detalle, favoritos,
+  perfil, perfil-editar y perfil-sugerencias. Referencias actualizadas para apuntar al prompt troceado
+  (`docs/design/concepts/README.md` y cabecera de `docs/design/stitch-prompt.md`, que sigue siendo la
+  fuente completa de referencia).
+- Verificación ejecutada: cambio **solo de documentación** (ningún fichero Kotlin/recursos/gradle), por
+  lo que el gate `init.sh` no aplica; revisión manual de los 22 ficheros y de `git status`.
+- Ficheros creados/cambiados: los 22 ficheros de `docs/design/stitch/`, `docs/design/concepts/README.md`,
+  `docs/design/stitch-prompt.md` y este registro.
+- Hallazgos relevantes: el prompt largo se trunca; pegarlo en partes pequeñas y en la **misma** sesión
+  (no sesiones distintas) es lo que permite generar todo. La hoja "Design System" es una parte propia.
+- Riesgo o incógnita abierta: ninguno nuevo. Las partes de Resultados, Detalle, Favoritos y búsqueda IA
+  corresponden a features aún `not_started` (igual que en el prompt original).
+- Siguiente paso: la persona pega las partes en Stitch en orden y guarda cada export en
+  `docs/design/concepts/<feature-id>/<pantalla>/`; después, **Fase 2** de reconciliación una a una.

@@ -5,6 +5,8 @@ generadas con el prompt anterior quedan obsoletas: este es el que hay que usar.
 
 Notas de uso:
 
+- **Recomendado**: usar la versión troceada por pantalla en `docs/design/stitch/` (primero
+  `00-contexto.md`, luego una pantalla a la vez, en la misma conversación); este fichero se trunca.
 - Pegar completo como primer mensaje. Si Stitch lo trunca, pegar por bloques: secciones 1–3,
   después A–B, después C–E, y por último F–G.
 - Los conceptos que devuelva Stitch son **dirección visual**, no especificación pixel-perfect.
