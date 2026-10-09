@@ -173,6 +173,32 @@ callback de Perfil (`onEditProfile`) y guarda el borrador de ajustes con `rememb
 `generation-flow-with-validation`; el estado **no** se convierte a `GenerationConstraints`. Ver
 `docs/specs/generator-settings-step.md`.
 
+La **generacion validada del Generador** (el corte vertical principal) vive en
+`com.sazon.app.domain.generation` (`GenerationResult` y `GenerationService`). El servicio es logica pura
+(sin Android ni red): construye las `RecipeConstraints` con el `profile` **efectivo** que viaja en las
+`GenerationConstraints`, llama a `RecipeGenerator.generateFromIngredients`, valida **receta a receta**
+con `RecipeValidator.validateRecipe` (no usa `validateResponse`: el puerto ya devuelve `List<Recipe>`),
+**re-lanza** la `CancellationException` y convierte cualquier otra `Exception` en `aiUnavailable = true`
+con listas vacias, sin propagar (modo degradado). El mapeo borrador -> dominio es
+`com.sazon.app.ui.generator.GeneratorRequestFactory` (puro): los ingredientes se mapean con
+`quantity = 0.0`, `unit = null` e `isPantry = false` conservando `name`/`ingredientId`, y `constraints`
+copia el Perfil **sustituyendo** sus `hardRestrictionIds` por las del paso de ajustes (y unas notas en
+blanco pasan a `null`), de modo que el validador (y el prompt del proveedor real) ven las alergias **a
+evitar ahora**. El microcopy del estado de carga es `GeneratorProgressMessages` (puro: cabecera fija y
+sublineas derivadas de la Taxonomia y los ajustes). La capa Compose es delgada:
+`GeneratorGeneratingScreen` (animacion terracota dibujada con `Canvas`, titular Manrope, sublineas
+rotatorias y "Cancelar" secundario) y `GeneratorResultsPreview` (seam minimo: **solo** `accepted` con
+titulo + `RecipeCardFormat.metaLine`, aviso ambar `tertiaryContainer` si `aiUnavailable` y estado vacio;
+no es la pantalla de Resultados real, que es de `results-screen`). `GeneratorFlow` guarda el resultado y
+el token de generacion en `remember` (no `rememberSaveable`, `Recipe` no es serializable trivialmente),
+dispara la generacion al pulsar "Generar recetas" en el paso de ajustes, respeta `MIN_VISIBLE_MILLIS`
+(~900 ms) y cancela poniendo el token a `null` (la cancelacion se propaga por el servicio).
+`MainActivity` compone `GenerationService(generator = FakeRecipeGenerator(), taxonomy = taxonomy)` (sin
+DI) y lo encadena por `SazonApp` y `MainShell` hasta `GeneratorFlow`. Testeado en JVM
+(`GenerationServiceTest`, `GeneratorRequestFactoryTest` y `GeneratorProgressMessagesTest`), incluido el
+caso negativo obligatorio del `build-brief`: una receta insegura no llega a `accepted`. Ver
+`docs/specs/generation-flow-with-validation.md`.
+
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,
 con `from(profile, taxonomy)` (normaliza el nombre y degrada un `avatarColorId` corrupto al primer
