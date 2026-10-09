@@ -63,6 +63,7 @@ fun HomeScreen(
     suggestions: List<Recipe>,
     recipes: HomeRecipes,
     onOpenGenerator: () -> Unit,
+    onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
@@ -83,13 +84,20 @@ fun HomeScreen(
             )
         }
         item { HeroCard(onOpenGenerator = onOpenGenerator) }
-        item { SuggestionsSection(suggestions = suggestions, taxonomy = taxonomy) }
+        item {
+            SuggestionsSection(
+                suggestions = suggestions,
+                taxonomy = taxonomy,
+                onOpenRecipe = onOpenRecipe,
+            )
+        }
         item {
             RecipesSection(
                 recipes = recipes,
                 taxonomy = taxonomy,
                 filter = filter,
                 onSelect = { filter = it },
+                onOpenRecipe = onOpenRecipe,
             )
         }
     }
@@ -161,6 +169,7 @@ private fun HeroCard(onOpenGenerator: () -> Unit) {
 private fun SuggestionsSection(
     suggestions: List<Recipe>,
     taxonomy: Taxonomy,
+    onOpenRecipe: (Recipe) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -181,7 +190,11 @@ private fun SuggestionsSection(
             contentPadding = PaddingValues(vertical = 4.dp),
         ) {
             items(suggestions) { recipe ->
-                RecipeCard(recipe = recipe, taxonomy = taxonomy)
+                RecipeCard(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    onClick = { onOpenRecipe(recipe) },
+                )
             }
         }
     }
@@ -193,6 +206,7 @@ private fun RecipesSection(
     taxonomy: Taxonomy,
     filter: LocalResultFilter,
     onSelect: (LocalResultFilter) -> Unit,
+    onOpenRecipe: (Recipe) -> Unit,
 ) {
     val allRecipes = recipes.saved + recipes.recentlyOpened
     val categories = LocalResultFilters.categoriesIn(allRecipes, taxonomy)
@@ -231,11 +245,13 @@ private fun RecipesSection(
                     title = "Guardadas",
                     recipes = filtered.saved,
                     taxonomy = taxonomy,
+                    onOpenRecipe = onOpenRecipe,
                 )
                 HomeRecipesGroup(
                     title = "Abiertas hace poco",
                     recipes = filtered.recentlyOpened,
                     taxonomy = taxonomy,
+                    onOpenRecipe = onOpenRecipe,
                 )
             }
         }
@@ -251,6 +267,7 @@ private fun HomeRecipesGroup(
     title: String,
     recipes: List<Recipe>,
     taxonomy: Taxonomy,
+    onOpenRecipe: (Recipe) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -267,7 +284,11 @@ private fun HomeRecipesGroup(
                 contentPadding = PaddingValues(vertical = 4.dp),
             ) {
                 items(recipes) { recipe ->
-                    RecipeCard(recipe = recipe, taxonomy = taxonomy)
+                    RecipeCard(
+                        recipe = recipe,
+                        taxonomy = taxonomy,
+                        onClick = { onOpenRecipe(recipe) },
+                    )
                 }
             }
         }

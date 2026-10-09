@@ -54,6 +54,7 @@ fun ResultsScreen(
     onBack: () -> Unit,
     onChangeIngredients: () -> Unit,
     onRetry: () -> Unit,
+    onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -68,7 +69,11 @@ fun ResultsScreen(
                 .fillMaxSize(),
         ) {
             when (status) {
-                is ResultsStatus.Content -> ResultsList(recipes = status.recipes, taxonomy = taxonomy)
+                is ResultsStatus.Content -> ResultsList(
+                    recipes = status.recipes,
+                    taxonomy = taxonomy,
+                    onOpenRecipe = onOpenRecipe,
+                )
 
                 ResultsStatus.Empty -> EmptyState()
 
@@ -76,6 +81,7 @@ fun ResultsScreen(
                     seedRecipes = status.seedRecipes,
                     taxonomy = taxonomy,
                     onRetry = onRetry,
+                    onOpenRecipe = onOpenRecipe,
                 )
             }
         }
@@ -146,6 +152,7 @@ private fun ResultsBottomBar(onChangeIngredients: () -> Unit) {
 private fun ResultsList(
     recipes: List<Recipe>,
     taxonomy: Taxonomy,
+    onOpenRecipe: (Recipe) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -153,7 +160,11 @@ private fun ResultsList(
         verticalArrangement = Arrangement.spacedBy(SazonSpacing.md),
     ) {
         items(recipes) { recipe ->
-            ResultRecipeCard(recipe = recipe, taxonomy = taxonomy)
+            ResultRecipeCard(
+                recipe = recipe,
+                taxonomy = taxonomy,
+                onClick = { onOpenRecipe(recipe) },
+            )
         }
     }
 }
@@ -190,6 +201,7 @@ private fun UnavailableState(
     seedRecipes: List<Recipe>,
     taxonomy: Taxonomy,
     onRetry: () -> Unit,
+    onOpenRecipe: (Recipe) -> Unit,
 ) {
     if (seedRecipes.isEmpty()) {
         Column(
@@ -217,7 +229,11 @@ private fun UnavailableState(
             item { DegradedBanner() }
             item { RetryButton(onRetry = onRetry) }
             items(seedRecipes) { recipe ->
-                ResultRecipeCard(recipe = recipe, taxonomy = taxonomy)
+                ResultRecipeCard(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    onClick = { onOpenRecipe(recipe) },
+                )
             }
         }
     }

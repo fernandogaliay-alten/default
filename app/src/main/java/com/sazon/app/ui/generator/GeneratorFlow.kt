@@ -73,6 +73,7 @@ fun GeneratorFlow(
     seedRecipes: List<Recipe>,
     onClose: () -> Unit,
     onEditProfile: () -> Unit,
+    onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var step by rememberSaveable(stateSaver = GeneratorStepSaver) {
@@ -135,6 +136,7 @@ fun GeneratorFlow(
                     result = null
                     generationId = (generationId ?: 0) + 1
                 },
+                onOpenRecipe = onOpenRecipe,
                 modifier = modifier,
             )
         }

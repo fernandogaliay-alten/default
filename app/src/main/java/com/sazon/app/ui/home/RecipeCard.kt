@@ -2,6 +2,7 @@ package com.sazon.app.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,16 +36,19 @@ import com.sazon.app.ui.theme.SazonSpacing
  *
  * El repositorio no tiene assets de receta ni dependencia de iconos, asi que la imagen es un **bloque
  * degradado** melocoton->oliva con un glifo de plato dibujado con Compose (mismo criterio documentado
- * en `AvatarPreview`). Sin accion de click: abrir el Detalle es de `recipe-detail-screen`.
+ * en `AvatarPreview`). El click opcional abre el Detalle (`recipe-detail-screen`).
  */
 @Composable
 fun RecipeCard(
     recipe: Recipe,
     taxonomy: Taxonomy,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Surface(
-        modifier = modifier.width(220.dp),
+        modifier = modifier
+            .width(220.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = SazonShapes.medium,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp,

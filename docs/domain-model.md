@@ -179,7 +179,9 @@ motivo para poder diagnosticar fallos del modelo.
 - **Búsqueda con IA sin red**: se conserva la consulta escrita y se ofrece reintentar; el resto de la
   Home sigue funcionando con datos locales.
 - **Duplicados**: la misma receta en semilla y en el lote `ai` → se deduplica por título normalizado.
-- **Escalado de raciones**: no es lineal (especias, sal) → se redondea por unidad y se avisa.
+- **Escalado de raciones**: no es lineal (especias, sal) → se redondea por unidad y se avisa. La lógica
+  vive en `com.sazon.app.ui.detail.ServingScaler` (`g`/`ml` a múltiplos de 5, `ud`/`cda`/`cdta` a medios,
+  `unit = null` "al gusto" no se escala; a las raciones originales las cantidades quedan intactas).
 - **Favorito eliminado que sigue en el lote**: el lote no cambia; el corazón se desmarca.
 - **Onboarding interrumpido**: al reabrir, se reanuda en el paso pendiente; no se completa a medias.
 - **Cambio de preferencias durante una generación**: el resultado en vuelo se valida contra la firma

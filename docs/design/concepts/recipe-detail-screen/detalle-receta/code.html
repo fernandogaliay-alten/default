@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sazón — Detalle de Receta (Claro &amp; Oscuro)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        terracotta: {
+          DEFAULT: '#D9552B',
+          container: '#FFDCCF',
+          dark: '#B84018',
+        },
+        olive: {
+          DEFAULT: '#5F7A3D',
+          dark: '#455B2B',
+        },
+        honey: {
+          DEFAULT: '#F2A93B',
+          container: '#FDF1DE',
+          text: '#8A5809',
+        },
+        cream: '#FFF8F0',
+        charcoal: '#2B2118',
+        outlineColor: '#E8DDD3',
+        // Dark theme tokens
+        darkBg: '#18120E',
+        darkSurface: '#241C16',
+        darkCard: '#2E241D',
+        darkOutline: '#3E3127',
+        darkText: '#F5ECE3',
+        darkMuted: '#B8A89A',
+      },
+      fontFamily: {
+        headline: ['Manrope', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
+      },
+      borderRadius: {
+        '24': '24px',
+        '16': '16px',
+      },
+      boxShadow: {
+        'soft': '0 4px 16px rgba(0, 0, 0, 0.06)',
+        'float': '0 8px 24px rgba(0, 0, 0, 0.12)',
+        'glow-terracotta': '0 8px 24px rgba(217, 85, 43, 0.28)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  body {
+    background-color: #F6EFE9;
+    font-family: 'Inter', sans-serif;
+    color: #2B2118;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Custom scrollbar hides */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+</head>
+<body class="p-4 md:p-8 lg:p-12 min-h-screen flex flex-col items-center justify-start text-[#2B2118]">
+<!-- Top Page Header Bar & Canonical Spec Overview -->
+<header class="w-full max-w-7xl mb-8 bg-white/90 backdrop-blur rounded-3xl p-6 md:p-8 border border-[#E8DDD3] shadow-soft">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#FFDCCF] text-[#D9552B] tracking-wider uppercase">
+          PÁGINA COMPLETA SOBRE PESTAÑAS (PUSHED ABOVE TABS)
+        </span>
+<span class="text-xs text-[#8A7768] font-medium">Pixel 390×844 • Android Material 3</span>
+</div>
+<div class="flex items-center gap-2 text-xs font-semibold text-[#4C7A34] bg-[#EAF2E4] px-3 py-1 rounded-full">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+        Especificación Sección 4.E Verificada
+      </div>
+</div>
+<h1 class="text-3xl md:text-4xl font-extrabold font-headline text-[#2B2118] tracking-tight">
+      Sazón — Detalle de Receta <span class="text-[#D9552B]">"Arroz meloso con pollo y pimientos"</span>
+</h1>
+<p class="mt-2 text-sm md:text-base text-[#6E5D4F] max-w-4xl leading-relaxed">
+      Pantalla a pantalla completa que se sobrepone a las pestañas inferiores con fotografía cenital <em>edge-to-edge</em> (esquinas inferiores a 24px) y botones flotantes circulares. Tarjeta superpuesta con esquinas superiores a 24px, metadatos con cifras tabulares, barra segmentada adhesiva con las pestañas <strong>Ingredientes · Pasos · Notas</strong>, selector dinámico de comensales (sin botón de compra), línea de tiempo con píldoras de duración en tono miel, y barra inferior fija con botones <em>Guardar</em> y <em>Empezar a cocinar</em>.
+    </p>
+<!-- Interactive Tab Preview Controller Note -->
+<div class="mt-4 pt-4 border-t border-[#E8DDD3] flex flex-wrap items-center justify-between gap-3 text-xs text-[#6E5D4F]">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#D9552B] animate-pulse"></span>
+<span class="font-medium text-[#2B2118]">Pestañas interactivas:</span> Haz clic en <strong>Ingredientes</strong>, <strong>Pasos</strong> o <strong>Notas</strong> dentro de los teléfonos para ver la vista en vivo.
+      </div>
+<div class="flex items-center gap-4 text-xs font-medium">
+<span>✓ Cifras tabulares en raciones y gramos</span>
+<span>✓ Sin botón de compra (out-of-scope)</span>
+<span>✓ Duraciones en píldora miel #F2A93B</span>
+</div>
+</div>
+</header>
+<!-- Side-by-Side Dual Mockup Container -->
+<main class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start justify-center">
+<!-- =========================================================
+         1. MODO CLARO (LIGHT THEME)
+         ========================================================= -->
+<div class="flex flex-col items-center w-full">
+<div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#D9552B]"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-[#2B2118]">MODO CLARO</span>
+</div>
+<span class="text-xs font-medium text-[#D9552B] bg-[#FFDCCF] px-2.5 py-0.5 rounded-full">
+          Tab activa: Ingredientes (Default)
+        </span>
+</div>
+<!-- Device Mockup: Light Mode (390 x 844) -->
+<div class="relative w-[390px] h-[844px] bg-[#FFF8F0] rounded-[48px] shadow-[0_24px_60px_-15px_rgba(43,33,24,0.35)] border-[8px] border-[#2B2118] overflow-hidden flex flex-col select-none">
+<!-- Native Android Status Bar (Transparent over image) -->
+<div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 pt-3 pb-1 text-white text-xs font-semibold">
+<span class="tabular-nums drop-shadow-md">09:41</span>
+<div class="w-24 h-4 bg-black/30 backdrop-blur-md rounded-full mx-auto"></div>
+<div class="flex items-center gap-1.5 drop-shadow-md">
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A9.972 9.972 0 012 12C2 6.48 6.48 2 12 2s10 4.48 10 10c0 2.32-.79 4.45-2.12 6.16l-.62-.64C20.35 16.03 21 14.1 21 12c0-4.97-4.03-9-9-9z"></path></svg>
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"></path></svg>
+<div class="w-5 h-2.5 border border-white rounded-sm p-0.5 flex items-center">
+<div class="h-full w-3 bg-white rounded-2xs"></div>
+</div>
+</div>
+</div>
+<!-- Scrollable Page Container -->
+<div class="flex-1 overflow-y-auto no-scrollbar relative flex flex-col pb-24">
+<!-- Hero Section: Edge-to-edge photo with 24px bottom radius -->
+<div class="relative w-full h-[290px] flex-shrink-0">
+<!-- Hero Image with bottom radius 24px -->
+<img alt="Arroz meloso con pollo y pimientos" class="w-full h-full object-cover rounded-b-[24px]" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg"/>
+<!-- Subtle gradient scrim for status bar & floating button visibility -->
+<div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent rounded-b-[24px]"></div>
+<!-- Floating circular buttons (48dp touch targets) -->
+<div class="absolute top-12 left-4 right-4 flex items-center justify-between z-20">
+<!-- Back button -->
+<button class="w-11 h-11 rounded-full bg-white/90 backdrop-blur-md shadow-float flex items-center justify-center text-[#2B2118] hover:bg-white active:scale-95 transition-all">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</button>
+<!-- Heart/Save floating circular button -->
+<button class="w-11 h-11 rounded-full bg-white/90 backdrop-blur-md shadow-float flex items-center justify-center text-[#D9552B] hover:bg-white active:scale-95 transition-all">
+<svg class="w-5 h-5 fill-[#D9552B]" viewbox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+</button>
+</div>
+<!-- Match Badge floating on photo -->
+<div class="absolute bottom-5 left-4 z-10">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#D9552B] text-white shadow-md">
+<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                92% coincidencia
+              </span>
+</div>
+</div>
+<!-- Overlapping White Card with 24px top corners -->
+<div class="-mt-4 relative z-10 bg-white rounded-t-[24px] shadow-soft pt-5 px-4 pb-6 flex flex-col flex-1">
+<!-- Handle indicator pill -->
+<div class="w-10 h-1 bg-[#E8DDD3] rounded-full mx-auto mb-3"></div>
+<!-- Title & One-line Description -->
+<h1 class="text-[26px] leading-tight font-extrabold font-headline text-[#2B2118] tracking-tight">
+              Arroz meloso con pollo y pimientos
+            </h1>
+<p class="mt-1 text-sm text-[#6E5D4F] leading-snug">
+              Guiso tradicional reconfortante con sofrito pausado y arroz en su punto exacto.
+            </p>
+<!-- Meta Strip: 4 icon+value pairs (Tiempo, Dificultad, Comensales, Calorías) -->
+<div class="mt-4 grid grid-cols-4 gap-2 py-3 px-2 rounded-2xl bg-[#FFF8F0] border border-[#E8DDD3]/60">
+<!-- Tiempo -->
+<div class="flex flex-col items-center text-center">
+<div class="w-7 h-7 rounded-full bg-[#FDF1DE] flex items-center justify-center text-[#F2A93B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#8A7768] font-medium uppercase tracking-wide">Tiempo</span>
+<span class="text-xs font-bold text-[#2B2118] tabular-nums">25 min</span>
+</div>
+<!-- Dificultad -->
+<div class="flex flex-col items-center text-center border-l border-[#E8DDD3]">
+<div class="w-7 h-7 rounded-full bg-[#EAF2E4] flex items-center justify-center text-[#5F7A3D] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#8A7768] font-medium uppercase tracking-wide">Dificultad</span>
+<span class="text-xs font-bold text-[#2B2118]">Fácil</span>
+</div>
+<!-- Comensales -->
+<div class="flex flex-col items-center text-center border-l border-[#E8DDD3]">
+<div class="w-7 h-7 rounded-full bg-[#FFDCCF] flex items-center justify-center text-[#D9552B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#8A7768] font-medium uppercase tracking-wide">Raciones</span>
+<span class="text-xs font-bold text-[#2B2118] tabular-nums" id="meta-servings-light">2 pers.</span>
+</div>
+<!-- Calorías -->
+<div class="flex flex-col items-center text-center border-l border-[#E8DDD3]">
+<div class="w-7 h-7 rounded-full bg-[#FDF1DE] flex items-center justify-center text-[#F2A93B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#8A7768] font-medium uppercase tracking-wide">Energía</span>
+<span class="text-xs font-bold text-[#2B2118] tabular-nums">480 kcal</span>
+</div>
+</div>
+<!-- Sticky Segmented Tab Row: "Ingredientes · Pasos · Notas" -->
+<div class="sticky top-0 z-20 bg-white pt-4 pb-2">
+<div class="flex p-1 bg-[#FFF8F0] rounded-full border border-[#E8DDD3]">
+<button class="flex-1 py-2 text-xs font-bold rounded-full bg-[#D9552B] text-white shadow-sm transition-all text-center" id="btn-light-ingredientes" onclick="switchTab('light', 'ingredientes')">
+                  Ingredientes
+                </button>
+<button class="flex-1 py-2 text-xs font-semibold rounded-full text-[#6E5D4F] hover:text-[#2B2118] transition-all text-center" id="btn-light-pasos" onclick="switchTab('light', 'pasos')">
+                  Pasos
+                </button>
+<button class="flex-1 py-2 text-xs font-semibold rounded-full text-[#6E5D4F] hover:text-[#2B2118] transition-all text-center" id="btn-light-notas" onclick="switchTab('light', 'notas')">
+                  Notas
+                </button>
+</div>
+</div>
+<!-- ================= TAB CONTENT 1: INGREDIENTES ================= -->
+<div class="tab-pane flex flex-col mt-2" id="content-light-ingredientes">
+<!-- Servings Adjuster: "Comensales − 2 +" -->
+<div class="flex items-center justify-between p-3.5 bg-[#FFF8F0] rounded-2xl border border-[#E8DDD3] mb-3">
+<div>
+<div class="text-xs font-bold text-[#2B2118] flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-[#D9552B]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                    Comensales
+                  </div>
+<div class="text-[11px] text-[#8A7768]">Cantidades ajustadas automáticamente</div>
+</div>
+<div class="flex items-center gap-3 bg-white px-2 py-1 rounded-full border border-[#E8DDD3] shadow-sm">
+<button class="w-7 h-7 rounded-full flex items-center justify-center text-[#2B2118] hover:bg-[#FFF8F0] active:scale-95 font-bold text-sm" onclick="adjustServings('light', -1)">
+                    −
+                  </button>
+<span class="text-sm font-extrabold text-[#D9552B] tabular-nums w-4 text-center" id="servings-counter-light">2</span>
+<button class="w-7 h-7 rounded-full flex items-center justify-center text-[#2B2118] hover:bg-[#FFF8F0] active:scale-95 font-bold text-sm" onclick="adjustServings('light', 1)">
+                    +
+                  </button>
+</div>
+</div>
+<!-- Checklist of ingredient rows (Separated by hairlines) -->
+<div class="divide-y divide-[#E8DDD3]/80">
+<!-- Row 1: Arroz bomba -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FFDCCF] flex items-center justify-center text-xs">🍚</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Arroz bomba</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="180" data-unit="g">180 g</span>
+</label>
+<!-- Row 2: Pechuga de pollo -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FFDCCF] flex items-center justify-center text-xs">🍗</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Contramuslos de pollo</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="250" data-unit="g">250 g</span>
+</label>
+<!-- Row 3: Pimiento rojo -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FFDCCF] flex items-center justify-center text-xs">🫑</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Pimiento rojo</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="1" data-unit="ud">1 ud</span>
+</label>
+<!-- Row 4: Caldo de pollo suave -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FDF1DE] flex items-center justify-center text-xs">🍲</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Caldo casero de pollo</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="600" data-unit="ml">600 ml</span>
+</label>
+<!-- Row 5: Tomate rallado natural -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FFDCCF] flex items-center justify-center text-xs">🍅</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Tomate maduro triturado</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="2" data-unit="uds">2 uds</span>
+</label>
+<!-- Row 6: Dientes de ajo -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#FDF1DE] flex items-center justify-center text-xs">🧄</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Dientes de ajo</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="2" data-unit="dientes">2 dientes</span>
+</label>
+<!-- Row 7: Aceite de oliva virgen extra -->
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#E8DDD3] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#EAF2E4] flex items-center justify-center text-xs">🫒</span>
+<span class="text-xs font-medium text-[#2B2118] group-hover:text-[#D9552B] transition-colors">Aceite de oliva virgen extra</span>
+</div>
+<span class="text-xs font-semibold text-[#6E5D4F] tabular-nums" data-base="3" data-unit="cda">3 cda</span>
+</label>
+</div>
+<!-- Note of caution: shopping list omitted intentionally -->
+<div class="mt-4 p-2.5 rounded-xl bg-[#FFF8F0] border border-[#E8DDD3]/70 flex items-center gap-2 text-[11px] text-[#8A7768]">
+<svg class="w-4 h-4 text-[#5F7A3D] flex-shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Receta generada con ingredientes de tu despensa local.</span>
+</div>
+</div>
+<!-- ================= TAB CONTENT 2: PASOS (TIMELINE) ================= -->
+<div class="tab-pane hidden flex-col mt-2" id="content-light-pasos">
+<div class="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-[2px] before:bg-[#FFDCCF]">
+<!-- Paso 1 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white shadow-sm tabular-nums">
+                    1
+                  </div>
+<div class="bg-[#FFF8F0] p-3 rounded-2xl border border-[#E8DDD3]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#2B2118]">Dorar el pollo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF1DE] text-[#8A5809] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 5 min
+                      </span>
+</div>
+<p class="text-xs text-[#6E5D4F] leading-relaxed">
+                      Corta los contramuslos en dados medianos. Calienta el aceite en una cazuela ancha y dóralos a fuego vivo hasta que adquieran un color tostado parejo. Reserva en plato.
+                    </p>
+</div>
+</div>
+<!-- Paso 2 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white shadow-sm tabular-nums">
+                    2
+                  </div>
+<div class="bg-[#FFF8F0] p-3 rounded-2xl border border-[#E8DDD3]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#2B2118]">Sofrito de pimiento y ajo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF1DE] text-[#8A5809] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 7 min
+                      </span>
+</div>
+<p class="text-xs text-[#6E5D4F] leading-relaxed">
+                      En el mismo fondo con los jugos, rehoga el pimiento cortado en tiras y el ajo picado a fuego medio. Añade el tomate triturado y deja caramelizar lentamente.
+                    </p>
+</div>
+</div>
+<!-- Paso 3 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white shadow-sm tabular-nums">
+                    3
+                  </div>
+<div class="bg-[#FFF8F0] p-3 rounded-2xl border border-[#E8DDD3]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#2B2118]">Nacarar el arroz</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF1DE] text-[#8A5809] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 2 min
+                      </span>
+</div>
+<p class="text-xs text-[#6E5D4F] leading-relaxed">
+                      Incorpora el arroz bomba al sofrito y remueve continuamente durante 2 minutos hasta que los granos se tornen translúcidos y absorban el concentrado.
+                    </p>
+</div>
+</div>
+<!-- Paso 4 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-white shadow-sm tabular-nums">
+                    4
+                  </div>
+<div class="bg-[#FFF8F0] p-3 rounded-2xl border border-[#E8DDD3]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#2B2118]">Cocción melosa y reposo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDF1DE] text-[#8A5809] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 11 min
+                      </span>
+</div>
+<p class="text-xs text-[#6E5D4F] leading-relaxed">
+                      Vierte el caldo caliente hirviendo. Cocina 10 min a fuego medio-alto y 5 min a fuego suave. Apaga, reintegra el pollo y deja reposar 2 minutos antes de servir.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- ================= TAB CONTENT 3: NOTAS ================= -->
+<div class="tab-pane hidden flex-col mt-2 space-y-3" id="content-light-notas">
+<!-- Tips & Substitutions -->
+<div class="p-3 bg-[#FFF8F0] rounded-2xl border border-[#E8DDD3]">
+<h4 class="text-xs font-bold text-[#2B2118] flex items-center gap-1.5 mb-1.5">
+<span class="text-sm">💡</span> Consejos del chef &amp; sustituciones
+                </h4>
+<ul class="text-xs text-[#6E5D4F] space-y-1.5 list-disc list-inside">
+<li><strong>Punto del caldo:</strong> Para un meloso impecable, usa proporción 3:1 de caldo respecto al arroz.</li>
+<li><strong>Sustitución de verdura:</strong> Si no tienes pimiento rojo, puedes usar judías verdes redondas o alcachofas.</li>
+<li><strong>Cuidado con la sal:</strong> Prueba el caldo antes de añadir sal adicional al sofrito.</li>
+</ul>
+</div>
+<!-- Compact Nutrition Grid -->
+<div class="p-3 bg-white rounded-2xl border border-[#E8DDD3] shadow-xs">
+<h4 class="text-xs font-bold text-[#2B2118] mb-2 flex items-center justify-between">
+<span>Información nutricional</span>
+<span class="text-[10px] text-[#8A7768] font-normal">Por ración calculada</span>
+</h4>
+<div class="grid grid-cols-4 gap-2 text-center">
+<div class="bg-[#FFF8F0] p-2 rounded-xl">
+<div class="text-[10px] text-[#8A7768]">Calorías</div>
+<div class="text-xs font-extrabold text-[#D9552B] tabular-nums">480 kcal</div>
+</div>
+<div class="bg-[#FFF8F0] p-2 rounded-xl">
+<div class="text-[10px] text-[#8A7768]">Proteínas</div>
+<div class="text-xs font-extrabold text-[#2B2118] tabular-nums">32 g</div>
+</div>
+<div class="bg-[#FFF8F0] p-2 rounded-xl">
+<div class="text-[10px] text-[#8A7768]">Carbohidratos</div>
+<div class="text-xs font-extrabold text-[#2B2118] tabular-nums">54 g</div>
+</div>
+<div class="bg-[#FFF8F0] p-2 rounded-xl">
+<div class="text-[10px] text-[#8A7768]">Grasas</div>
+<div class="text-xs font-extrabold text-[#2B2118] tabular-nums">14 g</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action Bar (White, soft top shadow, two buttons side by side) -->
+<div class="absolute bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8DDD3] px-4 py-3.5 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] flex items-center gap-3">
+<!-- Outline "Guardar" button -->
+<button class="flex-1 py-3 px-4 rounded-full border-2 border-[#D9552B] text-[#D9552B] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#FFDCCF]/30 active:scale-98 transition-all">
+<svg class="w-4 h-4 fill-[#D9552B]" viewbox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+            Guardada
+          </button>
+<!-- Terracotta "Empezar a cocinar" primary CTA -->
+<button class="flex-[1.6] py-3.5 px-4 rounded-full bg-[#D9552B] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-glow-terracotta hover:bg-[#B84018] active:scale-98 transition-all">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            Empezar a cocinar
+          </button>
+</div>
+</div>
+</div>
+<!-- =========================================================
+         2. MODO OSCURO (DARK THEME)
+         ========================================================= -->
+<div class="flex flex-col items-center w-full">
+<div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#F2A93B]"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-[#2B2118]">MODO OSCURO</span>
+</div>
+<span class="text-xs font-medium text-[#F2A93B] bg-[#2E241D] border border-[#3E3127] px-2.5 py-0.5 rounded-full">
+          Tab activa: Pasos (Demostración de timeline)
+        </span>
+</div>
+<!-- Device Mockup: Dark Mode (390 x 844) -->
+<div class="relative w-[390px] h-[844px] bg-[#18120E] rounded-[48px] shadow-[0_24px_60px_-15px_rgba(0,0,0,0.6)] border-[8px] border-[#2E241D] overflow-hidden flex flex-col select-none text-[#F5ECE3]">
+<!-- Native Android Status Bar (Transparent) -->
+<div class="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 pt-3 pb-1 text-[#F5ECE3] text-xs font-semibold">
+<span class="tabular-nums drop-shadow-md">09:41</span>
+<div class="w-24 h-4 bg-white/20 backdrop-blur-md rounded-full mx-auto"></div>
+<div class="flex items-center gap-1.5 drop-shadow-md">
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A9.972 9.972 0 012 12C2 6.48 6.48 2 12 2s10 4.48 10 10c0 2.32-.79 4.45-2.12 6.16l-.62-.64C20.35 16.03 21 14.1 21 12c0-4.97-4.03-9-9-9z"></path></svg>
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"></path></svg>
+<div class="w-5 h-2.5 border border-[#F5ECE3] rounded-sm p-0.5 flex items-center">
+<div class="h-full w-3 bg-[#F5ECE3] rounded-2xs"></div>
+</div>
+</div>
+</div>
+<!-- Scrollable Page Container -->
+<div class="flex-1 overflow-y-auto no-scrollbar relative flex flex-col pb-24">
+<!-- Hero Section: Edge-to-edge photo with 24px bottom radius -->
+<div class="relative w-full h-[290px] flex-shrink-0">
+<!-- Hero Image with bottom radius 24px -->
+<img alt="Arroz meloso con pollo y pimientos" class="w-full h-full object-cover rounded-b-[24px]" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg"/>
+<!-- Dark gradient scrim -->
+<div class="absolute inset-0 bg-gradient-to-b from-black/75 via-black/25 to-[#18120E] rounded-b-[24px]"></div>
+<!-- Floating circular buttons (48dp) -->
+<div class="absolute top-12 left-4 right-4 flex items-center justify-between z-20">
+<!-- Back button -->
+<button class="w-11 h-11 rounded-full bg-[#241C16]/90 backdrop-blur-md shadow-float border border-[#3E3127] flex items-center justify-center text-[#F5ECE3] hover:bg-[#2E241D] active:scale-95 transition-all">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+</button>
+<!-- Heart/Save floating circular button -->
+<button class="w-11 h-11 rounded-full bg-[#241C16]/90 backdrop-blur-md shadow-float border border-[#3E3127] flex items-center justify-center text-[#D9552B] hover:bg-[#2E241D] active:scale-95 transition-all">
+<svg class="w-5 h-5 fill-[#D9552B]" viewbox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+</button>
+</div>
+<!-- Match Badge floating on photo -->
+<div class="absolute bottom-5 left-4 z-10">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#D9552B] text-white shadow-md">
+<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                92% coincidencia
+              </span>
+</div>
+</div>
+<!-- Overlapping Card with 24px top corners in Dark Mode (#241C16) -->
+<div class="-mt-4 relative z-10 bg-[#241C16] rounded-t-[24px] border-t border-[#3E3127] pt-5 px-4 pb-6 flex flex-col flex-1">
+<!-- Handle indicator pill -->
+<div class="w-10 h-1 bg-[#3E3127] rounded-full mx-auto mb-3"></div>
+<!-- Title & One-line Description -->
+<h1 class="text-[26px] leading-tight font-extrabold font-headline text-[#F5ECE3] tracking-tight">
+              Arroz meloso con pollo y pimientos
+            </h1>
+<p class="mt-1 text-sm text-[#B8A89A] leading-snug">
+              Guiso tradicional reconfortante con sofrito pausado y arroz en su punto exacto.
+            </p>
+<!-- Meta Strip: 4 icon+value pairs (Tiempo, Dificultad, Comensales, Calorías) -->
+<div class="mt-4 grid grid-cols-4 gap-2 py-3 px-2 rounded-2xl bg-[#1C1510] border border-[#3E3127]">
+<!-- Tiempo -->
+<div class="flex flex-col items-center text-center">
+<div class="w-7 h-7 rounded-full bg-[#352516] flex items-center justify-center text-[#F2A93B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#B8A89A] font-medium uppercase tracking-wide">Tiempo</span>
+<span class="text-xs font-bold text-[#F5ECE3] tabular-nums">25 min</span>
+</div>
+<!-- Dificultad -->
+<div class="flex flex-col items-center text-center border-l border-[#3E3127]">
+<div class="w-7 h-7 rounded-full bg-[#202917] flex items-center justify-center text-[#7DA352] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#B8A89A] font-medium uppercase tracking-wide">Dificultad</span>
+<span class="text-xs font-bold text-[#F5ECE3]">Fácil</span>
+</div>
+<!-- Comensales -->
+<div class="flex flex-col items-center text-center border-l border-[#3E3127]">
+<div class="w-7 h-7 rounded-full bg-[#361E16] flex items-center justify-center text-[#D9552B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#B8A89A] font-medium uppercase tracking-wide">Raciones</span>
+<span class="text-xs font-bold text-[#F5ECE3] tabular-nums" id="meta-servings-dark">2 pers.</span>
+</div>
+<!-- Calorías -->
+<div class="flex flex-col items-center text-center border-l border-[#3E3127]">
+<div class="w-7 h-7 rounded-full bg-[#352516] flex items-center justify-center text-[#F2A93B] mb-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-[10px] text-[#B8A89A] font-medium uppercase tracking-wide">Energía</span>
+<span class="text-xs font-bold text-[#F5ECE3] tabular-nums">480 kcal</span>
+</div>
+</div>
+<!-- Sticky Segmented Tab Row: "Ingredientes · Pasos · Notas" -->
+<div class="sticky top-0 z-20 bg-[#241C16] pt-4 pb-2">
+<div class="flex p-1 bg-[#1C1510] rounded-full border border-[#3E3127]">
+<button class="flex-1 py-2 text-xs font-semibold rounded-full text-[#B8A89A] hover:text-[#F5ECE3] transition-all text-center" id="btn-dark-ingredientes" onclick="switchTab('dark', 'ingredientes')">
+                  Ingredientes
+                </button>
+<button class="flex-1 py-2 text-xs font-bold rounded-full bg-[#D9552B] text-white shadow-sm transition-all text-center" id="btn-dark-pasos" onclick="switchTab('dark', 'pasos')">
+                  Pasos
+                </button>
+<button class="flex-1 py-2 text-xs font-semibold rounded-full text-[#B8A89A] hover:text-[#F5ECE3] transition-all text-center" id="btn-dark-notas" onclick="switchTab('dark', 'notas')">
+                  Notas
+                </button>
+</div>
+</div>
+<!-- ================= TAB CONTENT 1: INGREDIENTES (DARK) ================= -->
+<div class="tab-pane hidden flex-col mt-2" id="content-dark-ingredientes">
+<!-- Servings Adjuster: "Comensales − 2 +" -->
+<div class="flex items-center justify-between p-3.5 bg-[#1C1510] rounded-2xl border border-[#3E3127] mb-3">
+<div>
+<div class="text-xs font-bold text-[#F5ECE3] flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-[#D9552B]" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                    Comensales
+                  </div>
+<div class="text-[11px] text-[#B8A89A]">Cantidades ajustadas automáticamente</div>
+</div>
+<div class="flex items-center gap-3 bg-[#241C16] px-2 py-1 rounded-full border border-[#3E3127] shadow-sm">
+<button class="w-7 h-7 rounded-full flex items-center justify-center text-[#F5ECE3] hover:bg-[#2E241D] active:scale-95 font-bold text-sm" onclick="adjustServings('dark', -1)">
+                    −
+                  </button>
+<span class="text-sm font-extrabold text-[#D9552B] tabular-nums w-4 text-center" id="servings-counter-dark">2</span>
+<button class="w-7 h-7 rounded-full flex items-center justify-center text-[#F5ECE3] hover:bg-[#2E241D] active:scale-95 font-bold text-sm" onclick="adjustServings('dark', 1)">
+                    +
+                  </button>
+</div>
+</div>
+<!-- Checklist of rows -->
+<div class="divide-y divide-[#3E3127]">
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#3E3127] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#361E16] flex items-center justify-center text-xs">🍚</span>
+<span class="text-xs font-medium text-[#F5ECE3] group-hover:text-[#D9552B] transition-colors">Arroz bomba</span>
+</div>
+<span class="text-xs font-semibold text-[#B8A89A] tabular-nums">180 g</span>
+</label>
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#3E3127] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#361E16] flex items-center justify-center text-xs">🍗</span>
+<span class="text-xs font-medium text-[#F5ECE3] group-hover:text-[#D9552B] transition-colors">Contramuslos de pollo</span>
+</div>
+<span class="text-xs font-semibold text-[#B8A89A] tabular-nums">250 g</span>
+</label>
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#3E3127] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#361E16] flex items-center justify-center text-xs">🫑</span>
+<span class="text-xs font-medium text-[#F5ECE3] group-hover:text-[#D9552B] transition-colors">Pimiento rojo</span>
+</div>
+<span class="text-xs font-semibold text-[#B8A89A] tabular-nums">1 ud</span>
+</label>
+<label class="flex items-center justify-between py-2.5 cursor-pointer group">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-[#D9552B] focus:ring-[#D9552B] border-[#3E3127] accent-[#D9552B] cursor-pointer" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-[#352516] flex items-center justify-center text-xs">🍲</span>
+<span class="text-xs font-medium text-[#F5ECE3] group-hover:text-[#D9552B] transition-colors">Caldo casero de pollo</span>
+</div>
+<span class="text-xs font-semibold text-[#B8A89A] tabular-nums">600 ml</span>
+</label>
+</div>
+</div>
+<!-- ================= TAB CONTENT 2: PASOS (DARK ACTIVE) ================= -->
+<div class="tab-pane flex flex-col mt-2" id="content-dark-pasos">
+<div class="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-[2px] before:bg-[#D9552B]/40">
+<!-- Paso 1 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#241C16] shadow-sm tabular-nums">
+                    1
+                  </div>
+<div class="bg-[#1C1510] p-3 rounded-2xl border border-[#3E3127]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#F5ECE3]">Dorar el pollo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#352516] text-[#F2A93B] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 5 min
+                      </span>
+</div>
+<p class="text-xs text-[#B8A89A] leading-relaxed">
+                      Corta los contramuslos en dados medianos. Calienta el aceite en una cazuela ancha y dóralos a fuego vivo hasta que adquieran un color tostado parejo. Reserva en plato.
+                    </p>
+</div>
+</div>
+<!-- Paso 2 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#241C16] shadow-sm tabular-nums">
+                    2
+                  </div>
+<div class="bg-[#1C1510] p-3 rounded-2xl border border-[#3E3127]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#F5ECE3]">Sofrito de pimiento y ajo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#352516] text-[#F2A93B] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 7 min
+                      </span>
+</div>
+<p class="text-xs text-[#B8A89A] leading-relaxed">
+                      En el mismo fondo con los jugos, rehoga el pimiento cortado en tiras y el ajo picado a fuego medio. Añade el tomate triturado y deja caramelizar lentamente.
+                    </p>
+</div>
+</div>
+<!-- Paso 3 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#241C16] shadow-sm tabular-nums">
+                    3
+                  </div>
+<div class="bg-[#1C1510] p-3 rounded-2xl border border-[#3E3127]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#F5ECE3]">Nacarar el arroz</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#352516] text-[#F2A93B] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 2 min
+                      </span>
+</div>
+<p class="text-xs text-[#B8A89A] leading-relaxed">
+                      Incorpora el arroz bomba al sofrito y remueve continuamente durante 2 minutos hasta que los granos se tornen translúcidos y absorban el concentrado.
+                    </p>
+</div>
+</div>
+<!-- Paso 4 -->
+<div class="relative group">
+<div class="absolute -left-6 top-0 w-6 h-6 rounded-full bg-[#D9552B] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#241C16] shadow-sm tabular-nums">
+                    4
+                  </div>
+<div class="bg-[#1C1510] p-3 rounded-2xl border border-[#3E3127]">
+<div class="flex items-center justify-between gap-2 mb-1">
+<h4 class="text-xs font-bold text-[#F5ECE3]">Cocción melosa y reposo</h4>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#352516] text-[#F2A93B] tabular-nums border border-[#F2A93B]/40">
+                        ⏱ 11 min
+                      </span>
+</div>
+<p class="text-xs text-[#B8A89A] leading-relaxed">
+                      Vierte el caldo caliente hirviendo. Cocina 10 min a fuego medio-alto y 5 min a fuego suave. Apaga, reintegra el pollo y deja reposar 2 minutos antes de servir.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- ================= TAB CONTENT 3: NOTAS (DARK) ================= -->
+<div class="tab-pane hidden flex-col mt-2 space-y-3" id="content-dark-notas">
+<div class="p-3 bg-[#1C1510] rounded-2xl border border-[#3E3127]">
+<h4 class="text-xs font-bold text-[#F5ECE3] flex items-center gap-1.5 mb-1.5">
+<span class="text-sm">💡</span> Consejos del chef &amp; sustituciones
+                </h4>
+<ul class="text-xs text-[#B8A89A] space-y-1.5 list-disc list-inside">
+<li><strong>Punto del caldo:</strong> Para un meloso impecable, usa proporción 3:1 de caldo respecto al arroz.</li>
+<li><strong>Sustitución de verdura:</strong> Si no tienes pimiento rojo, puedes usar judías verdes redondas o alcachofas.</li>
+<li><strong>Cuidado con la sal:</strong> Prueba el caldo antes de añadir sal adicional al sofrito.</li>
+</ul>
+</div>
+<!-- Compact Nutrition Grid -->
+<div class="p-3 bg-[#241C16] rounded-2xl border border-[#3E3127]">
+<h4 class="text-xs font-bold text-[#F5ECE3] mb-2 flex items-center justify-between">
+<span>Información nutricional</span>
+<span class="text-[10px] text-[#B8A89A] font-normal">Por ración calculada</span>
+</h4>
+<div class="grid grid-cols-4 gap-2 text-center">
+<div class="bg-[#1C1510] p-2 rounded-xl border border-[#3E3127]/60">
+<div class="text-[10px] text-[#B8A89A]">Calorías</div>
+<div class="text-xs font-extrabold text-[#D9552B] tabular-nums">480 kcal</div>
+</div>
+<div class="bg-[#1C1510] p-2 rounded-xl border border-[#3E3127]/60">
+<div class="text-[10px] text-[#B8A89A]">Proteínas</div>
+<div class="text-xs font-extrabold text-[#F5ECE3] tabular-nums">32 g</div>
+</div>
+<div class="bg-[#1C1510] p-2 rounded-xl border border-[#3E3127]/60">
+<div class="text-[10px] text-[#B8A89A]">Carbohidratos</div>
+<div class="text-xs font-extrabold text-[#F5ECE3] tabular-nums">54 g</div>
+</div>
+<div class="bg-[#1C1510] p-2 rounded-xl border border-[#3E3127]/60">
+<div class="text-[10px] text-[#B8A89A]">Grasas</div>
+<div class="text-xs font-extrabold text-[#F5ECE3] tabular-nums">14 g</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Action Bar (Dark Mode) -->
+<div class="absolute bottom-0 left-0 right-0 z-30 bg-[#241C16]/95 backdrop-blur-md border-t border-[#3E3127] px-4 py-3.5 shadow-[0_-8px_20px_rgba(0,0,0,0.5)] flex items-center gap-3">
+<!-- Outline "Guardar" button -->
+<button class="flex-1 py-3 px-4 rounded-full border-2 border-[#D9552B] text-[#D9552B] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#361E16] active:scale-98 transition-all">
+<svg class="w-4 h-4 fill-[#D9552B]" viewbox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+            Guardada
+          </button>
+<!-- Terracotta "Empezar a cocinar" primary CTA -->
+<button class="flex-[1.6] py-3.5 px-4 rounded-full bg-[#D9552B] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-glow-terracotta hover:bg-[#B84018] active:scale-98 transition-all">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+            Empezar a cocinar
+          </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Technical Spec & Craft Footnote -->
+<footer class="w-full max-w-7xl mt-8 pt-4 pb-12 border-t border-[#E8DDD3] flex flex-wrap items-center justify-between text-xs text-[#8A7768] gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-[#4C7A34]"></span>
+<span>Cumplimiento estricto de especificación: <strong>stitch-prompt.md (Sección 4.E Detalle de Receta)</strong></span>
+</div>
+<div class="flex items-center gap-4">
+<span>Tarjeta superpuesta con esquinas superiores a 24px</span>
+<span>•</span>
+<span>Timeline numerado en terracota</span>
+<span>•</span>
+<span>Sazón UI Design System</span>
+</div>
+</footer>
+<!-- Interactivity Script for Tabs and Servings Counter -->
+<script>
+    function switchTab(mode, tabName) {
+      const tabs = ['ingredientes', 'pasos', 'notas'];
+      
+      tabs.forEach(t => {
+        const content = document.getElementById(`content-${mode}-${t}`);
+        const btn = document.getElementById(`btn-${mode}-${t}`);
+        
+        if (t === tabName) {
+          content.classList.remove('hidden');
+          content.classList.add('flex');
+          
+          btn.classList.add('bg-[#D9552B]', 'text-white', 'shadow-sm', 'font-bold');
+          btn.classList.remove('text-[#6E5D4F]', 'text-[#B8A89A]', 'font-semibold');
+        } else {
+          content.classList.add('hidden');
+          content.classList.remove('flex');
+          
+          btn.classList.remove('bg-[#D9552B]', 'text-white', 'shadow-sm', 'font-bold');
+          if (mode === 'light') {
+            btn.classList.add('text-[#6E5D4F]', 'font-semibold');
+          } else {
+            btn.classList.add('text-[#B8A89A]', 'font-semibold');
+          }
+        }
+      });
+    }
+
+    let currentServings = { light: 2, dark: 2 };
+
+    function adjustServings(mode, delta) {
+      let count = currentServings[mode] + delta;
+      if (count < 1) count = 1;
+      if (count > 12) count = 12;
+      currentServings[mode] = count;
+
+      document.getElementById(`servings-counter-${mode}`).textContent = count;
+      document.getElementById(`meta-servings-${mode}`).textContent = count + ' pers.';
+
+      // Scale ingredient quantities in light mode
+      if (mode === 'light') {
+        const rows = document.querySelectorAll('#content-light-ingredientes [data-base]');
+        rows.forEach(span => {
+          const base = parseFloat(span.getAttribute('data-base'));
+          const unit = span.getAttribute('data-unit');
+          const factor = count / 2;
+          const adjusted = Math.round(base * factor * 10) / 10;
+          span.textContent = `${adjusted} ${unit}`;
+        });
+      }
+    }
+  </script>
+</body>
+</html>
