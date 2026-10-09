@@ -33,8 +33,9 @@ fotos propias. La app es personal y no se publica, así que la licencia de asset
 
 ## Sesión de (re)generación
 
-1. Pegar `docs/design/stitch-prompt.md` completo en Stitch. Si lo trunca, por bloques: secciones 1–3,
-   A–B, C–E, F–G.
+1. Pegar el prompt **troceado** de `docs/design/stitch/`: primero `00-contexto.md` y después una pantalla
+   a la vez, en orden, **en la misma conversación** de Stitch (ver `docs/design/stitch/README.md`).
+   `docs/design/stitch-prompt.md` sigue siendo la fuente completa de referencia.
 2. Revisar cada salida contra `DESIGN.md` (tokens y reglas); descartar o ajustar lo que contradiga.
 3. Guardar cada pantalla aceptada en su subcarpeta de la feature:
    `docs/design/concepts/<feature-id>/<pantalla>/` con los tres ficheros del export
