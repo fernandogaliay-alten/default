@@ -45,7 +45,7 @@ If any precondition fails, report the failing features and stop before mutating 
 - Branch: `feature/<feature-id>`.
 - Worktree: `<worktrees-root>/<feature-id>` where `<worktrees-root>` is `../<base-checkout-dirname>-worktrees`, outside the base checkout.
 - Issue title: `[<feature-id>] <feature title from feature_list.json>`.
-- PR: head `feature/<feature-id>` into `base_branch`, title `[<feature-id>] <feature title>`.
+- PR: head `feature/<feature-id>` into `base_branch`, title `[<feature-id>] <feature title>`. The body must contain a line `Closes #<issue-number>` (with `#<issue-number>` the feature's issue) so that merging the PR closes the issue automatically; a bare `Issue: #<n>` reference does not close it.
 
 Reuse lookup before any creation (read-only):
 
@@ -75,7 +75,7 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
    2. Reuse or create the worktree and branch from `base_sha`: `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`.
    3. Launch exactly one session: `opencode run --dir <worktrees-root>/<feature-id> "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."` Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
    4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`) and the local commit created on accept.
-   5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body. Never merge.
+   5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line. Never merge.
    6. Keep the issue body updated with status and evidence.
 5. Emit the output report.
 
@@ -85,7 +85,7 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
 1. Acceptance gate: every feature must be `accepted` in `feature_list.json`. If any is not, refuse that feature: without acceptance there is no publish. `passing` does not qualify.
 2. Push is standing (automatic after acceptance); there is no per-run push gate. Refuse only if the feature is not `accepted`.
 3. Sync with base (single-integrator rule): in the feature worktree, `git fetch origin <base_branch>` then `git merge --no-edit origin/<base_branch>`. Resolve any conflict in shared state/docs by keeping the feature's additions alongside the base's, then commit. Never rebase and never force-push. Prefer `scripts/sync-worktree.sh <feature-id>` when present.
-4. Push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body.
+4. Push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line.
 5. Never merge. Report the PR URL per published feature.
 
 ## Mode: prune (limpiar)
