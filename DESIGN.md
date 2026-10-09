@@ -107,6 +107,7 @@ Capturas aceptadas (dirección visual, no especificación pixel-perfect):
 
 - `results-screen`: `resultados`
 - `recipe-detail-screen`: `detalle-receta`
+- `favorites`: `favoritos`
 
 Backfill pendiente:
 

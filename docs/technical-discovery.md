@@ -99,8 +99,8 @@ base aceptada del Perfil. Testeado en JVM (`SuggestionBatchPolicyTest`, `Suggest
 La **Home real y el armazon principal** viven en `com.sazon.app.ui`: `MainShell` es un `Scaffold` con
 la **barra de navegacion inferior** de tres destinos (Inicio · Favoritos · Perfil, `MainTab`) y el
 **FAB** "＋ Crear receta", y enruta el contenido por pestana (`ui.home.HomeScreen` para Inicio,
-`ui.profile.ProfileScreen` para Perfil, `ui.generator.GeneratorFlow` en el Generador empujado y
-`SectionPlaceholder` para Favoritos). `HomeScreen` pinta los cuatro bloques **locales**
+`ui.favorites.FavoritesScreen` para Favoritos, `ui.profile.ProfileScreen` para Perfil y
+`ui.generator.GeneratorFlow` en el Generador empujado). `HomeScreen` pinta los cuatro bloques **locales**
 de `DESIGN.md` (el bloque 2, Búsqueda con IA, es de `ai-search`): cabecera con saludo por franja
 horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas" con su
 estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com.sazon.app.ui.home`
@@ -116,6 +116,22 @@ la seccion "Sugerencias" del Perfil (`ensureBatch(..., force = true)`), que reus
 observado. Mientras el Lote no se resuelve, la Home pinta las recetas semilla empaquetadas
 (`HomeSuggestions.visible`) y nunca muestra una pantalla de carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
 `docs/specs/home-offline-blocks.md`.
+
+Los **Favoritos** viven en `com.sazon.app.domain.favorites` (logica pura: `Favorite`, que persiste una
+**copia** de la `Recipe` mas su `savedAt`, el puerto `FavoriteRepository` y `FavoriteService.toggle`,
+que marca/desmarca con reloj inyectable y normaliza `matchScore` a `null` por ser derivado y no
+persistido), en `com.sazon.app.data.favorites` su persistencia Room sobre una base **propia**
+(`favorites.db`, version 1, tabla **multi-fila** `favorite_recipe` con la receta como columna JSON via
+`RecipeJson`, `upsert` idempotente por `recipeId` y lectura ordenada por `savedAt` desc) y en
+`com.sazon.app.ui.favorites` su presentacion: la logica pura `FavoritesSort`/`FavoritesViewMode`/
+`FavoritesList.visible` (busqueda por titulo normalizada sin acentos y tres ordenes: recientes, tiempo
+y dificultad) testeada en JVM, y la capa Compose delgada `FavoritesScreen` + `FavoriteRecipeCard`
+(lista/rejilla, chips de orden, nota "Disponibles sin conexion", estado vacio con "Explorar recetas" y
+swipe "Eliminar"). La integracion: `MainActivity` compone `FavoritesDatabase`/repositorio/servicio,
+`MainShell` observa los favoritos para la pestana, alimenta `HomeRecipes.saved` (bloque "Guardadas" de
+la Home) y cablea `isSaved`/`onToggleSave` del Detalle, y `ui/SectionPlaceholder.kt` se elimina al
+quedarse sin usos. El Favorito es **independiente del Lote**: guarda su propia copia y sobrevive a su
+refresco. Ver `docs/specs/favorites.md`.
 
 El **filtrado local de "Tus recetas"** vive en `com.sazon.app.ui.filters`: `LocalResultFilter` (seleccion
 **unica**: `All`, `Category(categoryId)`, `Fast` y `Vegetarian`, cada una con una `key` estable para
@@ -150,7 +166,7 @@ asi se conserva al ir y volver del paso 2) y `GeneratorIngredientsScreen` (input
 chips de los anadidos con "×", contador con cifras tabulares y nube **colapsable** "Ingredientes
 sugeridos", sin iconos: "×" y "Atras" son texto). No se persiste el borrador en disco (asistente
 efimero). `MainShell` monta `GeneratorFlow` en el destino `GENERATOR` en lugar del `SectionPlaceholder`
-(que se sigue usando para Favoritos). Ver `docs/specs/generator-ingredients-step.md`.
+(ya eliminado al sustituir el ultimo destino). Ver `docs/specs/generator-ingredients-step.md`.
 
 El **paso de ajustes del Generador** ("Ajusta tu receta") vive en el mismo `com.sazon.app.ui.generator`.
 La logica/estado es **pura** y testeable en JVM: `GeneratorSettingsState` (`servings`, `mealTypeId`
