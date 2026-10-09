@@ -15,7 +15,8 @@ Leer solo cuando sea relevante para la tarea:
 - `docs/technical-discovery.md` — stack, almacenamiento, integraciones y verificación.
 - `docs/domain/taxonomy.md` — modelo de la Taxonomía y reglas del Validador.
 - `docs/design/stitch-prompt.md` — pantallas y microcopy de referencia.
-- `docs/design/concepts/` — capturas de referencia aceptadas; **obligatorias para features de UI**.
+- `docs/design/concepts/` — capturas de referencia aceptadas, una subcarpeta `<feature-id>/` por
+  feature de UI; **obligatorias antes de implementar**.
 - `DESIGN.md` — dirección visual y tokens.
 - `docs/adr/` — decisiones aceptadas. Consúltalas si algo parece contradecirlas.
 
@@ -37,12 +38,14 @@ Antes de escribir código:
 - Mantén los cambios dentro del alcance de la feature elegida.
 - No cambies las reglas de verificación durante la implementación.
 - **Capturas de UI obligatorias**: toda feature con UI (campo `area: ui` en `feature_list.json`, o
-  cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** bajo
-  `docs/design/concepts/` **antes** de implementar. La spec nombra los ficheros concretos (p. ej.
-  `docs/design/concepts/perfil.png`). Si no existen, el `planner`, el `implementer` y `feature-flow`
-  se **detienen y las piden** a la persona; la feature queda `blocked` hasta que estén disponibles.
-  `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección
-  visual obligatoria, no opcional.
+  cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** en
+  `docs/design/concepts/<feature-id>/` **antes** de implementar. La spec nombra los ficheros concretos
+  (p. ej. `docs/design/concepts/perfil-screen/perfil.png`). Si no existen, el `planner`, el
+  `implementer` y `feature-flow` se **detienen y las piden** a la persona; además, el agente **crea la
+  subcarpeta** `docs/design/concepts/<feature-id>/` con un `README.md` que lista los ficheros esperados
+  (y qué es cada uno), para que la persona solo tenga que dejarlos ahí. La feature queda `blocked` hasta
+  que estén disponibles. `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas
+  son dirección visual obligatoria, no opcional.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
 ## Acuerdos de trabajo con la persona

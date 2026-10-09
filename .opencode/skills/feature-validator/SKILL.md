@@ -67,9 +67,9 @@ Check:
 - expected file changes are present or deviations are justified,
 - implementation tasks were completed or explicitly deferred,
 - verification plan was followed,
-- for UI features, the spec named capture file(s) under `../../../docs/design/concepts/` that existed
-  at implementation time, and the implementation follows them (with `../../../DESIGN.md` as the
-  overriding source of truth). Missing captures or an unnamed visual baseline is a `revise` (or
+- for UI features, the spec named capture file(s) under `../../../docs/design/concepts/<feature-id>/`
+  that existed at implementation time, and the implementation follows them (with `../../../DESIGN.md` as
+  the overriding source of truth). Missing captures or an unnamed visual baseline is a `revise` (or
   `block`) finding.
 
 ### 3. Rerun Or Inspect Verification
@@ -123,7 +123,7 @@ Validate the spec's `Durable Documentation Impact` section:
 - `../../../CONSTRAINTS.md` uses operational MUST/MUST NOT rules rather than vague preferences,
 - docs do not contradict the implemented behavior.
 - UI or visual changes follow `../../../DESIGN.md` when the feature involves product screens, public verification pages, or generated design assets.
-- For UI features, the mandatory captures under `../../../docs/design/concepts/` named by the spec exist and were treated as required input.
+- For UI features, the mandatory captures under `../../../docs/design/concepts/<feature-id>/` named by the spec exist and were treated as required input.
 
 ### 6. Produce Verdict
 

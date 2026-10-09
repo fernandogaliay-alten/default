@@ -25,7 +25,7 @@ The main agent is the orchestrator. It chooses the next role, launches the right
 - If validation returns `revise`, route the repair brief back to `implementer` for the same feature.
 - After a `revise` repair, route the same feature back to `validator`; do not stop after the repair unless the user explicitly asked for a single role step.
 - If validation returns `block`, stop and report the blocker.
-- UI features are never implemented without their mandatory captures under `docs/design/concepts/`
+- UI features are never implemented without their mandatory captures under `docs/design/concepts/<feature-id>/`
   (see Role Selection, UI gate). Missing captures are a blocker to request from the person, not a
   reason to improvise visuals.
 - After validation returns `accept`, stage only the accepted feature's changes and create a Conventional Commit before selecting or reporting the next feature.
@@ -63,9 +63,10 @@ For the selected feature:
 0. If the feature status is `accepted`, report that the feature is already planned, implemented, and accepted; select the next available feature if the user asked to continue.
 1. If `../../../docs/specs/<feature-id>.md` is missing or stale, run `planner`.
 2. UI gate (before `implementer`): if the feature has UI (`area: ui` or any screen/visual behavior),
-   confirm the spec names capture file(s) under `../../../docs/design/concepts/` and that those files
-   exist. If any is missing, do NOT run `implementer`: stop, mark the feature `blocked` with the missing
-   capture paths, and request them from the person.
+   confirm the spec names capture file(s) under `../../../docs/design/concepts/<feature-id>/` and that
+   those files exist. If any is missing, do NOT run `implementer`: create the folder
+   `../../../docs/design/concepts/<feature-id>/` with a `README.md` listing the expected files, stop,
+   mark the feature `blocked` with the missing capture paths, and request them from the person.
 3. Else if the feature is neither `passing` nor `accepted`, run `implementer`.
 4. Else if the feature is `passing`, run `validator`.
 
