@@ -59,8 +59,9 @@ import com.sazon.app.ui.theme.SazonComponents
  * resuelve, el carrusel pinta las recetas semilla empaquetadas ([HomeSuggestions]); no hay pantalla de
  * carga. La Home es offline: el unico generador conectado es `FakeRecipeGenerator` (sin red).
  *
- * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. Las
- * pantallas reales de Favoritos/Perfil/Generador son posteriores: aqui son [SectionPlaceholder].
+ * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. Favoritos
+ * y Perfil son todavia [SectionPlaceholder]; el Generador es real ([GeneratorFlow], pasos de ingredientes
+ * y de ajustes).
  */
 @Composable
 fun MainShell(
@@ -138,7 +139,9 @@ fun MainShell(
             ) {
                 GeneratorFlow(
                     taxonomy = taxonomy,
+                    preferences = profile.preferences,
                     onClose = { navigation = navigation.pop() },
+                    onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                 )
             }
         }
