@@ -11,17 +11,20 @@
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
-  `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step` y `profile-screen`
-  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste
-  el Perfil al cerrar; el Generador tiene ya su paso 1 real ("¿Qué tienes?") y la pestaña Perfil es real
-  (identidad + preferencias editables reutilizando los editores del onboarding).
-- Siguiente feature en orden de lista: `generator-settings-step` (depende de
-  `generator-ingredients-step`, ya `accepted`).
+  `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`
+  y `profile-screen` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  (7 pasos) y persiste el Perfil al cerrar; el Generador tiene ya sus pasos 1 y 2 reales y la pestaña
+  Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding).
+- Siguiente feature en orden de lista: `generation-flow-with-validation` (depende, entre otras, de
+  `generator-settings-step`, ya `accepted`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (validación independiente, 2026-10-09, `profile-screen`): `init.sh` con Git Bash
-  exit 0, **198 tests/0 fallos/errores/saltados** en 31 suites, 9 nuevos (`ProfileEditStateTest` 9);
-  lint 0 errores y 13 warnings preexistentes, ninguno en ficheros de la feature; veredicto `accept`.
+- Última verificación (2026-10-09, merge de `origin/main` en `feature/profile-screen`): `init.sh`
+  con Git Bash exit 0, **209 tests/0 fallos/errores/saltados** en 32 suites (9 nuevos
+  `ProfileEditStateTest` y 11 nuevos `GeneratorSettingsStateTest`); lint 0 errores y 13 warnings
+  preexistentes. Ambas features tenían veredicto `accept` de validador independiente
+  (`generator-settings-step`: 200 tests; `profile-screen`: 198 tests). Merge resuelto conservando
+  ambas aportaciones.
 
 ## Registro de sesiones
 
@@ -1392,6 +1395,73 @@
 ### Sesión 039
 
 - Fecha: 2026-10-09
+- Objetivo: implementar `generator-settings-step` (paso 2 real del Generador, "Ajusta tu receta") según
+  `docs/specs/generator-settings-step.md`. Sesión reanudada: la ejecución previa dejó el trabajo sin
+  commitear (estado + pantalla + test nuevos; `GeneratorFlow`, `MainShell` y `docs/technical-discovery.md`
+  modificados); esta sesión lo revisa, confirma que está completo y correcto, y lo autoverifica sin rehacer
+  lo ya válido.
+- Completado:
+  - Lógica/estado **puro** en `com.sazon.app.ui.generator.GeneratorSettingsState` (`servings`, `mealTypeId`
+    opcional, `timeBucketId`, `difficultyId`, `hardRestrictionIds`, `notes`), con `initial(preferences,
+    limits)` que **precarga** comensales (`defaultServings` recortado a `taxonomy.servings`), franja,
+    dificultad y alergias del Perfil (el tipo de comida arranca en `null` y las notas en blanco),
+    `setServings` (recorta con `coerceIn`), `selectMealType` (single-select **opcional**: el segundo toque
+    lo deja en `null`), `selectTimeBucket`/`selectDifficulty` (single-select que reemplazan),
+    `toggleHardRestriction` (conjunto, sin duplicados), `clearHardRestrictions`/`hasNoRestrictions` y
+    `typeNotes`. Sin imports Compose/Android (solo `domain.profile` y `domain.taxonomy`).
+  - Capa Compose **delgada** `GeneratorSettingsScreen`: seis tarjetas `Surface` (`SazonShapes.large`,
+    interior `SazonSpacing.sm`) con "Tiempo disponible" (`TimeBucketEditor`), "Tipo de comida" (fila local
+    de `FilterChip` sobre `taxonomy.mealTypes`, incluido **Postre**; no hay editor previo), "Comensales"
+    (`ServingsStepper`), "Dificultad" (`DifficultyEditor`), "Alergias a evitar"
+    (`HardRestrictionsEditor` en **ámbar**, nunca rojo, con la caption "Ninguna declarada" y el
+    `TextButton` "Editar en mi perfil") y "¿Algo más que deba saber?" (`OutlinedTextField` multilínea).
+    Sin iconos ni dependencias nuevas.
+  - `GeneratorFlow` recibe ahora `preferences: PreferenceProfile` y `onEditProfile: () -> Unit`, guarda el
+    borrador de ajustes con `rememberSaveable` + `GeneratorSettingsStateSaver` (formato
+    `[servings, mealTypeId.orEmpty(), timeBucketId, difficultyId, count, …restrictionIds, notes]`) y monta
+    `GeneratorSettingsScreen` en `GeneratorStep.SETTINGS`; **eliminado** `GeneratorSettingsPlaceholder`
+    (sin referencias colgantes). "Generar recetas" sigue `enabled` y sin efecto (`step.next() == null`).
+  - `MainShell` pasa `preferences = profile.preferences` y
+    `onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) }` a `GeneratorFlow`.
+  - `docs/technical-discovery.md` ampliado con la ubicación y las garantías del paso de ajustes.
+  - Tests JVM con casos negativos: `GeneratorSettingsStateTest` (escenarios 1-5 y 7). Sin dependencias
+    nuevas; no se tocan `app/build.gradle.kts`, `gradle/libs.versions.toml`, `domain/**`, `data/**`, la
+    Taxonomía, `ui/preferences/**` ni `init.sh`.
+- Verificación ejecutada: `"/c/Program Files/Git/bin/bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) con
+  parseo propio de los XML de resultados; parseo del informe `lint-results-debug.xml`; inspección de
+  imports de la lógica pura, de la reutilización sin cambios de los editores, de la ausencia de cambios en
+  el build/lockfile/dominio y de `git status`.
+- Evidencia capturada: **200 tests, 0 fallos/errores/saltados** en 31 suites (11 nuevos:
+  `GeneratorSettingsStateTest`; 189 preexistentes en verde); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; `init.sh` con código 0; `GeneratorSettingsState` sin imports Compose/Android;
+  `TimeBucketEditor`/`DifficultyEditor`/`ServingsStepper`/`HardRestrictionsEditor` reutilizados sin
+  modificarlos; `app/build.gradle.kts`, `gradle/libs.versions.toml`, `domain/**` y `data/**` sin cambios;
+  `init.sh` sin cambios.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/generator/GeneratorSettingsState.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/generator/GeneratorSettingsScreen.kt` (nuevo),
+  `app/src/main/java/com/sazon/app/ui/generator/GeneratorFlow.kt` (modificado),
+  `app/src/main/java/com/sazon/app/ui/MainShell.kt` (modificado),
+  `app/src/test/java/com/sazon/app/ui/generator/GeneratorSettingsStateTest.kt` (nuevo),
+  `docs/technical-discovery.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: ninguno de comportamiento; las firmas de la spec compilaron con las APIs reales
+  (`PreferenceProfile`, `Taxonomy.mealTypes`/`servings`, los editores de `ui.preferences`) sin
+  adaptaciones. El escenario 6 (navegación a Perfil en `MainShell`) y el 8 (conservación del borrador con
+  `rememberSaveable` + `Saver`) son de la capa Compose y se verifican por inspección y prueba manual.
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge las dos pruebas de
+  emulador exigidas (el stepper aparece con los comensales habituales del perfil; los cinco tipos de comida
+  incluyen Postre) y el acabado visual (tarjetas, ámbar de las alergias, densidad de seis tarjetas,
+  claro/oscuro); un defecto visual se corrige con una feature correctiva. El round-trip del `Saver` no se
+  testea en JVM (capa Compose; retención manual), como en features previas.
+- Siguiente paso: validación independiente de `generator-settings-step` con `feature-validator`; después,
+  commit local de la rama `feature/generator-settings-step` (orquestador de `feature-flow`) y publicación
+  por `github-flow`. La siguiente feature en lista es `generation-flow-with-validation`.
+
+### Sesión 040
+
+- Fecha: 2026-10-09
 - Objetivo: validar `profile-screen` de forma independiente y persistir la aceptación.
 - Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
   `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
@@ -1422,4 +1492,38 @@
   no invalida el Lote); un defecto visual se corrige con feature correctiva.
 - Siguiente paso: commit local de la rama `feature/profile-screen` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `generator-settings-step`.
+
+### Sesión 041
+
+- Fecha: 2026-10-09
+- Objetivo: validar `generator-settings-step` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente; registrado el detalle en
+  `docs/validations/generator-settings-step.md`. Sin cambios de código tras la validación. Queda
+  desbloqueada `generation-flow-with-validation` (sus otras dependencias ya están `accepted`).
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos), `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas,
+  `TEST_EXIT=0`) y `./gradlew lint --rerun-tasks` (28/28 tareas, `LINT_EXIT=0`); parseó por su cuenta los
+  XML de resultados y el informe `lint-results-debug.xml`, e inspeccionó el código (pureza, reutilización
+  de editores, integración en `MainShell`, eliminación del placeholder, alcance y build/lockfile intactos).
+- Evidencia capturada: 31 suites, 200 tests, 0 fallos/errores/saltados (11 nuevos:
+  `GeneratorSettingsStateTest`; 189 preexistentes en verde); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; escenarios 1–8 confirmados; `GeneratorSettingsState` sin imports Compose/Android;
+  `TimeBucketEditor`/`DifficultyEditor`/`ServingsStepper`/`HardRestrictionsEditor` reutilizados sin
+  modificarlos; `app/build.gradle.kts`, `gradle/libs.versions.toml`, `domain/**`, `data/**` y la Taxonomía
+  intactos.
+- Ficheros actualizados: `feature_list.json`, `docs/validations/generator-settings-step.md` y este
+  registro.
+- Hallazgos del validador (3 Low + 3 informativos, ninguno bloqueante): los escenarios 6 y 8 viven en la
+  capa Compose y no son automatizables por AGENTS.md (verificados por inspección y prueba manual); el
+  escenario 2 fija el orden literal de `mealTypes`; el escenario 4 usa folds en vez de aserción explícita
+  de los extremos; microcopy de títulos de tarjeta hardcodeado por spec; `Validator Checklist` de la spec
+  sin marcar; `docs/validations/generator-settings-step.md` creado por el orquestador.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge las
+  dos pruebas de emulador exigidas (el stepper aparece con los comensales habituales del perfil; los cinco
+  tipos de comida incluyen Postre) y el acabado visual (tarjetas, ámbar de alergias, densidad, claro/oscuro);
+  un defecto visual se corrige con una feature correctiva.
+- Siguiente paso: commit local de la rama `feature/generator-settings-step` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `generation-flow-with-validation`.
 

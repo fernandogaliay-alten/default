@@ -62,7 +62,8 @@ import com.sazon.app.ui.theme.SazonComponents
  *
  * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. La
  * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile]);
- * Favoritos sigue siendo [SectionPlaceholder].
+ * Favoritos sigue siendo [SectionPlaceholder]. El Generador es real ([GeneratorFlow], pasos de
+ * ingredientes y de ajustes).
  */
 @Composable
 fun MainShell(
@@ -145,7 +146,9 @@ fun MainShell(
             ) {
                 GeneratorFlow(
                     taxonomy = taxonomy,
+                    preferences = profile.preferences,
                     onClose = { navigation = navigation.pop() },
+                    onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                 )
             }
         }

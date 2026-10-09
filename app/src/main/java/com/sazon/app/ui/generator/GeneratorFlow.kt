@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
@@ -30,22 +31,25 @@ import com.sazon.app.ui.theme.SazonSpacing
  * Huesped del asistente del Generador dentro de la pagina empujada [PushedScreen.GENERATOR]
  * (`com.sazon.app.ui.navigation`).
  *
- * Mantiene el **paso** (`rememberSaveable`) y el borrador de ingredientes
- * ([GeneratorIngredientsState] con su `Saver`, en la capa Compose) para que el paso 2 lo conserve. Pinta
- * una barra superior con "Atras" y el titulo del paso y el primario anclado (`step.primaryLabel`),
- * deshabilitado en [GeneratorStep.INGREDIENTS] mientras `!ingredients.canContinue`.
+ * Mantiene el **paso** (`rememberSaveable`) y los borradores de ingredientes ([GeneratorIngredientsState]
+ * con su `Saver`) y de ajustes ([GeneratorSettingsState], precargado del Perfil con su `Saver`, en la capa
+ * Compose) para que se conserven al ir y volver entre pasos. Pinta una barra superior con "Atras" y el
+ * titulo del paso y el primario anclado (`step.primaryLabel`), deshabilitado en [GeneratorStep.INGREDIENTS]
+ * mientras `!ingredients.canContinue`.
  *
  * "Atras" es `step.previous() ?: onClose()` (desde el paso 1 cierra el Generador, desde el 2 vuelve al 1
  * conservando los ingredientes). El primario es `step.next()`: en [GeneratorStep.SETTINGS] no tiene
  * efecto (la generacion es de `generation-flow-with-validation`).
  *
- * El paso 1 ([GeneratorIngredientsScreen]) es de esta feature; el paso 2 es un **marcador** que rellenara
- * `generator-settings-step`.
+ * El paso 1 ([GeneratorIngredientsScreen]) y el paso 2 ([GeneratorSettingsScreen]) son de esta feature;
+ * `onEditProfile` navega a la pestana Perfil (el Perfil real es de `profile-screen`).
  */
 @Composable
 fun GeneratorFlow(
     taxonomy: Taxonomy,
+    preferences: PreferenceProfile,
     onClose: () -> Unit,
+    onEditProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var step by rememberSaveable(stateSaver = GeneratorStepSaver) {
@@ -53,6 +57,9 @@ fun GeneratorFlow(
     }
     var ingredients by rememberSaveable(stateSaver = GeneratorIngredientsStateSaver) {
         mutableStateOf(GeneratorIngredientsState())
+    }
+    var settings by rememberSaveable(stateSaver = GeneratorSettingsStateSaver) {
+        mutableStateOf(GeneratorSettingsState.initial(preferences, taxonomy.servings))
     }
 
     Scaffold(
@@ -92,7 +99,18 @@ fun GeneratorFlow(
                     onRemove = { ingredients = ingredients.remove(it) },
                 )
 
-                GeneratorStep.SETTINGS -> GeneratorSettingsPlaceholder()
+                GeneratorStep.SETTINGS -> GeneratorSettingsScreen(
+                    state = settings,
+                    taxonomy = taxonomy,
+                    onServingsChange = { settings = settings.setServings(it, taxonomy.servings) },
+                    onMealTypeSelect = { settings = settings.selectMealType(it) },
+                    onTimeBucketSelect = { settings = settings.selectTimeBucket(it) },
+                    onDifficultySelect = { settings = settings.selectDifficulty(it) },
+                    onToggleRestriction = { settings = settings.toggleHardRestriction(it) },
+                    onClearRestrictions = { settings = settings.clearHardRestrictions() },
+                    onNotesChange = { settings = settings.typeNotes(it) },
+                    onEditProfile = onEditProfile,
+                )
             }
         }
     }
@@ -156,16 +174,6 @@ private fun GeneratorPrimaryBar(
     }
 }
 
-/** Marcador del paso 2 ("Ajusta tu receta"); su contenido es de `generator-settings-step`. */
-@Composable
-private fun GeneratorSettingsPlaceholder() {
-    Text(
-        text = "El paso de ajustes llega en 'generator-settings-step'.",
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
 /**
  * Saver de [GeneratorStep] para `rememberSaveable`: guarda el nombre del enum (la logica pura no conoce
  * Compose). Mantiene la logica libre de Compose.
@@ -203,5 +211,44 @@ private val GeneratorIngredientsStateSaver: Saver<GeneratorIngredientsState, Any
             }
         }
         GeneratorIngredientsState(ingredients = ingredients, query = query)
+    },
+)
+
+/**
+ * Saver de [GeneratorSettingsState] para `rememberSaveable`, en la capa Compose: guarda
+ * `[servings, mealTypeId.orEmpty(), timeBucketId, difficultyId, count, …restrictionIds, notes]` (el
+ * `mealTypeId` vacio se restaura como `null`, sin preferencia). Mantiene la logica libre de Compose y
+ * conserva los ajustes al ir y volver del paso 1.
+ */
+private val GeneratorSettingsStateSaver: Saver<GeneratorSettingsState, Any> = listSaver(
+    save = { state ->
+        buildList {
+            add(state.servings.toString())
+            add(state.mealTypeId.orEmpty())
+            add(state.timeBucketId)
+            add(state.difficultyId)
+            add(state.hardRestrictionIds.size.toString())
+            state.hardRestrictionIds.forEach { add(it) }
+            add(state.notes)
+        }
+    },
+    restore = { saved ->
+        var index = 0
+        fun nextString(): String = saved[index++]
+        val servings = nextString().toInt()
+        val mealTypeId = nextString().ifEmpty { null }
+        val timeBucketId = nextString()
+        val difficultyId = nextString()
+        val count = nextString().toInt()
+        val restrictions = buildList { repeat(count) { add(nextString()) } }
+        val notes = nextString()
+        GeneratorSettingsState(
+            servings = servings,
+            mealTypeId = mealTypeId,
+            timeBucketId = timeBucketId,
+            difficultyId = difficultyId,
+            hardRestrictionIds = restrictions,
+            notes = notes,
+        )
     },
 )

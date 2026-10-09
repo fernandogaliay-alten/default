@@ -149,8 +149,28 @@ asi se conserva al ir y volver del paso 2) y `GeneratorIngredientsScreen` (input
 chips de los anadidos con "×", contador con cifras tabulares y nube **colapsable** "Ingredientes
 sugeridos", sin iconos: "×" y "Atras" son texto). No se persiste el borrador en disco (asistente
 efimero). `MainShell` monta `GeneratorFlow` en el destino `GENERATOR` en lugar del `SectionPlaceholder`
-(que se sigue usando para Favoritos); el paso 2 es un **marcador** hasta
-`generator-settings-step`. Ver `docs/specs/generator-ingredients-step.md`.
+(que se sigue usando para Favoritos). Ver `docs/specs/generator-ingredients-step.md`.
+
+El **paso de ajustes del Generador** ("Ajusta tu receta") vive en el mismo `com.sazon.app.ui.generator`.
+La logica/estado es **pura** y testeable en JVM: `GeneratorSettingsState` (`servings`, `mealTypeId`
+opcional, `timeBucketId`, `difficultyId`, `hardRestrictionIds` y `notes`), con `initial(preferences,
+limits)` que **precarga** comensales (`defaultServings` recortado a `taxonomy.servings`), franja,
+dificultad y alergias del Perfil (el tipo de comida arranca en `null` porque el Perfil no lo tiene),
+`setServings` (recorta con `coerceIn`), `selectMealType` (single-select **opcional**: el segundo toque lo
+deja en `null`), `selectTimeBucket`/`selectDifficulty` (single-select que reemplazan),
+`toggleHardRestriction` (conjunto, sin duplicados), `clearHardRestrictions`/`hasNoRestrictions` y
+`typeNotes`. La capa Compose es `GeneratorSettingsScreen` (seis tarjetas `Surface` con
+`SazonShapes.large`): "Tiempo disponible" (`TimeBucketEditor`), "Tipo de comida" (fila local de
+`FilterChip` de `taxonomy.mealTypes`, incluido Postre, sin editor previo), "Comensales"
+(`ServingsStepper`), "Dificultad" (`DifficultyEditor`), "Alergias a evitar" (`HardRestrictionsEditor` en
+**ambar** y nunca en rojo, con la caption "Ninguna declarada" y el `TextButton` "Editar en mi perfil") y
+"¿Algo mas que deba saber?" (`OutlinedTextField` multilinea). `GeneratorFlow` recibe ahora el Perfil y el
+callback de Perfil (`onEditProfile`) y guarda el borrador de ajustes con `rememberSaveable` +
+`GeneratorSettingsStateSaver`; `MainShell` pasa `profile.preferences` y
+`onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) }` (el Perfil real es de
+`profile-screen`). El primario "Generar recetas" no tiene efecto: la generacion es de
+`generation-flow-with-validation`; el estado **no** se convierte a `GenerationConstraints`. Ver
+`docs/specs/generator-settings-step.md`.
 
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,
