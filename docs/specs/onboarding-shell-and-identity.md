@@ -240,8 +240,10 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`: no se añ
   `primary`, píldora `primaryContainer` si se usa. El color del avatar sale del `hex` de la Taxonomía.
 - Reglas visuales: una única acción principal por pantalla (terracota); "Atrás" como botón de texto;
   objetivos táctiles ≥48dp; tipografía dinámica (el texto hace scroll, nunca se recorta).
-- New design artifact required: **no**. El repaso puramente visual (muestras, contraste, claro/oscuro)
-  lo hace la persona tras el merge; un defecto visual se corrige con una feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/onboarding-shell-and-identity/` —
+  pantalla `bienvenida` (paso 1 + armazón). Pendiente de exportar desde Stitch (petición en el
+  `README.md` de la carpeta); el repaso puramente visual (muestras, contraste, claro/oscuro) lo hace la
+  persona tras el merge y un defecto visual se corrige con una feature correctiva.
 
 ## Durable Documentation Impact
 
@@ -252,7 +254,8 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`: no se añ
   de primer arranque es la presencia de Perfil (y no un flag DataStore en esta feature) y la costura de
   navegación sin librería.
 - `docs/domain-model.md`: **not needed** — describe ya `Onboarding`, `UserProfile` y el avatar.
-- `docs/design/concepts/`: **not needed** — los mockups de Stitch siguen siendo dirección, no spec.
+- `docs/design/concepts/`: **update** — backfill de capturas (PR #37): pantalla `bienvenida` en
+  `docs/design/concepts/onboarding-shell-and-identity/`.
 
 ## Implementation Plan
 

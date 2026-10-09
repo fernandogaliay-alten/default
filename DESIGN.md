@@ -96,7 +96,25 @@ de la UI**: si un mockup generado contradice estos tokens o estas reglas, manda 
 
 ## Generated Concept Images
 
-Ninguna en el repositorio. No se ha usado generación de imágenes en esta fase.
+Ninguna en el repositorio todavía. La política de capturas de UI (PR #37) exige una captura por
+**pantalla** en `docs/design/concepts/<feature-id>/<pantalla>/` (el `.png`, el `.html` y el `design.md`
+del export de Stitch). Las features de UI aceptadas **antes** de esa política tienen pendiente este
+**backfill**; la petición concreta de cada una vive en su `docs/design/concepts/<feature-id>/README.md`:
+
+- `design-tokens-and-theme`: `design-system`
+- `onboarding-shell-and-identity`: `bienvenida`
+- `onboarding-diet-style-cuisines`: `dieta`, `estilo`, `cocinas`
+- `onboarding-ingredients-safety-kitchen`: `ingredientes`, `alergias`, `tu-cocina`
+- `home-offline-blocks`: `home`, `home-sin-conexion`
+- `local-result-filters`: `filtros-tus-recetas`
+- `generator-ingredients-step`: `generador-ingredientes`
+- `generator-settings-step`: `generador-ajustes`
+- `generation-flow-with-validation`: `generador-cargando`, `resultados-preview`
+- `profile-screen`: `perfil`, `perfil-editar`
+- `manual-suggestions-refresh`: `perfil-sugerencias`
+
+Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
+pixel-perfect).
 
 ## Product Feel
 

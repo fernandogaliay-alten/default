@@ -277,8 +277,10 @@ features de onboarding/Home.
   tipografía dinámica (scroll, nunca recortar).
 - **Sin** material-icons ni imágenes: "×" y "Atrás" son texto; los chips muestran su `label` (mismo
   criterio documentado en `AvatarPreview`/onboarding).
-- New design artifact required: **no**; el acabado visual (densidad de la nube, tratamiento de chips) lo
-  revisa la persona tras el merge; un defecto visual se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/generator-ingredients-step/` —
+  pantalla `generador-ingredientes` (paso 1). Pendiente de exportar desde Stitch (petición en el
+  `README.md` de la carpeta); el acabado visual (densidad de la nube, tratamiento de chips) lo revisa la
+  persona tras el merge y un defecto visual se corrige con feature correctiva.
 
 ## Durable Documentation Impact
 
@@ -289,7 +291,9 @@ features de onboarding/Home.
   anotar que `MainShell` sustituye el `SectionPlaceholder` del Generador.
 - `docs/domain-model.md`: **not needed** — ya describe el Generador, los ingredientes de Taxonomía o
   libres y `GenerationConstraints`; esta feature no cambia el modelo.
-- `DESIGN.md` y `docs/design/concepts/`: **not needed** — siguen siendo la fuente/dirección; no cambian.
+- `DESIGN.md` y `docs/design/concepts/`: **update** — `DESIGN.md` sigue siendo la fuente; se añade el
+  backfill de captura `generador-ingredientes` en
+  `docs/design/concepts/generator-ingredients-step/`.
 - `PROGRESS.md` y `feature_list.json`: **update al implementar** (estado y evidencia), no en esta sesión.
 
 ## Implementation Plan

@@ -368,8 +368,10 @@ No se tocan `app/build.gradle.kts` ni `gradle/libs.versions.toml`: no se añaden
   nunca rojo**; no depender solo del color (etiquetas y chevron).
 - Se reutilizan `AvatarPreview` y los editores de `ui.preferences`; no se renderizan imágenes ni iconos
   externos (sin dependencia de iconos).
-- New design artifact required: **no**; el acabado puramente visual lo revisa la persona tras el merge
-  y un defecto se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/profile-screen/` — pantallas `perfil`
+  y `perfil-editar`. Pendiente de exportar desde Stitch (petición en el `README.md` de la carpeta); el
+  acabado puramente visual lo revisa la persona tras el merge y un defecto se corrige con feature
+  correctiva.
 
 ## Durable Documentation Impact
 
@@ -382,7 +384,8 @@ No se tocan `app/build.gradle.kts` ni `gradle/libs.versions.toml`: no se añaden
   guardado usa `ProfileRepository.save` por observación (identidad no invalida el Lote; preferencias
   sí).
 - `docs/domain-model.md`: **not needed** — ya describe el Perfil editable, la Firma y los edge cases.
-- `DESIGN.md` y `docs/design/concepts/`: **not needed** — sin cambios de dirección visual.
+- `DESIGN.md` y `docs/design/concepts/`: **update** — se añade el backfill de capturas `perfil` y
+  `perfil-editar` en `docs/design/concepts/profile-screen/`.
 - `PROGRESS.md` y `feature_list.json`: **update al implementar** (estado y evidencia), no en esta
   sesión de planificación.
 

@@ -18,6 +18,8 @@
   aceptadas, con carga cancelable), la pestaña Perfil es real (identidad + preferencias editables
   reutilizando los editores del onboarding) y permite forzar el refresco del Lote.
 - Siguiente feature en orden de lista: `results-screen` (su dependencia ya está `accepted`).
+- Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
+  pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
 - Última verificación (2026-10-09, merge de `origin/main` en `feature/manual-suggestions-refresh`):
@@ -1725,3 +1727,44 @@
 - Siguiente paso: commit local de la rama `feature/manual-suggestions-refresh` (orquestador de
   `feature-flow`); la publicación queda para `github-flow`. La siguiente feature en orden de lista sigue
   siendo `generation-flow-with-validation`.
+
+### Sesión 046
+
+- Fecha: 2026-10-09
+- Objetivo: **chore de harness** (no es feature de producto): **Fase 1** del backfill de capturas de UI
+  exigidas por la política del PR #37, aplicada a las 11 features de `area: ui` ya `accepted` (que se
+  implementaron antes de que existiera la política). Rama `chore/ui-captures-backfill`.
+- Completado:
+  - Convención de guardado actualizada en `docs/design/concepts/README.md`: **una subcarpeta por
+    pantalla** (no por componente) con los **tres ficheros del export de Stitch** (`.png`, `.html` y
+    `design.md`, con los nombres que dé Stitch).
+  - **11 `docs/design/concepts/<feature-id>/README.md`** nuevos (la "petición" de cada feature) con la
+    lista exacta de pantallas esperadas y una línea de qué es cada una: `design-tokens-and-theme`
+    (`design-system`); `onboarding-shell-and-identity` (`bienvenida`);
+    `onboarding-diet-style-cuisines` (`dieta`, `estilo`, `cocinas`);
+    `onboarding-ingredients-safety-kitchen` (`ingredientes`, `alergias`, `tu-cocina`);
+    `home-offline-blocks` (`home`, `home-sin-conexion`); `local-result-filters`
+    (`filtros-tus-recetas`); `generator-ingredients-step` (`generador-ingredientes`);
+    `generator-settings-step` (`generador-ajustes`); `generation-flow-with-validation`
+    (`generador-cargando`, `resultados-preview`); `profile-screen` (`perfil`, `perfil-editar`);
+    `manual-suggestions-refresh` (`perfil-sugerencias`). Total: **18 pantallas**.
+  - `DESIGN.md`: sección "Generated Concept Images" registra el backfill y las pantallas por feature
+    (la petición concreta vive en cada `README.md`).
+  - **11 specs**: la sección "Visual Design Impact" nombra sus capturas y el impacto en
+    `docs/design/concepts/` pasa de `not needed` a `update` (backfill).
+- Verificación ejecutada: cambio **solo de documentación** (ningún fichero Kotlin/recursos/gradle), por
+  lo que el gate `init.sh` no aplica; revisión manual del árbol `docs/design/concepts/`, de los 11
+  `README.md` y de `git status` (24 ficheros, +358/−40).
+- Ficheros creados/cambiados: `docs/design/concepts/README.md`, los 11
+  `docs/design/concepts/<feature-id>/README.md` (nuevos), `DESIGN.md`, los 11 `docs/specs/<feature>.md`
+  y este registro. `feature_list.json` **sin cambios** (ninguna feature cambia de estado).
+- Hallazgos relevantes: las 11 features de UI aceptadas no tienen capturas porque son anteriores al
+  PR #37; sus specs incluso decían `docs/design/concepts/: not needed`. El backfill no reabre features
+  aceptadas: solo deja la petición y, cuando lleguen los exports, se hará la **Fase 2** de
+  reconciliación (UI implementada vs captura) **una a una**, abriendo una feature correctiva solo si
+  aparece una desviación visual real.
+- Riesgo o incógnita abierta: la Fase 2 no puede empezar hasta que la persona exporte las 18 pantallas
+  desde Stitch; no hay bloqueo para el resto del plan (`results-screen` sigue siendo la siguiente
+  feature de producto).
+- Siguiente paso: commit + push + PR del chore (publicación por `github-flow`). Después, **Fase 2**:
+  reconciliar feature por feature según lleguen los exports.
