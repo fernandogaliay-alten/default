@@ -1792,3 +1792,36 @@
   corresponden a features aún `not_started` (igual que en el prompt original).
 - Siguiente paso: la persona pega las partes en Stitch en orden y guarda cada export en
   `docs/design/concepts/<feature-id>/<pantalla>/`; después, **Fase 2** de reconciliación una a una.
+
+### Sesión 048
+
+- Fecha: 2026-10-09
+- Objetivo: **Fase 2** de capturas de UI — primera reconciliación: `design-tokens-and-theme` →
+  `design-system`.
+- Entrada: captura recibida en
+  `docs/design/concepts/design-tokens-and-theme/design-system/` (`screen.png`, `code.html`, `DESIGN.md`).
+- Limitación: el agente **no puede leer imágenes**, así que la reconciliación es **textual** (el
+  `DESIGN.md` del export y el `code.html`) contra `DESIGN.md` (fuente de verdad), el tema implementado
+  (`ui/theme`) y la Taxonomía; el repaso puramente visual del `screen.png` lo hace la persona.
+- Resultado: **conforme en lo esencial**. Coinciden con `DESIGN.md` y con lo implementado: paleta clara
+  (terracota `#D9552B`, container `#FFDCCF`, oliva `#5F7A3D`, miel `#F2A93B`, cream `#FFF8F0`, surface
+  `#FFFFFF`, text `#2B2118`, outline `#E8DDD3`, success/error), tipografías Manrope/Inter, cifras
+  tabulares, radios (píldora/16/24), sombra `0 4 16 rgba(43,33,24,0.06)`, una sola acción terracota por
+  pantalla, alérgenos en ámbar **nunca rojo**, nav 80dp + FAB y avatares de iniciales.
+- Notas de la reconciliación: el frontmatter del `DESIGN.md` del export trae valores M3 autoderivados
+  (p. ej. `primary #a83208`, `secondary #4c662c`) que **no** son los de marca; su propio texto y
+  `DESIGN.md` fijan los hex de marca, que son los que usa la app (se ignoran por política). El propio
+  export es internamente inconsistente en el modo oscuro (`code.html` usa `#1B1510`/`#261E17`; su
+  `DESIGN.md` y la app, `#241C16`/`#312720`).
+- Desviaciones candidatas (ninguna bloqueante; la feature aceptada **no** se reabre):
+  1. **Paleta de avatar**: `DESIGN.md` dice "8 tonos cálidos", pero `taxonomy.json avatarColors` incluye
+     tonos fríos (teal `#2F6F6B`, indigo `#4A6FA5`, plum `#8E4A5B`, rose `#B2557A`); el export propone 8
+     tonos cálidos. Candidato a feature correctiva (ajustar `avatarColors`).
+  2. **Terracota en modo oscuro**: el export propone un terracota luminoso (`#FF8B66` / `#E0643B`); la
+     app mantiene el terracota base. Candidato opcional a feature correctiva.
+- Ficheros actualizados: `DESIGN.md` (sección "Generated Concept Images": `design-system` pasa a
+  aceptada; frontmatter `generatedConcepts`) y este registro.
+- Siguiente paso: la desviación 1 se abre como feature correctiva
+  `avatar-palette-warm-alignment` (`not_started` en `feature_list.json`); la 2 queda pendiente de
+  decisión. Continuar la **Fase 2** con la siguiente captura cuando llegue
+  (`onboarding-shell-and-identity` → `bienvenida` es la natural).

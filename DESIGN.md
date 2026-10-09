@@ -3,7 +3,8 @@ name: Sazón
 description: App Android de recetas generadas por IA a partir de los ingredientes del usuario. Identidad cálida y apetitosa, tipo libro de cocina moderno.
 designAssets:
   sourceOfTruth: []
-  generatedConcepts: []
+  generatedConcepts:
+    - design-tokens-and-theme/design-system
 colors:
   primary: "#D9552B"
   onPrimary: "#FFFFFF"
@@ -96,12 +97,20 @@ de la UI**: si un mockup generado contradice estos tokens o estas reglas, manda 
 
 ## Generated Concept Images
 
-Ninguna en el repositorio todavía. La política de capturas de UI (PR #37) exige una captura por
-**pantalla** en `docs/design/concepts/<feature-id>/<pantalla>/` (el `.png`, el `.html` y el `design.md`
-del export de Stitch). Las features de UI aceptadas **antes** de esa política tienen pendiente este
-**backfill**; la petición concreta de cada una vive en su `docs/design/concepts/<feature-id>/README.md`:
+Capturas aceptadas de Stitch (**dirección visual**, no especificación pixel-perfect). Cada pantalla vive
+en `docs/design/concepts/<feature-id>/<pantalla>/` con el `.png`, el `.html` y el `design.md` del export.
+La política de capturas de UI es del PR #37.
 
-- `design-tokens-and-theme`: `design-system`
+### Aceptadas
+
+- `design-tokens-and-theme` → `design-system/` (hoja de estilo; reconciliada 2026-10-09, ver `PROGRESS.md`
+  sesión 048).
+
+### Pendientes (backfill PR #37)
+
+Las features de UI aceptadas **antes** de la política tienen pendiente la captura; la petición concreta
+de cada una vive en su `docs/design/concepts/<feature-id>/README.md`:
+
 - `onboarding-shell-and-identity`: `bienvenida`
 - `onboarding-diet-style-cuisines`: `dieta`, `estilo`, `cocinas`
 - `onboarding-ingredients-safety-kitchen`: `ingredientes`, `alergias`, `tu-cocina`

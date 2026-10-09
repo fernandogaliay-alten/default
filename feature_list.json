@@ -541,5 +541,18 @@
     ],
     "evidence": [],
     "notes": "Proveedor decidido: DevExpert Inference (API compatible con OpenAI; base https://inference.devexpert.io/v1, POST /chat/completions, modelos chat/chat-pro). Es lo último que se conecta. La clave va en local.properties y no se versiona (ADR 0002). Ver ADR 0003."
+  },
+  {
+    "id": "avatar-palette-warm-alignment",
+    "area": "ui",
+    "title": "Paleta de avatar cálida (8 tonos) alineada con DESIGN.md",
+    "user_visible_behavior": "Los avatares de iniciales usan 8 tonos cálidos; ninguno es frío.",
+    "depends_on": ["taxonomy-in-code"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que avatarColors tiene 8 tonos cálidos, que ninguno es frío y que los ids siguen resolviendo"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva nacida en la Fase 2 de capturas de UI (reconciliacion de design-tokens-and-theme/design-system; ver PROGRESS.md sesion 048). DESIGN.md declara 'Avatar (iniciales): 8 tonos calidos' y remite a avatarColors de docs/domain/taxonomy.json, pero la lista actual incluye tonos frios (teal #2F6F6B, indigo #4A6FA5, plum #8E4A5B, rose #B2557A); el export de Stitch propone 8 tonos calidos. Preservar compatibilidad con avatarColorId ya persistido (mantener ids o mapear). No reabre design-tokens-and-theme."
   }
 ]
