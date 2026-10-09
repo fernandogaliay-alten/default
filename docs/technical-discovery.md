@@ -215,6 +215,22 @@ monta como *stage* de resultado dentro de `GeneratorFlow` (sin `PushedScreen.RES
 borradores; `ai-search` reutilizara `ResultsScreen` con `ResultsOrigin.Search`. Ver
 `docs/specs/results-screen.md`.
 
+El **Detalle de receta** vive en `com.sazon.app.ui.detail`, con logica **pura** testeable en JVM (sin
+Compose ni Android) y una capa Compose delgada. `ServingScaler.scaledIngredients(recipe, targetServings)`
+escala las cantidades con **redondeo por unidad** (no lineal): `g`/`ml` a multiplos de 5, `ud`/`cda`/`cdta`
+a medios (half-up, minimo el paso si `quantity > 0`), `unit = null` ("al gusto") **no se escala** y
+`factor == 1` devuelve las cantidades originales intactas (sin division por cero con `recipe.servings = 0`).
+`IngredientFormat` resuelve las etiquetas (`"½"`, `"4½ ud"`, `"300 g"`, `"Al gusto"`), `RecipeDetailFormat`
+los cuatro pares del hero (Tiempo/Dificultad/Comensales/Calorias, sin `matchScore`) y `RecipeDetailState`
+los comensales (acotados a `taxonomy.servings`) y la pestana activa. `RecipeDetailScreen` es la capa
+Compose: hero con degradado + "Atras" y corazon, tarjeta superpuesta con la meta, pestanas
+Ingredientes/Pasos/Notas (timeline con pildora ambar de duracion y nutricion opcional), el `ServingsStepper`
+reutilizado **sin cambios** y barra inferior ("Guardar"/"Empezar a cocinar", costuras no-op de
+`favorites`/modo cocina). El detalle se hospeda como **overlay** en `MainShell`
+(`var detailRecipe by remember`), de modo que se pinta **encima** de la Home o del Generador **sin
+desmontarlos** (se conservan el resultado y el borrador); abre desde las tarjetas de Resultados y de la
+Home. Ver `docs/specs/recipe-detail-screen.md`.
+
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,
 con `from(profile, taxonomy)` (normaliza el nombre y degrada un `avatarColorId` corrupto al primer

@@ -106,6 +106,7 @@ pendiente este **backfill**; la petición concreta de cada una vive en su
 Capturas aceptadas (dirección visual, no especificación pixel-perfect):
 
 - `results-screen`: `resultados`
+- `recipe-detail-screen`: `detalle-receta`
 
 Backfill pendiente:
 

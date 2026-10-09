@@ -12,23 +12,28 @@
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
-  `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh` y `results-screen`
-  (validador independiente, veredicto `accept`). El onboarding queda **completo** (7 pasos) y persiste el
-  Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP (generar -> validar ->
-  mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados real (fórmula de
-  `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña Perfil es real
-  (identidad + preferencias editables reutilizando los editores del onboarding) y permite forzar el
-  refresco del Lote.
-- Siguiente feature en orden de lista: `recipe-detail-screen` (depende de `results-screen`, ya `accepted`).
+  `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen` y
+  `recipe-detail-screen` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP
+  (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados
+  real (fórmula de `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña
+  Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding) y permite
+  forzar el refresco del Lote; el Detalle de receta ya muestra ingredientes con cantidades, ajusta las
+  raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional.
+- Siguiente feature en orden de lista: `favorites` (depende de `recipe-detail-screen`, ya `accepted`, y
+  de `profile-persistence`, ya `accepted`).
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
-  `results-screen` ya aporta su única captura (`docs/design/concepts/results-screen/resultados/`).
+  `results-screen` y `recipe-detail-screen` ya aportan sus capturas
+  (`docs/design/concepts/results-screen/resultados/` y
+  `docs/design/concepts/recipe-detail-screen/detalle-receta/`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-09, `results-screen`): `init.sh` con Git Bash exit 0,
-  **255 tests/0 fallos/errores/saltados** en 39 suites (234 preexistentes + 21 nuevos de
-  `MatchScoreTest`/`ResultsHeaderTest`/`ResultsStatusTest`); lint 0 errores y 13 warnings preexistentes.
-  Veredicto independiente `accept`; commit local de `feature/results-screen` (publica `github-flow`).
+- Última verificación (2026-10-10, `recipe-detail-screen`): `init.sh` con Git Bash exit 0,
+  **277 tests/0 fallos/errores/saltados** en 43 suites (255 preexistentes + 22 nuevos de
+  `ServingScalerTest`/`IngredientFormatTest`/`RecipeDetailFormatTest`/`RecipeDetailStateTest`); lint 0
+  errores y 13 warnings preexistentes. Veredicto independiente `accept`; commit local de
+  `feature/recipe-detail-screen` (publica `github-flow`).
 
 ## Registro de sesiones
 
@@ -1878,3 +1883,110 @@
   reconciliación de capturas de features de UI ya aceptadas (sesión 046).
 - Siguiente paso: validación independiente de `results-screen` con `feature-validator`; después, commit
   local (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 050
+
+- Fecha: 2026-10-10
+- Objetivo: reanudar e implementar `recipe-detail-screen` (Detalle de receta con raciones ajustables)
+  según `docs/specs/recipe-detail-screen.md`. Una ejecución previa se interrumpió y dejó el trabajo en
+  disco sin commitear y sin los artefactos de harness/docs; esta sesión lo revisa contra la spec,
+  completa lo que faltaba (el gate de UI ya estaba satisfecho con las capturas de
+  `docs/design/concepts/recipe-detail-screen/detalle-receta/`), corrige una desviación del test de
+  escalado y lo autoverifica sin rehacer lo ya válido.
+- Completado: lógica **pura** en `com.sazon.app.ui.detail` testeable en JVM (sin Compose ni Android):
+  `ServingScaler.scaledIngredients(recipe, targetServings)` con **redondeo por unidad** (no lineal),
+  `GRAM_STEP = 5` (`g`/`ml`), `UNIT_STEP = 0.5` (`ud`/`cda`/`cdta`), half-up (`Math.round`), mínimo el
+  paso si `quantity > 0`, `unit = null` ("al gusto") **no se escala**, `factor == 1` intacto y sin
+  división por cero (`servings.coerceAtLeast(1)`); `IngredientFormat.quantityLabel` (`"½"`, `"4½ ud"`,
+  `"300 g"`, `"Al gusto"`, nunca `"0.5"`); `RecipeDetailFormat.metaEntries` (Tiempo/Dificultad real con
+  respaldo al `id`/Comensales/Calorías con `"—"` sin nutrición, sin `matchScore`) y `ADJUSTED_CAPTION`;
+  `RecipeDetailTab` + `RecipeDetailState` (`initial`/`setServings` con `coerceIn`/`selectTab`, inmutable,
+  sin guardar el `Recipe`). Capa Compose **delgada** `RecipeDetailScreen` (héroe degradado + "Atrás" y
+  corazón; tarjeta superpuesta con meta; pestañas Ingredientes/Pasos/Notas; `ServingsStepper`
+  reutilizado **sin cambios** + caption; filas con checkbox y cantidad en cifras tabulares; timeline con
+  píldora ámbar; tips + rejilla de nutrición opcional; barra inferior "Guardar"/"Empezar a cocinar";
+  `RecipeDetailStateSaver`). Integración: `RecipeCard`/`ResultRecipeCard` ganan `onClick` opcional;
+  `HomeScreen`/`ResultsScreen`/`GeneratorFlow` reciben `onOpenRecipe`; `MainShell` hospeda el detalle
+  como **overlay** (`var detailRecipe by remember`) encima de la Home/Generador **sin desmontarlos**;
+  `isSaved = false`, `onToggleSave = {}`, `onStartCooking = {}` como costuras no-op de
+  `favorites`/modo cocina. Tests JVM con los vectores dorados (escenarios 1-4) y casos negativos.
+  Sin dependencias nuevas; no se tocan `app/build.gradle.kts`, `gradle/libs.versions.toml`, `domain/**`,
+  `data/**`, la Taxonomía, `seed-recipes.json`, `ui.preferences/ServingsStepper.kt`,
+  `ui.navigation/MainNavigationState.kt` ni `init.sh`.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); parseo propio de los XML de resultados
+  (`test-results/testDebugUnitTest/TEST-*.xml`) y del informe `lint-results-debug.xml`; inspección de
+  imports de la lógica pura (sin Compose/Android) y de `git status` (solo los ficheros previstos).
+- Evidencia capturada: **43 suites, 277 tests, 0 fallos/errores/saltados** (22 nuevos:
+  `ServingScalerTest` 8, `IngredientFormatTest` 5, `RecipeDetailStateTest` 5, `RecipeDetailFormatTest` 4;
+  255 preexistentes en verde); lint 0 errores y 13 warnings preexistentes (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en ficheros de la feature;
+  `init.sh` con código 0; `ServingScaler`/`IngredientFormat`/`RecipeDetailFormat`/`RecipeDetailState`
+  sin imports Compose/Android; `ServingsStepper`, `MainNavigationState`, el build/lockfile, el dominio,
+  `data/**`, la Taxonomía, `seed-recipes.json` e `init.sh` sin cambios.
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/detail/{ServingScaler,IngredientFormat,RecipeDetailFormat,
+  RecipeDetailState,RecipeDetailScreen}.kt` (nuevos),
+  `app/src/test/java/com/sazon/app/ui/detail/{ServingScalerTest,IngredientFormatTest,
+  RecipeDetailFormatTest,RecipeDetailStateTest}.kt` (nuevos),
+  `app/src/main/java/com/sazon/app/ui/{MainShell.kt, generator/GeneratorFlow.kt, home/HomeScreen.kt,
+  home/RecipeCard.kt, results/ResultRecipeCard.kt, results/ResultsScreen.kt}` (modificados),
+  `docs/technical-discovery.md`, `docs/domain-model.md`, `DESIGN.md`, `feature_list.json` y este
+  registro.
+- Hallazgos relevantes: la inspección inicial detectó un **defecto real** en
+  `ServingScalerTest.una_receta_sin_raciones_no_divide_por_cero`: con `recipe.servings = 0` y
+  `targetServings = 2` el factor es `2` (por `coerceAtLeast(1)`), así que `Patata` queda en `1200 g` y no
+  en `600 g` como asertaba el test original; corregido el vector (y añadido `Huevo = 12 ud`) para
+  alinearlo con la fórmula de la spec. El test pasó a verde en la siguiente ejecución. El resto de la
+  lógica y la capa Compose ya eran correctas.
+- Riesgo o incógnita abierta: quedan para revisión manual de la persona tras el merge la prueba de
+  emulador exigida (abrir una receta desde Resultados y desde la Home, cambiar las raciones y ver las
+  cantidades actualizarse, recorrer las tres pestañas y "Atrás" sin perder resultado/borrador) y el
+  acabado visual contra `docs/design/concepts/recipe-detail-screen/detalle-receta/`; un defecto visual se
+  corrige con feature correctiva. Rotar con el detalle abierto lo cierra (`detailRecipe` vive en
+  `remember`), como documenta la spec (Unknown). Se mantiene la Fase 2 de reconciliación de capturas de
+  las features de UI previas (sesión 046).
+- Siguiente paso: validación independiente de `recipe-detail-screen` con `feature-validator`; después,
+  commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`. La
+  siguiente feature en orden de lista es `favorites` (espera a que `recipe-detail-screen` quede
+  `accepted`).
+
+### Sesión 051
+
+- Fecha: 2026-10-10
+- Objetivo: validar `recipe-detail-screen` de forma independiente y persistir la aceptación. Ejecutada
+  por el orquestador de `feature-flow` en la rama `feature/recipe-detail-screen` (worktree), solo
+  hasta-aceptación; sin push ni PR (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos) y, al ver la primera pasada en `UP-TO-DATE`, forzó
+  `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks`; parseó
+  por su cuenta los XML de resultados y el informe `lint-results-debug.xml`, e inspeccionó el código.
+- Evidencia capturada: 43 suites, 277 tests, 0 fallos/errores/saltados (22 nuevos: `ServingScalerTest`
+  8, `IngredientFormatTest` 5, `RecipeDetailStateTest` 5, `RecipeDetailFormatTest` 4; 255 preexistentes
+  en verde); lint 0 errores y 13 warnings preexistentes, 0 en ficheros de `ui.detail`. El validador
+  recalculó a mano el escalado contra `seed-recipes.json` real (`seed-tortilla-patatas`, `servings` 4):
+  4→2 da `300 g`/`3 ud`/`½ ud`/`75 ml` y `Sal` sin escalar; 4→3 da `450 g`/`4½ ud`/`1 ud`/`115 ml`;
+  factor 1 devuelve el original intacto; `unit = null` nunca escala; `servings = 0` no divide por cero;
+  determinista. Confirmó pureza de `ui.detail` (sin Compose/Android salvo `RecipeDetailScreen`, sin hex
+  sueltos), `ServingsStepper` reutilizado sin cambios, el detalle como overlay en `MainShell` (no un
+  `PushedScreen` nuevo) con las costuras no-op, la captura obligatoria `detalle-receta/`
+  (`screen.png`/`code.html`/`DESIGN.md`) presente y seguida, y disciplina de alcance (build/lockfile,
+  dominio, `data/**`, la Taxonomía, `seed-recipes.json`, `MainNavigationState.kt` e `init.sh` intactos;
+  sin dependencias nuevas). Confirmó además que el implementer no hizo commit/push/PR.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (2 Low informativos, no bloqueantes): el `README.md` de capturas repite la
+  plantilla con `design.md` en minúscula mientras el fichero real es `DESIGN.md` (inocuo en Windows,
+  heredado de la plantilla); `RecipeDetailFormatTest.la_caption_del_ajustador_es_estable` es una
+  aserción trivial (la cobertura real está en el resto del test). Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge la
+  prueba de emulador exigida (abrir una receta desde Resultados y desde la Home, cambiar las raciones y
+  ver las cantidades actualizarse, recorrer las tres pestañas y "Atrás" sin perder resultado/borrador) y
+  el acabado visual contra `docs/design/concepts/recipe-detail-screen/detalle-receta/`; un defecto visual
+  se corrige con una feature correctiva. Se mantiene la Fase 2 de reconciliación de capturas de las
+  features de UI previas (sesión 046).
+- Siguiente paso: commit local de la rama `feature/recipe-detail-screen` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `favorites` (ya con sus dos
+  dependencias `accepted`).

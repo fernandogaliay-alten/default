@@ -2,6 +2,7 @@ package com.sazon.app.ui.results
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,17 +39,20 @@ import com.sazon.app.ui.theme.SazonSpacing
  * tabulares) y la pildora de coincidencia `RecipeCardFormat.matchBadge` en terracota.
  *
  * Reutiliza el mismo degradado/glifo que `com.sazon.app.ui.home.RecipeCard` (el repositorio no tiene
- * assets de receta ni iconos). **Sin corazon** y **sin click**: favoritos y detalle son features
- * propias (`favorites`, `recipe-detail-screen`), fuera de alcance.
+ * assets de receta ni iconos). **Sin corazon** (favoritos es de `favorites`); el click opcional abre el
+ * Detalle (`recipe-detail-screen`).
  */
 @Composable
 fun ResultRecipeCard(
     recipe: Recipe,
     taxonomy: Taxonomy,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = SazonShapes.large,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp,

@@ -43,6 +43,7 @@ import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.detail.RecipeDetailScreen
 import com.sazon.app.ui.generator.GeneratorFlow
 import com.sazon.app.ui.home.HomeRecipes
 import com.sazon.app.ui.home.HomeScreen
@@ -94,6 +95,9 @@ fun MainShell(
     // Refresco manual "en vuelo": es estado de UI (no persistido) para deshabilitar el boton y evitar
     // dobles disparos; vive aqui porque `MainShell` posee el servicio y el scope.
     var refreshingSuggestions by remember { mutableStateOf(false) }
+    // Detalle hospedado como overlay: `Recipe` no es serializable, asi que vive en `remember` (rotar
+    // cierra el detalle, igual que el `result` de Resultados; Unknown de la spec).
+    var detailRecipe by remember { mutableStateOf<Recipe?>(null) }
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
@@ -138,6 +142,7 @@ fun MainShell(
                             onOpenGenerator = {
                                 navigation = navigation.push(PushedScreen.GENERATOR)
                             },
+                            onOpenRecipe = { detailRecipe = it },
                         )
 
                         MainTab.FAVORITES -> SectionPlaceholder(title = "Favoritos")
@@ -180,8 +185,23 @@ fun MainShell(
                     seedRecipes = seedRecipes,
                     onClose = { navigation = navigation.pop() },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
+                    onOpenRecipe = { detailRecipe = it },
                 )
             }
+        }
+
+        // El Detalle se pinta **encima** de la Home o del Generador sin desmontarlos: al cerrarlo se
+        // vuelve al estado intacto (resultado y borrador del Generador incluidos).
+        detailRecipe?.let { recipe ->
+            RecipeDetailScreen(
+                recipe = recipe,
+                taxonomy = taxonomy,
+                isSaved = false,
+                onToggleSave = {},
+                onStartCooking = {},
+                onBack = { detailRecipe = null },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
