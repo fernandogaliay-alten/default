@@ -115,6 +115,24 @@ pinta las recetas semilla empaquetadas (`HomeSuggestions.visible`) y nunca muest
 carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
 `docs/specs/home-offline-blocks.md`.
 
+El **filtrado local de "Tus recetas"** vive en `com.sazon.app.ui.filters`: `LocalResultFilter` (seleccion
+**unica**: `All`, `Category(categoryId)`, `Fast` y `Vegetarian`, cada una con una `key` estable para
+`rememberSaveable`) y `LocalResultFilters`, un `object` **puro** (sin Compose/Android, testeado en JVM)
+con `visible(recipes, filter, taxonomy)`, `vegetarianTags(taxonomy)`, `categoriesIn(recipes, taxonomy)`,
+`label(...)`, `isDerived(...)` y `fromKey(...)`. "Rápido" y "Vegetariano" son filtros **derivados**, no
+categorias: "Rápido" selecciona `totalMinutes <= FAST_MAX_MINUTES` (30) y "Vegetariano" excluye recetas
+con algun ingrediente resuelto cuyos tags esten en `dietPatterns[vegetarian].excludedTags`
+(`meat`/`poultry`/`fish`/`seafood`, con respaldo constante defensivo); la deteccion es por **tags, no
+por keywords**, asi que un ingrediente libre no se excluye. `ResultFilterRow` es la fila de chips
+(`FilterChip` de Material 3, sin dependencias nuevas) con "Todas" primero, una chip por categoria
+**presente** en las recetas (orden de `taxonomy.recipeCategories`), y "Rápido"/"Vegetariano" agrupados
+al final y con el acento oliva (`secondary`) cuando estan seleccionados, para distinguirlos de las
+categorias (terracota/`primary`). Se aplica al bloque "Tus recetas": `HomeRecipes.filteredBy(filter,
+taxonomy)` acota cada grupo de forma independiente y `HomeScreen` guarda la seleccion con
+`rememberSaveable` + `Saver` (clave/`fromKey`), pinta la fila y el estado "sin resultados para este
+filtro"; si el bloque llega **vacio** solo pinta la linea de usuario nuevo (sin chips). La logica es
+**reutilizable** por `favorites`. Ver `docs/specs/local-result-filters.md`.
+
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige
 el contrato de `docs/domain/taxonomy.md` seccion 4 con `id` de la Taxonomia y garantiza que el patron
