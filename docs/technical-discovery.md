@@ -187,9 +187,8 @@ blanco pasan a `null`), de modo que el validador (y el prompt del proveedor real
 evitar ahora**. El microcopy del estado de carga es `GeneratorProgressMessages` (puro: cabecera fija y
 sublineas derivadas de la Taxonomia y los ajustes). La capa Compose es delgada:
 `GeneratorGeneratingScreen` (animacion terracota dibujada con `Canvas`, titular Manrope, sublineas
-rotatorias y "Cancelar" secundario) y `GeneratorResultsPreview` (seam minimo: **solo** `accepted` con
-titulo + `RecipeCardFormat.metaLine`, aviso ambar `tertiaryContainer` si `aiUnavailable` y estado vacio;
-no es la pantalla de Resultados real, que es de `results-screen`). `GeneratorFlow` guarda el resultado y
+rotatorias y "Cancelar" secundario) y `ResultsScreen` (la pantalla de Resultados real; sustituye al seam
+`GeneratorResultsPreview`, ya eliminado). `GeneratorFlow` guarda el resultado y
 el token de generacion en `remember` (no `rememberSaveable`, `Recipe` no es serializable trivialmente),
 dispara la generacion al pulsar "Generar recetas" en el paso de ajustes, respeta `MIN_VISIBLE_MILLIS`
 (~900 ms) y cancela poniendo el token a `null` (la cancelacion se propaga por el servicio).
@@ -198,6 +197,23 @@ DI) y lo encadena por `SazonApp` y `MainShell` hasta `GeneratorFlow`. Testeado e
 (`GenerationServiceTest`, `GeneratorRequestFactoryTest` y `GeneratorProgressMessagesTest`), incluido el
 caso negativo obligatorio del `build-brief`: una receta insegura no llega a `accepted`. Ver
 `docs/specs/generation-flow-with-validation.md`.
+
+La **pantalla de Resultados** vive en `com.sazon.app.ui.results`, con logica **pura** testeable en JVM
+(sin Compose ni Android) y una capa Compose delgada. `MatchScore.of(recipe, preferences, taxonomy,
+userIngredients)` fija la formula **derivada** de `matchScore`: media ponderada en `0..100` de la
+cobertura de los ingredientes del usuario (`W_COVERAGE`), los ingredientes preferidos resueltos
+(`W_LIKED`), la cocina favorita (`W_CUISINE`), la franja de tiempo (`W_TIME`) y la dificultad
+(`W_DIFFICULTY`), menos `DISLIKE_PENALTY` por cada ingrediente evitado presente (penaliza, nunca
+descarta); es determinista y **no persistida** (se materializa en memoria con
+`recipe.copy(matchScore = ...)`). `ResultsStatus.from(...)` decide el estado (`Content` con las aceptadas
+puntuadas y ordenadas por relevancia, `Empty`, o `Unavailable` con las semillas locales) y
+`ResultsHeaders.of(...)` formatea titulo/subtitulo (Generador o Busqueda con IA, la consulta entre
+comillas). `ResultsScreen` monta el `Scaffold` (topBar con "Atras" + titulo/subtitulo, bottomBar "Cambiar
+ingredientes", y los estados poblado/vacio/degradado con "Reintentar") y `ResultRecipeCard` la tarjeta a
+ancho completo (degradado + glifo, meta y pildora de coincidencia, sin corazon ni click). La pantalla se
+monta como *stage* de resultado dentro de `GeneratorFlow` (sin `PushedScreen.RESULTS`) para conservar los
+borradores; `ai-search` reutilizara `ResultsScreen` con `ResultsOrigin.Search`. Ver
+`docs/specs/results-screen.md`.
 
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,

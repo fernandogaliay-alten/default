@@ -44,7 +44,8 @@ las citas con la numeración de su momento; la tabla se mantiene posicional.
 - **Caducidad del Lote de sugerencias** (antes pregunta 3): **7 días**, en un único sitio configurable:
   `SuggestionBatchPolicy.BATCH_TTL_MILLIS` en `com.sazon.app.domain.suggestions` (`docs/specs/suggestion-batch-cache.md`).
 - **Cálculo de `matchScore`** (antes pregunta 4): lo calcula **la app** (derivado, **no persistido**);
-  la app lo recalcula al mostrar resultados. La fórmula se fija en `results-screen`.
+  la app lo recalcula al mostrar resultados. La fórmula vive en `com.sazon.app.ui.results.MatchScore`
+  (`results-screen`, ver `docs/specs/results-screen.md`).
 - **Formato de las recetas semilla** (antes pregunta 7): **JSON en assets**
   (`app/src/main/assets/`), cargado por la app y validado por test. Empezar con **12** recetas.
 - **Licencia de las fuentes Manrope/Inter** (assets tipográficos de `design-tokens-and-theme`): ambas

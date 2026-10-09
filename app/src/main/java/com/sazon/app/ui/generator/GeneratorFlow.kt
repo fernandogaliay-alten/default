@@ -26,7 +26,12 @@ import androidx.compose.ui.Modifier
 import com.sazon.app.domain.generation.GenerationResult
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.PreferenceProfile
+import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.results.ResultsHeaders
+import com.sazon.app.ui.results.ResultsOrigin
+import com.sazon.app.ui.results.ResultsScreen
+import com.sazon.app.ui.results.ResultsStatus
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonSpacing
@@ -48,13 +53,16 @@ private const val MIN_VISIBLE_MILLIS = 900L
  * En [GeneratorStep.SETTINGS] el primario "Generar recetas" **dispara** la generacion: incrementa el token
  * `generationId`, que relanza el `LaunchedEffect`. Este llama a [GenerationService.generate] con los
  * ingredientes y las constraints mapeados por [GeneratorRequestFactory], respeta la duracion minima
- * visible y fija el [GenerationResult]. El pintado va por *stage*: el preview si hay resultado, la
- * pantalla de generacion si hay token, y si no el asistente de edicion.
+ * visible y fija el [GenerationResult]. El pintado va por *stage*: la pantalla de Resultados
+ * ([ResultsScreen], con el estado puro [ResultsStatus] y la cabecera [ResultsHeaders]) si hay resultado,
+ * la pantalla de generacion si hay token, y si no el asistente de edicion.
  *
  * "Cancelar" pone el token a `null` (cancela la corrutina; [GenerationService] re-lanza la
- * `CancellationException`) y limpia el resultado; "Cambiar ingredientes" del preview hace lo mismo para
- * volver a los ajustes. El paso 1 ([GeneratorIngredientsScreen]) y el paso 2 ([GeneratorSettingsScreen])
- * son las pantallas de edicion; `onEditProfile` navega a la pestana Perfil (el Perfil real es de
+ * `CancellationException`) y limpia el resultado. En Resultados, "Atras" (`onBack`) vuelve a los ajustes,
+ * "Cambiar ingredientes" (`onChangeIngredients`) vuelve al paso de ingredientes y "Reintentar"
+ * (`onRetry`) invalida el resultado e incrementa el token para relanzar la generacion con el mismo
+ * borrador. El paso 1 ([GeneratorIngredientsScreen]) y el paso 2 ([GeneratorSettingsScreen]) son las
+ * pantallas de edicion; `onEditProfile` navega a la pestana Perfil (el Perfil real es de
  * `profile-screen`).
  */
 @Composable
@@ -62,6 +70,7 @@ fun GeneratorFlow(
     taxonomy: Taxonomy,
     preferences: PreferenceProfile,
     generationService: GenerationService,
+    seedRecipes: List<Recipe>,
     onClose: () -> Unit,
     onEditProfile: () -> Unit,
     modifier: Modifier = Modifier,
@@ -93,16 +102,42 @@ fun GeneratorFlow(
     }
 
     when {
-        result != null -> GeneratorResultsPreview(
-            result = checkNotNull(result),
-            taxonomy = taxonomy,
-            onBack = onClose,
-            onChangeIngredients = {
-                generationId = null
-                result = null
-            },
-            modifier = modifier,
-        )
+        result != null -> {
+            val generationResult = checkNotNull(result)
+            ResultsScreen(
+                status = ResultsStatus.from(
+                    result = generationResult,
+                    preferences = preferences,
+                    taxonomy = taxonomy,
+                    userIngredients = GeneratorRequestFactory.ingredients(ingredients),
+                    seedRecipes = seedRecipes,
+                ),
+                header = ResultsHeaders.of(
+                    origin = ResultsOrigin.Generator(
+                        ingredientCount = ingredients.count,
+                        timeBucketId = settings.timeBucketId,
+                        servings = settings.servings,
+                    ),
+                    taxonomy = taxonomy,
+                ),
+                taxonomy = taxonomy,
+                onBack = {
+                    result = null
+                    generationId = null
+                    step = GeneratorStep.SETTINGS
+                },
+                onChangeIngredients = {
+                    result = null
+                    generationId = null
+                    step = GeneratorStep.INGREDIENTS
+                },
+                onRetry = {
+                    result = null
+                    generationId = (generationId ?: 0) + 1
+                },
+                modifier = modifier,
+            )
+        }
 
         generationId != null -> GeneratorGeneratingScreen(
             headline = GeneratorProgressMessages.HEADLINE,
