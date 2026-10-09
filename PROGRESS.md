@@ -12,28 +12,32 @@
   `seed-recipe-catalog`, `design-tokens-and-theme`, `onboarding-shell-and-identity`,
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
-  `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen` y
-  `recipe-detail-screen` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen`,
+  `recipe-detail-screen` y `favorites` (validador independiente, veredicto `accept`). El onboarding queda **completo**
   (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP
   (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados
   real (fórmula de `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña
   Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding) y permite
   forzar el refresco del Lote; el Detalle de receta ya muestra ingredientes con cantidades, ajusta las
-  raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional.
-- Siguiente feature en orden de lista: `favorites` (depende de `recipe-detail-screen`, ya `accepted`, y
-  de `profile-persistence`, ya `accepted`).
+  raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional; la
+  pestaña Favoritos es real (guardar/quitar, persistencia local de una copia de la Receta y consulta sin
+  conexión, con estados poblado/vacío).
+- Siguiente feature en orden de lista: `favorites` quedó `accepted`, de modo que `activity-summary`
+  (depende de `profile-screen` y `favorites`) es la siguiente candidata.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
-  `results-screen` y `recipe-detail-screen` ya aportan sus capturas
-  (`docs/design/concepts/results-screen/resultados/` y
-  `docs/design/concepts/recipe-detail-screen/detalle-receta/`).
+  `results-screen`, `recipe-detail-screen` y `favorites` ya aportan sus capturas
+  (`docs/design/concepts/results-screen/resultados/`,
+  `docs/design/concepts/recipe-detail-screen/detalle-receta/` y
+  `docs/design/concepts/favorites/favoritos/`).
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-10, `recipe-detail-screen`): `init.sh` con Git Bash exit 0,
-  **277 tests/0 fallos/errores/saltados** en 43 suites (255 preexistentes + 22 nuevos de
-  `ServingScalerTest`/`IngredientFormatTest`/`RecipeDetailFormatTest`/`RecipeDetailStateTest`); lint 0
-  errores y 13 warnings preexistentes. Veredicto independiente `accept`; commit local de
-  `feature/recipe-detail-screen` (publica `github-flow`).
+- Última verificación (2026-10-10, `favorites`, validador independiente): veredicto `accept`.
+  `init.sh` con Git Bash exit 0; `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks` (28/28 tareas); **301 tests/0 fallos/errores/saltados** en 46 suites
+  (277 preexistentes + 24 nuevos de
+  `FavoriteServiceTest`/`FavoritesListTest`/`RoomFavoriteRepositoryTest`); lint 0 errores y 13 warnings
+  preexistentes (0 en ficheros de la feature).
 
 ## Registro de sesiones
 
@@ -1990,3 +1994,90 @@
 - Siguiente paso: commit local de la rama `feature/recipe-detail-screen` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. Después, `favorites` (ya con sus dos
   dependencias `accepted`).
+
+### Sesión 052
+
+- Fecha: 2026-10-10
+- Objetivo: implementar `favorites` (Favoritos disponibles sin conexión) según
+  `docs/specs/favorites.md`, en la rama `feature/favorites` (worktree); solo hasta implementación y
+  autoverificación (`passing`), sin commit/push/PR (los hace el orquestador).
+- Completado: dominio puro `com.sazon.app.domain.favorites` (`Favorite` con **copia** de la `Recipe` +
+  `savedAt`, el puerto `FavoriteRepository` y `FavoriteService.toggle` con reloj inyectable que
+  normaliza `matchScore` a `null`); persistencia Room en `com.sazon.app.data.favorites` sobre base
+  **propia** `favorites.db` (version 1, tabla **multi-fila** `favorite_recipe` con la receta como
+  columna JSON vía `RecipeJson`, `upsert` idempotente por `recipeId` y orden `savedAt` desc); lógica de
+  presentación pura `com.sazon.app.ui.favorites` (`FavoritesSort`, `FavoritesViewMode`,
+  `FavoritesList.visible`/`countLabel`) y capa Compose delgada `FavoritesScreen` (cabecera "Mis recetas
+  guardadas" + conteo, buscador, chips de orden terracota, toggle lista/rejilla oliva, nota
+  "Disponibles sin conexión", estado vacío con marcador y "Explorar recetas", `Saver` de
+  `rememberSaveable`) y `FavoriteRecipeCard`/`FavoriteRecipeTile` (miniatura 96x96 degradada, meta en
+  cifras tabulares y corazón; swipe "Eliminar" vía `SwipeToDismissBox` de Material 3). Integración:
+  `MainActivity` compone `FavoritesDatabase`/repositorio/servicio, `SazonApp` las pasa a `MainShell`,
+  éste observa los favoritos para la pestaña, alimenta `HomeRecipes.saved` (bloque "Guardadas") y
+  cablea `isSaved`/`onToggleSave` del Detalle; `ui/SectionPlaceholder.kt` eliminado. Sin Resumen de
+  actividad, sin "Abiertas hace poco", sin modo cocina, sin Búsqueda con IA ni proveedor real, sin
+  dependencias nuevas.
+- Verificación ejecutada: `& "C:\Program Files\Git\bin\bash.exe" init.sh` (exit 0, `./gradlew test` +
+  `./gradlew lint`, sin procesos largos); se parsearon por separado los XML de resultados y el informe
+  `lint-results-debug.xml`.
+- Evidencia capturada: **46 suites, 301 tests, 0 fallos/errores/saltados**; 24 nuevos:
+  `FavoriteServiceTest` 6, `FavoritesListTest` 9, `RoomFavoriteRepositoryTest` 9 (277 preexistentes en
+  verde). Lint 0 errores y 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1), ninguno con localización bajo `app/src`. Inspección:
+  `domain.favorites` y la lógica pura de `ui.favorites` sin imports `android.*`/`androidx.*`;
+  `SectionPlaceholder` sin referencias en `app/src`; `git diff --stat` sin cambios en
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, el dominio/Lote/Perfil, las bases ajenas, la
+  Taxonomía ni `seed-recipes.json`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/domain/favorites/{Favorite,FavoriteRepository,FavoriteService}.kt`,
+  `app/src/main/java/com/sazon/app/data/favorites/{FavoriteEntity,FavoriteDao,FavoritesDatabase,FavoritesMappers,RoomFavoriteRepository}.kt`,
+  `app/src/main/java/com/sazon/app/ui/favorites/{FavoritesSort,FavoritesViewMode,FavoritesList,FavoritesScreen,FavoriteRecipeCard}.kt`,
+  `app/src/test/java/com/sazon/app/domain/favorites/FavoriteServiceTest.kt`,
+  `app/src/test/java/com/sazon/app/ui/favorites/FavoritesListTest.kt`,
+  `app/src/test/java/com/sazon/app/data/favorites/RoomFavoriteRepositoryTest.kt`,
+  `MainActivity.kt`, `ui/SazonApp.kt`, `ui/MainShell.kt` (modificados), `ui/SectionPlaceholder.kt`
+  (eliminado), `docs/technical-discovery.md`, `DESIGN.md`, `feature_list.json` y este registro.
+- Hallazgo de entorno: la primera ejecución del test JVM (R8/`testDebugUnitTest`) abortó con un
+  `EXCEPTION_ACCESS_VIOLATION` en un hilo GC de Corretto 21 (`-Xmx512m`, `jvm.dll`), sin relación con el
+  código nuevo (la compilación Kotlin de main y test terminó sin errores); la re-ejecución de `init.sh`
+  fue en verde. Se registra como flake de entorno.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge
+  las pruebas exigidas (guardar una receta generada por IA y verla tras reiniciar sin conexión; el
+  estado vacío con "Explorar recetas" llevando a Inicio) y el acabado visual (lista/rejilla, chips,
+  corazón, swipe "Eliminar", claro/oscuro) contra `docs/design/concepts/favorites/favoritos/`; un
+  defecto visual se corrige con una feature correctiva.
+- Siguiente paso: validación independiente de `favorites` con `feature-validator`.
+
+### Sesión 053
+
+- Fecha: 2026-10-10
+- Objetivo: validar `favorites` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente. Commit local de la rama
+  `feature/favorites` (lo hace el orquestador de `feature-flow`); la publicación queda para
+  `github-flow`. Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `init.sh` con Git Bash (exit 0) y, al ver test/lint en
+  `UP-TO-DATE`, forzó `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
+  `./gradlew lint --rerun-tasks` (28/28 tareas); parseó por su cuenta los XML de resultados y el informe
+  de lint.
+- Evidencia capturada: 46 suites, 301 tests, 0 fallos/errores/saltados (`FavoriteServiceTest` 6,
+  `FavoritesListTest` 9, `RoomFavoriteRepositoryTest` 9); lint 0 errores y 13 warnings preexistentes, 0
+  con localización bajo `app/src`. Confirmó los escenarios 1-2 y 10 (copia con `savedAt=now`,
+  `matchScore` normalizado a `null`, toggle idempotente, dos filas coexisten, `remove` selectivo,
+  `clear`, `observe`, orden `savedAt` desc) y 5-6 (labels, tres órdenes, búsqueda por título insensible a
+  mayúsculas/acentos, caso negativo por descripción, sin coincidencias vacío, `fromKey` con fallback);
+  3/4/7/8/9 por inspección de la integración. Pureza de `domain.favorites` y de la lógica pura de
+  `ui.favorites`, base Room propia `favorites.db` v1 con `@Query` parametrizado, disciplina de alcance
+  (build/lockfile/dominio/Lote/Perfil/bases ajenas/Taxonomía/`seed-recipes.json` intactos, sin
+  dependencias nuevas) y capturas obligatorias presentes
+  (`docs/design/concepts/favorites/favoritos/{screen.png,code.html,DESIGN.md}` + `README.md`).
+  Seguridad: sin secretos, sin red, sin construcción de SQL por concatenación.
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Hallazgos del validador (3 Low, informativos, ninguno bloqueante): `README.md` de capturas con
+  `design.md` en minúscula heredado de la plantilla; microcopy aditivo "No hay favoritas con esta
+  búsqueda." fuera de la spec pero coherente; `Validator Checklist` de la spec sin marcar.
+- Riesgo o incógnita abierta: ninguno nuevo. Quedan para revisión manual de la persona tras el merge las
+  dos pruebas exigidas (guardar una receta generada por IA y verla tras reiniciar sin conexión; el estado
+  vacío con "Explorar recetas" llevando a Inicio) y el acabado visual contra
+  `docs/design/concepts/favorites/favoritos/`; un defecto visual se corrige con una feature correctiva.
+- Siguiente paso: `activity-summary` (depende de `profile-screen` y `favorites`, ambas `accepted`),
+  empezando por `planner`/`feature-spec`.

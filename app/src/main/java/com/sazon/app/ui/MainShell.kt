@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.sazon.app.domain.favorites.FavoriteRepository
+import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
@@ -44,6 +46,7 @@ import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.detail.RecipeDetailScreen
+import com.sazon.app.ui.favorites.FavoritesScreen
 import com.sazon.app.ui.generator.GeneratorFlow
 import com.sazon.app.ui.home.HomeRecipes
 import com.sazon.app.ui.home.HomeScreen
@@ -70,7 +73,10 @@ import kotlinx.coroutines.launch
  *
  * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. La
  * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile]);
- * Favoritos sigue siendo [SectionPlaceholder]. El Generador es real ([GeneratorFlow], pasos de
+ * la pestana Favoritos monta [FavoritesScreen] sobre los favoritos persistidos (observa
+ * [FavoriteRepository.observe]) y su corazon cablea [FavoriteService.toggle]; esa misma lista alimenta
+ * el bloque "Guardadas" de la Home y el corazon/"Guardada" del Detalle. El Generador es real
+ * ([GeneratorFlow], pasos de
  * ingredientes y de ajustes) y dispara la generacion validada a traves de [GenerationService].
  */
 @Composable
@@ -80,9 +86,9 @@ fun MainShell(
     suggestionBatchRepository: SuggestionBatchRepository,
     suggestionBatchService: SuggestionBatchService,
     generationService: GenerationService,
+    favoriteRepository: FavoriteRepository,
+    favoriteService: FavoriteService,
     seedRecipes: List<Recipe>,
-    savedRecipes: List<Recipe>,
-    recentlyOpenedRecipes: List<Recipe>,
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -91,6 +97,7 @@ fun MainShell(
     }
 
     val batch by suggestionBatchRepository.observe().collectAsState(initial = null)
+    val favorites by favoriteRepository.observe().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     // Refresco manual "en vuelo": es estado de UI (no persistido) para deshabilitar el boton y evitar
     // dobles disparos; vive aqui porque `MainShell` posee el servicio y el scope.
@@ -136,8 +143,8 @@ fun MainShell(
                             taxonomy = taxonomy,
                             suggestions = suggestions,
                             recipes = HomeRecipes(
-                                saved = savedRecipes,
-                                recentlyOpened = recentlyOpenedRecipes,
+                                saved = favorites.map { it.recipe },
+                                recentlyOpened = emptyList(),
                             ),
                             onOpenGenerator = {
                                 navigation = navigation.push(PushedScreen.GENERATOR)
@@ -145,7 +152,15 @@ fun MainShell(
                             onOpenRecipe = { detailRecipe = it },
                         )
 
-                        MainTab.FAVORITES -> SectionPlaceholder(title = "Favoritos")
+                        MainTab.FAVORITES -> FavoritesScreen(
+                            favorites = favorites,
+                            taxonomy = taxonomy,
+                            onOpenRecipe = { detailRecipe = it },
+                            onToggleFavorite = { recipe ->
+                                scope.launch { favoriteService.toggle(recipe) }
+                            },
+                            onExplore = { navigation = navigation.selectTab(MainTab.HOME) },
+                        )
 
                         MainTab.PROFILE -> ProfileScreen(
                             profile = profile,
@@ -196,8 +211,8 @@ fun MainShell(
             RecipeDetailScreen(
                 recipe = recipe,
                 taxonomy = taxonomy,
-                isSaved = false,
-                onToggleSave = {},
+                isSaved = favorites.any { it.recipe.id == recipe.id },
+                onToggleSave = { scope.launch { favoriteService.toggle(recipe) } },
                 onStartCooking = {},
                 onBack = { detailRecipe = null },
                 modifier = Modifier.fillMaxSize(),

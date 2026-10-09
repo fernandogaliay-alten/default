@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-primary": "#ffb59f", "on-secondary-fixed-variant": "#354e16", "secondary-fixed-dim": "#b2d18a", "on-tertiary-container": "#fffbff", "on-primary-fixed": "#3a0a00", "surface-container-high": "#f8e5d6", "primary-container": "#ca4a21", "primary-fixed-dim": "#ffb59f", "secondary-fixed": "#ceeda4", "on-error-container": "#93000a", "outline-variant": "#e0bfb6", "surface-container-low": "#fff1e8", "surface-container-highest": "#f2dfd1", "inverse-surface": "#392e25", "surface-bright": "#fff8f5", "surface-dim": "#e9d7c8", "surface-variant": "#f2dfd1", "on-tertiary-fixed-variant": "#633f00", "primary": "#a83208", "on-primary": "#ffffff", "tertiary-fixed": "#ffddb5", "secondary": "#4c662c", "on-primary-fixed-variant": "#862300", "primary-fixed": "#ffdbd1", "on-background": "#231a11", "surface": "#fff8f5", "on-surface": "#231a11", "tertiary-container": "#a16900", "on-tertiary-fixed": "#2a1800", "tertiary-fixed-dim": "#ffb956", "on-secondary-fixed": "#102000", "on-secondary": "#ffffff", "on-surface-variant": "#59413b", "tertiary": "#805200", "inverse-on-surface": "#ffeee1", "error": "#ba1a1a", "on-secondary-container": "#506a2f", "surface-container": "#feeadc", "on-primary-container": "#fffbff", "error-container": "#ffdad6", "secondary-container": "#cbeaa1", "surface-container-lowest": "#ffffff", "on-tertiary": "#ffffff", "on-error": "#ffffff", "outline": "#8c7169", "background": "#fff8f5", "surface-tint": "#ab350b" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "space-xs": "0.25rem", "space-md": "1rem", "gutter": "1rem", "margin": "1rem" }, "fontFamily": { "body-md": ["Inter"], "label-sm": ["Inter"], "headline-md": ["Manrope"], "label-lg": ["Inter"], "body-lg": ["Inter"], "label-md": ["Inter"], "headline-lg": ["Manrope"], "display-lg": ["Manrope"], "body-sm": ["Inter"], "display-md": ["Manrope"], "headline-sm": ["Manrope"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.015em", "fontWeight": "400" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "500" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "400" }], "display-md": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased selection:bg-primary-fixed selection:text-on-primary-fixed"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(43,33,24,0.04)]"><div class="h-16 w-full max-w-7xl mx-auto px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-[0_4px_16px_rgba(43,33,24,0.06)]"><span class="material-symbols-outlined text-[20px]">restaurant_menu</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight leading-none">Sazón</span><span class="font-label-sm text-label-sm text-primary">Product Experience Lab</span></div></div><nav class="hidden md:flex items-center gap-space-xs p-1 rounded-full bg-surface-container-low" data-active-classes="bg-primary-container text-on-primary font-semibold"><a aria-current="page" class="px-space-md py-1.5 rounded-full transition-all bg-primary-container text-on-primary font-semibold" data-path="favorites-dual-mode" href="#">Favoritos Showcase</a><a class="px-space-md py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="recipe-explorer" href="#">Recetas</a><a class="px-space-md py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="pantry-assistant" href="#">Despensa IA</a><a class="px-space-md py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="design-specs" href="#">Especificaciones UI</a></nav><div class="flex items-center gap-space-sm"><button class="hidden sm:flex items-center gap-space-xs px-space-md py-1.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm" type="button"><span class="w-2 h-2 rounded-full bg-secondary"></span><span>Pixel 390x844 Frame</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-background min-h-screen"><div class="flex flex-col w-full">
+<!-- Interactive View Switcher & Header Context -->
+<section class="w-full max-w-7xl mx-auto px-margin py-space-xl">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-lg mb-space-xl">
+<div class="max-w-2xl">
+<div class="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-surface-container-high text-primary font-label-md text-label-md mb-space-sm">
+<span class="material-symbols-outlined text-[16px]">bookmark_heart</span>
+<span>Material 3 • Vista Comparativa Dual</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">Colección Favoritos</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-space-xs">
+          Comparativa simultánea en marcos Pixel (390×844) en Modo Claro y Modo Oscuro, con persistencia local sin conexión y sistema de micro-interacciones.
+        </p>
+</div>
+<!-- Quick Jump Pill Group -->
+<div class="flex flex-wrap items-center gap-space-xs bg-surface-container-lowest p-1.5 rounded-full shadow-sm">
+<a class="px-space-md py-1.5 rounded-full font-label-md text-label-md bg-primary text-on-primary shadow-sm transition-all" href="#dual-mockups">Vista Dispositivos</a>
+<a class="px-space-md py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-all" href="#canonical-states">Estados Canónicos</a>
+<a class="px-space-md py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-all" href="#interaction-specs">Especificaciones</a>
+</div>
+</div>
+<!-- SIDE-BY-SIDE MOBILE VIEWPORTS (LIGHT & DARK DUAL MOCKUPS) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-xl items-start justify-items-center" id="dual-mockups">
+<!-- ========================================== -->
+<!-- PHONE 1: MODO CLARO (PIXEL 390x844 FRAME)  -->
+<!-- ========================================== -->
+<div class="flex flex-col items-center w-full max-w-[390px]">
+<div class="flex items-center justify-between w-full px-space-sm mb-space-sm text-on-surface-variant">
+<span class="font-label-md text-label-md flex items-center gap-1.5 font-semibold text-primary">
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+            Modo Claro (Canvas #FFF8F5)
+          </span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container">Pixel 390×844</span>
+</div>
+<!-- Phone Shell -->
+<div class="w-[390px] h-[844px] bg-[#FFF8F0] rounded-[48px] p-3 shadow-2xl relative flex flex-col justify-between overflow-hidden select-none">
+<!-- Device Bezel Frame Screen Content -->
+<div class="w-full h-full bg-[#FFF8F0] rounded-[40px] flex flex-col relative overflow-hidden text-[#2B2118]">
+<!-- Status Bar -->
+<div class="h-10 w-full px-6 flex items-center justify-between font-label-sm text-label-sm font-semibold tracking-wider text-[#2B2118] shrink-0 pt-1">
+<span class="font-mono">09:41</span>
+<!-- Camera Punch Hole Mock -->
+<div class="w-3.5 h-3.5 rounded-full bg-black/80 -ml-2"></div>
+<div class="flex items-center gap-1.5 text-[#2B2118]">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[16px]">battery_full</span>
+</div>
+</div>
+<!-- Scrollable App Screen Content -->
+<div class="flex-1 overflow-y-auto px-4 pb-24 scroll-smooth">
+<!-- Screen Title & Recipe Count -->
+<div class="pt-3 pb-2 flex items-baseline justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-[#2B2118] leading-tight">Mis recetas guardadas</h2>
+<p class="font-label-md text-label-md text-[#8C7E74] font-mono tabular-nums mt-0.5">12 recetas</p>
+</div>
+<button class="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#2B2118] shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Search Bar -->
+<div class="my-3">
+<div class="h-12 w-full rounded-full bg-white shadow-sm px-4 flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[20px] text-[#8C7E74]">search</span>
+<input class="bg-transparent font-body-md text-body-md text-[#8C7E74] w-full focus:outline-none cursor-default" readonly="" type="text" value="Buscar entre tus guardadas..."/>
+<span class="material-symbols-outlined text-[18px] text-[#8C7E74]">mic</span>
+</div>
+</div>
+<!-- Filter & Sort Control Row + List/Grid Toggle -->
+<div class="flex items-center justify-between gap-2 my-2">
+<!-- Filter Chips Row -->
+<div class="flex items-center gap-1.5 overflow-x-auto py-1">
+<!-- Active Terracotta Chip -->
+<button class="px-3.5 py-1.5 rounded-full bg-[#D9552B] text-white font-label-sm text-label-sm flex items-center gap-1 shadow-sm whitespace-nowrap shrink-0" type="button">
+<span class="material-symbols-outlined text-[14px]">check</span>
+<span>Añadidas recientemente</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-white text-[#2B2118] font-label-sm text-label-sm whitespace-nowrap shrink-0 shadow-sm" type="button">
+                    Tiempo
+                  </button>
+<button class="px-3 py-1.5 rounded-full bg-white text-[#2B2118] font-label-sm text-label-sm whitespace-nowrap shrink-0 shadow-sm" type="button">
+                    Dificultad
+                  </button>
+</div>
+<!-- Two-button View Layout Switcher -->
+<div class="flex items-center p-0.5 rounded-full bg-white shadow-sm shrink-0">
+<button class="w-7 h-7 rounded-full bg-[#D9552B] text-white flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">view_agenda</span>
+</button>
+<button class="w-7 h-7 rounded-full text-[#8C7E74] flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">grid_view</span>
+</button>
+</div>
+</div>
+<!-- Offline Badge -->
+<div class="my-3 px-3 py-1.5 rounded-xl bg-[#E8DDD3]/45 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#5F7A3D]">cloud_off</span>
+<span class="font-label-sm text-label-sm text-[#431B0E] font-medium">Disponibles sin conexión</span>
+<span class="ml-auto font-label-sm text-label-sm text-[#5F7A3D] font-mono tabular-nums">100% sincronizado</span>
+</div>
+<!-- RECIPES LIST CONTAINER -->
+<div class="flex flex-col gap-3">
+<!-- CARD 1: Canonical Resting Light Card -->
+<div class="w-full bg-white rounded-[24px] p-3 shadow-[0_4px_16px_rgba(43,33,24,0.06)] flex items-center gap-3">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Traditional Spanish arroz meloso with golden chicken pieces, sweet red peppers, and saffron broth cooked in clay pan, warm kitchen lighting, mouthwatering Foodie photograph." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoC4Yqde_R4YCiIphAtGuDRSEdT9zXFJkbmbCW5msRVQcwLRoyef0JJRG1kz2E16TqT8Abn1E47WimuBZgYcF7V-Cwu21CpESBe4BgaNzByE0nZABvu17zIJGRVo8fMHowMQNMl-zFONtVTwdDdL134LK_Gv9AtngKItfh2GywTO50uBfWyY06CEmjQyBa2BlkLNY96-SVoqetGkHCDCDnNfe86D18eAV7eU0wHyDghj4KESYbnJ37Pg"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">380 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#2B2118] font-bold truncate leading-snug">Arroz meloso con pollo y pimientos</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#8C7E74] font-mono tabular-nums mt-1">25 min · Fácil · 2 pers.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#CEEDBA] text-[#102000] font-label-sm text-[11px] font-semibold">Tradicional</span>
+<span class="text-tertiary font-label-sm text-[11px] flex items-center gap-0.5 font-mono">
+<span class="material-symbols-outlined text-[13px] text-[#F2A93B]" style="font-variation-settings: 'FILL' 1;">star</span>
+                        4.9 (128)
+                      </span>
+</div>
+</div>
+</div>
+<!-- CARD 2: REVEALING SWIPE-TO-DELETE AFFORDANCE -->
+<div class="relative w-full rounded-[24px] overflow-hidden bg-[#BA1A1A] shadow-[0_4px_16px_rgba(43,33,24,0.06)]">
+<!-- Revealed Action Layer Beneath -->
+<div class="absolute inset-y-0 right-0 w-28 bg-[#BA1A1A] flex flex-col items-center justify-center text-white px-3 select-none">
+<span class="material-symbols-outlined text-[26px]">delete</span>
+<span class="font-label-md text-label-md font-bold uppercase tracking-wider mt-0.5">Eliminar</span>
+</div>
+<!-- Slid Forefront Card (-translate-x-24 simulation) -->
+<div class="w-full bg-white rounded-[24px] p-3 flex items-center gap-3 transform -translate-x-24 shadow-md transition-transform duration-300">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Golden roasted chicken thighs with fresh rosemary sprigs, roasted cherry tomatoes bursting with juices, olive oil drizzle on ceramic dish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCngrxNXH0fNk_AsMfv75ig33fvIIangAlUglgteWyJb-k9LQrq1dNRxgU2H-hd59pL7sNAAOXegK5tTDKDHgyTC7_WlILYB82qUxcqaPyYtis0vlFhJS54zYESFkMS3WJwNKWoZ_3u6wlXCzSYcJPTFhn2gFV7oFyey-WuNaAt0vzaBma6idFGo1zwwDxRPM1McU769Y0fMDNfKqMh6dJTOVxb3UpgqU0CqV0O6zsII820HoUah5Bezw"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">420 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#2B2118] font-bold truncate leading-snug">Pollo dorado al romero y cherrys</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#8C7E74] font-mono tabular-nums mt-1">20 min · Media · 2 pers.</p>
+<div class="flex items-center gap-1.5 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#FFDCCF] text-[#431B0E] font-label-sm text-[11px] font-semibold">Al horno</span>
+<span class="font-label-sm text-label-sm text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">swipe_left</span> Deslizar
+                        </span>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 3: Canonical Third Item -->
+<div class="w-full bg-white rounded-[24px] p-3 shadow-[0_4px_16px_rgba(43,33,24,0.06)] flex items-center gap-3">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Rustic Spanish brown lentils stewed with butternut squash cubes and laurel leaf in a warm terracotta pot with rich aromatic steam." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHjJtfMmjZvAa15Ap99UfiI4NCFaakPnBahrSpn1OIshLWhRafVXrgop4mUt3F_hhbCs5Td6lYfAwicQlg5-bITlD2SqQCXX0lzsmEpnW8fSdh6azkvMOzg8tgmPOT8dj-FqzYHtFtd_dlEFAQ_XXhzdPw6GN1pCK00GlQzVEANvlalRDO5sJzbWH__5Y6CEco5_5x1SP995hAVYByRDCTjcA9Jh2eRL6cYPjGWc_wWW5jOvtuPSMHQQ"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">310 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#2B2118] font-bold truncate leading-snug">Lentejas estofadas con calabaza</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#8C7E74] font-mono tabular-nums mt-1">35 min · Fácil · 4 pers.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#CEEDBA] text-[#102000] font-label-sm text-[11px] font-semibold">Cuchara</span>
+<span class="text-[#8C7E74] font-label-sm text-[11px] font-mono">Vegetariano</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- FLOATING ACTION BUTTON (Centrally Ergonomic) -->
+<div class="absolute bottom-24 right-5 z-20">
+<button class="h-12 px-5 rounded-full bg-[#D9552B] text-white flex items-center gap-2 shadow-[0_8px_24px_rgba(217,85,43,0.38)] active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="font-label-lg text-label-lg font-semibold">Crear receta</span>
+</button>
+</div>
+<!-- PERSISTENT BOTTOM NAVIGATION BAR (80dp Android Height) -->
+<div class="absolute bottom-0 inset-x-0 h-20 bg-white/95 backdrop-blur-md rounded-t-[28px] px-6 flex items-center justify-between shadow-[0_-4px_24px_rgba(43,33,24,0.06)] z-10">
+<!-- Item 1: Inicio -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-16 text-[#8C7E74]" type="button">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-sm text-[11px]">Inicio</span>
+</button>
+<!-- Item 2: Favoritos (Active Terracotta) -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-20 text-[#D9552B]" type="button">
+<div class="w-12 h-8 rounded-full bg-[#FFDCCF] flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+</div>
+<span class="font-label-sm text-[11px] font-bold text-[#D9552B]">Favoritos</span>
+</button>
+<!-- Item 3: Perfil -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-16 text-[#8C7E74]" type="button">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-sm text-[11px]">Perfil</span>
+</button>
+</div>
+<!-- Android Home Gesture Bar -->
+<div class="absolute bottom-1.5 inset-x-0 flex justify-center z-30 pointer-events-none">
+<div class="w-32 h-1 rounded-full bg-[#2B2118]/25"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- PHONE 2: MODO OSCURO (PIXEL 390x844 FRAME)  -->
+<!-- ========================================== -->
+<div class="flex flex-col items-center w-full max-w-[390px]">
+<div class="flex items-center justify-between w-full px-space-sm mb-space-sm text-on-surface-variant">
+<span class="font-label-md text-label-md flex items-center gap-1.5 font-semibold text-[#FFB59F]">
+<span class="w-2.5 h-2.5 rounded-full bg-[#CA4A21] animate-pulse"></span>
+            Modo Oscuro (Canvas #18120E)
+          </span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container">Pixel 390×844</span>
+</div>
+<!-- Phone Shell -->
+<div class="w-[390px] h-[844px] bg-[#120D0A] rounded-[48px] p-3 shadow-2xl relative flex flex-col justify-between overflow-hidden select-none">
+<!-- Dark Screen Container -->
+<div class="w-full h-full bg-[#18120E] rounded-[40px] flex flex-col relative overflow-hidden text-[#FFEEED]">
+<!-- Status Bar Dark -->
+<div class="h-10 w-full px-6 flex items-center justify-between font-label-sm text-label-sm font-semibold tracking-wider text-white shrink-0 pt-1">
+<span class="font-mono">09:41</span>
+<!-- Punch hole -->
+<div class="w-3.5 h-3.5 rounded-full bg-black/95 -ml-2"></div>
+<div class="flex items-center gap-1.5 text-white">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[16px]">battery_full</span>
+</div>
+</div>
+<!-- Scrollable Dark Content -->
+<div class="flex-1 overflow-y-auto px-4 pb-24 scroll-smooth">
+<!-- Screen Title & Recipe Count -->
+<div class="pt-3 pb-2 flex items-baseline justify-between">
+<div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-[#FFEEED] leading-tight">Mis recetas guardadas</h2>
+<p class="font-label-md text-label-md text-[#B2A49B] font-mono tabular-nums mt-0.5">12 recetas</p>
+</div>
+<button class="w-9 h-9 rounded-full bg-[#241C16] flex items-center justify-center text-[#FFEEED] shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Search Bar Dark -->
+<div class="my-3">
+<div class="h-12 w-full rounded-full bg-[#241C16] shadow-sm px-4 flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[20px] text-[#8C7E74]">search</span>
+<input class="bg-transparent font-body-md text-body-md text-[#B2A49B] w-full focus:outline-none cursor-default" readonly="" type="text" value="Buscar entre tus guardadas..."/>
+<span class="material-symbols-outlined text-[18px] text-[#8C7E74]">mic</span>
+</div>
+</div>
+<!-- Filter & Sort Control Row Dark -->
+<div class="flex items-center justify-between gap-2 my-2">
+<!-- Chips -->
+<div class="flex items-center gap-1.5 overflow-x-auto py-1">
+<button class="px-3.5 py-1.5 rounded-full bg-[#D9552B] text-white font-label-sm text-label-sm flex items-center gap-1 shadow-sm whitespace-nowrap shrink-0" type="button">
+<span class="material-symbols-outlined text-[14px]">check</span>
+<span>Añadidas recientemente</span>
+</button>
+<button class="px-3 py-1.5 rounded-full bg-[#241C16] text-[#FFEEED] font-label-sm text-label-sm whitespace-nowrap shrink-0" type="button">
+                    Tiempo
+                  </button>
+<button class="px-3 py-1.5 rounded-full bg-[#241C16] text-[#FFEEED] font-label-sm text-label-sm whitespace-nowrap shrink-0" type="button">
+                    Dificultad
+                  </button>
+</div>
+<!-- Two-button View Layout Switcher -->
+<div class="flex items-center p-0.5 rounded-full bg-[#241C16] shadow-sm shrink-0">
+<button class="w-7 h-7 rounded-full bg-[#D9552B] text-white flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">view_agenda</span>
+</button>
+<button class="w-7 h-7 rounded-full text-[#8C7E74] flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">grid_view</span>
+</button>
+</div>
+</div>
+<!-- Offline Badge Dark -->
+<div class="my-3 px-3 py-1.5 rounded-xl bg-[#241C16] flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#B2D18A]">cloud_off</span>
+<span class="font-label-sm text-label-sm text-[#FFDCCF] font-medium">Disponibles sin conexión</span>
+<span class="ml-auto font-label-sm text-label-sm text-[#B2D18A] font-mono tabular-nums">100% sincronizado</span>
+</div>
+<!-- DARK RECIPES LIST CONTAINER -->
+<div class="flex flex-col gap-3">
+<!-- Dark Card 1 -->
+<div class="w-full bg-[#241C16] rounded-[24px] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.3)] flex items-center gap-3">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-black/40">
+<img class="w-full h-full object-cover" data-alt="Traditional Spanish arroz meloso in rustic dark mood clay casserole, warm amber highlights, steaming saffron rice with tender chicken breast pieces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBC_qpXCXfXqzZO3Ujt-_mIQlwF5Qdj36J-XToE2tqQkhdJczPe8Bzrn4H_KlSlfimJrEXojZjTfuf4ZArO_KC9_3T3jww2AfuvJcI_Y44p7DcETTfg53SVGvvsfwLs13uRMpA3P7UqFOa5ucVtVz60T2sDJrMGWElgDtZ-KiROr6xJTGEfP2vj--risd0QpRm_rTeTWWumZe6vSwLbXb-r61Yh3qU8YQRZ7c-NiKwOKxtm6xTXtUwdYw"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/75 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">380 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#FFEEED] font-bold truncate leading-snug">Arroz meloso con pollo y pimientos</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#B2A49B] font-mono tabular-nums mt-1">25 min · Fácil · 2 pers.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#354E16] text-[#CEEDBA] font-label-sm text-[11px] font-semibold">Tradicional</span>
+<span class="text-[#FFB956] font-label-sm text-[11px] flex items-center gap-0.5 font-mono">
+<span class="material-symbols-outlined text-[13px] text-[#FFB956]" style="font-variation-settings: 'FILL' 1;">star</span>
+                        4.9 (128)
+                      </span>
+</div>
+</div>
+</div>
+<!-- Dark Card 2: Interactive State / Quick Cook Active Tag -->
+<div class="w-full bg-[#241C16] rounded-[24px] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.3)] flex items-center gap-3">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-black/40">
+<img class="w-full h-full object-cover" data-alt="Dark gourmet presentation of rosemary roasted chicken with blistering sweet cherry tomatoes on slate table with warm culinary backlighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBixragoGWsx_xtzV8uTBvV0shTgA3H8KwwtiGnZhFZD_v5Lf7t4ZDh6OF5sUkI3P2s_Il4h_3s4XrCuLH-xB6WATgnBN415Cqbf-i5DJi2NqQPihGDJt4zed68yRPGz9CiaAw1kIvdWtJYk87xYWMJh1R05-zJenbfvlyadgAyJRDQK062FEmUBFVUZjX4GksH1HLqO6mPQ7dp-WauvIbsfFBwAMALELadMadYjMN4p5cU9GFSLqosHw"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/75 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">420 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#FFEEED] font-bold truncate leading-snug">Pollo dorado al romero y cherrys</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#B2A49B] font-mono tabular-nums mt-1">20 min · Media · 2 pers.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#CA4A21]/30 text-[#FFB59F] font-label-sm text-[11px] font-semibold">Al horno</span>
+<span class="text-[#B2A49B] font-label-sm text-[11px] font-mono flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-[#B2D18A]">check_circle</span>
+                        Ingredientes listos
+                      </span>
+</div>
+</div>
+</div>
+<!-- Dark Card 3 -->
+<div class="w-full bg-[#241C16] rounded-[24px] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.3)] flex items-center gap-3">
+<div class="w-24 h-24 rounded-[20px] overflow-hidden shrink-0 relative bg-black/40">
+<img class="w-full h-full object-cover" data-alt="Rustic dark foodie shot of Spanish lentil stew with roasted pumpkin chunks, steam gently rising, olive oil glistens, warm terracotta bowl." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-fitM-oQUWY1BcUnFFK5BgxGjqcq7MkHd6JKflCwbgy2s11hoePKrDAefuoEO5OSgJhmyOWasY0RwUBJeeaMkIUiFIZOYgGrL80cRcgX_GwraItljI03CdsJvsPSruT-osJkuSrdwM4zrc3i--42rgTnPICJB4W7Nmmcq2xLsVWKHAw-jSAVCtFOIXAcAQyP-R1uqNukW_xzWbC765sYU4gsfu1CGhsLOvXaR2BrRV2Yo2m8W7sgtGw"/>
+<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/75 text-white font-label-sm text-[10px] backdrop-blur-xs font-mono">310 kcal</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-headline-sm text-headline-sm text-[#FFEEED] font-bold truncate leading-snug">Lentejas estofadas con calabaza</h3>
+<button class="text-[#D9552B] p-1 -mr-1 shrink-0" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<p class="font-label-md text-label-md text-[#B2A49B] font-mono tabular-nums mt-1">35 min · Fácil · 4 pers.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded-full bg-[#354E16] text-[#CEEDBA] font-label-sm text-[11px] font-semibold">Cuchara</span>
+<span class="text-[#B2A49B] font-label-sm text-[11px] font-mono">Vegetariano</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Dark Floating Action Button -->
+<div class="absolute bottom-24 right-5 z-20">
+<button class="h-12 px-5 rounded-full bg-[#D9552B] text-white flex items-center gap-2 shadow-[0_8px_24px_rgba(217,85,43,0.45)] active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="font-label-lg text-label-lg font-semibold">Crear receta</span>
+</button>
+</div>
+<!-- Persistent Bottom Navigation Bar Dark (80dp) -->
+<div class="absolute bottom-0 inset-x-0 h-20 bg-[#241C16]/95 backdrop-blur-md rounded-t-[28px] px-6 flex items-center justify-between shadow-[0_-4px_24px_rgba(0,0,0,0.5)] z-10">
+<!-- Item 1: Inicio -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-16 text-[#8C7E74]" type="button">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-sm text-[11px]">Inicio</span>
+</button>
+<!-- Item 2: Favoritos (Active in Dark) -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-20 text-[#D9552B]" type="button">
+<div class="w-12 h-8 rounded-full bg-[#CA4A21]/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px] text-[#FFB59F]" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+</div>
+<span class="font-label-sm text-[11px] font-bold text-[#FFB59F]">Favoritos</span>
+</button>
+<!-- Item 3: Perfil -->
+<button class="flex flex-col items-center justify-center gap-0.5 w-16 text-[#8C7E74]" type="button">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-sm text-[11px]">Perfil</span>
+</button>
+</div>
+<!-- Dark Home Gesture Bar -->
+<div class="absolute bottom-1.5 inset-x-0 flex justify-center z-30 pointer-events-none">
+<div class="w-32 h-1 rounded-full bg-white/20"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ======================================================== -->
+<!-- SECTION 2: CANONICAL STATES GALLERY (Empty, Skeleton, Error) -->
+<!-- ======================================================== -->
+<section class="w-full bg-surface-container-low py-space-xl" id="canonical-states">
+<div class="w-full max-w-7xl mx-auto px-margin">
+<!-- Section Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-xl">
+<div>
+<div class="inline-flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider mb-space-xs font-semibold">
+<span class="material-symbols-outlined text-[18px]">view_quilt</span>
+<span>Galería de Estados Canónicos del Sistema</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Comportamiento en Condiciones Extremas</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl mt-space-xs">
+            Estructuras predecibles que respetan las dimensiones y tokens de Material 3 cuando la red falla, las colecciones están vacías o la carga está en curso.
+          </p>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-3 h-3 rounded-full bg-secondary"></span>
+<span>Cumplimiento accesibilidad AA (Contraste 4.5:1+)</span>
+</div>
+</div>
+<!-- Grid of 3 Canonical States -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg items-stretch">
+<!-- STATE 1: ESTADO VACÍO (Empty State) -->
+<div class="bg-surface rounded-[28px] p-space-lg shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div>
+<div class="flex items-center justify-between pb-space-md">
+<span class="px-space-sm py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold">Estado Vacío</span>
+<span class="material-symbols-outlined text-primary text-[20px]">inbox</span>
+</div>
+<!-- Illustration & Copy Container -->
+<div class="py-space-xl flex flex-col items-center text-center">
+<!-- Line Illustration Bookmark Container -->
+<div class="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center text-primary mb-space-md relative">
+<span class="material-symbols-outlined text-[44px]">bookmark_add</span>
+<span class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center text-[14px]">
+<span class="material-symbols-outlined text-[16px]">favorite</span>
+</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-center mb-space-xs">
+                Aún no has guardado ninguna receta
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-xs leading-relaxed">
+                Pulsa el corazón de cualquier receta para tenerla siempre a mano.
+              </p>
+</div>
+</div>
+<!-- Bottom Action Button -->
+<div class="pt-space-md">
+<button class="w-full h-13 py-3.5 px-space-lg rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-md hover:bg-primary-container transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">explore</span>
+<span>Explorar recetas</span>
+</button>
+</div>
+</div>
+<!-- STATE 2: ESTADO DE CARGA (Skeleton Loading State) -->
+<div class="bg-surface rounded-[28px] p-space-lg shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div>
+<div class="flex items-center justify-between pb-space-md">
+<span class="px-space-sm py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Estado de Carga</span>
+<span class="material-symbols-outlined text-secondary text-[20px]">hourglass_empty</span>
+</div>
+<!-- Geometry-matched Skeleton -->
+<div class="flex flex-col gap-space-md pt-space-xs animate-pulse">
+<!-- Title Skeleton -->
+<div class="space-y-2">
+<div class="h-6 w-3/4 bg-surface-container-high rounded-full"></div>
+<div class="h-3 w-1/4 bg-surface-container rounded-full"></div>
+</div>
+<!-- Search Bar Skeleton -->
+<div class="h-12 w-full bg-surface-container-high rounded-full flex items-center px-4">
+<div class="w-5 h-5 rounded-full bg-surface-variant"></div>
+</div>
+<!-- Sort Chips Skeleton -->
+<div class="flex gap-2">
+<div class="h-8 w-28 bg-surface-container-high rounded-full"></div>
+<div class="h-8 w-16 bg-surface-container rounded-full"></div>
+<div class="h-8 w-16 bg-surface-container rounded-full"></div>
+</div>
+<!-- Skeleton Card 1 -->
+<div class="bg-surface-container-low p-3 rounded-[24px] flex items-center gap-3">
+<div class="w-20 h-20 rounded-[18px] bg-surface-container-highest shrink-0"></div>
+<div class="flex-1 space-y-2">
+<div class="h-4 w-5/6 bg-surface-container-highest rounded-full"></div>
+<div class="h-3 w-1/2 bg-surface-container rounded-full"></div>
+<div class="h-5 w-20 bg-surface-container-high rounded-full"></div>
+</div>
+</div>
+<!-- Skeleton Card 2 -->
+<div class="bg-surface-container-low p-3 rounded-[24px] flex items-center gap-3 opacity-75">
+<div class="w-20 h-20 rounded-[18px] bg-surface-container-highest shrink-0"></div>
+<div class="flex-1 space-y-2">
+<div class="h-4 w-4/6 bg-surface-container-highest rounded-full"></div>
+<div class="h-3 w-1/3 bg-surface-container rounded-full"></div>
+<div class="h-5 w-16 bg-surface-container-high rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-space-md flex items-center justify-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span>Recuperando caché cifrada de recetas...</span>
+</div>
+</div>
+<!-- STATE 3: ESTADO DE ERROR (Error State with Retry Action) -->
+<div class="bg-surface rounded-[28px] p-space-lg shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div>
+<div class="flex items-center justify-between pb-space-md">
+<span class="px-space-sm py-1 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">Estado de Error</span>
+<span class="material-symbols-outlined text-error text-[20px]">cloud_sync</span>
+</div>
+<!-- Error Graphic & Notice -->
+<div class="py-space-xl flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full bg-error-container/60 flex items-center justify-center text-error mb-space-md relative">
+<span class="material-symbols-outlined text-[42px]">wifi_off</span>
+<span class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-error text-on-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">priority_high</span>
+</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-center mb-space-xs">
+                No se pudieron cargar tus recetas guardadas
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-xs leading-relaxed">
+                Parece haber una interrupción temporal con el almacenamiento en la nube. Tus datos locales permanecen protegidos.
+              </p>
+</div>
+</div>
+<!-- Bottom Action Buttons (Retry Primary + Diagnostic Secondary) -->
+<div class="pt-space-md flex flex-col gap-2">
+<button class="w-full h-13 py-3.5 px-space-lg rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-md hover:bg-primary-container active:scale-98 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+<span>Reintentar</span>
+</button>
+<button class="w-full py-2 rounded-full text-on-surface-variant font-label-md text-label-md hover:bg-surface-container transition-all" type="button">
+              Consultar recetas almacenadas en local (10)
+            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ======================================================== -->
+<!-- SECTION 3: DESIGN TOKENS & INTERACTION SPECS BENTO       -->
+<!-- ======================================================== -->
+<section class="w-full max-w-7xl mx-auto px-margin py-space-xl" id="interaction-specs">
+<div class="mb-space-lg">
+<span class="font-label-md text-label-md text-secondary font-semibold uppercase tracking-wider">Documentación de Ingeniería</span>
+<h2 class="font-display-md text-display-md text-on-surface mt-1">Directrices de Interacción &amp; Tokens Sazón</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-md">
+<!-- Bento Tile 1: Swipe Gesture Metaphor -->
+<div class="md:col-span-2 bg-surface-container rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 text-primary font-headline-sm text-headline-sm font-bold mb-space-xs">
+<span class="material-symbols-outlined text-[24px]">swipe_left</span>
+<span>Micro-interacción de Deslizamiento</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            El gesto de deslizar hacia la izquierda (Swipe-to-Delete) desplaza la tarjeta hasta 96dp revelando un fondo semántico de advertencia (#BA1A1A) con retorno elástico (<code class="bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface font-mono text-[12px]">cubic-bezier(0.2, 0.0, 0, 1.0)</code>). Previene eliminaciones accidentales solicitando confirmación con vibración háptica suave.
+          </p>
+</div>
+<div class="mt-space-md pt-space-md flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Umbral activación: 72dp</span>
+<span>Desaceleración: 250ms</span>
+</div>
+</div>
+<!-- Bento Tile 2: Color Palette Warm Foodie -->
+<div class="bg-surface-container rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 text-on-surface font-headline-sm text-headline-sm font-bold mb-space-xs">
+<span class="material-symbols-outlined text-[22px] text-tertiary">palette</span>
+<span>Paleta de Sabor</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+            Colores inspirados en cocina tradicional: Terracota, Oliva y Miel.
+          </p>
+<div class="space-y-2 font-mono text-label-sm text-label-sm">
+<div class="flex items-center justify-between p-2 rounded-xl bg-[#D9552B] text-white">
+<span>Terracota #D9552B</span>
+<span class="font-sans font-semibold">Primario</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-[#5F7A3D] text-white">
+<span>Oliva #5F7A3D</span>
+<span class="font-sans font-semibold">Secundario</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-[#FFF8F0] text-[#2B2118]">
+<span>Crema #FFF8F0</span>
+<span class="font-sans font-semibold">Base Claro</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-[#18120E] text-white">
+<span>Tostado #18120E</span>
+<span class="font-sans font-semibold">Base Oscuro</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Tile 3: Ergonomics & Bottom Zone -->
+<div class="bg-surface-container rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 text-on-surface font-headline-sm text-headline-sm font-bold mb-space-xs">
+<span class="material-symbols-outlined text-[22px] text-secondary">pan_tool_alt</span>
+<span>Zona del Pulgar</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+            El botón flotante de acción (<strong class="text-on-surface">Crear receta</strong>) y la navegación permanente de 80dp descansan en el tercio inferior del dispositivo, optimizados para uso monomanual mientras se cocina con una mano libre.
+          </p>
+</div>
+<div class="mt-space-md pt-space-md flex items-center gap-2 text-primary font-label-md text-label-md font-semibold">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Cumple Ergonomía Pixel</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Simple client-side micro-interaction simulator for demo toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    const swipeCards = document.querySelectorAll('.group-swipe');
+    swipeCards.forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.toggle('-translate-x-24');
+      });
+    });
+  });
+</script></main><footer class="w-full bg-surface-container-low py-space-xl shadow-[0_-1px_8px_rgba(43,33,24,0.03)]"><div class="w-full max-w-7xl mx-auto px-margin flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container"><span class="material-symbols-outlined text-[16px]">skillet</span></div><span class="font-headline-sm text-headline-sm text-on-surface">Sazón Culinary System</span><span class="font-label-sm text-label-sm text-on-surface-variant">• Material 3 Warm Foodie</span></div><div class="flex items-center gap-space-md text-on-surface-variant font-label-sm text-label-sm"><span>Target: Google Pixel Portrait (390×844)</span><span>Modo Claro &amp; Modo Oscuro</span><span>Colección Favoritos</span></div><div class="font-body-sm text-body-sm text-on-surface-variant">© 2025 Sazón Studio. Todos los derechos reservados.</div></div></footer></body></html>

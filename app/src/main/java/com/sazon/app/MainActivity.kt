@@ -6,11 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
+import com.sazon.app.data.favorites.FavoritesDatabase
+import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.generator.FakeRecipeGenerator
 import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
 import com.sazon.app.data.suggestions.RoomSuggestionBatchRepository
 import com.sazon.app.data.suggestions.SuggestionBatchDatabase
+import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
@@ -38,6 +41,9 @@ class MainActivity : ComponentActivity() {
             seedRecipes = seedRecipes,
         )
         val generationService = GenerationService(generator = generator, taxonomy = taxonomy)
+        val favoritesDatabase = FavoritesDatabase.build(applicationContext)
+        val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
+        val favoriteService = FavoriteService(favoriteRepository)
 
         setContent {
             SazonTheme {
@@ -47,6 +53,8 @@ class MainActivity : ComponentActivity() {
                     suggestionBatchRepository = suggestionBatchRepository,
                     suggestionBatchService = suggestionBatchService,
                     generationService = generationService,
+                    favoriteRepository = favoriteRepository,
+                    favoriteService = favoriteService,
                     seedRecipes = seedRecipes,
                 )
             }
