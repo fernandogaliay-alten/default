@@ -370,8 +370,11 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
   táctiles ≥48dp; tipografía dinámica (scroll, nunca recortar); los chips de alérgenos son información
   de seguridad, no una alarma.
 - Iconos: no se renderizan (sin assets ni dependencia de iconos); los chips muestran su `label`.
-- New design artifact required: **no**; el acabado puramente visual (tinte ámbar, tratamientos de
-  selección, claro/oscuro) lo revisa la persona tras el merge.
+- Capturas de referencia (backfill PR #37):
+  `docs/design/concepts/onboarding-ingredients-safety-kitchen/` — pantallas `ingredientes`, `alergias`,
+  `tu-cocina` (pasos 5–7). Pendiente de exportar desde Stitch (petición en el `README.md` de la
+  carpeta); el acabado puramente visual (tinte ámbar, tratamientos de selección, claro/oscuro) lo revisa
+  la persona tras el merge.
 
 ## Durable Documentation Impact
 
@@ -383,7 +386,8 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
   `UserProfile` (`ProfileRepository.save`) y la puerta pasa a `MAIN`.
 - `docs/domain-model.md`: **not needed** — describe ya `PreferenceProfile`, `Restricción dura`,
   `Ingredientes que evito`, `Comensales habituales` y el estado del onboarding.
-- `docs/design/concepts/`: **not needed** — los mockups de Stitch siguen siendo dirección, no spec.
+- `docs/design/concepts/`: **update** — backfill de capturas (PR #37): pantallas `ingredientes`,
+  `alergias`, `tu-cocina` en `docs/design/concepts/onboarding-ingredients-safety-kitchen/`.
 
 ## Implementation Plan
 

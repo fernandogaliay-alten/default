@@ -9,11 +9,15 @@ Toda feature con UI (campo `area: ui` en `feature_list.json`, o cualquier compor
 pantalla/visual) debe tener sus **capturas de referencia** antes de implementarse, en una
 **subcarpeta por feature**: `docs/design/concepts/<feature-id>/`.
 
-- Dentro, cada captura se llama `<pantalla>.<ext>`, p. ej. `docs/design/concepts/results-screen/resultados.png`.
+- Dentro, cada **pantalla** (no componente) se guarda en su propia subcarpeta con los **tres ficheros
+  que exporta Stitch** (el `.png`, el `.html` y el `design.md`, con los nombres que dé Stitch):
+  `docs/design/concepts/<feature-id>/<pantalla>/` (p. ej.
+  `docs/design/concepts/results-screen/resultados/`).
 - Si faltan, el agente **crea la subcarpeta** `docs/design/concepts/<feature-id>/` y un `README.md`
-  dentro con la **lista exacta** de ficheros esperados (y una línea de qué es cada uno); después se
-  detiene, te los pide y la feature queda `blocked`. Tú solo dejas los `.png` ahí.
-- La spec de la feature nombra esos ficheros en su sección "Visual Design Impact".
+  dentro con la **lista exacta de pantallas** esperadas (y una línea de qué es cada una); después se
+  detiene, te las pide y la feature queda `blocked`. Tú solo dejas cada subcarpeta `<pantalla>/` con
+  sus tres ficheros.
+- La spec de la feature nombra esas pantallas en su sección "Visual Design Impact".
 - Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
 
 ## Qué tomar de Stitch y qué no
@@ -32,9 +36,10 @@ fotos propias. La app es personal y no se publica, así que la licencia de asset
 1. Pegar `docs/design/stitch-prompt.md` completo en Stitch. Si lo trunca, por bloques: secciones 1–3,
    A–B, C–E, F–G.
 2. Revisar cada salida contra `DESIGN.md` (tokens y reglas); descartar o ajustar lo que contradiga.
-3. Guardar las exportaciones aceptadas en la subcarpeta de la feature:
-   `docs/design/concepts/<feature-id>/<pantalla>.<ext>` (p. ej.
-   `docs/design/concepts/results-screen/resultados.png`).
+3. Guardar cada pantalla aceptada en su subcarpeta de la feature:
+   `docs/design/concepts/<feature-id>/<pantalla>/` con los tres ficheros del export
+   (el `.png`, el `.html` y el `design.md`, tal cual los exporta Stitch; p. ej.
+   `docs/design/concepts/results-screen/resultados/`).
 4. Registrar su estado en `DESIGN.md` ("Generated Concept Images" y Open Design Questions).
 5. Las decisiones abiertas #4 (fotos reales vs ilustración) y #5 (estilo de las ilustraciones de
    vacío) no las resuelve Stitch: se deciden en `DESIGN.md`.

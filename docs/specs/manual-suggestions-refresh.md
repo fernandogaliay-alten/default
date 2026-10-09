@@ -291,8 +291,10 @@ ni `gradle/libs.versions.toml`.
   tono **secundario** (oliva/`secondary`/`secondaryContainer`) para distinguir la acción de la única
   acción principal terracota de la pantalla; objetivos táctiles ≥48dp; tipografía dinámica.
 - Sin iconos ni imágenes externas (no hay `material-icons` en el repositorio).
-- New design artifact required: **no**; el acabado puramente visual lo revisa la persona tras el
-  merge y un defecto se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/manual-suggestions-refresh/` —
+  pantalla `perfil-sugerencias`. Pendiente de exportar desde Stitch (petición en el `README.md` de la
+  carpeta); el acabado puramente visual lo revisa la persona tras el merge y un defecto se corrige con
+  feature correctiva.
 
 ## Durable Documentation Impact
 

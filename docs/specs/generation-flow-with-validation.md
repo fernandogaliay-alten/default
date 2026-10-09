@@ -357,8 +357,10 @@ no tiene `maxMinutes`) y "Evitando tus alergias…" (solo si `hardRestrictionIds
   cifras tabulares en la línea de metadatos.
 - Reglas visuales: una única acción principal terracota por pantalla; objetivos táctiles ≥48dp;
   tipografía dinámica (scroll). "Cancelar" y "Atrás" son texto (sin iconos).
-- New design artifact required: **no**; el acabado (animación, ritmo de las sublíneas, densidad del
-  preview) lo revisa la persona tras el merge; un defecto visual se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/generation-flow-with-validation/` —
+  pantallas `generador-cargando` y `resultados-preview`. Pendiente de exportar desde Stitch (petición en
+  el `README.md` de la carpeta); el acabado (animación, ritmo de las sublíneas, densidad del preview) lo
+  revisa la persona tras el merge y un defecto visual se corrige con feature correctiva.
 
 ## Durable Documentation Impact
 
@@ -369,7 +371,9 @@ no tiene `maxMinutes`) y "Evitando tus alergias…" (solo si `hardRestrictionIds
   generación en `ui.generator` (disparo, cancelación, estado de carga y preview).
 - `docs/domain-model.md`: **not needed** — el Generador, `GenerationConstraints`, el Validador y el
   modo `ai_unavailable` ya están descritos; no cambia el modelo.
-- `DESIGN.md` y `docs/design/concepts/`: **not needed** — siguen siendo la fuente/dirección.
+- `DESIGN.md` y `docs/design/concepts/`: **update** — `DESIGN.md` sigue siendo la fuente; se añade el
+  backfill de capturas `generador-cargando` y `resultados-preview` en
+  `docs/design/concepts/generation-flow-with-validation/`.
 - `PROGRESS.md` y `feature_list.json`: **update al implementar** (estado y evidencia), no en esta
   sesión.
 

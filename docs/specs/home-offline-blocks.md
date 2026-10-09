@@ -354,8 +354,10 @@ Estrategia: **lógica/estado puro testeable en JVM + capa Compose delgada**, sin
   activo de la barra combina glifo relleno + etiqueta, no solo color.
 - **Sin** material-icons ni imágenes: glifos y bloque de imagen con primitivas Compose (mismo criterio
   documentado en `onboarding-shell-and-identity` para `AvatarPreview`).
-- New design artifact required: **no**. El repaso visual (glifos, contraste claro/oscuro, densidad del
-  carrusel) lo hace la persona tras el merge; un defecto visual se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/home-offline-blocks/` — pantallas
+  `home` y `home-sin-conexion`. Pendiente de exportar desde Stitch (petición en el `README.md` de la
+  carpeta); el repaso visual (glifos, contraste claro/oscuro, densidad del carrusel) lo hace la persona
+  tras el merge y un defecto visual se corrige con feature correctiva.
 
 ## Durable Documentation Impact
 
@@ -367,8 +369,9 @@ Estrategia: **lógica/estado puro testeable en JVM + capa Compose delgada**, sin
   respaldo a semilla) y que la Home es offline.
 - `docs/domain-model.md`: **not needed** — describe ya `SuggestionBatch`, "Tus recetas" y sus edge
   cases; esta feature no cambia el modelo.
-- `DESIGN.md` y `docs/design/concepts/`: **not needed** — `DESIGN.md` sigue siendo la fuente de verdad
-  y no cambia; los mockups de Stitch siguen siendo dirección.
+- `DESIGN.md` y `docs/design/concepts/`: **update** — `DESIGN.md` sigue siendo la fuente de verdad; se
+  añade el backfill de capturas `home` y `home-sin-conexion` en
+  `docs/design/concepts/home-offline-blocks/`.
 - `PROGRESS.md` y `feature_list.json`: **update al implementar** (estado y evidencia), no en esta
   sesión de planificación.
 

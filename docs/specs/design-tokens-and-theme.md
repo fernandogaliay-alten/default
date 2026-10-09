@@ -231,8 +231,10 @@ Derivados (no en `DESIGN.md`; primera pasada sujeta a repaso visual por la perso
 - Design source: `DESIGN.md` (fuente de verdad; sección "Responsive Baseline" para el modo oscuro).
 - Screens or states affected: el armazón vacío de `MainActivity` (fondo) y, por herencia, toda pantalla
   futura en claro y en oscuro.
-- New design artifact required: **no**. Los valores oscuros derivados son una propuesta técnica a
-  revisar visualmente; si la persona detecta defectos, se corrige con una feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/design-tokens-and-theme/` — pantalla
+  `design-system` (hoja "Design System"). Pendiente de exportar desde Stitch (petición en el `README.md`
+  de la carpeta); los valores oscuros derivados son una propuesta técnica a revisar visualmente y un
+  defecto se corrige con una feature correctiva.
 
 ## Durable Documentation Impact
 

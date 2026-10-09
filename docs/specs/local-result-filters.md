@@ -275,9 +275,11 @@ sealed interface LocalResultFilter {
   "Rápido"/"Vegetariano" son derivados).
 - Screens or states affected: bloque "Tus recetas" (fila de chips: activa/inactiva, categoría vs
   derivado), estado vacío de usuario nuevo y estado "sin resultados para este filtro".
-- New design artifact required: **no**. La distinción visual derivado/categoría (oliva + agrupación)
-  es una decisión de esta spec; el repaso visual y de contraste lo hace la persona tras el merge; un
-  defecto visual se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/local-result-filters/` — pantalla
+  `filtros-tus-recetas`. Pendiente de exportar desde Stitch (petición en el `README.md` de la carpeta);
+  la distinción visual derivado/categoría (oliva + agrupación) es una decisión de esta spec y el repaso
+  visual y de contraste lo hace la persona tras el merge; un defecto visual se corrige con feature
+  correctiva.
 
 ## Durable Documentation Impact
 

@@ -281,8 +281,10 @@ ni los editores de `ui.preferences`.
   objetivos táctiles ≥48dp; tipografía dinámica (scroll, nunca recortar); el texto largo de las notas
   hace scroll.
 - **Sin** material-icons ni imágenes: "Editar en mi perfil" y "Atrás" son texto.
-- New design artifact required: **no**; el acabado visual (tarjetas, densidad, ámbar) lo revisa la
-  persona tras el merge; un defecto visual se corrige con feature correctiva.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/generator-settings-step/` — pantalla
+  `generador-ajustes` (paso 2). Pendiente de exportar desde Stitch (petición en el `README.md` de la
+  carpeta); el acabado visual (tarjetas, densidad, ámbar) lo revisa la persona tras el merge y un
+  defecto visual se corrige con feature correctiva.
 
 ## Durable Documentation Impact
 
@@ -294,7 +296,8 @@ ni los editores de `ui.preferences`.
   callback de Perfil.
 - `docs/domain-model.md`: **not needed** — `GenerationConstraints` ya describe los ajustes; esta
   feature no cambia el modelo (solo captura los valores).
-- `DESIGN.md` y `docs/design/concepts/`: **not needed** — siguen siendo la fuente/dirección.
+- `DESIGN.md` y `docs/design/concepts/`: **update** — `DESIGN.md` sigue siendo la fuente; se añade el
+  backfill de captura `generador-ajustes` en `docs/design/concepts/generator-settings-step/`.
 - `PROGRESS.md` y `feature_list.json`: **update al implementar** (estado y evidencia), no en esta
   sesión.
 

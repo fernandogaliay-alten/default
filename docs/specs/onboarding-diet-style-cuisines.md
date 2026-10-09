@@ -267,8 +267,9 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
   (scroll, nunca recortar). Los chips de **alérgenos** (ámbar, nunca rojo) no son de esta feature.
 - Iconos: no se renderizan (sin assets ni dependencia); los tiles de cocina muestran `label`. Queda
   como repaso visual de la persona y, si se quiere, feature correctiva.
-- New design artifact required: **no**; el acabado puramente visual lo revisa la persona tras el
-  merge.
+- Capturas de referencia (backfill PR #37): `docs/design/concepts/onboarding-diet-style-cuisines/` —
+  pantallas `dieta`, `estilo`, `cocinas` (pasos 2–4). Pendiente de exportar desde Stitch (petición en el
+  `README.md` de la carpeta); el acabado puramente visual lo revisa la persona tras el merge.
 
 ## Durable Documentation Impact
 
@@ -279,7 +280,8 @@ No se modifican `app/build.gradle.kts` ni `gradle/libs.versions.toml`.
   editores reutilizables (`ui.preferences`) que Perfil reutilizará.
 - `docs/domain-model.md`: **not needed** — describe ya `PreferenceProfile`, `Patrón de dieta` y
   `Preferencia blanda`.
-- `docs/design/concepts/`: **not needed** — los mockups de Stitch siguen siendo dirección, no spec.
+- `docs/design/concepts/`: **update** — backfill de capturas (PR #37): pantallas `dieta`, `estilo`,
+  `cocinas` en `docs/design/concepts/onboarding-diet-style-cuisines/`.
 
 ## Implementation Plan
 
