@@ -17,6 +17,7 @@ set -euo pipefail
 #   0  sincronizado (sin conflictos o merge ya al dia)
 #   1  hay conflictos: quedan sin resolver en el worktree para que los resuelvas
 #      (resuelve, `git add`, `git commit`; o `git merge --abort` para deshacer)
+#   3  el worktree no esta en la rama de la feature (detached u otra): no se toca nada
 
 BASE_BRANCH="${2:-${BASE_BRANCH:-main}}"
 
@@ -34,6 +35,15 @@ worktree_path="${worktrees_root}/${feature_id}"
 if [ ! -d "$worktree_path" ]; then
   echo "no existe el worktree: $worktree_path" >&2
   exit 1
+fi
+
+# Guarda: el worktree debe estar en la rama de la feature. Evita mergear
+# origin/<base> sobre un HEAD detached o de otra rama (nunca se toca nada).
+branch="feature/${feature_id}"
+current_branch="$(git -C "$worktree_path" symbolic-ref --quiet --short HEAD 2>/dev/null || echo '')"
+if [ "$current_branch" != "$branch" ]; then
+  echo "SALTADO: ${worktree_path} no esta en ${branch} (esta en '${current_branch:-detached}'); no se toca nada" >&2
+  exit 3
 fi
 
 echo "fetch origin ${BASE_BRANCH}..."
