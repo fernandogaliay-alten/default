@@ -26,7 +26,7 @@ All four inputs are required. If any is missing, ask before doing anything.
 - One feature per session. Never two features in the same session. One independent session per worktree via `opencode run --dir <worktree>`.
 - All worktrees branch from one common base SHA fixed at the start of `execute`.
 - The orchestrator is the single integrator of shared state and docs (`feature_list.json`, `PROGRESS.md`, `docs/technical-discovery.md`, ...). Before publishing, it brings the latest `origin/<base_branch>` into the feature branch with a **merge** (never rebase, never force-push), resolving conflicts by keeping the feature's additions alongside the base's. After any other feature's PR merges, it re-syncs the remaining open feature branches the same way.
-- A blocked feature is reported with its blocking dependency ids. Never silently skip it and never substitute a later feature.
+- A blocked feature is reported with its blocking dependency ids or missing required inputs (e.g. UI captures under `docs/design/concepts/`). Never silently skip it and never substitute a later feature.
 - `feature-flow` owns the role loop and acceptance inside a worktree session; its commit and validation rules still apply there.
 
 ## Preconditions

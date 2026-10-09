@@ -15,6 +15,7 @@ Leer solo cuando sea relevante para la tarea:
 - `docs/technical-discovery.md` — stack, almacenamiento, integraciones y verificación.
 - `docs/domain/taxonomy.md` — modelo de la Taxonomía y reglas del Validador.
 - `docs/design/stitch-prompt.md` — pantallas y microcopy de referencia.
+- `docs/design/concepts/` — capturas de referencia aceptadas; **obligatorias para features de UI**.
 - `DESIGN.md` — dirección visual y tokens.
 - `docs/adr/` — decisiones aceptadas. Consúltalas si algo parece contradecirlas.
 
@@ -35,6 +36,13 @@ Antes de escribir código:
 - No marques una feature como hecha solo porque hayas añadido código.
 - Mantén los cambios dentro del alcance de la feature elegida.
 - No cambies las reglas de verificación durante la implementación.
+- **Capturas de UI obligatorias**: toda feature con UI (campo `area: ui` en `feature_list.json`, o
+  cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** bajo
+  `docs/design/concepts/` **antes** de implementar. La spec nombra los ficheros concretos (p. ej.
+  `docs/design/concepts/perfil.png`). Si no existen, el `planner`, el `implementer` y `feature-flow`
+  se **detienen y las piden** a la persona; la feature queda `blocked` hasta que estén disponibles.
+  `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección
+  visual obligatoria, no opcional.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
 ## Acuerdos de trabajo con la persona
@@ -53,8 +61,9 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   salida es el commit local.
 - El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
 - **Verificación de UI**: no se automatizan pruebas de UI (emulador). Las features de UI se validan por
-  lógica/estado en JVM cuando sea posible; lo puramente visual lo revisa la persona tras el merge. Un
-  defecto visual se corrige con una **feature correctiva** nueva, sin bloquear el flujo autónomo.
+  lógica/estado en JVM cuando sea posible y contra las capturas de referencia obligatorias (ver
+  "Reglas de trabajo"); lo puramente visual lo revisa la persona tras el merge. Un defecto visual se
+  corrige con una **feature correctiva** nueva, sin bloquear el flujo autónomo.
 - Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
   regenerar las pantallas en Stitch) los hace la persona.
 

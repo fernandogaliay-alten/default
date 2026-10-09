@@ -3,6 +3,17 @@
 Carpeta para las exportaciones aceptadas de Stitch. Son **dirección visual**, no especificación
 pixel-perfect: ante cualquier contradicción, manda `DESIGN.md` (fuente de verdad de la UI).
 
+## Capturas obligatorias para features de UI
+
+Toda feature con UI (campo `area: ui` en `feature_list.json`, o cualquier comportamiento de
+pantalla/visual) debe tener aquí sus **capturas de referencia** antes de implementarse:
+
+- Nombre: `<pantalla>.<ext>`, p. ej. `home.png`, `perfil.png` o `design-system.png`.
+- La spec de la feature nombra los ficheros concretos en su sección "Visual Design Impact".
+- Si faltan, `planner`, `implementer` y `feature-flow` **se detienen y las piden** a la persona; la
+  feature queda `blocked` hasta que existan. No se implementa UI "a ciegas".
+- Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
+
 ## Qué tomar de Stitch y qué no
 
 De Stitch te llevas la **dirección**: el layout de las pantallas, la jerarquía, la hoja "Design System"

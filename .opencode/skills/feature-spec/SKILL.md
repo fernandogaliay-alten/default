@@ -17,6 +17,10 @@ Use this skill to turn one harness feature into an implementation-ready contract
 - If the feature id is not provided, select the first feature in `feature_list.json` order whose status is neither `passing` nor `accepted` and whose `depends_on` prerequisites are satisfied.
 - If a feature is too broad to plan cleanly, stop and recommend splitting it in `feature_list.json` instead of producing a vague spec. Rough signal: it needs more than one data model plus one user flow, or the spec would clearly exceed the 100-250 line target.
 - Treat the spec as a contract between agents: planner -> implementer -> validator.
+- UI features require captures: if the selected feature has UI (`area: ui` or any screen/visual
+  behavior), the spec MUST name the existing capture file(s) under `../../../docs/design/concepts/`
+  in `Visual Design Impact`. If they are missing, stop and request them from the user (report the
+  feature as `blocked` pending captures); do not emit a spec that assumes visuals that do not exist.
 - Prefer concrete repository findings over assumptions. If something was not inspected, say so.
 
 ## Inputs To Read First
@@ -33,6 +37,7 @@ Use this skill to turn one harness feature into an implementation-ready contract
    - `../../../docs/technical-discovery.md`
    - `../../../docs/mvp-scope.md`
    - `../../../DESIGN.md` when the selected feature has UI or visual behavior
+   - `../../../docs/design/concepts/` captures for UI features (mandatory before implementation)
    - `../../../docs/risks-and-open-questions.md`
    - `../../../docs/adr/*.md`
 6. Existing application files relevant to the selected feature. Inspect enough of the repo to identify expected file changes, patterns, commands, and risks.
@@ -77,7 +82,8 @@ The spec must include:
 - repository research,
 - technical approach,
 - expected file changes,
-- visual design impact when UI is involved,
+- visual design impact when UI is involved, naming the concrete capture file(s) under
+  `../../../docs/design/concepts/` that must exist before implementation,
 - durable documentation impact,
 - implementation plan,
 - implementation tasks,
@@ -99,6 +105,9 @@ Before finishing, check:
 - If a persistent E2E command exists and the feature changes user-visible behavior, authentication, authorization, routing, or API flows, the verification plan should include adding/updating focused E2E coverage or explicitly justify why unit/integration coverage is enough.
 - For shell scripts such as `init.sh`, the spec states whether the script must execute checks, print guidance, start services, or provide modes. The default harness rule is: `init.sh` executes non-blocking startup/verification checks and must not start long-running dev servers.
 - Durable documentation impact is explicit: `../../../ARCHITECTURE.md`, `../../../CONSTRAINTS.md`, `../../../AGENTS.md`, and other durable docs are each marked create/update/not needed with a reason.
+- For UI features, `Visual Design Impact` names capture file(s) under `../../../docs/design/concepts/`
+  that already exist in the repo; if they do not, the spec was not emitted and the captures were
+  requested instead.
 - Non-goals prevent scope creep.
 - Unknowns are explicit and do not hide blocking ambiguity.
 
