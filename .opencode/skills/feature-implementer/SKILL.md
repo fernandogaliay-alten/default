@@ -26,9 +26,9 @@ You are the implementer/generator, not the planner and not the final validator.
 2. `../../../PROGRESS.md`
 3. `feature_list.json`
 4. Selected feature spec: `../../../docs/specs/<feature-id>.md`
-5. Durable docs if present and relevant:
-   - `../../../ARCHITECTURE.md`
-   - `../../../CONSTRAINTS.md`
+5. Durable docs if present and relevant (this repo has no `ARCHITECTURE.md`/`CONSTRAINTS.md`; the durable docs are `docs/technical-discovery.md`, `docs/domain-model.md` and `DESIGN.md`):
+   - `../../../docs/technical-discovery.md`
+   - `../../../docs/domain-model.md`
    - `../../../DESIGN.md` when the spec has UI or visual behavior
    - `../../../docs/design/concepts/<feature-id>/` captures named in the spec (mandatory for UI features)
    - relevant docs under `docs/`
@@ -113,7 +113,7 @@ After verification:
 - update the session handoff note if it exists or if the session leaves meaningful incomplete state,
 - update durable docs required by the spec or discovered during implementation.
 
-CONSTRAINTS.md rule: read `../../../CONSTRAINTS.md` before implementing (see Inputs To Read First). When implementation or verification reveals a durable operational constraint (a MUST/MUST NOT rule future features have to respect), append it to `../../../CONSTRAINTS.md` with a short reason. Do not add speculative rules or restate what the spec, `../../../AGENTS.md`, or `../../../ARCHITECTURE.md` already cover; follow the durable documentation rules in `references/implementation-rules.md`.
+Durable-constraint rule: when implementation or verification reveals a durable operational constraint (a MUST/MUST NOT rule future features have to respect), record it in `../../../AGENTS.md` (Notas de entorno) or `../../../docs/technical-discovery.md`, whichever fits, with a short reason. Do not add speculative rules or restate what the spec or `../../../AGENTS.md` already cover; follow the durable documentation rules in `references/implementation-rules.md`.
 
 Status rule:
 

@@ -8,8 +8,9 @@ set -euo pipefail
 # Crea (o reutiliza) un worktree git para una feature, fuera del checkout base,
 # y lo siembra con local.properties para que Gradle encuentre el SDK de Android.
 #
-# Uso: scripts/new-worktree.sh <feature-id> [base-sha]
-#   <feature-id>  id de la feature (worktree y rama pasan a feature/<feature-id>)
+# Uso: scripts/new-worktree.sh <feature-id | prefijo/id> [base-sha]
+#   <feature-id>  id de la feature: rama feature/<id>, worktree <root>/<id>
+#   prefijo/id    rama <prefijo>/<id>, worktree <root>/<prefijo>-<id> (p. ej. chore/x)
 #   [base-sha]    commit desde el que ramificar; por defecto origin/<base-branch>
 #
 # Variables de entorno opcionales:
@@ -18,17 +19,24 @@ set -euo pipefail
 
 BASE_BRANCH="${BASE_BRANCH:-main}"
 
-feature_id="${1:-}"
-if [ -z "$feature_id" ]; then
-  echo "uso: $0 <feature-id> [base-sha]" >&2
+target="${1:-}"
+if [ -z "$target" ]; then
+  echo "uso: $0 <feature-id | prefijo/id> [base-sha]" >&2
   exit 2
 fi
 
-repo_root="$(git rev-parse --show-toplevel)"
+# Raiz del checkout base, robusta aunque se ejecute desde un worktree (git common dir).
+repo_root="$(cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" && pwd)"
 base_dirname="$(basename "$repo_root")"
 worktrees_root="${WORKTREES_ROOT:-$(dirname "$repo_root")/${base_dirname}-worktrees}"
-worktree_path="${worktrees_root}/${feature_id}"
-branch="feature/${feature_id}"
+
+case "$target" in
+  */*) prefix="${target%%/*}"; id="${target#*/}" ;;
+  *)   prefix="feature"; id="$target" ;;
+esac
+branch="${prefix}/${id}"
+if [ "$prefix" = "feature" ]; then dir_name="$id"; else dir_name="${prefix}-${id}"; fi
+worktree_path="${worktrees_root}/${dir_name}"
 
 if [ "$#" -ge 2 ] && [ -n "${2:-}" ]; then
   # SHA explicito: el llamante ya es responsable de haber fetcheado.

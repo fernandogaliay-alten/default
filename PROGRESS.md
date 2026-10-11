@@ -2505,3 +2505,39 @@
   una correctiva. El PR #60 (`ai-search`) se mergeó mientras corría esta sesión, así que esta entrada se
   renumeró a 062 al integrar `origin/main`.
 - Siguiente paso: sin cambios en el plan del MVP. Siguiente candidata: `real-ai-provider`.
+
+### Sesión 063
+
+- Fecha: 2026-10-12
+- Objetivo: saneado del harness tras la revisión de coherencia (deriva de plantilla, referencias
+  obsoletas y huecos de tooling).
+- Completado:
+  - A2: sustituidas en las skills las referencias a ficheros inexistentes de stack ajeno
+    (`docs/product-brief.md`, `docs/user-and-access-model.md`, `docs/mvp-scope.md`, `ARCHITECTURE.md`,
+    `CONSTRAINTS.md`, `pnpm`, `bootstrap-nextjs-shell`) por los reales de este repo.
+  - A3: comando del gate unificado a `bash init.sh` (feature-flow ya no dice `CI=true ./init.sh`).
+  - A4: corregido el ejemplo de capturas de `AGENTS.md` y el id `perfil-screen` → `profile-screen` en
+    `evals`.
+  - A6: `docs/design/concepts/README.md` documenta el provisioning en el worktree; el mapa de Stitch
+    deja de marcar `ai-search/` como "futuro".
+  - D3: nuevo `scripts/launch-feature-session.sh` (centraliza cwd del worktree, modelo,
+    `NODE_OPTIONS=--dns-result-order=ipv4first` y título); `github-flow` y `AGENTS.md` lo referencian.
+  - D4: `new-worktree.sh`/`sync-worktree.sh`/`cleanup-worktree.sh` aceptan `chore/<id>`; y los cuatro
+    scripts resuelven la raíz por el git common dir (bug: ejecutados desde un worktree apuntaban al
+    worktree en vez de al checkout base).
+  - D2 (descartado): unir `test lint` en una sola invocación de Gradle **falla** por validación de
+    dependencia implícita (`lint` lee `app/src/main/assets`, salida de `syncTaxonomy`). Se mantiene el
+    `init.sh` con dos invocaciones; arreglarlo exige tocar el build (fuera de este chore).
+- Verificación ejecutada: `bash init.sh` exit 0 (`./gradlew test` 1m42s + `./gradlew lint`); `bash -n`
+  de todos los scripts; dry-runs de `cleanup-worktree.sh` con `chore/gradle-daemon-hang`, `ai-search` y
+  `real-ai-provider` (resuelven dir/rama correctos).
+- Evidencia capturada: salida de los comandos anteriores; `git diff --stat`.
+- Ficheros actualizados: skills (`feature-flow`, `feature-spec`, `feature-implementer`,
+  `feature-validator` + `references/`, `github-flow`), `AGENTS.md`, `docs/design/concepts/README.md`,
+  `docs/design/stitch/README.md`,
+  `scripts/{new-worktree,sync-worktree,cleanup-worktree,launch-feature-session}.sh` y este registro. No
+  se toca `init.sh` (D2 revertido), `feature_list.json` ni el código de la app.
+- Riesgo o incógnita abierta: el worktree huérfano `chore-gradle-daemon-hang` (PR #53 mergeado) ya es
+  limpiable con el script mejorado, pero no se ha borrado en esta sesión. D1 (tamaño de contexto de
+  `PROGRESS.md`/`feature_list.json`) queda para un chore aparte.
+- Siguiente paso: merge del PR #61 y de este chore; después, D1 (aligerar contexto) y `real-ai-provider`.

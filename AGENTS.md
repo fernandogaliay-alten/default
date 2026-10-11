@@ -40,7 +40,7 @@ Antes de escribir código:
 - **Capturas de UI obligatorias**: toda feature con UI (campo `area: ui` en `feature_list.json`, o
   cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** en
   `docs/design/concepts/<feature-id>/` **antes** de implementar. La spec nombra los ficheros concretos
-  (p. ej. `docs/design/concepts/perfil-screen/perfil.png`). Si no existen, el `planner`, el
+  (p. ej. `docs/design/concepts/profile-screen/perfil/screen.png`). Si no existen, el `planner`, el
   `implementer` y `feature-flow` se **detienen y las piden** a la persona. En `github-flow`, la feature
   **no** se bloquea sin más: `execute` **crea igualmente el worktree** (issue, rama `feature/<feature-id>`
   y worktree), deja la **subcarpeta de petición** `docs/design/concepts/<feature-id>/` **dentro del
@@ -89,7 +89,7 @@ aceptación.
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
   **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
-  (`opencode run` con el worktree como directorio de trabajo; `--dir` no existe en opencode v2) y delega el ciclo de cada feature a `feature-flow`.
+  (con `bash scripts/launch-feature-session.sh <feature-id>`, que fija el cwd del worktree) y delega el ciclo de cada feature a `feature-flow`.
   `github-flow` **nunca** hace merge.
 - Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
   sin él, la skill correspondiente selecciona la siguiente feature.

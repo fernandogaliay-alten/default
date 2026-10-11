@@ -15,8 +15,10 @@ pantalla/visual) debe tener sus **capturas de referencia** antes de implementars
   `docs/design/concepts/results-screen/resultados/`).
 - Si faltan, el agente **crea la subcarpeta** `docs/design/concepts/<feature-id>/` y un `README.md`
   dentro con la **lista exacta de pantallas** esperadas (y una línea de qué es cada una); después se
-  detiene, te las pide y la feature queda `blocked`. Tú solo dejas cada subcarpeta `<pantalla>/` con
-  sus tres ficheros.
+  detiene, te las pide y la feature queda `blocked`. En `github-flow`, además, `execute` deja la carpeta
+  de petición (con `README.md` + `stitch-prompt.md`) **dentro del worktree** de la feature, sin lanzar
+  sesión ni ensuciar la base. Tú dejas cada subcarpeta `<pantalla>/` con sus tres ficheros y reanudas
+  con `github-flow execute <feature-id>`.
 - La spec de la feature nombra esas pantallas en su sección "Visual Design Impact".
 - Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
 

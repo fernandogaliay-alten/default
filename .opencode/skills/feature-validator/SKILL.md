@@ -27,9 +27,9 @@ You are the validator/evaluator, not the planner and not the implementer.
 3. `feature_list.json`
 4. Selected feature spec: `../../../docs/specs/<feature-id>.md`
 5. Current git status and diff
-6. Durable docs if present:
-   - `../../../ARCHITECTURE.md`
-   - `../../../CONSTRAINTS.md`
+6. Durable docs if present (this repo: `docs/technical-discovery.md`, `docs/domain-model.md`, `DESIGN.md`; there is no `ARCHITECTURE.md`/`CONSTRAINTS.md`):
+   - `../../../docs/technical-discovery.md`
+   - `../../../docs/domain-model.md`
    - `../../../DESIGN.md` when the spec or implementation has UI or visual behavior
    - related docs under `docs/`
 7. Files changed by the implementation.
@@ -91,7 +91,7 @@ Use this hierarchy:
 
 1. static/syntax checks,
 2. tests and runtime/startup checks,
-3. persistent E2E checks such as `pnpm test:e2e` when available and relevant,
+3. persistent E2E checks when the repo has them (this repo does not; UI is verified by JVM logic/state plus the captures),
 4. user-flow or manual smoke checks when persistent E2E is not yet available or cannot cover the case.
 
 If the repo has a persistent E2E command and the feature changes user-visible behavior, authentication, authorization, routing, or API flows, verify that focused E2E coverage was added/updated or that the spec/implementation gives a credible reason it was not needed. Missing relevant E2E coverage is normally a `revise` finding once the E2E harness exists.
@@ -117,9 +117,9 @@ Validate the spec's `Durable Documentation Impact` section:
 
 - required docs were created/updated,
 - unnecessary docs were not created,
-- `../../../AGENTS.md` stayed short and router-like,
-- `../../../ARCHITECTURE.md` captures durable boundaries without becoming a file inventory,
-- `../../../CONSTRAINTS.md` uses operational MUST/MUST NOT rules rather than vague preferences,
+- `../../../AGENTS.md` stayed focused and non-duplicative (it is allowed to carry repo-wide policy),
+- `../../../docs/technical-discovery.md` captures durable boundaries (stack, storage, integrations) without becoming a file inventory,
+- durable MUST/MUST NOT rules live in `../../../AGENTS.md` or `docs/technical-discovery.md` rather than vague preferences,
 - docs do not contradict the implemented behavior.
 - UI or visual changes follow `../../../DESIGN.md` when the feature involves product screens, public verification pages, or generated design assets.
 - For UI features, the mandatory captures under `../../../docs/design/concepts/<feature-id>/` named by the spec exist and were treated as required input.
