@@ -27,7 +27,7 @@ Antes de escribir código:
 1. Confirma el directorio de trabajo.
 2. Lee `PROGRESS.md` para conocer el estado verificado y el siguiente paso.
 3. Lee `feature_list.json` y toma la primera feature lista sin terminar, en orden de lista.
-4. Ejecuta el camino de arranque (ver "Notas de entorno" para el comando exacto en Windows).
+4. Ejecuta el camino de arranque (ver "Notas de entorno" para el comando exacto).
 5. Si la verificación base falla, arréglala antes de empezar trabajo nuevo.
 
 ## Reglas de trabajo
@@ -99,7 +99,7 @@ aceptación.
 - Remoto: `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado).
 - Rama base: **`main`**; cada feature trabaja en `feature/<feature-id>`.
 - Worktree por feature, **fuera** del checkout base, en `../<carpeta-del-checkout>-worktrees`
-  (aquí `..\Default Project-worktrees`).
+  (aquí `../Default-Project-worktrees`), creado **desde WSL**.
 - Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
 - **Quién publica**: solo el orquestador de `github-flow`, una vez, al `accept` (reutilizando el PR si
   ya existe). `feature-flow` termina en el commit local de la rama; nunca hace push ni PR.
@@ -156,15 +156,9 @@ Una feature está hecha solo si se cumplen todas:
 
 ## Notas de entorno
 
-- Plataforma: **Windows**. `init.sh` es un script bash, no un ejecutable de PowerShell. Se invoca con
-  `bash init.sh` si `C:\Program Files\Git\bin` está en el PATH; si no, con la ruta completa:
-
-  ```powershell
-  & "C:\Program Files\Git\bin\bash.exe" init.sh
-  ```
-
-  En este equipo `Git\bin` se añadió al PATH de sistema, pero las sesiones abiertas antes del cambio
-  no lo ven.
+- Plataforma: **WSL2 (Ubuntu)**; el checkout vive en el sistema de ficheros de Windows
+  (`/mnt/c/Users/fernando.galiay/Documents/Default-Project`). `init.sh` es un script bash normal
+  (`bash init.sh` o `./init.sh`); ya no hace falta Git Bash ni PowerShell.
 - El proyecto Android **está bootstrapeado**: `init.sh` ejecuta la verificación real
   (`./gradlew test` y `./gradlew lint`) y **no** arranca procesos largos.
 - **Nunca ejecutes `./gradlew` directamente desde una sesión de agente**: usa `bash init.sh` (camino
@@ -175,27 +169,44 @@ Una feature está hecha solo si se cumplen todas:
   vuelca, así que es seguro en cualquier shell. Tampoco uses `./gradlew --stop`: es global y mata
   también los builds de otros worktrees que corren en paralelo (los daemons se apagan solos por
   inactividad).
-- `java` en el PATH es **JDK 11**, insuficiente para Android Gradle Plugin. El wrapper arranca con
-  `JAVA_HOME` (el JBR de Android Studio, **JDK 17**) y el daemon corre con un **JDK 21** que Gradle
-  aprovisiona solo, según `gradle/gradle-daemon-jvm.properties`. No asumas que el `java` del PATH
-  sirve para compilar.
-- El SDK de Android está en `%LOCALAPPDATA%\Android\Sdk` y se localiza vía `local.properties`
-  (`sdk.dir`), que está fuera de control de versiones. `ANDROID_HOME` está definido a nivel de
-  usuario como respaldo para los worktrees.
+- **Entorno de WSL**: `scripts/wsl-env.sh` —que sourcean `init.sh`, `scripts/gradle.sh` y
+  `scripts/new-worktree.sh`— publica `JAVA_HOME` (JDK 21 de Linux en `~/.local/opt/jdk-21`),
+  `ANDROID_HOME`/`ANDROID_SDK_ROOT` (SDK de Linux en `~/Android/Sdk`), `GRADLE_USER_HOME` en ext4
+  (`~/.gradle`) y el `PATH` de `gh`. Fuera de WSL no hace nada, así que los mismos scripts sirven en
+  ambos sistemas. No asumas que el `java` del PATH sirve para compilar: es el de Windows (JDK 11, vía
+  interop).
+- Si falta el JDK o el SDK, `bash scripts/wsl-bootstrap.sh` los instala (idempotente, **sin sudo**,
+  todo bajo `$HOME`). El daemon que exige `gradle/gradle-daemon-jvm.properties` es **JDK 21**, el mismo
+  del entorno, así que Gradle no aprovisiona otro.
+- El **SDK de Windows no sirve** para compilar en WSL: solo trae binarios `.exe` (`aapt2.exe`,
+  `adb.exe`, `zipalign.exe`) que Linux no puede ejecutar. Por eso hay un SDK de Linux. Android Studio
+  en Windows sigue valiendo para editar y sincronizar, pero la verificación canónica corre en WSL.
+- `local.properties` (fuera de control de versiones) lo regenera Android Studio con la ruta del SDK de
+  Windows; `wsl-env.sh` la reescribe a la del SDK de Linux al detectar una ruta de Windows, así que no
+  hay que mantenerlo a mano.
+- La **caché de Gradle** (dependencias, distribuciones, JDKs aprovisionados) vive en ext4
+  (`~/.gradle`): bajo `/mnt/c` (DrvFs) cada acceso cuesta órdenes de magnitud más. `wsl-env.sh` fuerza
+  `GRADLE_USER_HOME` a ext4 y desactiva el file-watching (`-Dorg.gradle.vfs.watch=false`), que no es
+  fiable en DrvFs.
 - **Worktrees (`github-flow`)**: crea el worktree de una feature con
-  `bash scripts/new-worktree.sh <feature-id>`. El script hace `git fetch origin main` antes de
-  ramificar (para no partir de un `origin/main` obsoleto), crea la rama `feature/<feature-id>` en
-  `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
+  `bash scripts/new-worktree.sh <feature-id>`, **desde WSL**. El script hace `git fetch origin main`
+  antes de ramificar (para no partir de un `origin/main` obsoleto), crea la rama `feature/<feature-id>`
+  en `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
   solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
-- **Rutas largas de Windows al borrar worktrees**: `core.longpaths` está activado a nivel de usuario
-  (`git config --global core.longpaths true`). `scripts/cleanup-worktree.sh` invoca
-  `git -c core.longpaths=true worktree remove` para poder borrar los directorios con rutas > MAX_PATH
-  (p. ej. `build/` y `.gradle/`); sin ello, `worktree remove` falla con `Filename too long` y deja
-  huérfano el directorio aunque quite el registro del worktree.
-- **Segfault de opencode (Bun) en Windows**: el CLI puede abortar **al cerrar** de forma intermitente.
-  No afecta al trabajo ya persistido; se tolera y la verificación se hace por artefactos
-  (git/`feature_list`/PR), no por el código de salida. Reanudar con `--continue` si muere a media
-  ejecución; escalar a WSL solo si se vuelve frecuente.
+- **Los worktrees se crean desde WSL, no desde Git Bash.** La metadata de git de un worktree guarda
+  rutas absolutas con el formato del sistema que lo creó: uno creado en Windows aparece `prunable` en
+  WSL (y `git status` dentro de él falla con `not a git repository`); uno creado en WSL deja de poder
+  abrirse desde Git Bash. Reparar uno roto: reescribir con rutas `/mnt/c/...` el `.git` del worktree
+  (`gitdir: ...`) y el back-link `.git/worktrees/<id>/gitdir` del checkout base.
+- **Herramientas nativas del harness (WSL)**: `opencode` ya se instala nativo (`~/.opencode/bin/opencode`,
+  binario Linux; el segfault intermitente al cerrar era de la build de Windows) y
+  `bash scripts/wsl-bootstrap.sh` instala `gh` nativo en `~/.local/bin/gh`, reutilizando la sesión de
+  gh de Windows (si no, `gh auth login`). `node`/`npm` del `PATH` siguen siendo los de Windows por
+  interop y **no** hacen falta para el harness.
+- La verificación se juzga por **artefactos** (git, `feature_list`/`PROGRESS`, PR, logs de Gradle), no
+  por el código de salida del CLI.
+- `scripts/cleanup-worktree.sh` mantiene `git -c core.longpaths=true` solo por compatibilidad con el
+  camino heredado de Windows (rutas > MAX_PATH al borrar `build/`/`.gradle/`); en WSL es inocuo.
 - Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
-  entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.
+  entornos: `git add --chmod=+x init.sh scripts/*.sh`.
