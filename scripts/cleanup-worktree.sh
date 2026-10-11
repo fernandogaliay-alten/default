@@ -28,18 +28,25 @@ for a in "$@"; do
   esac
 done
 
-feature_id="${args[0]:-}"
-if [ -z "$feature_id" ]; then
-  echo "uso: $0 <feature-id> [base-branch] [--dry-run]" >&2
+target="${args[0]:-}"
+if [ -z "$target" ]; then
+  echo "uso: $0 <feature-id | prefijo/id> [base-branch] [--dry-run]" >&2
   exit 2
 fi
 base_branch="${args[1]:-${BASE_BRANCH:-main}}"
 
-repo_root="$(git rev-parse --show-toplevel)"
+# Raiz del checkout base, robusta aunque se ejecute desde un worktree (git common dir).
+repo_root="$(cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" && pwd)"
 base_dirname="$(basename "$repo_root")"
 worktrees_root="${WORKTREES_ROOT:-$(dirname "$repo_root")/${base_dirname}-worktrees}"
-worktree_path="${worktrees_root}/${feature_id}"
-branch="feature/${feature_id}"
+
+case "$target" in
+  */*) prefix="${target%%/*}"; id="${target#*/}" ;;
+  *)   prefix="feature"; id="$target" ;;
+esac
+branch="${prefix}/${id}"
+if [ "$prefix" = "feature" ]; then dir_name="$id"; else dir_name="${prefix}-${id}"; fi
+worktree_path="${worktrees_root}/${dir_name}"
 
 # La rama base debe estar al dia para comprobar la integracion.
 if git remote get-url origin >/dev/null 2>&1; then
@@ -53,7 +60,7 @@ fi
 
 # Idempotente: sin worktree ni rama no hay nada que hacer.
 if [ ! -d "$worktree_path" ] && ! git -C "$repo_root" show-ref --verify --quiet "refs/heads/${branch}"; then
-  echo "nada que limpiar: ${feature_id} no tiene worktree ni rama"
+  echo "nada que limpiar: ${branch} no tiene worktree ni rama"
   exit 0
 fi
 
@@ -69,7 +76,7 @@ fi
 
 # Guarda 2: la rama debe estar totalmente contenida en la base (mergeada).
 if ! git -C "$repo_root" merge-base --is-ancestor "$branch" "$base_ref" 2>/dev/null; then
-  echo "SALTADO: feature/${feature_id} no esta mergeada en ${base_ref}" >&2
+  echo "SALTADO: ${branch} no esta mergeada en ${base_ref}" >&2
   exit 1
 fi
 
@@ -96,4 +103,4 @@ if git -C "$repo_root" show-ref --verify --quiet "refs/heads/${branch}"; then
   echo "rama eliminada: ${branch}"
 fi
 
-echo "limpio: ${feature_id}"
+echo "limpio: ${branch}"
