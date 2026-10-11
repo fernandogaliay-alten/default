@@ -109,9 +109,11 @@ class RoomActivitySummaryRepositoryTest {
 
     private suspend fun esperarHastaQue(condicion: () -> Boolean) {
         withContext(Dispatchers.Default) {
-            withTimeout(5_000) {
+            // Margen amplio a proposito: las emisiones del Flow de Room corren en su propio executor y
+            // pueden retrasarse cuando hay builds de Gradle en paralelo; el flake historico fue un timeout de 5 s.
+            withTimeout(30_000) {
                 while (!condicion()) {
-                    delay(20)
+                    delay(10)
                 }
             }
         }
