@@ -95,6 +95,11 @@ determinista y sin red).
 - **No se persiste un caché consulta→resultado.** La búsqueda es una acción explícita del usuario, así
   que se acepta su latencia; solo se memoiza en memoria durante la sesión. Las recetas devueltas sí
   entran en la caché normal de recetas `ai`.
+- **Implementación (MVP)**: la orquestación (`searchByText` → Validador) vive en
+  `com.sazon.app.domain.search.AiSearchService`, con el memo de sesión en `SearchMemo` (en memoria, no
+  persistido: se pierde al cerrar la app; un fallo no se memoiza). El estado de la página (resultados /
+  bloqueado por Perfil / sin resultados / fallo) se decide en
+  `com.sazon.app.ui.search.AiSearchOutcome` por el motivo del descarte del Validador.
 
 ### Validador de recetas (RecipeValidator)
 Comprueba el esquema, los `*Id` contra la Taxonomía, el Patrón de dieta y las Restricciones duras.

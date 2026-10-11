@@ -14,7 +14,7 @@ enum class MainTab(val label: String) {
 }
 
 /** Paginas empujadas por encima de las pestanas (crecera con `RESULTS`/`DETAIL` en sus features). */
-enum class PushedScreen { GENERATOR }
+enum class PushedScreen { GENERATOR, SEARCH }
 
 /**
  * Estado de navegacion del armazon principal: pestana activa y pagina empujada opcional.

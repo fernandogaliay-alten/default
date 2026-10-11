@@ -37,6 +37,7 @@ import com.sazon.app.ui.filters.LocalResultFilter
 import com.sazon.app.ui.filters.LocalResultFilters
 import com.sazon.app.ui.filters.ResultFilterRow
 import com.sazon.app.ui.onboarding.AvatarPreview
+import com.sazon.app.ui.search.AiSearchBar
 import com.sazon.app.ui.theme.SazonInversePrimary
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonPrimary
@@ -45,10 +46,11 @@ import com.sazon.app.ui.theme.SazonSpacing
 import java.util.Calendar
 
 /**
- * Home real de Sazon: los cuatro bloques **locales** de `DESIGN.md` (el bloque 2, Búsqueda con IA, es
- * de `ai-search`).
+ * Home real de Sazon: los cinco bloques de `DESIGN.md` (el bloque 2, Búsqueda con IA, necesita red;
+ * los otros cuatro son locales).
  *
  * 1. Cabecera con saludo por franja horaria y avatar de iniciales.
+ * 2. Barra de Búsqueda con IA ([AiSearchBar]), deshabilitada y atenuada sin conexión.
  * 3. Tarjeta-heroe que abre el Generador.
  * 4. Carrusel "Sugeridas para ti" sobre las recetas resueltas (Lote o respaldo a semilla).
  * 5. Bloque "Tus recetas" con su estado vacio de usuario nuevo.
@@ -62,6 +64,10 @@ fun HomeScreen(
     taxonomy: Taxonomy,
     suggestions: List<Recipe>,
     recipes: HomeRecipes,
+    isOnline: Boolean,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
     onOpenGenerator: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +87,14 @@ fun HomeScreen(
             HomeHeader(
                 greeting = HomeGreeting.text(profile.displayName, hour),
                 identity = identity,
+            )
+        }
+        item {
+            AiSearchBar(
+                query = searchQuery,
+                isOnline = isOnline,
+                onQueryChange = onSearchQueryChange,
+                onSubmit = onSearch,
             )
         }
         item { HeroCard(onOpenGenerator = onOpenGenerator) }
