@@ -80,12 +80,11 @@ If `init.sh` exists after a runnable baseline has been created, treat it as the 
 
 #### Gradle daemon hygiene
 
-`init.sh` already stops the Gradle daemons at exit. When you run `./gradlew` **directly** for verification (e.g. `--rerun-tasks`), stop the daemon in the same shell command so the command's process tree empties; otherwise a long-lived Gradle daemon can leave the shell tool hanging. Wrap each direct invocation like this:
+When you need to run Gradle **directly** for verification (e.g. `--rerun-tasks`), use the wrapper `bash scripts/gradle.sh <tasks>`: it sends the build output to a file, so no surviving Gradle/Kotlin daemon inherits the shell's stdout (which can leave the shell tool hanging forever, even after `BUILD SUCCESSFUL`). Do not call `./gradlew --stop`: it is global and kills the builds of other worktrees running in parallel.
 
 ```bash
-trap './gradlew --stop >/dev/null 2>&1 || true' EXIT
-timeout "${SAZON_BUILD_TIMEOUT:-1800}" ./gradlew testDebugUnitTest --rerun-tasks
-timeout "${SAZON_BUILD_TIMEOUT:-1800}" ./gradlew lint --rerun-tasks
+timeout "${SAZON_BUILD_TIMEOUT:-1800}" bash scripts/gradle.sh testDebugUnitTest --rerun-tasks
+timeout "${SAZON_BUILD_TIMEOUT:-1800}" bash scripts/gradle.sh lint --rerun-tasks
 ```
 
 Use this hierarchy:

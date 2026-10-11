@@ -5,7 +5,8 @@
 - Raíz del repositorio: `C:\Users\fernando.galiay\Documents\Default Project`
 - Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
   si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
-- Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh`
+- Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
+  enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
@@ -2153,3 +2154,45 @@
 - Siguiente paso: sin cambios en el plan del MVP; `activity-summary` sigue siendo la siguiente candidata
   (`planner`/`feature-spec`) y, si le faltaran capturas, ahora se provisionará su worktree en vez de
   bloquear en la base.
+
+### Sesión 056
+
+- Fecha: 2026-10-11
+- Objetivo: eliminar el cuelgue de las sesiones de agente al ejecutar Gradle (incidencia real: la
+  sesión hija de `activity-summary` quedó congelada con su último comando de Gradle ya terminado).
+- Diagnóstico: el subagente `implementer` lanzó `./gradlew testDebugUnitTest …` **a mano** (sin pasar
+  por `init.sh`). El build imprimió `BUILD SUCCESSFUL` a las 19:45, pero el daemon de Kotlin (hijo del
+  daemon de Gradle) heredó el stdout del comando y sobrevivió al build: el pipe nunca llegó a EOF, la
+  herramienta `bash` de opencode quedó en estado `running` durante ~26 min y el proceso `opencode run`
+  dejó de escribir log (19:44:29). Se desbloqueó matando el proceso hijo; el worktree conserva el WIP.
+- Completado:
+  - `scripts/gradle.sh` (nuevo, ejecutable): ejecuta `./gradlew "$@"` con la salida redirigida a un
+    fichero y la vuelca al terminar, devolviendo el código de salida de Gradle. Los daemons heredan el
+    fichero, no el pipe del llamante, así que no pueden colgar la shell. **No** llama a `--stop`.
+  - `init.sh`: usa el wrapper para `test` y `lint` y elimina su `trap './gradlew --stop' EXIT`.
+  - `AGENTS.md`: regla en "Notas de entorno" (nunca `./gradlew` directo; wrapper para comprobaciones
+    puntuales; nunca `--stop`).
+  - `.opencode/skills/feature-implementer/SKILL.md` (Self-Verify) y `.opencode/skills/feature-validator/SKILL.md`
+    (Gradle daemon hygiene): usan el wrapper en vez de la receta `trap … --stop`.
+- Hallazgo extra: `./gradlew --stop` es **global** y mata también los builds de otros worktrees. Se
+  verificó en directo: el gate de esta chore falló con `Gradle build daemon has been stopped: stop
+  command received` porque el `init.sh` (con el trap) de la otra feature corrió a la vez. Por eso se
+  elimina el trap: el redirigido a fichero ya evita el cuelgue y los worktrees paralelos dejan de
+  matarse entre sí.
+- Verificación ejecutada:
+  1. `bash init.sh` en el worktree de `chore/gradle-daemon-hang`: `./gradlew test` → `BUILD
+     SUCCESSFUL`, `./gradlew lint` → `BUILD SUCCESSFUL`, exit 0, **con otro build corriendo en
+     paralelo** (ya no se interrumpen).
+  2. Prueba decisiva del wrapper sin redirección externa: `bash scripts/gradle.sh compileDebugKotlin
+     --rerun-tasks` → exit 0 y la herramienta devolvió, con el daemon de Kotlin **vivo** (1 GB)
+     sujetando solo el fichero de log. Es el caso que antes colgaba la sesión.
+- Evidencia capturada: logs de las dos ejecuciones anteriores; `git diff` de los seis ficheros.
+- Ficheros actualizados: `scripts/gradle.sh` (nuevo), `init.sh`, `AGENTS.md`,
+  `.opencode/skills/feature-implementer/SKILL.md`, `.opencode/skills/feature-validator/SKILL.md` y este
+  registro. No se toca `feature_list.json`, el código de la app ni el build (WIP = 0).
+- Riesgo o incógnita abierta: los daemons de Gradle ya no se paran al terminar (se apagan solos por
+  inactividad, ~3 h); si se acumulan, limpiarlos a mano con `./gradlew --stop` **sin builds en vuelo**.
+  Las ramas de features abiertas conservan el `init.sh` con el trap hasta que se mergeen.
+- Siguiente paso: sin cambios en el plan del MVP. `activity-summary` sigue en curso con la sesión
+  relanzada; su WIP rompía 4 tests de `SuggestionBatchServiceTest` (`./gradlew test` fallaba) y esa
+  sesión debe corregirlos antes de que el validador pueda aceptar.

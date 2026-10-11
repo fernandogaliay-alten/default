@@ -4,25 +4,33 @@ set -euo pipefail
 # Limite por build; configurable con SAZON_BUILD_TIMEOUT (segundos).
 BUILD_TIMEOUT="${SAZON_BUILD_TIMEOUT:-1800}"
 
-# No dejar daemons de Gradle vivos al salir. La herramienta de shell de opencode
-# espera a que termine el arbol de procesos del comando; un daemon sobreviviente
-# (spawned por el build, detached por diseno) puede dejarla colgada para siempre.
-# Se ejecuta en cualquier salida: exito, fallo o timeout.
-trap './gradlew --stop >/dev/null 2>&1 || true' EXIT
+# La salida de Gradle va a un fichero (ver scripts/gradle.sh): los daemons heredan ese
+# fichero y no el stdout de esta shell, que es lo que deja colgada a la herramienta de
+# shell de opencode cuando un daemon sobrevive al build. Por eso ya no se llama a
+# `./gradlew --stop` al salir: es global y mataria los builds de otros worktrees que
+# corren en paralelo.
+run_gradle() {
+  local status=0
+  timeout "$BUILD_TIMEOUT" bash scripts/gradle.sh "$@" || status=$?
+  if [ "$status" -ne 0 ]; then
+    echo
+    echo "Gradle termino con codigo $status."
+    exit "$status"
+  fi
+  echo
+}
 
 echo "Repositorio: $(pwd)"
 echo
 
 echo "== Tests de dominio (JVM) =="
-timeout "$BUILD_TIMEOUT" ./gradlew test
+run_gradle test
 
-echo
 echo "== Lint =="
-timeout "$BUILD_TIMEOUT" ./gradlew lint
+run_gradle lint
 
-echo
 echo "Verificacion completada correctamente."
 echo
 echo "Comandos manuales (no se ejecutan solos):"
-echo "  ./gradlew assembleDebug           # genera el APK de depuracion"
-echo "  ./gradlew installDebug            # instala en un emulador o dispositivo conectado"
+echo "  bash scripts/gradle.sh assembleDebug     # genera el APK de depuracion"
+echo "  bash scripts/gradle.sh installDebug      # instala en un emulador o dispositivo conectado"

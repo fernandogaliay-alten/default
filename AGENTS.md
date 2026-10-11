@@ -167,6 +167,14 @@ Una feature está hecha solo si se cumplen todas:
   no lo ven.
 - El proyecto Android **está bootstrapeado**: `init.sh` ejecuta la verificación real
   (`./gradlew test` y `./gradlew lint`) y **no** arranca procesos largos.
+- **Nunca ejecutes `./gradlew` directamente desde una sesión de agente**: usa `bash init.sh` (camino
+  estándar) o el wrapper `bash scripts/gradle.sh <tareas>` para comprobaciones puntuales. Gradle
+  arranca daemons (de Gradle y, sobre todo, de Kotlin al compilar) que heredan el stdout del comando;
+  si alguno sobrevive, la herramienta de shell espera para siempre y la sesión queda colgada aunque el
+  build ya haya impreso `BUILD SUCCESSFUL`. El wrapper manda la salida a un fichero y solo después la
+  vuelca, así que es seguro en cualquier shell. Tampoco uses `./gradlew --stop`: es global y mata
+  también los builds de otros worktrees que corren en paralelo (los daemons se apagan solos por
+  inactividad).
 - `java` en el PATH es **JDK 11**, insuficiente para Android Gradle Plugin. El wrapper arranca con
   `JAVA_HOME` (el JBR de Android Studio, **JDK 17**) y el daemon corre con un **JDK 21** que Gradle
   aprovisiona solo, según `gradle/gradle-daemon-jvm.properties`. No asumas que el `java` del PATH
