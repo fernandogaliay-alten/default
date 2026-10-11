@@ -41,6 +41,7 @@ El prompt largo (`docs/design/stitch-prompt.md`) se trunca en Stitch y no genera
 | `18-perfil.md` | Perfil | `profile-screen/perfil/` |
 | `19-perfil-editar.md` | Perfil · edición de identidad | `profile-screen/perfil-editar/` |
 | `20-perfil-sugerencias.md` | Perfil · sección Sugerencias | `manual-suggestions-refresh/perfil-sugerencias/` |
+| `21-perfil-resumen.md` | Perfil · sección Resumen | `activity-summary/perfil-resumen/` |
 
 Reglas: dirección visual, no pixel-perfect; manda `DESIGN.md` ante contradicción. Los iconos/imágenes de
 Stitch son placeholders (en la app se resuelven con Material Symbols y degradados propios).

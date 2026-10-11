@@ -31,7 +31,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Recetas semilla | **JSON fuente versionado** en `app/src/main/assets/seed-recipes.json`, cargado por la app y validado por test (decisión: riesgos, antes pregunta 7) | Contenido empaquetado, siempre disponible offline, editable sin recompilar |
 | Perfil de usuario (identidad) | Room (1 fila, compartida con preferencias) | Nombre y color de avatar |
 | Perfil de preferencias | Room (1 fila); el flag de onboarding en DataStore queda **diferido** (la puerta usa la presencia de Perfil, ver más abajo) | Estado mutable del usuario; fuente de la firma |
-| Resumen de actividad | Contador `recipesGeneratedCount` en Room + COUNT de Favoritos | El contador se persiste; el conteo de favoritos se deriva |
+| Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | Assets locales (`assets/icons/**`, `assets/img/recipes/**`) | Determinista, offline, sin coste |
@@ -271,9 +271,30 @@ antiguedad (`SuggestionsRefreshFormat`, puro, sin Compose/Android) deriva "hoy"/
 `SuggestionBatch.generatedAt`; `MainShell` pasa `batch?.generatedAt`, un estado de UI "en vuelo" (que
 deshabilita el boton y evita dobles disparos) y un callback que llama a
 `SuggestionBatchService.ensureBatch(profile.preferences, force = true)` **sin** tocar
-`ProfileRepository` (el refresco no cambia ninguna preferencia). Resumen de actividad, los ajustes y
-"Borrar mis datos" quedan fuera de alcance (features propias).
+`ProfileRepository` (el refresco no cambia ninguna preferencia). Los ajustes y "Borrar mis datos"
+quedan fuera de alcance (features propias).
 Ver `docs/specs/profile-screen.md` y `docs/specs/manual-suggestions-refresh.md`.
+
+El **Resumen de actividad** del Perfil vive en `com.sazon.app.domain.activity`
+(`ActivitySummaryRepository` como puerto y `ActivitySummaryService`, logica pura sin Android) y en
+`com.sazon.app.data.activity` su persistencia Room sobre una base **propia**
+(`activity_summary.db`, version 1, una sola fila `activity_summary` con `recipesGeneratedCount`).
+El servicio expone `observeRecipesGeneratedCount`/`recipesGeneratedCount` y la **unica** regla
+"solo `ai`, solo suma": `recordAcceptedRecipes(recipes)` cuenta `recipes.count { source == AI }`, no
+escribe si el delta es `0` y devuelve el valor persistido; como se cuenta cada receta `ai` aceptada
+por el `RecipeValidator` (no recetas distintas), el contador **nunca baja** aunque el Lote reemplace
+sus `ai` al refrescarse (la fila ausente se lee/emite como `0` y el incremento es atomico
+`INSERT OR IGNORE` + `UPDATE ... + delta` en un `@Transaction`). El reporte es una costura **aditiva**
+con default no-op (`onRecipesGenerated: suspend (List<Recipe>) -> Unit = {}`) colocada **antes** del
+reloj inyectable en `SuggestionBatchService` (para no tragarse la lambda de cola `{ now }` de los
+llamadores existentes): se invoca solo en la rama de generacion, tras validar, y la rama `UseCached`
+**no** lo dispara; `GenerationService` recibe el mismo callback tras validar y `MainActivity` cablea
+ambos a `ActivitySummaryService.recordAcceptedRecipes`. El numero de **favoritas** no se persiste:
+`MainShell` lo **deriva** de la lista observada (`favorites.size`). La seccion "Resumen"
+(`ActivitySummarySection`, dos tarjetas de igual ancho con cifras tabulares `"tnum"` y tokens del
+tema, sin iconos) se pinta **entre la cabecera de identidad y "Sugerencias"**. Testeado en JVM
+(`ActivitySummaryServiceTest` y `SuggestionBatchActivityRecordingTest`) y con Robolectric
+(`RoomActivitySummaryRepositoryTest`). Ver `docs/specs/activity-summary.md`.
 
 El Constructor de prompt vive en `com.sazon.app.domain.prompt.PromptBuilder.build(taxonomy, request)`:
 traduce el Perfil de preferencias y los ajustes opcionales a un `BuiltPrompt(system, user)` que exige

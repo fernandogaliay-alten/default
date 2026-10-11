@@ -14,17 +14,19 @@
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
   `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen`,
-  `recipe-detail-screen` y `favorites` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  `recipe-detail-screen`, `favorites` y `activity-summary` (validador independiente, veredicto `accept`). El onboarding queda **completo**
   (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP
   (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados
   real (fórmula de `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña
   Perfil es real (identidad + preferencias editables reutilizando los editores del onboarding) y permite
-  forzar el refresco del Lote; el Detalle de receta ya muestra ingredientes con cantidades, ajusta las
+  forzar el refresco del Lote, además del nuevo Resumen de actividad (recetas generadas persistidas +
+  favoritas derivadas); el Detalle de receta ya muestra ingredientes con cantidades, ajusta las
   raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional; la
   pestaña Favoritos es real (guardar/quitar, persistencia local de una copia de la Receta y consulta sin
   conexión, con estados poblado/vacío).
-- Siguiente feature en orden de lista: `favorites` quedó `accepted`, de modo que `activity-summary`
-  (depende de `profile-screen` y `favorites`) es la siguiente candidata.
+- Siguiente feature en orden de lista: `activity-summary` quedó `accepted` en la sesión 058 (validación
+  independiente), de modo que `ai-search` (depende de `generation-flow-with-validation`, `accepted`)
+  es la siguiente candidata.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen` y `favorites` ya aportan sus capturas
@@ -42,14 +44,14 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna. WIP = 0.
+- Feature en curso: ninguna; `activity-summary` quedó `accepted` (validación independiente en la sesión
+  058, en la rama `feature/activity-summary`). WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-10, `favorites`, validador independiente): veredicto `accept`.
-  `init.sh` con Git Bash exit 0; `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas) y
-  `./gradlew lint --rerun-tasks` (28/28 tareas); **301 tests/0 fallos/errores/saltados** en 46 suites
-  (277 preexistentes + 24 nuevos de
-  `FavoriteServiceTest`/`FavoritesListTest`/`RoomFavoriteRepositoryTest`); lint 0 errores y 13 warnings
-  preexistentes (0 en ficheros de la feature).
+- Última verificación (2026-10-11, `activity-summary`, validator): veredicto **`accept`** independiente
+  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`) y
+  `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas), con parseo propio de los XML
+  (**316 tests/0 fallos/errores/saltados** en 49 suites) y del informe de lint (0 errores, 13 warnings
+  preexistentes, 0 en ficheros de la feature).
 
 ## Registro de sesiones
 
@@ -2196,3 +2198,88 @@
 - Siguiente paso: sin cambios en el plan del MVP. `activity-summary` sigue en curso con la sesión
   relanzada; su WIP rompía 4 tests de `SuggestionBatchServiceTest` (`./gradlew test` fallaba) y esa
   sesión debe corregirlos antes de que el validador pueda aceptar.
+
+### Sesión 057
+
+- Fecha: 2026-10-11
+- Objetivo: retomar y cerrar `activity-summary` (Resumen de actividad en el Perfil) sobre el WIP que
+  dejó la sesión interrumpida por el cuelgue de Gradle (sesión 056), corregir los 4 tests rotos y
+  dejar el repositorio listo para validación independiente.
+- Completado:
+  - **Corregido el WIP roto**: el orden de los parámetros de `SuggestionBatchService` dejaba
+    `onRecipesGenerated` **después** del reloj, de modo que el trailing lambda `{ now }` de los tests
+    existentes se ligaba al callback en vez de al reloj (4 fallos en `SuggestionBatchServiceTest`). Se
+    movió el callback **antes** de `now: () -> Long` (el reloj sigue siendo el último parámetro), así la
+    costura es de verdad aditiva y los tests existentes quedan intactos.
+  - Reutilizado el resto del WIP en disco: `domain.activity` (puerto + `ActivitySummaryService`),
+    `data.activity` (base propia `activity_summary.db` v1, una fila, `increment` atómico), el callback
+    `onRecipesGenerated` en `SuggestionBatchService`/`GenerationService` (default no-op; la rama
+    `UseCached` no lo invoca), `ActivitySummarySection`, y el cableado `ProfileScreen`/`MainShell`/
+    `SazonApp`/`MainActivity` (`favoritesCount = favorites.size`).
+  - Documentación durable: registrado `domain.activity`/`data.activity`, el callback y la sección
+    "Resumen" en `docs/technical-discovery.md` (y corregida la fila de la tabla: las favoritas se
+    derivan de la lista observada, no de un `COUNT`).
+  - Hallazgo de documentación: `DESIGN.md` no tenía registrada la captura `activity-summary:
+    perfil-resumen`; se añadió la línea a "Capturas aceptadas" (el resto de `DESIGN.md` no cambia) y se
+    anotó el hallazgo en `docs/specs/activity-summary.md`.
+- Verificación ejecutada:
+  1. `bash scripts/gradle.sh testDebugUnitTest --tests "…SuggestionBatchServiceTest"` → `BUILD
+     SUCCESSFUL` (reprodujo y confirmó el arreglo del WIP roto).
+  2. `bash init.sh` con Git Bash → `./gradlew test` y `./gradlew lint`, ambos `BUILD SUCCESSFUL`,
+     exit 0, sin procesos largos. Parseo propio de los XML de resultados y del informe de lint.
+- Evidencia capturada: 49 suites, **316 tests/0 fallos/errores/saltados** (301 preexistentes + 15
+  nuevos: `ActivitySummaryServiceTest` 6, `RoomActivitySummaryRepositoryTest` 5,
+  `SuggestionBatchActivityRecordingTest` 4); lint 0 errores y 13 warnings preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 en
+  ficheros de la feature; `domain.activity` sin imports `android.*`/`androidx.*`;
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `data.favorites/**`, `data.profile/**` y
+  `data.suggestions/**` sin cambios; sin dependencias nuevas.
+- Ficheros creados (WIP reutilizado): los siete de `domain.activity`/`data.activity`/
+  `ActivitySummarySection` y los tres tests nuevos (`ActivitySummaryServiceTest`,
+  `RoomActivitySummaryRepositoryTest`, `SuggestionBatchActivityRecordingTest`), más el corte de diseño
+  `docs/design/stitch/21-perfil-resumen.md` y la captura
+  `docs/design/concepts/activity-summary/perfil-resumen/`. Modificados: `SuggestionBatchService.kt`,
+  `GenerationService.kt`, `ProfileScreen.kt`, `MainShell.kt`, `SazonApp.kt`, `MainActivity.kt`,
+  `docs/technical-discovery.md`, `DESIGN.md`, `docs/design/stitch/README.md`,
+  `docs/specs/activity-summary.md`, `feature_list.json` y este registro.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda para la persona la verificación manual de emulador
+  (favoritas = recetas guardadas; el contador sube al generar y no baja al refrescar ni al reabrir) y el
+  acabado visual contra la captura, conforme a AGENTS.md (no se automatiza UI de emulador). La costura
+  documentada: cuando se implemente `ai-search`, deberá reportar sus recetas `ai` aceptadas por el mismo
+  `onRecipesGenerated`/`ActivitySummaryService.recordAcceptedRecipes` (follow-up, no en esta feature).
+- Siguiente paso: validación independiente de `activity-summary` con `feature-validator`.
+
+### Sesión 058
+
+- Fecha: 2026-10-11
+- Objetivo: validar `activity-summary` de forma independiente y persistir la aceptación.
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la aceptación independiente. Sin cambios de código tras la
+  validación (solo estado/evidencia y este registro). Commit local en la rama `feature/activity-summary`
+  (la publicación push + PR la hace `github-flow`, no esta sesión).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` con Git Bash (exit 0, `./gradlew test` +
+  `./gradlew lint` vía `scripts/gradle.sh`, sin procesos largos), `./gradlew testDebugUnitTest
+  --rerun-tasks` (32/32 tareas) y `./gradlew lint --rerun-tasks`, y parseó por su cuenta los XML de
+  resultados y el informe de lint; inspeccionó pureza de dominio, tokens/UI, alcance/build y capturas.
+- Evidencia capturada: **49 suites, 316 tests, 0 fallos/errores/saltados** (`ActivitySummaryServiceTest`
+  6, `RoomActivitySummaryRepositoryTest` 5, `SuggestionBatchActivityRecordingTest` 4; regresión
+  `SuggestionBatchServiceTest` 9/9 y `GenerationServiceTest` 6/6); lint 0 errores y 13 warnings
+  preexistentes (0 en ficheros de la feature); `domain.activity` sin imports `android.*`/`androidx.*`;
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `data.favorites/**`, `data.profile/**` y
+  `data.suggestions/**` sin cambios; capturas `docs/design/concepts/activity-summary/perfil-resumen/`
+  presentes (`screen.png`, `code.html`, `DESIGN.md`) y registradas en `DESIGN.md`; escenarios 3, 4, 6 y 7
+  cubiertos por tests JVM y la regla "solo `source == ai`, solo suma" confirmada en
+  `ActivitySummaryService.recordAcceptedRecipes` (reforzada en `RoomActivitySummaryRepository`).
+- Hallazgos del validador (3 Low/informativos, ninguno bloqueante): `onRecipesGenerated` se invoca tras
+  `repository.save(batch)` en `SuggestionBatchService` (si la escritura del contador lanzara,
+  `ensureBatch` propagaría el error con el Lote ya guardado; robustez menor); checklists de la spec sin
+  marcar (patrón heredado del repo); nota de harness del worktree (`.git` referencia ruta WSL y `git`
+  desnudo falló de forma intermitente desde Git Bash, resuelto con `GIT_DIR`/`GIT_WORK_TREE`).
+- Riesgo o incógnita abierta: ninguno nuevo. Queda para la persona la verificación manual de emulador
+  (favoritas = recetas guardadas; el contador sube al generar y no baja al refrescar ni al reabrir) y el
+  acabado visual contra la captura, conforme a AGENTS.md (no se automatiza UI de emulador). La costura
+  documentada: cuando se implemente `ai-search`, deberá reportar sus recetas `ai` aceptadas por el mismo
+  `onRecipesGenerated`/`ActivitySummaryService.recordAcceptedRecipes` (follow-up).
+- Siguiente paso: commit local de la rama `feature/activity-summary` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, especificar `ai-search` con
+  `feature-spec`.

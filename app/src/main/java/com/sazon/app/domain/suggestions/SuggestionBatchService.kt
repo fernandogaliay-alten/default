@@ -31,6 +31,17 @@ class SuggestionBatchService(
     private val repository: SuggestionBatchRepository,
     private val taxonomy: Taxonomy,
     private val seedRecipes: List<Recipe>,
+    /**
+     * Costura aditiva para reportar las recetas `ai` **aceptadas** de una generacion (Resumen de
+     * actividad). Por defecto es un no-op: no rompe constructores ni tests existentes y mantiene este
+     * paquete puro. La rama `UseCached` **no** la invoca (no se vuelve a contar el mismo Lote).
+     *
+     * Va **antes** del reloj inyectable a proposito: los llamadores existentes pasan el reloj como
+     * lambda de cola (`SuggestionBatchService(...) { now }`), y anadir el callback al final lo
+     * capturaria, rompiendo el contrato del reloj (el no-op "se traga" esa lambda). Manteniendo
+     * `now` como ultimo parametro, la costura es de verdad aditiva.
+     */
+    private val onRecipesGenerated: suspend (List<Recipe>) -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
 ) {
 
@@ -63,6 +74,7 @@ class SuggestionBatchService(
             null
         }
 
+        val acceptedAi = mutableListOf<Recipe>()
         val recipes = if (generated == null) {
             deduplicateByTitle(seedRecipes)
         } else {
@@ -71,7 +83,11 @@ class SuggestionBatchService(
                     recipe
                 } else {
                     when (val result = RecipeValidator.validateRecipe(recipe, taxonomy, constraints)) {
-                        is RecipeValidation.Accepted -> result.recipe
+                        is RecipeValidation.Accepted -> {
+                            acceptedAi += result.recipe
+                            result.recipe
+                        }
+
                         is RecipeValidation.Discarded -> null
                     }
                 }
@@ -81,6 +97,10 @@ class SuggestionBatchService(
 
         val batch = SuggestionBatch(signature, timestamp, recipes)
         repository.save(batch)
+        // Reporta las recetas ai aceptadas por el validador (antes de deduplicar: se cuenta cada
+        // evento de generacion, no recetas distintas). Si el generador fallo, la lista va vacia y el
+        // servicio de actividad no escribe.
+        onRecipesGenerated(acceptedAi)
         return batch
     }
 
