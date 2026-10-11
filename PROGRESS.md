@@ -2472,3 +2472,36 @@
 - Siguiente paso: `feature_list.json` queda en `accepted` y el orquestador de `feature-flow` crea el
   **commit local** de la rama `feature/ai-search` (nunca push ni PR: la publicación es del orquestador
   de `github-flow`). Después, la siguiente candidata es `real-ai-provider`.
+
+### Sesión 062
+
+- Fecha: 2026-10-12
+- Objetivo: chore de mantenimiento del harness y de tests, tras analizar por qué `ai-search` tardó más de
+  lo esperado. Dos frentes: (a) el CLI `opencode` v2 ya no soporta `--dir`; (b) los tests de `observe()`
+  de los repositorios Room usaban un margen de 5 s que a veces se agota con builds de Gradle en paralelo.
+- Completado:
+  - `.opencode/skills/github-flow/SKILL.md`, `.opencode/skills/github-flow/references/evals.md` y
+    `AGENTS.md`: el arranque de la sesión de una feature pasa a ser `opencode run` **con el worktree como
+    directorio de trabajo** (`cd`/cwd), porque `opencode` v2 no tiene `--dir`; nota de
+    `NODE_OPTIONS=--dns-result-order=ipv4first` ante DNS IPv6 y de `-m <provider/model>` solo si hace
+    falta override.
+  - `.opencode/skills/feature-implementer/SKILL.md` (Self-Verify): preferir tiradas enfocadas y un único
+    `bash init.sh` final (cada gate completo cuesta ~1.5–2.5 min).
+  - Estabilizados los cuatro tests Room de `observe()` (`RoomActivitySummaryRepositoryTest`,
+    `RoomFavoriteRepositoryTest`, `RoomProfileRepositoryTest`, `RoomSuggestionBatchRepositoryTest`): el
+    margen de espera de las emisiones del Flow de Room pasa de 5 s a 30 s (con comentario), sin cambiar el
+    comportamiento verificado.
+- Verificación ejecutada: `bash init.sh` en el worktree → exit 0 (`./gradlew test` BUILD SUCCESSFUL en
+  1m52s; `./gradlew lint` BUILD SUCCESSFUL en 1m41s, 0 errores), y una tirada enfocada
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` de las cuatro clases (28 tests, 0 fallos).
+- Evidencia capturada: salida de los comandos anteriores; `git diff --stat` (4 ficheros de test, +16/-8;
+  4 ficheros de docs/skills).
+- Ficheros actualizados: `.opencode/skills/github-flow/SKILL.md`,
+  `.opencode/skills/github-flow/references/evals.md`, `.opencode/skills/feature-implementer/SKILL.md`,
+  `AGENTS.md`, los cuatro `Room*RepositoryTest.kt` y este registro. No se toca `feature_list.json` ni el
+  código de la app (WIP = 0 en esta rama).
+- Riesgo o incógnita abierta: el arreglo del flake es un margen mayor, no una eliminación determinista de
+  la carrera (sería inyectar un executor de test en Room y usar reloj virtual); si reapareciera, se hace
+  una correctiva. El PR #60 (`ai-search`) se mergeó mientras corría esta sesión, así que esta entrada se
+  renumeró a 062 al integrar `origin/main`.
+- Siguiente paso: sin cambios en el plan del MVP. Siguiente candidata: `real-ai-provider`.

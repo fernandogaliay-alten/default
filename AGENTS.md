@@ -89,7 +89,7 @@ aceptación.
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
   **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
-  (`opencode run --dir <worktree>`) y delega el ciclo de cada feature a `feature-flow`.
+  (`opencode run` con el worktree como directorio de trabajo; `--dir` no existe en opencode v2) y delega el ciclo de cada feature a `feature-flow`.
   `github-flow` **nunca** hace merge.
 - Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
   sin él, la skill correspondiente selecciona la siguiente feature.

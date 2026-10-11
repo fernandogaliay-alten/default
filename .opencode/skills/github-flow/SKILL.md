@@ -23,7 +23,7 @@ All four inputs are required. If any is missing, ask before doing anything.
 - Push and PR are automatic after acceptance. The orchestrator has standing push permission: once a feature is `accepted`, it pushes `feature/<feature-id>` and opens (or reuses) the PR without asking for a separate per-run grant. There is no push gate beyond acceptance.
 - Merge is always out of scope. Never merge a PR and never enable auto-merge.
 - If a request repeats, reuse the existing issue, worktree, and PR. Never duplicate them. Never delete or rewrite existing work outside `prune`: no worktree removal, branch deletion, force push, or issue/PR closing. The single exception is `prune`, which removes the worktree and local branch only of a feature whose PR is already merged into `base_branch`, behind the guards in `## Mode: prune`. `plan` never removes anything.
-- One feature per session. Never two features in the same session. One independent session per worktree via `opencode run --dir <worktree>`.
+- One feature per session. Never two features in the same session. One independent session per worktree, launched with `opencode run` **from the worktree directory** (opencode v2 has no `--dir`; the session's working directory is the process cwd).
 - All worktrees branch from one common base SHA fixed at the start of `execute`.
 - The orchestrator is the single integrator of shared state and docs (`feature_list.json`, `PROGRESS.md`, `docs/technical-discovery.md`, ...). Before publishing, it brings the latest `origin/<base_branch>` into the feature branch with a **merge** (never rebase, never force-push), resolving conflicts by keeping the feature's additions alongside the base's. After any other feature's PR merges, it re-syncs the remaining open feature branches the same way.
 - A blocked feature is reported with its blocking dependency ids or missing required inputs (e.g. UI captures under `docs/design/concepts/<feature-id>/`). Never silently skip it and never substitute a later feature.
@@ -63,7 +63,7 @@ Read-only. Produce the plan report only.
 1. Resolve inputs; read `feature_list.json`, `PROGRESS.md`, git state (`git status --porcelain`, `git rev-parse <base_branch>`, `git worktree list`, `git branch --list`) and gh state (`gh auth status`, issue and PR lookups). Never `git fetch`.
 2. Evaluate the five preconditions per feature. For blocked features, report the concrete missing inputs: `accepted` dependency ids and/or missing UI capture paths under `docs/design/concepts/<feature-id>/`. For a UI-captures block, also state that `execute` would provision the feature (issue, worktree, branch, request folder with `README.md` + `stitch-prompt.md`, all inside the worktree) and launch no session.
 3. Planned base SHA = current `git rev-parse <base_branch>`.
-4. For each ready feature, resolve reuse targets (issue, worktree, branch, PR) and the planned session command `opencode run --dir <worktree> ...`.
+4. For each ready feature, resolve reuse targets (issue, worktree, branch, PR) and the planned session command `opencode run ...` launched with the worktree as the working directory (opencode v2 has no `--dir`).
 5. Emit the output report with status `planned` and `pr: none`. Nothing is created.
 
 ## Mode: execute (ejecutar)
@@ -81,11 +81,11 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
 5. For each ready feature, independently:
    1. Reuse or create the issue (lookup first).
    2. Reuse or create the worktree and branch from `base_sha`: `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`.
-   3. Launch exactly one session with the documented command, quoting the worktree path and the prompt because both contain spaces:
+   3. Launch exactly one session with the documented command, **with the worktree as the working directory** (opencode v2 has no `--dir`; the session's directory is the process cwd), quoting the prompt:
       ```bash
-      opencode run --dir "<worktrees-root>/<feature-id>" "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."
+      cd "<worktrees-root>/<feature-id>" && opencode run "Use feature-flow for <feature-id> only, until accepted. Do not push and do not open a PR; the orchestrator publishes."
       ```
-      Run it as-is, from a shell that handles quoting (in this repo, **WSL**), and run it **in the foreground**. The run outlasts a shell's default timeout, so **disable the command timeout** (e.g. `timeout: 0` / unbounded) instead of backgrounding it: background/detach hides the run from the terminal, which is exactly what this rule forbids. Do NOT invent a custom launcher: no `Start-Process`, no detached/background process, no redirecting output to log files you create, and never redirect into a directory that may not exist. Those improvisations have repeatedly broken the launch (argument splitting on spaces, missing directories, orphan processes). Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
+      Prefer setting the launcher's working directory to the worktree instead of a `cd` when the runner supports it; add `-m <provider/model>` only if the launcher must override the configured default model. Run it from a shell that handles quoting (in this repo, **WSL**), and run it **in the foreground**. If the provider host is IPv6-first and DNS lookups time out (`getaddrinfo ETIMEOUT` aborts the session), export `NODE_OPTIONS=--dns-result-order=ipv4first` for the launch. The run outlasts a shell's default timeout, so **disable the command timeout** (e.g. `timeout: 0` / unbounded) instead of backgrounding it: background/detach hides the run from the terminal, which is exactly what this rule forbids. Do NOT invent a custom launcher: no `Start-Process`, no detached/background process, no redirecting output to log files you create, and never redirect into a directory that may not exist. Those improvisations have repeatedly broken the launch (argument splitting on spaces, missing directories, orphan processes). Never two features in one session. Different features use different worktrees and different sessions; they may run concurrently because the environments are independent. Only the top-level `github-flow` orchestrator publishes; the delegated `feature-flow` session never pushes or opens PRs.
    4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`). On `accept`, confirm the feature branch has the acceptance commit; if the session returned `accept` but left the work uncommitted (for example it crashed before committing), complete the single acceptance commit on `feature/<feature-id>` before publishing.
    5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line. Never merge.
    6. Keep the issue body updated with status and evidence.
@@ -157,7 +157,7 @@ Header: mode, repository, base branch, base SHA, push permission (standing/autom
 Per feature, one row/block with exactly these fields:
 
 - `feature`: feature id.
-- `session`: the `opencode run --dir ...` command, or `none` in plan mode or for a provisioned UI-captures block.
+- `session`: the `opencode run ...` command launched from the worktree directory (opencode v2 has no `--dir`), or `none` in plan mode or for a provisioned UI-captures block.
 - `branch`: `feature/<id> @ <base_sha>`.
 - `status`: gate verdict or feature status: `blocked`, `provisioned`, `planned`, `in_progress`, `passing`, `accepted`, `published`, `refused`, `pruned`, `skipped`, `already clean`. Use `provisioned` for a UI-captures block whose worktree, branch, and request material (folder with `README.md` + `stitch-prompt.md`) were created but for which no session ran.
 - `commit`: hash and subject, or `none`.
