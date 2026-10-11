@@ -2153,3 +2153,34 @@
 - Siguiente paso: sin cambios en el plan del MVP; `activity-summary` sigue siendo la siguiente candidata
   (`planner`/`feature-spec`) y, si le faltaran capturas, ahora se provisionará su worktree en vez de
   bloquear en la base.
+
+### Sesión 056
+
+- Fecha: 2026-10-11
+- Objetivo: dejar escrito como regla permanente que **el agente nunca lanza ni relanza sesiones
+  `opencode run`**: cada sesión de worktree la lanza la persona. Surge de que el lanzamiento anidado
+  de `feature-flow` para `activity-summary` se colgó/abortó dos veces al crear el subagente
+  implementer (Bun/Windows) y bloqueó la sesión del orquestador.
+- Completado:
+  - `AGENTS.md`: nueva regla en "Acuerdos de trabajo con la persona" (el agente no ejecuta
+    `opencode run` ni `--continue`, ni en primer plano ni en segundo plano); reparto de roles,
+    herramientas requeridas, modos de `github-flow` y nota de segfault ajustados para atribuir el
+    lanzamiento y la reanudación a la persona.
+  - `.opencode/skills/github-flow/SKILL.md`: Hard Rule, paso de `plan`, paso de `execute` (ahora
+    "entrega el comando, no lo lanza"), `Blocked → Resume` y `Output Report` alineados con la regla.
+  - `.opencode/skills/github-flow/references/evals.md`: Eval 2 (un comando de sesión por worktree,
+    entregado a la persona, nunca lanzado por el agente).
+- Estado de `activity-summary` al cerrar: issue **#51**, rama `feature/activity-summary` y worktree
+  creados desde `origin/main` (`c08dcc1`); capturas (`perfil-resumen/`) y `docs/specs/activity-summary.md`
+  presentes; implementación a medias sin commitear; `in_progress` sin evidencia; validator sin ejecutar.
+  Sesión de `feature-flow` **no** lanzada por el agente (regla nueva).
+- Verificación ejecutada: ninguna de código (cambio solo documental del harness); `git diff` de los
+  ficheros modificados.
+- Evidencia capturada: `git diff` de `AGENTS.md`, `.opencode/skills/github-flow/SKILL.md`,
+  `.opencode/skills/github-flow/references/evals.md` y este registro. Ninguna feature cambia de estado
+  (WIP = 0).
+- Riesgo o incógnita abierta: el lanzamiento anidado de `opencode run` sigue siendo inestable en
+  Windows; con esta regla ya no lo ejecuta el agente.
+- Siguiente paso: la persona decide cuándo lanzar (o no) la sesión de `feature-flow` de
+  `activity-summary` con el comando entregado por `github-flow`.
+
