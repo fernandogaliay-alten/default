@@ -41,11 +41,15 @@ Antes de escribir código:
   cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** en
   `docs/design/concepts/<feature-id>/` **antes** de implementar. La spec nombra los ficheros concretos
   (p. ej. `docs/design/concepts/perfil-screen/perfil.png`). Si no existen, el `planner`, el
-  `implementer` y `feature-flow` se **detienen y las piden** a la persona; además, el agente **crea la
-  subcarpeta** `docs/design/concepts/<feature-id>/` con un `README.md` que lista los ficheros esperados
-  (y qué es cada uno), para que la persona solo tenga que dejarlos ahí. La feature queda `blocked` hasta
-  que estén disponibles. Cuando la persona aporte las capturas, la feature se **reanuda re-ejecutando
-  `github-flow execute <feature-id>`** (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
+  `implementer` y `feature-flow` se **detienen y las piden** a la persona. En `github-flow`, la feature
+  **no** se bloquea sin más: `execute` **crea igualmente el worktree** (issue, rama `feature/<feature-id>`
+  y worktree), deja la **subcarpeta de petición** `docs/design/concepts/<feature-id>/` **dentro del
+  worktree** con un `README.md` que lista las pantallas y ficheros esperados y un `stitch-prompt.md`
+  listo para pegar en Stitch (generado a partir de `docs/design/stitch/`), y **no** lanza sesión. Así la
+  base **no se ensucia** (nada que commitear ni pushear en `main`): la persona deja las capturas
+  directamente en la ruta del worktree y la feature queda `blocked` hasta que estén disponibles. Cuando
+  la persona aporte las capturas, la feature se **reanuda re-ejecutando `github-flow execute <feature-id>`**
+  (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
   **no** se reanuda con un `feature-flow` suelto, que dejaría la publicación fuera de `github-flow`.
   `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección visual
   obligatoria, no opcional.

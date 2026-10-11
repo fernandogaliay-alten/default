@@ -27,24 +27,26 @@ All four inputs are required. If any is missing, ask before doing anything.
 - All worktrees branch from one common base SHA fixed at the start of `execute`.
 - The orchestrator is the single integrator of shared state and docs (`feature_list.json`, `PROGRESS.md`, `docs/technical-discovery.md`, ...). Before publishing, it brings the latest `origin/<base_branch>` into the feature branch with a **merge** (never rebase, never force-push), resolving conflicts by keeping the feature's additions alongside the base's. After any other feature's PR merges, it re-syncs the remaining open feature branches the same way.
 - A blocked feature is reported with its blocking dependency ids or missing required inputs (e.g. UI captures under `docs/design/concepts/<feature-id>/`). Never silently skip it and never substitute a later feature.
+- A UI-captures block is provisioned, not merely reported: `execute` creates (or reuses) the feature's issue, worktree, and branch and lays down the captures request folder (`README.md` + ready-to-paste Stitch prompt) **inside the worktree**, then stops without launching a session. The base checkout is never dirtied by the request material; the person drops the captures into the worktree and resumes with `github-flow execute <feature-id>`.
 - `feature-flow` owns the role loop and acceptance inside a worktree session; its commit and validation rules still apply there.
 
 ## Preconditions
 
-Checked before `execute` is allowed to mutate anything. `plan` runs the same checks read-only. Every feature to execute must pass all five:
+Checked by `execute` before it launches any session. `plan` runs the same checks read-only. Every feature to execute must pass all five; a feature that fails only precondition 5 is provisioned instead of skipped (see `## UI Captures Provisioning`).
 
 1. Dependencies accepted: every id in `depends_on` has status `accepted` in `feature_list.json`.
 2. Clean base: the base checkout has no staged, modified, or deleted tracked files (`git status --porcelain` has no tracked entries; untracked files are allowed and reported), no merge/rebase in progress, and `base_branch` resolves.
 3. Permissions: `gh auth status` shows an account that can manage issues and PRs in the repository. Push/PR is automatic after acceptance (standing permission); there is no per-run push grant.
 4. Independent environments: one worktree per feature outside the base checkout, one session per worktree, no shared mutable state between features (each worktree runs its own `./init.sh` and local database).
-5. Required external inputs present: a feature with UI (`area: ui` or any screen/visual behavior) must have its mandatory captures under `docs/design/concepts/<feature-id>/`, named by the spec, already present. If any is missing, the feature is `blocked` (reason: missing UI captures) and no worktree, branch, or session is created for it.
+5. Required external inputs present: a feature with UI (`area: ui` or any screen/visual behavior) must have its mandatory captures under `docs/design/concepts/<feature-id>/`, named by the spec, already present. If any is missing, the feature is `blocked` (reason: missing UI captures). `execute` still provisions it — issue, worktree, branch, request folder, and Stitch prompt — but launches no session until the person supplies the captures; see `## UI Captures Provisioning` and `## Blocked → Resume`.
 
-If any precondition fails, report the failing features with the concrete missing inputs and stop before mutating anything. A precondition that depends on a person (missing captures, missing credentials) is a `blocked` feature, not a failure: see `## Blocked → Resume`.
+If a precondition fails, report the failing features with the concrete missing inputs. A missing dependency or a missing credential still stops before mutating anything; a missing-captures block is the one exception, because `execute` provisions the feature environment (worktree + request material) before stopping, and that provisioning happens **inside the worktree**, never in the base checkout. A precondition that depends on a person (missing captures, missing credentials) is a `blocked` feature, not a failure: see `## Blocked → Resume`.
 
 ## Deterministic Identities (reuse keys)
 
 - Branch: `feature/<feature-id>`.
 - Worktree: `<worktrees-root>/<feature-id>` where `<worktrees-root>` is `../<base-checkout-dirname>-worktrees`, outside the base checkout.
+- UI captures request material: `<worktrees-root>/<feature-id>/docs/design/concepts/<feature-id>/` — the `README.md` and the `stitch-prompt.md` live **inside the feature worktree**, never in the base checkout.
 - Issue title: `[<feature-id>] <feature title from feature_list.json>`.
 - PR: head `feature/<feature-id>` into `base_branch`, title `[<feature-id>] <feature title>`. The body must contain a line `Closes #<issue-number>` (with `#<issue-number>` the feature's issue) so that merging the PR closes the issue automatically; a bare `Issue: #<n>` reference does not close it.
 
@@ -59,7 +61,7 @@ Reuse lookup before any creation (read-only):
 Read-only. Produce the plan report only.
 
 1. Resolve inputs; read `feature_list.json`, `PROGRESS.md`, git state (`git status --porcelain`, `git rev-parse <base_branch>`, `git worktree list`, `git branch --list`) and gh state (`gh auth status`, issue and PR lookups). Never `git fetch`.
-2. Evaluate the five preconditions per feature. For blocked features, report the concrete missing inputs: `accepted` dependency ids and/or missing UI capture paths under `docs/design/concepts/<feature-id>/`.
+2. Evaluate the five preconditions per feature. For blocked features, report the concrete missing inputs: `accepted` dependency ids and/or missing UI capture paths under `docs/design/concepts/<feature-id>/`. For a UI-captures block, also state that `execute` would provision the feature (issue, worktree, branch, request folder with `README.md` + `stitch-prompt.md`, all inside the worktree) and launch no session.
 3. Planned base SHA = current `git rev-parse <base_branch>`.
 4. For each ready feature, resolve reuse targets (issue, worktree, branch, PR) and the planned session command `opencode run --dir <worktree> ...`.
 5. Emit the output report with status `planned` and `pr: none`. Nothing is created.
@@ -68,10 +70,15 @@ Read-only. Produce the plan report only.
 
 Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch`; never prune a feature that is not merged. This is what keeps orphan worktrees from accumulating between runs.
 
-1. Run the precondition gate. Split the request into ready and blocked features and report both lists; continue with ready features only. For a feature blocked by missing UI captures, report the missing paths and the resume command `github-flow execute <feature-id>`, and create the request folder plus `README.md` under `docs/design/concepts/<feature-id>/` (idempotent; skip if present) so the person knows where to drop the exports — but create no worktree, branch, or session for it.
-2. Fix the common base SHA: `git fetch origin <base_branch>` then `base_sha=$(git rev-parse origin/<base_branch>)`. Every worktree branches from this exact SHA.
-3. Push/PR is standing and automatic after acceptance. Do not ask for a per-run push grant.
-4. For each ready feature, independently:
+1. Fix the common base SHA: `git fetch origin <base_branch>` then `base_sha=$(git rev-parse origin/<base_branch>)`. Every worktree — including the ones provisioned for a UI-captures block — branches from this exact SHA.
+2. Run the precondition gate. Split the request into **ready**, **UI-captures-blocked**, and **blocked** (missing dependency or credential) features and report every list; continue with ready features and with the UI-captures provisioning.
+3. **UI-captures provisioning** (no session). For each feature blocked only by missing captures, still create (or reuse) its deterministic identities, all inside the worktree, without launching a session:
+   1. Reuse or create the issue (lookup first).
+   2. Reuse or create the worktree and branch from `base_sha`: prefer `bash scripts/new-worktree.sh <feature-id> <base_sha>`; otherwise `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`. This puts the request material **inside the worktree**, so the base checkout stays clean and nothing has to be pushed to `main`.
+   3. Inside the worktree, create `<worktrees-root>/<feature-id>/docs/design/concepts/<feature-id>/` with the `README.md` and the `stitch-prompt.md` described in `## UI Captures Provisioning` (idempotent; skip files that already exist).
+   4. Report the worktree path, the request folder path inside it, the expected screens, the `stitch-prompt.md` path, and the exact resume command `github-flow execute <feature-id>`. Do NOT launch a `feature-flow` session for this feature: its UI gate would stop immediately.
+4. Push/PR is standing and automatic after acceptance. Do not ask for a per-run push grant.
+5. For each ready feature, independently:
    1. Reuse or create the issue (lookup first).
    2. Reuse or create the worktree and branch from `base_sha`: `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`.
    3. Launch exactly one session with the documented command, quoting the worktree path and the prompt because both contain spaces:
@@ -82,7 +89,23 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
    4. Collect the `feature-flow` outcome (validator `accept` / `revise` / `block`). On `accept`, confirm the feature branch has the acceptance commit; if the session returned `accept` but left the work uncommitted (for example it crashed before committing), complete the single acceptance commit on `feature/<feature-id>` before publishing.
    5. On `accept`, publish automatically: push `feature/<feature-id>` and reuse or create the PR into `base_branch` with acceptance evidence in the body and a `Closes #<issue-number>` line. Never merge.
    6. Keep the issue body updated with status and evidence.
-5. Emit the output report.
+6. Emit the output report.
+
+## UI Captures Provisioning
+
+When a UI feature is missing its mandatory captures, `execute` provisions the feature's worktree and lays the request material down **inside that worktree** — never in the base checkout — so the base branch stays clean and the person's exports land directly in the feature branch (and its PR) on resume.
+
+Decide what the feature needs:
+
+1. Read the feature's spec (`docs/specs/<feature-id>.md`) "Visual Design Impact" section when it exists; otherwise derive the screens from the feature entry in `feature_list.json` (title and `user_visible_behavior`).
+2. Map each screen to its prompt part(s) with the map in `docs/design/stitch/README.md` and the chunks in `docs/design/stitch/`.
+
+Material, under the worktree's `docs/design/concepts/<feature-id>/`:
+
+- `README.md` — heading naming the feature, then: these captures are mandatory before implementation and `DESIGN.md` wins on contradiction; the convention (one subfolder per screen with the three files Stitch exports: the `.png`, the `.html`, and the `design.md`); one bullet per expected screen naming its destination subfolder `docs/design/concepts/<feature-id>/<pantalla>/` and what it shows; and the resume command `github-flow execute <feature-id>`. Idempotent: skip if the file already exists.
+- `stitch-prompt.md` — a single ready-to-paste prompt built by concatenating, in order, the context chunk `docs/design/stitch/00-contexto.md` and the feature's screen chunk(s) `docs/design/stitch/NN-*.md` from the map. Mark it as a derived copy (the `docs/design/stitch-prompt.md` master and the `docs/design/stitch/` chunks stay the source of truth) and keep the session instructions from `docs/design/stitch/README.md`: paste `00-contexto` first, wait for the reply, then paste one screen part at a time in the same conversation.
+
+Create both files inside the worktree and report their paths. Do not launch a `feature-flow` session until the captures exist.
 
 ## Blocked → Resume
 
@@ -90,8 +113,8 @@ A feature is `blocked` when it fails a precondition for a reason outside the age
 
 - Report the block with the concrete missing inputs (paths) and the exact resume command: `github-flow execute <feature-id>`.
 - When the missing input exists, resume by re-running `github-flow execute <feature-id>`. The run is idempotent: it reuses the existing issue, worktree, and branch (never duplicates) and relaunches exactly one `feature-flow` session, which now passes the gate and continues from the persisted spec/implementation. Do not ask for a new push grant; standing permission still applies.
-- For a UI block, create the request folder plus `README.md` under `docs/design/concepts/<feature-id>/` (idempotent; skip if present) so the person knows where to drop the exports. Create nothing else for a blocked feature: no worktree, branch, or session.
-- When resuming a UI block, the person's exports sit untracked in the base checkout and are therefore absent from the freshly created worktree. Before launching the session, bring the `docs/design/concepts/<feature-id>/` folder into the feature worktree (copy or move it) so the captures land in the feature branch and its PR; if the exports were already committed to the base branch, the worktree has them and nothing is needed.
+- For a UI-captures block, the feature environment is already provisioned: `execute` created (or reused) the issue, worktree, and branch and laid down `docs/design/concepts/<feature-id>/` with `README.md` and `stitch-prompt.md` **inside the worktree** (see `## UI Captures Provisioning`). Nothing is ever created in the base checkout for a blocked feature, so the base branch stays clean and no `main` push is needed.
+- Because the request folder lives in the worktree, the person drops the exports directly there; on `github-flow execute <feature-id>` the worktree already contains them (untracked) and the gate passes without copying anything. If the person left the exports in the base checkout instead, copy or move `docs/design/concepts/<feature-id>/` into the worktree before launching the session; if they were committed to the base branch, a sync/merge (`scripts/sync-worktree.sh <feature-id>`) brings them in.
 - Never resume a `github-flow`-owned feature with a standalone `feature-flow` run. Issue, worktree, branch, and PR ownership live in `github-flow`; a bare `feature-flow` run leaves the acceptance commit local and skips publishing. When a `feature-flow` session discovers the block, it hands the feature back to `github-flow`.
 
 ## Mode: publish (publicar)
@@ -134,9 +157,9 @@ Header: mode, repository, base branch, base SHA, push permission (standing/autom
 Per feature, one row/block with exactly these fields:
 
 - `feature`: feature id.
-- `session`: the `opencode run --dir ...` command, or `none` in plan mode.
+- `session`: the `opencode run --dir ...` command, or `none` in plan mode or for a provisioned UI-captures block.
 - `branch`: `feature/<id> @ <base_sha>`.
-- `status`: gate verdict or feature status: `blocked`, `planned`, `in_progress`, `passing`, `accepted`, `published`, `refused`, `pruned`, `skipped`, `already clean`.
+- `status`: gate verdict or feature status: `blocked`, `provisioned`, `planned`, `in_progress`, `passing`, `accepted`, `published`, `refused`, `pruned`, `skipped`, `already clean`. Use `provisioned` for a UI-captures block whose worktree, branch, and request material (folder with `README.md` + `stitch-prompt.md`) were created but for which no session ran.
 - `commit`: hash and subject, or `none`.
 - `evidence`: verification or acceptance summary.
 - `pr`: PR URL when a PR exists or was published, otherwise `none`.

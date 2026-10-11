@@ -44,6 +44,13 @@ Record per eval: verdict `pass`/`fail` and the observed report lines that prove 
 - Expected: `merged-done` is prunable (`pruned` in a real run); `still-open` is `skipped` citing the failing guard (not accepted / PR not merged / branch not contained). The worktree and branch of `still-open` are never removed, and no guard-failing feature is ever force-removed.
 - Pass criteria: the report lists `merged-done` as prunable and `still-open` as `skipped` with the guard reason; zero side effects in the read-only evaluation.
 
+## Eval 6 — UI feature missing captures is provisioned, not silently blocked
+
+- Input: mode `plan`, `feature_ids = ["perfil-screen"]`.
+- State: `perfil-screen` has `area: ui`, its `depends_on` are `accepted`, and `docs/design/concepts/perfil-screen/` has no exports (or is absent).
+- Expected: status `blocked` (missing UI captures) with the concrete capture paths under `docs/design/concepts/<feature-id>/`, plus a note that `execute` would provision the feature — issue, worktree, branch, and the request folder with `README.md` + `stitch-prompt.md`, all **inside the worktree** — and launch no session. Nothing is created in the base checkout. Because this eval runs in `plan`, no worktree, branch, file, or session is actually created: zero side effects.
+- Pass criteria: the report names the feature and the missing capture paths, states the planned provisioning inside the worktree, and the observed side-effect count is zero.
+
 ## Running
 
 Run each eval through the skill in `plan` mode against the live read-only state listed above. Never run these evals in `execute`, `publish`, or `prune` mode for real: Eval 4 checks the refusal verdict only and Eval 5 checks the guard verdicts only.
