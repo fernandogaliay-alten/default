@@ -91,16 +91,16 @@ If UI is involved, follow `../../../../DESIGN.md` and identify any feature-speci
 
 ## Durable Documentation Impact
 
-- `../../../../ARCHITECTURE.md`: create/update/not needed — <reason>
-- `../../../../CONSTRAINTS.md`: create/update/not needed — <reason>
+- `../../../../docs/technical-discovery.md`: create/update/not needed — <reason>
+- `../../../../docs/domain-model.md`: create/update/not needed — <reason>
 - `../../../../AGENTS.md`: update/not needed — <reason>
 - Other docs: <path or none> — <reason>
 
 Use these rules:
 
 - Update `../../../../AGENTS.md` only when the agent workflow, startup path, or repo-wide operating rules change.
-- Create or update `../../../../ARCHITECTURE.md` when this feature establishes or changes domains, layers, runtime surfaces, dependency direction, adapters/providers, or other architectural boundaries.
-- Create or update `../../../../CONSTRAINTS.md` when this feature introduces a durable MUST/MUST NOT rule that future agents must obey.
+- Create or update `../../../../docs/technical-discovery.md` when this feature changes the stack, storage, integrations, verification path or other durable boundaries.
+- Create or update `../../../../docs/domain-model.md` when this feature changes entities, relationships or states; a durable MUST/MUST NOT rule goes to `../../../../AGENTS.md` or `docs/technical-discovery.md`.
 - Avoid duplicating product behavior already captured in discovery docs unless the implemented behavior changes the source of truth.
 
 ## Implementation Plan
@@ -119,12 +119,12 @@ Use these rules:
 
 - <Command or manual scenario to run.>
 - <Expected result.>
-- If the repo has a persistent E2E command such as `pnpm test:e2e` and this feature changes user-visible behavior, authentication, authorization, routing, or API flows, add or update focused E2E coverage and include the E2E command here. If E2E is not appropriate, state why.
+- If the repo has a persistent E2E command and this feature changes user-visible behavior, authentication, authorization, routing, or API flows, add or update focused E2E coverage and include the E2E command here. If E2E is not appropriate (this repo: UI is verified by JVM logic/state and the mandatory captures), state why.
 
 For `init.sh`, be explicit:
 
-- `./init.sh` should execute the non-blocking standard gate for the current repo state.
-- `./init.sh` must not start long-running processes such as `pnpm dev`.
+- `bash init.sh` should execute the non-blocking standard gate for the current repo state (`./gradlew test` + `./gradlew lint`).
+- `bash init.sh` must not start long-running processes (dev servers, watchers, emulators).
 - It may print manual follow-up commands after the non-blocking checks pass.
 
 ## Evidence To Capture

@@ -31,7 +31,7 @@ El prompt largo (`docs/design/stitch-prompt.md`) se trunca en Stitch y no genera
 | `08-onboarding-tu-cocina.md` | onboarding paso 7 | `onboarding-ingredients-safety-kitchen/tu-cocina/` |
 | `09-home.md` | Home (incluye fila de filtros "Tus recetas") | `home-offline-blocks/home/` y `local-result-filters/filtros-tus-recetas/` |
 | `10-home-sin-conexion.md` | Home sin conexión | `home-offline-blocks/home-sin-conexion/` |
-| `11-home-busqueda-ia.md` | Búsqueda IA desde Home | futuro `ai-search/` |
+| `11-home-busqueda-ia.md` | Búsqueda IA desde Home | `ai-search/` |
 | `12-generador-ingredientes.md` | Generador paso 1 | `generator-ingredients-step/generador-ingredientes/` |
 | `13-generador-ajustes.md` | Generador paso 2 | `generator-settings-step/generador-ajustes/` |
 | `14-generador-cargando.md` | Generando | `generation-flow-with-validation/generador-cargando/` |

@@ -183,7 +183,7 @@ Example:
   2. Return 401/403 before any database write when the key is absent or invalid.
   3. Add tests for missing, invalid, and valid keys.
 - Verification after fix:
-  - `pnpm test`
+  - `bash init.sh` (or `bash scripts/gradle.sh <tasks>`)
   - API call without key returns 401/403 and creates no enrollment.
   - API call with valid key succeeds.
 ```

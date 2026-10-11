@@ -46,8 +46,8 @@ Record per eval: verdict `pass`/`fail` and the observed report lines that prove 
 
 ## Eval 6 — UI feature missing captures is provisioned, not silently blocked
 
-- Input: mode `plan`, `feature_ids = ["perfil-screen"]`.
-- State: `perfil-screen` has `area: ui`, its `depends_on` are `accepted`, and `docs/design/concepts/perfil-screen/` has no exports (or is absent).
+- Input: mode `plan`, `feature_ids = ["profile-screen"]`.
+- State: `profile-screen` has `area: ui`, its `depends_on` are `accepted`, and `docs/design/concepts/profile-screen/` has no exports (or is absent).
 - Expected: status `blocked` (missing UI captures) with the concrete capture paths under `docs/design/concepts/<feature-id>/`, plus a note that `execute` would provision the feature — issue, worktree, branch, and the request folder with `README.md` + `stitch-prompt.md`, all **inside the worktree** — and launch no session. Nothing is created in the base checkout. Because this eval runs in `plan`, no worktree, branch, file, or session is actually created: zero side effects.
 - Pass criteria: the report names the feature and the missing capture paths, states the planned provisioning inside the worktree, and the observed side-effect count is zero.
 

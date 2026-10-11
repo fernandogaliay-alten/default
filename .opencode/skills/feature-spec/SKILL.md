@@ -37,13 +37,11 @@ Use this skill to turn one harness feature into an implementation-ready contract
 2. `../../../PROGRESS.md`
 3. `feature_list.json`
 4. Existing feature spec if present: `../../../docs/specs/<feature-id>.md`
-5. Product/discovery docs as needed:
+5. Product/discovery docs as needed (this repo's set):
    - `../../../CONTEXT.md`
-   - `../../../docs/product-brief.md`
+   - `../../../docs/build-brief.md`
    - `../../../docs/domain-model.md`
-   - `../../../docs/user-and-access-model.md`
    - `../../../docs/technical-discovery.md`
-   - `../../../docs/mvp-scope.md`
    - `../../../DESIGN.md` when the selected feature has UI or visual behavior
    - `../../../docs/design/concepts/<feature-id>/` captures for UI features (mandatory before implementation)
    - `../../../docs/risks-and-open-questions.md`
@@ -72,14 +70,14 @@ Investigate how to implement the selected feature in this specific repo:
 - relevant API boundaries,
 - relevant auth/permission patterns,
 - verification commands available today,
-- persistent E2E commands available today, such as `pnpm test:e2e`, when the feature has user-facing or API-flow behavior,
+- persistent E2E commands available today (this repo has none: UI is verified by JVM logic/state plus the mandatory captures, per `../../../AGENTS.md`),
 - gaps caused by pre-bootstrap or missing infrastructure.
 
 Record inspected files in the spec. Do not pretend to have inspected files that do not exist.
 
 ### 3. Write The Feature Implementation Spec
 
-Create or update `../../../docs/specs/<feature-id>.md` using `references/spec-template.md`. For a sense of the right level of detail, look at an existing accepted spec such as `../../../docs/specs/bootstrap-nextjs-shell.md`.
+Create or update `../../../docs/specs/<feature-id>.md` using `references/spec-template.md`. For a sense of the right level of detail, look at an existing accepted spec such as `../../../docs/specs/seed-recipe-catalog.md`.
 
 The spec must include:
 

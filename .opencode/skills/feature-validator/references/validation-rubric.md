@@ -13,12 +13,12 @@ Status convention:
 | --- | --- | --- | --- |
 | Correctness | Does the implementation match the feature spec? | Acceptance scenarios pass or have strong evidence. | Behavior missing, fake, or materially different from the spec. |
 | Verification | Did required checks actually run with evidence? | Exact commands/results are recorded and rerunnable where possible. | No evidence, failed checks hidden, or only verbal confidence. |
-| E2E coverage | For observable user/API flows, did persistent E2E coverage exist and get updated when available? | `pnpm test:e2e` or repo-equivalent coverage exercises the changed flow, or the spec justifies why it is not needed. | Only manual smoke evidence remains after an E2E harness exists and the changed flow is E2E-testable. |
+| E2E coverage | For observable user/API flows, did persistent E2E coverage exist and get updated when available? | Repo-equivalent coverage (this repo: JVM unit/integration tests) exercises the changed flow, or the spec justifies why it is not needed. | Only manual smoke evidence remains after an E2E harness exists and the changed flow is E2E-testable. |
 | Scope discipline | Did implementation stay inside the selected feature? | No unrelated feature work or broad refactors. | Adjacent features implemented opportunistically. |
-| Architecture | Does code respect documented boundaries and patterns? | Dependencies and layers match `../../../../ARCHITECTURE.md`/repo patterns. | New ad hoc architecture, boundary violations, tangled coupling. |
+| Architecture | Does code respect documented boundaries and patterns? | Dependencies and layers match `../../../../docs/technical-discovery.md`/repo patterns. | New ad hoc architecture, boundary violations, tangled coupling. |
 | Security/access | Does the diff avoid obvious security/privacy regressions? | Auth, secrets, input, data exposure, and external calls are handled appropriately for this slice. | Secrets committed, unsafe auth bypass, unchecked input, private data exposure. |
 | Maintainability | Can a fresh agent understand and extend this? | Clear structure, small files, tests/docs where useful. | Obscure logic, oversized files, duplicated rules, unclear ownership. |
-| Durable docs | Did durable knowledge land in the right artifact? | `../../../../AGENTS.md`, `../../../../ARCHITECTURE.md`, `../../../../CONSTRAINTS.md`, specs, progress are updated only when warranted. | Important rules remain only in chat/code, or docs are stale/duplicative. |
+| Durable docs | Did durable knowledge land in the right artifact? | `../../../../AGENTS.md`, `../../../../docs/technical-discovery.md`, `../../../../docs/domain-model.md`, specs, progress are updated only when warranted. | Important rules remain only in chat/code, or docs are stale/duplicative. |
 | Handoff readiness | Can the next session continue safely? | `../../../../PROGRESS.md` and `feature_list.json` reflect actual state and next step. | State files lie, omit blockers, or require oral context. |
 
 ## `init.sh` Validation Rule
@@ -29,11 +29,11 @@ Acceptable:
 
 - runs lint/typecheck/tests/build or the repo-equivalent non-blocking checks,
 - exits non-zero when those checks fail,
-- prints manual commands such as `pnpm dev` only after checks pass.
+- prints manual follow-up commands (e.g. `bash scripts/gradle.sh assembleDebug`) only after checks pass.
 
 Not acceptable after bootstrap:
 
-- only echoes "run pnpm lint && pnpm test",
+- only echoes "run `./gradlew test` && `./gradlew lint`",
 - starts a long-running dev server by default,
 - reports success without executing any check.
 
@@ -99,4 +99,4 @@ Update:
 - <state/doc artifact>
 ```
 
-The repair brief should not be vague. Prefer "change `init.sh` so it executes `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`, but does not start `pnpm dev`" over "improve init.sh".
+The repair brief should not be vague. Prefer "change `init.sh` so it runs the repo gate (`./gradlew test` + `./gradlew lint` via `scripts/gradle.sh`) and exits non-zero on failure, without starting long-running processes" over "improve init.sh".

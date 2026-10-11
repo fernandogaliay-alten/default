@@ -6,9 +6,9 @@ Code changes and durable knowledge changes travel together.
 
 Update docs only when the change creates or changes knowledge future agents need:
 
-- `../../../../AGENTS.md`: update only if the agent workflow, startup path, verification path, or repo-wide operating rules change. Keep it short and router-like.
-- `../../../../ARCHITECTURE.md`: create/update when domains, layers, runtime surfaces, dependency direction, adapters/providers, or architectural boundaries are established or changed.
-- `../../../../CONSTRAINTS.md`: create/update when a durable MUST/MUST NOT rule appears that future agents must obey.
+- `../../../../AGENTS.md`: update only if the agent workflow, startup path, verification path, or repo-wide operating rules change. Keep it focused and non-duplicative.
+- `../../../../docs/technical-discovery.md`: update when the stack, storage, integrations, verification path or durable boundaries change.
+- `../../../../docs/domain-model.md`: update when entities, relationships or states change.
 - `../../../../docs/specs/<feature-id>.md`: update if implementation discovers that the spec was wrong, incomplete, or materially changed by necessary findings.
 - `../../../../PROGRESS.md`: update every implementation session.
 - `feature_list.json`: update selected feature status and evidence every implementation session.
@@ -36,16 +36,14 @@ Default behavior:
 
 - execute the standard checks that can run without external long-lived services,
 - fail fast on errors via `set -euo pipefail`,
-- avoid starting blocking commands such as `pnpm dev`,
+- avoid starting blocking commands (dev servers, watchers, emulators),
 - optionally print manual follow-up commands after checks pass.
 
-For a Next.js baseline, a good default is:
+For this Android/JVM repo, the gate is:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+bash init.sh                     # ./gradlew test + ./gradlew lint via scripts/gradle.sh
+bash scripts/gradle.sh <tasks>   # focused checks
 ```
 
 Only allow an informational-only `init.sh` during an explicitly pre-bootstrap phase.
