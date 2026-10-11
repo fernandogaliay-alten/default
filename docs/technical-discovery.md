@@ -231,6 +231,31 @@ monta como *stage* de resultado dentro de `GeneratorFlow` (sin `PushedScreen.RES
 borradores; `ai-search` reutilizara `ResultsScreen` con `ResultsOrigin.Search`. Ver
 `docs/specs/results-screen.md`.
 
+La **Busqueda con IA** (bloque 2 de la Home) vive en `com.sazon.app.domain.search` +
+`com.sazon.app.ui.search`. La orquestacion es **pura** (sin Android ni red):
+`AiSearchService.search(query, profile)` normaliza la consulta con `SearchMemo.key` (recorte +
+minusculas), sirve el **memo de sesion** (`SearchMemo`, en memoria y **no** persistido) cuando la clave
+ya existe, llama a `RecipeGenerator.searchByText` y valida **receta a receta** con
+`RecipeValidator.validateRecipe` (patron de `GenerationService`); **re-lanza** la `CancellationException`,
+convierte cualquier otra `Exception` en `aiUnavailable = true` **sin memoizar el fallo** (asi "Reintentar"
+vuelve a llamar) y reporta las aceptadas por la costura `onRecipesGenerated` (Resumen de actividad). El
+estado de la pagina es puro en `com.sazon.app.ui.search`: `AiSearchQuery` (`normalize`/`canSubmit`),
+`AiSearchCopy` (microcopy en un unico sitio), `AiSearchProgress` (cabecera + tres sublineas + linea de
+prompt) y `AiSearchOutcome.stageOf` (decide `Results`/`Blocked`/`NoResults`/`Failure`; el **bloqueo por
+Perfil** se distingue de "sin resultados" por el **motivo del descarte** `DIET_PATTERN`/`HARD_RESTRICTION`,
+no por la consulta). La capa Compose es delgada: `AiSearchBar` (pildora con glifo de destello y envio,
+integrada en `HomeScreen` entre la cabecera y la tarjeta-heroe), `AiSearchFlow` (huesped de
+`PushedScreen.SEARCH`: carga reutilizando `GeneratorGeneratingScreen` con `cancelLabel = "Cancelar
+busqueda"`, resultados reutilizando `ResultsScreen` con `ResultsOrigin.Search`, y los estados de
+`AiSearchStates`) y `AiSearchStates` (bloqueado en ambar `tertiaryContainer`, nunca rojo; sin resultados;
+fallo). La unica dependencia externa es la **conectividad**: `com.sazon.app.data.NetworkStatusSource`
+(sobre `ConnectivityManager`, con `NET_CAPABILITY_INTERNET` **y** `NET_CAPABILITY_VALIDATED`) alimenta
+`HomeScreen`/`AiSearchBar`; exige el permiso `ACCESS_NETWORK_STATE` en `AndroidManifest.xml` y no anade
+dependencias. `MainActivity` compone `AiSearchService` y `NetworkStatusSource` (sin DI), `SazonApp` los
+encadena y `MainShell` guarda la consulta en `rememberSaveable` (sobrevive a empujar/sacar la pagina).
+Testeado en JVM (`AiSearchServiceTest`, `SearchMemoTest`, `AiSearchQueryTest`, `AiSearchProgressTest` y
+`AiSearchOutcomeTest`). Ver `docs/specs/ai-search.md`.
+
 El **Detalle de receta** vive en `com.sazon.app.ui.detail`, con logica **pura** testeable en JVM (sin
 Compose ni Android) y una capa Compose delgada. `ServingScaler.scaledIngredients(recipe, targetServings)`
 escala las cantidades con **redondeo por unidad** (no lineal): `g`/`ml` a multiplos de 5, `ud`/`cda`/`cdta`

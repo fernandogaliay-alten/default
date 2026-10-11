@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import com.sazon.app.data.NetworkStatusSource
 import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
@@ -16,6 +17,7 @@ import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.ProfileRepository
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
+import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
@@ -44,6 +46,8 @@ fun SazonApp(
     favoriteRepository: FavoriteRepository,
     favoriteService: FavoriteService,
     activitySummaryRepository: ActivitySummaryRepository,
+    aiSearchService: AiSearchService,
+    networkStatusSource: NetworkStatusSource,
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
 ) {
@@ -80,6 +84,8 @@ fun SazonApp(
                     favoriteRepository = favoriteRepository,
                     favoriteService = favoriteService,
                     activitySummaryRepository = activitySummaryRepository,
+                    aiSearchService = aiSearchService,
+                    networkStatusSource = networkStatusSource,
                     seedRecipes = seedRecipes,
                     onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
                     modifier = modifier,

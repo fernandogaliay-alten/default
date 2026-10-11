@@ -109,6 +109,7 @@ Capturas aceptadas (dirección visual, no especificación pixel-perfect):
 - `recipe-detail-screen`: `detalle-receta`
 - `favorites`: `favoritos`
 - `activity-summary`: `perfil-resumen`
+- `ai-search`: `busqueda-ia`
 
 Backfill pendiente:
 

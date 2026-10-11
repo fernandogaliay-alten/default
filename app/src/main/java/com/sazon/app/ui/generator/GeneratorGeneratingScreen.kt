@@ -50,6 +50,7 @@ fun GeneratorGeneratingScreen(
     subLines: List<String>,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    cancelLabel: String = "Cancelar",
 ) {
     var index by remember(subLines) { mutableIntStateOf(0) }
     LaunchedEffect(subLines) {
@@ -88,7 +89,7 @@ fun GeneratorGeneratingScreen(
 
         Spacer(modifier = Modifier.height(SazonSpacing.lg))
         TextButton(onClick = onCancel) {
-            Text(text = "Cancelar")
+            Text(text = cancelLabel)
         }
     }
 }

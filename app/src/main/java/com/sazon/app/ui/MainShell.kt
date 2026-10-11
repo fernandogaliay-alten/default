@@ -37,12 +37,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.sazon.app.data.NetworkStatusSource
 import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
+import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
@@ -56,6 +58,7 @@ import com.sazon.app.ui.navigation.MainNavigationState
 import com.sazon.app.ui.navigation.MainTab
 import com.sazon.app.ui.navigation.PushedScreen
 import com.sazon.app.ui.profile.ProfileScreen
+import com.sazon.app.ui.search.AiSearchFlow
 import com.sazon.app.ui.theme.SazonComponents
 import kotlinx.coroutines.launch
 
@@ -79,6 +82,11 @@ import kotlinx.coroutines.launch
  * el bloque "Guardadas" de la Home y el corazon/"Guardada" del Detalle. El Generador es real
  * ([GeneratorFlow], pasos de
  * ingredientes y de ajustes) y dispara la generacion validada a traves de [GenerationService].
+ *
+ * El **bloque 2 de la Home** (Busqueda con IA) es el unico que necesita red: [HomeScreen] monta
+ * `AiSearchBar` con la conectividad observada de [NetworkStatusSource] y, al enviar, empuja
+ * [PushedScreen.SEARCH], que monta [AiSearchFlow] sobre [AiSearchService]. La consulta vive en
+ * `rememberSaveable` (sobrevive a empujar/sacar la pagina y a la rotacion).
  */
 @Composable
 fun MainShell(
@@ -90,6 +98,8 @@ fun MainShell(
     favoriteRepository: FavoriteRepository,
     favoriteService: FavoriteService,
     activitySummaryRepository: ActivitySummaryRepository,
+    aiSearchService: AiSearchService,
+    networkStatusSource: NetworkStatusSource,
     seedRecipes: List<Recipe>,
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
@@ -109,6 +119,11 @@ fun MainShell(
     // Detalle hospedado como overlay: `Recipe` no es serializable, asi que vive en `remember` (rotar
     // cierra el detalle, igual que el `result` de Resultados; Unknown de la spec).
     var detailRecipe by remember { mutableStateOf<Recipe?>(null) }
+    // Consulta de la Busqueda con IA: sobrevive a empujar/sacar la pagina (la Home se desmonta al
+    // empujar) y a la rotacion.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Conectividad observada (unica dependencia externa de la Home); inicial optimista (true).
+    val isOnline by networkStatusSource.observe().collectAsState(initial = true)
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
@@ -150,6 +165,10 @@ fun MainShell(
                                 saved = favorites.map { it.recipe },
                                 recentlyOpened = emptyList(),
                             ),
+                            isOnline = isOnline,
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            onSearch = { navigation = navigation.push(PushedScreen.SEARCH) },
                             onOpenGenerator = {
                                 navigation = navigation.push(PushedScreen.GENERATOR)
                             },
@@ -207,6 +226,23 @@ fun MainShell(
                     onClose = { navigation = navigation.pop() },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                     onOpenRecipe = { detailRecipe = it },
+                )
+            }
+
+            PushedScreen.SEARCH -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                AiSearchFlow(
+                    query = searchQuery,
+                    preferences = profile.preferences,
+                    taxonomy = taxonomy,
+                    searchService = aiSearchService,
+                    onBack = { navigation = navigation.pop() },
+                    onOpenRecipe = { detailRecipe = it },
+                    onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
+                    onCreateRecipe = { navigation = navigation.push(PushedScreen.GENERATOR) },
                 )
             }
         }
