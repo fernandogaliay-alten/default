@@ -90,6 +90,8 @@ Rules:
 
 Run the spec's verification plan and the repo's standard gate. If a required check cannot run, document exactly why and what is missing.
 
+Gradle daemon hygiene: never run `./gradlew` directly in this repository. Use `bash init.sh` for the standard gate and `bash scripts/gradle.sh <tasks>` for focused checks (it redirects the build output to a file, so no daemon inherits the shell's stdout). A surviving Gradle/Kotlin daemon can leave the shell tool hanging forever, even after `BUILD SUCCESSFUL`; never call `./gradlew --stop`, which is global and would kill parallel worktree builds.
+
 If the feature creates or updates `init.sh`, make it an executable non-blocking gate: it should run the standard verification checks for the current repo state and must not start long-running dev servers. A script that only prints the checks is not enough unless the spec explicitly says this repository is still pre-bootstrap.
 
 Self-verification should include the strongest applicable levels available today:
