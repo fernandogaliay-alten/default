@@ -30,6 +30,13 @@
   (`docs/design/concepts/results-screen/resultados/`,
   `docs/design/concepts/recipe-detail-screen/detalle-receta/` y
   `docs/design/concepts/favorites/favoritos/`).
+- Capturas de UI — cambio de política del harness (2026-10-11, sesión 055): en `github-flow`, una
+  feature de UI sin capturas ya **no** bloquea sin crear nada ni ensucia el checkout base. `execute`
+  **provisiona** la feature dentro de su propio worktree (issue, rama `feature/<id>` y worktree) y deja
+  allí `docs/design/concepts/<feature-id>/` con un `README.md` (pantallas y ficheros esperados) y un
+  `stitch-prompt.md` (prompt listo para pegar en Stitch, derivado de `docs/design/stitch/`), **sin**
+  lanzar sesión. La feature queda `blocked`/`provisioned` hasta que la persona coloca las capturas en el
+  worktree y re-ejecuta `github-flow execute <feature-id>`.
 - Propuesta post-MVP documentada (no aceptada, no planificada, fuera del MVP):
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
@@ -2113,3 +2120,36 @@
   abiertas en §15 del documento (identidad email/password vs social, qué se sincroniza, hosting).
 - Siguiente paso: sin cambios en el plan del MVP; si se decide construir el backend, empezar por la
   fase 1 (`shared-domain-module`) y por el ADR 0004, según el checklist de §16 del documento.
+
+### Sesión 055
+
+- Fecha: 2026-10-11
+- Objetivo: cambiar el paso de capturas de UI del flujo `github-flow` para que, cuando falten, se
+  **provisione la feature dentro del worktree** en lugar de bloquear sin crear nada (que ensuciaba la
+  base y obligaba a commitear/pushear `main`).
+- Completado:
+  - `.opencode/skills/github-flow/SKILL.md`: nueva Hard Rule de provisioning; preconditions #5 y párrafo
+    de fallo ajustados; nuevo artefacto determinista (carpeta de petición **dentro del worktree**);
+    `Mode: execute` reordenado (fija `base_sha` antes del gate) con paso explícito de *UI-captures
+    provisioning* que crea worktree/rama + `README.md` + `stitch-prompt.md` y **no** lanza sesión; nueva
+    sección `## UI Captures Provisioning`; `Blocked → Resume` actualizado (nada en la base, sin copias al
+    reanudar); `Output Report` con estado `provisioned` y `session: none`.
+  - `.opencode/skills/feature-flow/SKILL.md`: el UI gate reutiliza el material ya dejado en el worktree y
+    genera también el `stitch-prompt.md` si falta.
+  - `.opencode/skills/github-flow/references/evals.md`: nueva *Eval 6* (contrato del provisioning en
+    modo `plan`, cero efectos).
+  - `AGENTS.md`: política de capturas de UI actualizada (worktree igualmente creado, base sin ensuciar).
+- Verificación ejecutada: ninguna de código (cambio solo documental del harness). No se tocó
+  `feature_list.json`, `init.sh`, el build ni el código de la app; no se ejecutó `init.sh`/Gradle porque
+  el cambio no altera el camino de arranque.
+- Evidencia capturada: `git diff` de los cuatro ficheros; el flujo resultante documentado arriba en
+  "Estado verificado actual". Ninguna feature cambia de estado (WIP = 0).
+- Ficheros actualizados: `.opencode/skills/github-flow/SKILL.md`,
+  `.opencode/skills/github-flow/references/evals.md`, `.opencode/skills/feature-flow/SKILL.md`,
+  `AGENTS.md` y este registro.
+- Riesgo o incógnita abierta: el `stitch-prompt.md` es una copia derivada de `docs/design/stitch/`
+  (fuente de verdad); si las pantallas cambian, hay que regenerarlo. La generación del prompt depende del
+  mapeo feature→pantalla, que se toma de la spec o de `feature_list.json`.
+- Siguiente paso: sin cambios en el plan del MVP; `activity-summary` sigue siendo la siguiente candidata
+  (`planner`/`feature-spec`) y, si le faltaran capturas, ahora se provisionará su worktree en vez de
+  bloquear en la base.
