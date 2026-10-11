@@ -2338,6 +2338,10 @@
      con el helper nativo (repo privado).
   6. Ciclo de worktree de punta a punta (crear, abrir y eliminar) y `git worktree list` con los tres
      worktrees operativos desde WSL.
+  7. Post-merge (tras integrar `origin/main` `0de0719`, con el código de `activity-summary`): `bash
+     init.sh` → exit 0 en 2m29s (`test` `BUILD SUCCESSFUL` en 1m29s y `lint` en 59s), con **49 suites /
+     316 tests / 0 fallos / 0 errores / 0 omitidos** y 0 errores de lint: las mismas 316 que registraron
+     las Sesiones 057 y 058 en Windows, lo que confirma que WSL reproduce la verificación.
 - Evidencia capturada: salida de todos los comandos anteriores y `git worktree list` reconstruido.
 - Ficheros actualizados: `scripts/wsl-env.sh` y `scripts/wsl-bootstrap.sh` (nuevos), `init.sh`,
   `scripts/gradle.sh`, `scripts/new-worktree.sh`, `AGENTS.md`, `docs/technical-discovery.md`,
