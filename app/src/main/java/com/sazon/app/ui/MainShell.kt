@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
@@ -88,6 +89,7 @@ fun MainShell(
     generationService: GenerationService,
     favoriteRepository: FavoriteRepository,
     favoriteService: FavoriteService,
+    activitySummaryRepository: ActivitySummaryRepository,
     seedRecipes: List<Recipe>,
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
@@ -98,6 +100,8 @@ fun MainShell(
 
     val batch by suggestionBatchRepository.observe().collectAsState(initial = null)
     val favorites by favoriteRepository.observe().collectAsState(initial = emptyList())
+    val recipesGeneratedCount by activitySummaryRepository.observeRecipesGeneratedCount()
+        .collectAsState(initial = 0)
     val scope = rememberCoroutineScope()
     // Refresco manual "en vuelo": es estado de UI (no persistido) para deshabilitar el boton y evitar
     // dobles disparos; vive aqui porque `MainShell` posee el servicio y el scope.
@@ -183,6 +187,8 @@ fun MainShell(
                                     }
                                 }
                             },
+                            recipesGeneratedCount = recipesGeneratedCount,
+                            favoritesCount = favorites.size,
                         )
                     }
                 }

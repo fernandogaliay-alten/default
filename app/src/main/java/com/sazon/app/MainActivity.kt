@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
+import com.sazon.app.data.activity.ActivitySummaryDatabase
+import com.sazon.app.data.activity.RoomActivitySummaryRepository
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.generator.FakeRecipeGenerator
@@ -13,6 +15,7 @@ import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
 import com.sazon.app.data.suggestions.RoomSuggestionBatchRepository
 import com.sazon.app.data.suggestions.SuggestionBatchDatabase
+import com.sazon.app.domain.activity.ActivitySummaryService
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
@@ -33,14 +36,25 @@ class MainActivity : ComponentActivity() {
         val suggestionBatchDatabase = SuggestionBatchDatabase.build(applicationContext)
         val suggestionBatchRepository =
             RoomSuggestionBatchRepository(suggestionBatchDatabase.suggestionBatchDao())
+        val activitySummaryDatabase = ActivitySummaryDatabase.build(applicationContext)
+        val activitySummaryRepository =
+            RoomActivitySummaryRepository(activitySummaryDatabase.activitySummaryDao())
+        val activitySummaryService = ActivitySummaryService(activitySummaryRepository)
         val generator = FakeRecipeGenerator()
         val suggestionBatchService = SuggestionBatchService(
             generator = generator,
             repository = suggestionBatchRepository,
             taxonomy = taxonomy,
             seedRecipes = seedRecipes,
+            // Costura aditiva: cada receta ai aceptada en un refresco del Lote suma al Resumen.
+            onRecipesGenerated = { recipes -> activitySummaryService.recordAcceptedRecipes(recipes) },
         )
-        val generationService = GenerationService(generator = generator, taxonomy = taxonomy)
+        val generationService = GenerationService(
+            generator = generator,
+            taxonomy = taxonomy,
+            // Costura aditiva: cada receta ai aceptada por el Generador suma al Resumen.
+            onRecipesGenerated = { recipes -> activitySummaryService.recordAcceptedRecipes(recipes) },
+        )
         val favoritesDatabase = FavoritesDatabase.build(applicationContext)
         val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
         val favoriteService = FavoriteService(favoriteRepository)
@@ -55,6 +69,7 @@ class MainActivity : ComponentActivity() {
                     generationService = generationService,
                     favoriteRepository = favoriteRepository,
                     favoriteService = favoriteService,
+                    activitySummaryRepository = activitySummaryRepository,
                     seedRecipes = seedRecipes,
                 )
             }
