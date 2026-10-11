@@ -49,7 +49,7 @@ Antes de escribir código:
   base **no se ensucia** (nada que commitear ni pushear en `main`): la persona deja las capturas
   directamente en la ruta del worktree y la feature queda `blocked` hasta que estén disponibles. Cuando
   la persona aporte las capturas, la feature se **reanuda re-ejecutando `github-flow execute <feature-id>`**
-  (idempotente: reutiliza issue/worktree/rama y entrega de nuevo el comando de sesión);
+  (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
   **no** se reanuda con un `feature-flow` suelto, que dejaría la publicación fuera de `github-flow`.
   `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección visual
   obligatoria, no opcional.
@@ -59,11 +59,6 @@ Antes de escribir código:
 
 El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas mandan:
 
-- **El agente nunca lanza ni relanza sesiones de `opencode run`.** Cada sesión de worktree la lanza
-  **la persona** en su terminal (Git Bash en Windows). El orquestador de `github-flow` prepara issue,
-  rama y worktree y **entrega el comando exacto** listo para pegar; **no** ejecuta `opencode run` ni
-  `--continue`, ni en primer plano ni en segundo plano. Los lanzamientos anidados desde la sesión del
-  orquestador se cuelgan o abortan (Bun/Windows) y bloquean el trabajo.
 - El ciclo spec → implementación → validación es **autónomo**: los subagentes trabajan sin aprobación
   paso a paso. El validador independiente es la única puerta de calidad; solo un `accept` cierra la
   feature.
@@ -93,9 +88,9 @@ aceptación.
 - El agente principal **no** ejecuta esas skills directamente: delega en el subagente del rol. El
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
-  **`github-flow`**: crea issues, ramas y worktrees y **entrega a la persona el comando exacto** de la
-  sesión independiente por worktree (`opencode run --dir <worktree> ...`), que **lanza la persona**; esa
-  sesión ejecuta el ciclo de la feature con `feature-flow`. `github-flow` **nunca** hace merge.
+  **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
+  (`opencode run --dir <worktree>`) y delega el ciclo de cada feature a `feature-flow`.
+  `github-flow` **nunca** hace merge.
 - Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
   sin él, la skill correspondiente selecciona la siguiente feature.
 
@@ -105,8 +100,7 @@ aceptación.
 - Rama base: **`main`**; cada feature trabaja en `feature/<feature-id>`.
 - Worktree por feature, **fuera** del checkout base, en `../<carpeta-del-checkout>-worktrees`
   (aquí `..\Default Project-worktrees`).
-- Herramientas requeridas: **opencode CLI** (la persona lanza `opencode run`; ver arriba) y **`gh`**
-  autenticado.
+- Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
 - **Quién publica**: solo el orquestador de `github-flow`, una vez, al `accept` (reutilizando el PR si
   ya existe). `feature-flow` termina en el commit local de la rama; nunca hace push ni PR.
 - **Integración de artefactos compartidos**: el orquestador es el único integrador. Antes de publicar,
@@ -114,8 +108,7 @@ aceptación.
   force-push) y resuelve los conflictos de estado/docs (`feature_list.json`, `PROGRESS.md`,
   `docs/technical-discovery.md`, …) manteniendo **ambas** aportaciones. Tras cada merge de un PR,
   re-sincroniza las ramas abiertas restantes igual.
-- Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues y worktrees y entrega el
-  comando de la sesión; al
+- Modos de `github-flow`: `plan` (solo lectura), `execute` (crea issues/worktrees/sesiones y, al
   `accept`, **commitea, hace push y abre el PR** automáticamente), `publish` (republicación: push +
   PR) y `prune` (limpieza: elimina worktree y rama local de una feature **solo** si está `accepted`
   y su PR está mergeado; `execute` y `publish` lo ejecutan antes de trabajar). Identidades
@@ -202,7 +195,7 @@ Una feature está hecha solo si se cumplen todas:
   huérfano el directorio aunque quite el registro del worktree.
 - **Segfault de opencode (Bun) en Windows**: el CLI puede abortar **al cerrar** de forma intermitente.
   No afecta al trabajo ya persistido; se tolera y la verificación se hace por artefactos
-  (git/`feature_list`/PR), no por el código de salida. Si muere a media ejecución, **la persona** lanza
-  la reanudación con `opencode run --continue`; el agente nunca la relanza por su cuenta.
+  (git/`feature_list`/PR), no por el código de salida. Reanudar con `--continue` si muere a media
+  ejecución; escalar a WSL solo si se vuelve frecuente.
 - Al hacer el primer commit, marca los scripts como ejecutables para no perder el bit en otros
   entornos: `git add --chmod=+x init.sh scripts/new-worktree.sh`.
