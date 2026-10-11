@@ -30,6 +30,10 @@
   (`docs/design/concepts/results-screen/resultados/`,
   `docs/design/concepts/recipe-detail-screen/detalle-receta/` y
   `docs/design/concepts/favorites/favoritos/`).
+- Propuesta post-MVP documentada (no aceptada, no planificada, fuera del MVP):
+  `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
+  offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
+  ni el MVP local-first; queda para retomar en una fase posterior.
 - Feature en curso: ninguna. WIP = 0.
 - Bloqueo actual: ninguno
 - Última verificación (2026-10-10, `favorites`, validador independiente): veredicto `accept`.
@@ -2081,3 +2085,31 @@
   `docs/design/concepts/favorites/favoritos/`; un defecto visual se corrige con una feature correctiva.
 - Siguiente paso: `activity-summary` (depende de `profile-screen` y `favorites`, ambas `accepted`),
   empezando por `planner`/`feature-spec`.
+
+### Sesión 054
+
+- Fecha: 2026-10-11
+- Objetivo: analizar y documentar (sin implementar) la propuesta de backend post-MVP para cuenta,
+  sincronización y proxy de IA.
+- Completado: creado `docs/backend-proposal.md` con la opción B (**Kotlin + Ktor + PostgreSQL**),
+  alternativas consideradas, alcance por servicios, superficie HTTP propuesta, modelo de datos,
+  autenticación/seguridad, estrategia de sincronización offline-first (Room como verdad local,
+  servidor como réplica, LWW + tombstones + WorkManager), módulo de dominio compartido (KMP) para
+  reutilizar `RecipeValidator`/`PromptBuilder`/`PreferenceSignature`, despliegue y operaciones, plan por
+  fases (backlog propuesto), impacto en el harness (ADR 0004 sugerido), riesgos, preguntas abiertas y un
+  checklist de retomada.
+- Verificación ejecutada: ninguna de código (cambio solo documental). No se ha tocado
+  `feature_list.json`, `init.sh`, el build ni el código de la app; `docs/backend-proposal.md` no se cita
+  como decisión aceptada.
+- Evidencia capturada: documento versionado en `docs/backend-proposal.md`; referencia añadida en el
+  estado de este registro; ninguna feature cambia de estado (WIP = 0).
+- Ficheros actualizados: `docs/backend-proposal.md` (nuevo) y este registro.
+- Hallazgo relevante: el backend **revierte** el no-objetivo permanente de `build-brief.md` y el
+  `ADR 0002`; construirlo exige un ADR nuevo que ajuste el 0002 y actualizar discovery (recogido en
+  §13 del documento). La propuesta explota que el dominio ya es puro y que la app define puertos
+  (`ProfileRepository`, `FavoriteRepository`, `SuggestionBatchRepository`, `RecipeGenerator`), por lo
+  que la integración es, sobre todo, adaptadores detrás de esos puertos más un motor de sync.
+- Riesgo o incógnita abierta: sin resolver a propósito (el desarrollo no se inicia ahora). Preguntas
+  abiertas en §15 del documento (identidad email/password vs social, qué se sincroniza, hosting).
+- Siguiente paso: sin cambios en el plan del MVP; si se decide construir el backend, empezar por la
+  fase 1 (`shared-domain-module`) y por el ADR 0004, según el checklist de §16 del documento.
