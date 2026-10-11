@@ -137,6 +137,21 @@ fi
 mkdir -p "$HOME/.local/bin"
 ln -sf "$GH_DIR/bin/gh" "$HOME/.local/bin/gh"
 
+log "opencode nativo"
+# El `opencode` que hay en el PATH por interop es el shim npm de Windows (build de Bun con los
+# cuelgues al cerrar). El instalador oficial deja el binario de Linux en ~/.opencode/bin: se enlaza
+# en ~/.local/bin, que va primero en el PATH, para que resuelva nativo también en shells NO
+# interactivas (el alias de ~/.bashrc solo aplica a las interactivas).
+if [ ! -x "$HOME/.opencode/bin/opencode" ]; then
+  warn "no encuentro ~/.opencode/bin/opencode; instálalo con:
+      curl -fsSL https://opencode.ai/install | bash"
+elif [ -x "$HOME/.local/bin/opencode" ] || [ -L "$HOME/.local/bin/opencode" ]; then
+  echo "ya enlazado: $("$HOME/.opencode/bin/opencode" --version 2>/dev/null | head -1)"
+else
+  ln -sf "$HOME/.opencode/bin/opencode" "$HOME/.local/bin/opencode"
+  echo "enlazado: $("$HOME/.opencode/bin/opencode" --version 2>/dev/null | head -1)"
+fi
+
 if ! "$HOME/.local/bin/gh" auth status >/dev/null 2>&1; then
   log "Credenciales de gh"
   # `gh` en Windows guarda el token en el Administrador de credenciales (keyring), no en hosts.yml,

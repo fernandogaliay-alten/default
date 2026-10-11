@@ -2314,7 +2314,11 @@
     que lo creó) y deja la regla escrita en `AGENTS.md`.
   - Harness nativo: `gh` en `~/.local/bin/gh`, helper de credenciales de git apuntando al `gh` nativo
     (antes invocaba al `gh.exe` de Windows por interop) y bloque de entorno en `~/.profile` para las
-    shells interactivas. `opencode` ya era el binario Linux (`~/.opencode/bin/opencode`, v2.0.26).
+    shells interactivas. `opencode` ya era el binario Linux (`~/.opencode/bin/opencode`, v2.0.26), pero
+    en shells **no** interactivas el PATH resolvía al shim npm de Windows (el alias de `~/.bashrc` solo
+    aplica a las interactivas, y esa build de Bun es la que se colgaba al cerrar): `wsl-bootstrap.sh`
+    deja un enlace en `~/.local/bin/opencode`, que va primero en el PATH, así que resuelve nativo
+    siempre.
   - Documentación: `AGENTS.md` ("Notas de entorno" reescritas para WSL: plataforma, JDK/SDK, caché de
     Gradle, regla de worktrees desde WSL), `docs/technical-discovery.md` (`Testing and Verification` y
     `Deployment and Operations`) y `.opencode/skills/github-flow/SKILL.md` (la sesión se lanza en WSL).
@@ -2342,6 +2346,8 @@
      init.sh` → exit 0 en 2m29s (`test` `BUILD SUCCESSFUL` en 1m29s y `lint` en 59s), con **49 suites /
      316 tests / 0 fallos / 0 errores / 0 omitidos** y 0 errores de lint: las mismas 316 que registraron
      las Sesiones 057 y 058 en Windows, lo que confirma que WSL reproduce la verificación.
+  8. Resolución de herramientas: `command -v java/gh/adb/opencode` → binarios nativos en shells de login
+     y no interactivas (`opencode v2.0.26`, no el shim de Windows `1.18.35`).
 - Evidencia capturada: salida de todos los comandos anteriores y `git worktree list` reconstruido.
 - Ficheros actualizados: `scripts/wsl-env.sh` y `scripts/wsl-bootstrap.sh` (nuevos), `init.sh`,
   `scripts/gradle.sh`, `scripts/new-worktree.sh`, `AGENTS.md`, `docs/technical-discovery.md`,
