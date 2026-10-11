@@ -31,6 +31,12 @@ import kotlinx.coroutines.CancellationException
 class GenerationService(
     private val generator: RecipeGenerator,
     private val taxonomy: Taxonomy,
+    /**
+     * Costura aditiva para reportar las recetas **aceptadas** de una generacion (Resumen de
+     * actividad). Por defecto es un no-op: no rompe constructores ni tests existentes. El filtro
+     * "solo `ai`" lo aplica el servicio de dominio consumidor, no este servicio.
+     */
+    private val onRecipesGenerated: suspend (List<Recipe>) -> Unit = {},
 ) {
 
     suspend fun generate(
@@ -65,6 +71,7 @@ class GenerationService(
             }
         }
 
+        onRecipesGenerated(accepted)
         return GenerationResult(accepted = accepted, discarded = discarded)
     }
 }

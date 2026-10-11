@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sazón — Perfil: Sección "Resumen"</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            manrope: ['Manrope', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            sazon: {
+              terracotta: '#D9552B',
+              terracottaContainer: '#FFDCCF',
+              honey: '#F2A93B',
+              olive: '#5F7A3D',
+              cream: '#FFF8F0',
+              charcoal: '#2B2118',
+              outline: '#E8DDD3',
+              darkBg: '#18120E',
+              darkSurface: '#241C16',
+              darkSurfaceHigh: '#32261E',
+              darkOutline: '#3A2E25',
+              darkMuted: '#A8998C',
+            }
+          },
+          boxShadow: {
+            'soft': '0 4px 16px rgba(0, 0, 0, 0.06)',
+            'soft-dark': '0 4px 16px rgba(0, 0, 0, 0.35)',
+            'pill': '0 2px 8px rgba(0, 0, 0, 0.04)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-[#F5EFEB] text-[#2B2118] font-inter antialiased min-h-screen py-10 px-4 md:px-10">
+
+  <!-- Header / Breadcrumb Bar -->
+  <div class="max-w-7xl mx-auto mb-8">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#E8DDD3] pb-5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-[#D9552B] flex items-center justify-center text-white font-manrope font-bold text-lg shadow-sm">
+          S
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold tracking-wider uppercase text-[#D9552B] bg-[#FFDCCF] px-2.5 py-0.5 rounded-full">Especificación 21-perfil-resumen.md</span>
+            <span class="text-xs text-[#8A796B]">Pixel 390×844 · Material 3</span>
+          </div>
+          <h1 class="text-2xl md:text-3xl font-manrope font-extrabold text-[#2B2118] tracking-tight">Sazón — Pestaña Perfil: Sección "Resumen"</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-medium text-[#2B2118] shadow-sm border border-[#E8DDD3]">
+          <span class="w-2 h-2 rounded-full bg-[#4C7A34]"></span>
+          Pixel Frame 390×844
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-medium text-[#2B2118] shadow-sm border border-[#E8DDD3]">
+          Manrope + Inter · Tabular figures
+        </span>
+      </div>
+    </div>
+    <p class="text-sm text-[#7A6A5D] mt-3 max-w-4xl">
+      Diseño específico de la sección <strong>"Resumen"</strong> en la pestaña de Perfil (entre la cabecera de identidad y la sección "Sugerencias"), comparando Modo Claro y Modo Oscuro, junto con la variante canónica para usuarios nóveles (valores en 0).
+    </p>
+  </div>
+
+  <!-- Primary Comparison Grid (Phone mockups) -->
+  <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-start justify-center">
+
+    <!-- ==========================================
+         PHONE 1: MODO CLARO (Default / Active state)
+         ========================================== -->
+    <div class="flex flex-col items-center">
+      <div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#D9552B]"></span>
+          <span class="text-sm font-manrope font-bold text-[#2B2118]">Modo Claro</span>
+          <span class="text-xs text-[#8A796B]">(Canvas #FFF8F0)</span>
+        </div>
+        <span class="text-xs font-medium text-[#D9552B] bg-[#FFDCCF] px-2 py-0.5 rounded-full">24 generadas · 12 favoritas</span>
+      </div>
+
+      <!-- Device Container -->
+      <div class="w-[390px] h-[844px] bg-[#FFF8F0] rounded-[48px] shadow-2xl border-[8px] border-[#2B2118] relative overflow-hidden flex flex-col justify-between select-none">
+        
+        <!-- Status Bar -->
+        <div class="pt-3 px-7 pb-1 flex justify-between items-center text-xs font-semibold text-[#2B2118] z-20">
+          <span>09:41</span>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A.996.996 0 0 0 5.06 20h13.88a.996.996 0 0 0 .71-1.75l-.62-.64C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/>
+            </svg>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/>
+            </svg>
+            <div class="w-5 h-2.5 border border-[#2B2118] rounded-sm p-0.5 flex items-center">
+              <div class="h-full w-full bg-[#2B2118] rounded-2xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable Screen Content -->
+        <div class="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-6">
+          
+          <!-- Top App Bar & Profile Identity Header -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-2xl font-manrope font-bold text-[#2B2118]">Perfil</h2>
+              <button class="text-sm font-manrope font-semibold text-[#D9552B] hover:opacity-80 transition-opacity">
+                Editar
+              </button>
+            </div>
+
+            <!-- Identity Card / Header -->
+            <div class="bg-white rounded-[24px] p-4 shadow-soft flex items-center gap-3.5">
+              <!-- Avatar with initials on flat colour from 8-swatch palette -->
+              <div class="w-14 h-14 rounded-full bg-[#E2733B] flex items-center justify-center text-white font-manrope font-bold text-xl shadow-inner flex-shrink-0">
+                LC
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="text-xs font-medium text-[#8A796B] uppercase tracking-wider">Tu perfil</span>
+                <h3 class="text-lg font-manrope font-bold text-[#2B2118] truncate leading-tight">Lucía Calvo</h3>
+                <p class="text-xs text-[#7A6A5D] truncate mt-0.5">Sazón en este dispositivo · Modo local</p>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-[#FFF8F0] flex items-center justify-center text-[#8A796B]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==============================================
+               TARGET SECTION: "RESUMEN" (Explicit Requirement)
+               ============================================== -->
+          <section class="space-y-3" aria-label="Sección Resumen">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="font-manrope font-bold text-lg text-[#2B2118] tracking-tight">Resumen</h3>
+              <span class="text-[11px] font-medium text-[#8A796B]">Actividad local</span>
+            </div>
+
+            <!-- Two compact stat cards side by side, same width, 24px radius, white surface, shadow-soft, 16px inner padding, 12-16px gap -->
+            <div class="grid grid-cols-2 gap-3.5">
+              
+              <!-- Card 1: Recetas Generadas -->
+              <div class="bg-white rounded-[24px] p-4 shadow-soft flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5">
+                <!-- Icon Header with Terracotta accent icon -->
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-8 h-8 rounded-full bg-[#FFDCCF] flex items-center justify-center text-[#D9552B]">
+                    <!-- Tiny line icon in terracotta for recetas generadas -->
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                    </svg>
+                  </div>
+                  <span class="text-[10px] font-semibold text-[#5F7A3D] bg-[#EFF4E8] px-1.5 py-0.5 rounded-full">IA local</span>
+                </div>
+
+                <!-- Big Number in Tabular Figures, Medium weight, Warm charcoal -->
+                <div>
+                  <div class="text-3xl font-inter font-medium text-[#2B2118] tracking-tight tabular-nums leading-none">
+                    24
+                  </div>
+                  <!-- Label in muted supporting text -->
+                  <div class="text-xs font-inter text-[#7A6A5D] mt-1.5 leading-snug">
+                    recetas generadas
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2: Favoritas -->
+              <div class="bg-white rounded-[24px] p-4 shadow-soft flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5">
+                <!-- Icon Header with Honey accent icon -->
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-8 h-8 rounded-full bg-[#FEF4E4] flex items-center justify-center text-[#F2A93B]">
+                    <!-- Tiny line icon in honey for favoritas -->
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                  </div>
+                  <span class="text-[10px] font-semibold text-[#8A796B] bg-[#F5EFEB] px-1.5 py-0.5 rounded-full">Sin red</span>
+                </div>
+
+                <!-- Big Number in Tabular Figures, Medium weight, Warm charcoal -->
+                <div>
+                  <div class="text-3xl font-inter font-medium text-[#2B2118] tracking-tight tabular-nums leading-none">
+                    12
+                  </div>
+                  <!-- Label in muted supporting text -->
+                  <div class="text-xs font-inter text-[#7A6A5D] mt-1.5 leading-snug">
+                    favoritas
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Subsequent Section: "Sugerencias" (Showing context as requested) -->
+          <section class="space-y-3" aria-label="Sección Sugerencias">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="font-manrope font-bold text-lg text-[#2B2118] tracking-tight">Sugerencias</h3>
+              <span class="text-xs text-[#8A796B]">Semilla & perfil</span>
+            </div>
+
+            <!-- Sugerencias row container -->
+            <div class="bg-white rounded-[24px] p-4 shadow-soft space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-[#5F7A3D]"></div>
+                  <span class="text-xs text-[#5F7A3D] font-medium">Última actualización: hace 3 días</span>
+                </div>
+                <button class="px-3 py-1 rounded-full bg-[#FFF8F0] border border-[#E8DDD3] text-xs font-manrope font-semibold text-[#2B2118] hover:bg-[#FFDCCF] hover:border-[#D9552B] transition-colors">
+                  Actualizar
+                </button>
+              </div>
+              <p class="text-xs text-[#8A796B] leading-relaxed">
+                Se renuevan automáticamente cuando cambian tus preferencias culinarias o ingredientes.
+              </p>
+            </div>
+          </section>
+
+          <!-- Preferences Preview Row -->
+          <div class="bg-white rounded-[24px] p-4 shadow-soft space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-[#2B2118]">Mis preferencias</span>
+              <span class="text-xs text-[#D9552B] font-medium">5 configuradas</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="text-[11px] font-medium bg-[#FFF8F0] text-[#7A6A5D] px-2.5 py-1 rounded-full border border-[#E8DDD3]">Omnívoro</span>
+              <span class="text-[11px] font-medium bg-[#FFF8F0] text-[#7A6A5D] px-2.5 py-1 rounded-full border border-[#E8DDD3]">Mediterránea</span>
+              <span class="text-[11px] font-medium bg-[#FFF8F0] text-[#7A6A5D] px-2.5 py-1 rounded-full border border-[#E8DDD3]">Hasta 30 min</span>
+              <span class="text-[11px] font-medium bg-[#FFF8F0] text-[#7A6A5D] px-2.5 py-1 rounded-full border border-[#E8DDD3]">2 comensales</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Persistent Bottom Navigation Bar (80dp, white, 3 destinations + FAB) -->
+        <div class="h-20 bg-white border-t border-[#E8DDD3] rounded-t-[24px] px-6 flex items-center justify-between z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.03)] absolute bottom-0 left-0 right-0">
+          <!-- Inicio -->
+          <div class="flex flex-col items-center gap-1 text-[#8A796B] cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            <span class="text-[10px] font-medium">Inicio</span>
+          </div>
+
+          <!-- Favoritos -->
+          <div class="flex flex-col items-center gap-1 text-[#8A796B] cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+            <span class="text-[10px] font-medium">Favoritos</span>
+          </div>
+
+          <!-- Perfil (Active) -->
+          <div class="flex flex-col items-center gap-1 text-[#D9552B] cursor-pointer">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <span class="text-[10px] font-bold">Perfil</span>
+          </div>
+
+          <!-- FAB flotante "＋ Crear receta" -->
+          <div class="absolute -top-6 right-6">
+            <button class="bg-[#D9552B] text-white px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-manrope font-bold hover:bg-[#c24822] transition-colors">
+              <span class="text-sm">＋</span>
+              <span>Crear receta</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         PHONE 2: MODO OSCURO (Dark Theme variant)
+         ========================================== -->
+    <div class="flex flex-col items-center">
+      <div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#F2A93B]"></span>
+          <span class="text-sm font-manrope font-bold text-[#2B2118]">Modo Oscuro</span>
+          <span class="text-xs text-[#8A796B]">(Canvas #18120E)</span>
+        </div>
+        <span class="text-xs font-medium text-[#F2A93B] bg-[#32261E] px-2 py-0.5 rounded-full border border-[#3A2E25]">Superficie #241C16</span>
+      </div>
+
+      <!-- Device Container Dark -->
+      <div class="w-[390px] h-[844px] bg-[#18120E] rounded-[48px] shadow-2xl border-[8px] border-[#2B2118] relative overflow-hidden flex flex-col justify-between select-none">
+        
+        <!-- Status Bar Dark -->
+        <div class="pt-3 px-7 pb-1 flex justify-between items-center text-xs font-semibold text-[#E9DDD3] z-20">
+          <span>09:41</span>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25A.996.996 0 0 0 5.06 20h13.88a.996.996 0 0 0 .71-1.75l-.62-.64C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/>
+            </svg>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/>
+            </svg>
+            <div class="w-5 h-2.5 border border-[#E9DDD3] rounded-sm p-0.5 flex items-center">
+              <div class="h-full w-full bg-[#E9DDD3] rounded-2xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable Screen Content Dark -->
+        <div class="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-6">
+          
+          <!-- Top App Bar & Profile Identity Header Dark -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-2xl font-manrope font-bold text-[#FFF8F0]">Perfil</h2>
+              <button class="text-sm font-manrope font-semibold text-[#D9552B] hover:opacity-80 transition-opacity">
+                Editar
+              </button>
+            </div>
+
+            <!-- Identity Card Dark -->
+            <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark flex items-center gap-3.5">
+              <div class="w-14 h-14 rounded-full bg-[#E2733B] flex items-center justify-center text-white font-manrope font-bold text-xl shadow-inner flex-shrink-0">
+                LC
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="text-xs font-medium text-[#A8998C] uppercase tracking-wider">Tu perfil</span>
+                <h3 class="text-lg font-manrope font-bold text-[#FFF8F0] truncate leading-tight">Lucía Calvo</h3>
+                <p class="text-xs text-[#A8998C] truncate mt-0.5">Sazón en este dispositivo · Modo local</p>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-[#18120E] flex items-center justify-center text-[#A8998C]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==============================================
+               TARGET SECTION: "RESUMEN" (Dark Variant)
+               ============================================== -->
+          <section class="space-y-3" aria-label="Sección Resumen Modo Oscuro">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="font-manrope font-bold text-lg text-[#FFF8F0] tracking-tight">Resumen</h3>
+              <span class="text-[11px] font-medium text-[#A8998C]">Actividad local</span>
+            </div>
+
+            <!-- Two compact stat cards side by side, same width, 24px radius, #241C16 surface, shadow-soft-dark, 16px inner padding, 12-16px gap -->
+            <div class="grid grid-cols-2 gap-3.5">
+              
+              <!-- Card 1 Dark: Recetas Generadas -->
+              <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5">
+                <!-- Icon Header with Terracotta accent icon -->
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-8 h-8 rounded-full bg-[#3D251C] flex items-center justify-center text-[#E5683F]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                    </svg>
+                  </div>
+                  <span class="text-[10px] font-semibold text-[#8EB85B] bg-[#22301A] px-1.5 py-0.5 rounded-full border border-[#2E4223]">IA local</span>
+                </div>
+
+                <!-- Big Number in Tabular Figures, Medium weight, Warm cream -->
+                <div>
+                  <div class="text-3xl font-inter font-medium text-[#FFF8F0] tracking-tight tabular-nums leading-none">
+                    24
+                  </div>
+                  <!-- Label in muted supporting text -->
+                  <div class="text-xs font-inter text-[#A8998C] mt-1.5 leading-snug">
+                    recetas generadas
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2 Dark: Favoritas -->
+              <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5">
+                <!-- Icon Header with Honey accent icon -->
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-8 h-8 rounded-full bg-[#3D2F1B] flex items-center justify-center text-[#F2A93B]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                    </svg>
+                  </div>
+                  <span class="text-[10px] font-semibold text-[#A8998C] bg-[#18120E] px-1.5 py-0.5 rounded-full border border-[#3A2E25]">Sin red</span>
+                </div>
+
+                <!-- Big Number in Tabular Figures, Medium weight, Warm cream -->
+                <div>
+                  <div class="text-3xl font-inter font-medium text-[#FFF8F0] tracking-tight tabular-nums leading-none">
+                    12
+                  </div>
+                  <!-- Label in muted supporting text -->
+                  <div class="text-xs font-inter text-[#A8998C] mt-1.5 leading-snug">
+                    favoritas
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Subsequent Section Dark: "Sugerencias" -->
+          <section class="space-y-3" aria-label="Sección Sugerencias Modo Oscuro">
+            <div class="flex items-center justify-between px-1">
+              <h3 class="font-manrope font-bold text-lg text-[#FFF8F0] tracking-tight">Sugerencias</h3>
+              <span class="text-xs text-[#A8998C]">Semilla & perfil</span>
+            </div>
+
+            <!-- Sugerencias row container Dark -->
+            <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-[#8EB85B]"></div>
+                  <span class="text-xs text-[#8EB85B] font-medium">Última actualización: hace 3 días</span>
+                </div>
+                <button class="px-3 py-1 rounded-full bg-[#18120E] border border-[#3A2E25] text-xs font-manrope font-semibold text-[#FFF8F0] hover:bg-[#3D251C] hover:border-[#D9552B] transition-colors">
+                  Actualizar
+                </button>
+              </div>
+              <p class="text-xs text-[#A8998C] leading-relaxed">
+                Se renuevan automáticamente cuando cambian tus preferencias culinarias o ingredientes.
+              </p>
+            </div>
+          </section>
+
+          <!-- Preferences Preview Row Dark -->
+          <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-[#FFF8F0]">Mis preferencias</span>
+              <span class="text-xs text-[#E5683F] font-medium">5 configuradas</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span class="text-[11px] font-medium bg-[#18120E] text-[#A8998C] px-2.5 py-1 rounded-full border border-[#3A2E25]">Omnívoro</span>
+              <span class="text-[11px] font-medium bg-[#18120E] text-[#A8998C] px-2.5 py-1 rounded-full border border-[#3A2E25]">Mediterránea</span>
+              <span class="text-[11px] font-medium bg-[#18120E] text-[#A8998C] px-2.5 py-1 rounded-full border border-[#3A2E25]">Hasta 30 min</span>
+              <span class="text-[11px] font-medium bg-[#18120E] text-[#A8998C] px-2.5 py-1 rounded-full border border-[#3A2E25]">2 comensales</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Persistent Bottom Navigation Bar Dark (80dp) -->
+        <div class="h-20 bg-[#241C16] border-t border-[#3A2E25] rounded-t-[24px] px-6 flex items-center justify-between z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.3)] absolute bottom-0 left-0 right-0">
+          <!-- Inicio -->
+          <div class="flex flex-col items-center gap-1 text-[#A8998C] cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            <span class="text-[10px] font-medium">Inicio</span>
+          </div>
+
+          <!-- Favoritos -->
+          <div class="flex flex-col items-center gap-1 text-[#A8998C] cursor-pointer">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+            <span class="text-[10px] font-medium">Favoritos</span>
+          </div>
+
+          <!-- Perfil (Active) -->
+          <div class="flex flex-col items-center gap-1 text-[#E5683F] cursor-pointer">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <span class="text-[10px] font-bold">Perfil</span>
+          </div>
+
+          <!-- FAB flotante Dark -->
+          <div class="absolute -top-6 right-6">
+            <button class="bg-[#D9552B] text-white px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-manrope font-bold hover:bg-[#c24822] transition-colors">
+              <span class="text-sm">＋</span>
+              <span>Crear receta</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ==============================================================
+       EXTRA DETAIL SECTION: VARIANTES DE CIFRAS PEQUEÑAS ("0")
+       Y ANATOMÍA DE LA TARJETA (Directly from Document: 21-perfil-resumen.md)
+       ============================================================== -->
+  <div class="max-w-7xl mx-auto mt-16 pt-10 border-t border-[#E8DDD3]">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-[#D9552B] tracking-wider uppercase bg-[#FFDCCF] px-2.5 py-0.5 rounded-full">Casos Extremos y Variante Inicial</span>
+        <h2 class="text-2xl font-manrope font-bold text-[#2B2118] mt-1">Variante para Usuario Novel (Cero Recetas)</h2>
+        <p class="text-sm text-[#7A6A5D] mt-1">
+          "The small-numbers variant: '0 recetas generadas' and '0 favoritas'". Demostración aislada en Modo Claro y Modo Oscuro.
+        </p>
+      </div>
+      <div class="hidden sm:flex items-center gap-2 text-xs text-[#8A796B]">
+        <span class="w-2 h-2 rounded-full bg-[#F2A93B]"></span>
+        <span>Jerarquía balanceada sin competir con la acción primaria</span>
+      </div>
+    </div>
+
+    <!-- Zero State Cards Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- Variant 1: Light Theme - Zero State -->
+      <div class="bg-[#FFF8F0] p-6 rounded-[32px] border border-[#E8DDD3] shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-manrope font-bold text-[#2B2118]">Modo Claro · Estado Cero</span>
+          <span class="text-[11px] text-[#8A796B]">Usuario recién registrado</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <!-- Card Zero 1 -->
+          <div class="bg-white rounded-[24px] p-4 shadow-soft">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-full bg-[#FFDCCF] flex items-center justify-center text-[#D9552B]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                </svg>
+              </div>
+              <span class="text-[10px] font-semibold text-[#8A796B] bg-[#F5EFEB] px-1.5 py-0.5 rounded-full">Sin recetas</span>
+            </div>
+            <div class="text-3xl font-inter font-medium text-[#2B2118] tracking-tight tabular-nums leading-none">
+              0
+            </div>
+            <div class="text-xs font-inter text-[#7A6A5D] mt-1.5 leading-snug">
+              recetas generadas
+            </div>
+          </div>
+
+          <!-- Card Zero 2 -->
+          <div class="bg-white rounded-[24px] p-4 shadow-soft">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-full bg-[#FEF4E4] flex items-center justify-center text-[#F2A93B]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </div>
+              <span class="text-[10px] font-semibold text-[#8A796B] bg-[#F5EFEB] px-1.5 py-0.5 rounded-full">Sin favoritas</span>
+            </div>
+            <div class="text-3xl font-inter font-medium text-[#2B2118] tracking-tight tabular-nums leading-none">
+              0
+            </div>
+            <div class="text-xs font-inter text-[#7A6A5D] mt-1.5 leading-snug">
+              favoritas
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variant 2: Dark Theme - Zero State -->
+      <div class="bg-[#18120E] p-6 rounded-[32px] border border-[#3A2E25] shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-manrope font-bold text-[#FFF8F0]">Modo Oscuro · Estado Cero</span>
+          <span class="text-[11px] text-[#A8998C]">Superficie #241C16</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3.5">
+          <!-- Card Zero 1 Dark -->
+          <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-full bg-[#3D251C] flex items-center justify-center text-[#E5683F]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                </svg>
+              </div>
+              <span class="text-[10px] font-semibold text-[#A8998C] bg-[#18120E] px-1.5 py-0.5 rounded-full border border-[#3A2E25]">Sin recetas</span>
+            </div>
+            <div class="text-3xl font-inter font-medium text-[#FFF8F0] tracking-tight tabular-nums leading-none">
+              0
+            </div>
+            <div class="text-xs font-inter text-[#A8998C] mt-1.5 leading-snug">
+              recetas generadas
+            </div>
+          </div>
+
+          <!-- Card Zero 2 Dark -->
+          <div class="bg-[#241C16] border border-[#3A2E25] rounded-[24px] p-4 shadow-soft-dark">
+            <div class="flex items-center justify-between mb-2">
+              <div class="w-8 h-8 rounded-full bg-[#3D2F1B] flex items-center justify-center text-[#F2A93B]">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </div>
+              <span class="text-[10px] font-semibold text-[#A8998C] bg-[#18120E] px-1.5 py-0.5 rounded-full border border-[#3A2E25]">Sin favoritas</span>
+            </div>
+            <div class="text-3xl font-inter font-medium text-[#FFF8F0] tracking-tight tabular-nums leading-none">
+              0
+            </div>
+            <div class="text-xs font-inter text-[#A8998C] mt-1.5 leading-snug">
+              favoritas
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Design Specification Callout Cards -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-white p-4 rounded-2xl border border-[#E8DDD3] shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold text-[#D9552B] mb-1">
+          <span class="w-2 h-2 rounded-full bg-[#D9552B]"></span>
+          Radio 24px & Sombra Suave
+        </div>
+        <p class="text-xs text-[#7A6A5D]">
+          Esquinas con radio exacto de 24px, sin bordes duros de separación (`border-0`), empleando elevación sutil `shadow(y=4, blur=16, 6%)`.
+        </p>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-[#E8DDD3] shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold text-[#2B2118] mb-1">
+          <span class="w-2 h-2 rounded-full bg-[#2B2118]"></span>
+          Cifras Tabulares (Tabular figures)
+        </div>
+        <p class="text-xs text-[#7A6A5D]">
+          Los números "24", "12" y "0" están formateados con `font-variant-numeric: tabular-nums` y peso Medium para comparación inmediata.
+        </p>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-[#E8DDD3] shadow-sm">
+        <div class="flex items-center gap-2 text-xs font-bold text-[#F2A93B] mb-1">
+          <span class="w-2 h-2 rounded-full bg-[#F2A93B]"></span>
+          Acentos Terracota & Miel
+        </div>
+        <p class="text-xs text-[#7A6A5D]">
+          Micro-iconos discretos: terracota para recetas generadas y miel para favoritas. Sin competir jamás con la acción primaria (`FAB`).
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

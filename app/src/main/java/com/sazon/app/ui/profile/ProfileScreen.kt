@@ -34,11 +34,13 @@ import com.sazon.app.ui.theme.SazonSpacing
  * editado a [onSaveProfile]; como `SazonApp` observa el Perfil, el armazon se recompone y cambiar
  * `preferences` (y no solo la identidad) es lo unico que invalida el Lote.
  *
- * Tras la cabecera de identidad y antes de "Mis preferencias" se pinta la seccion **"Sugerencias"**
- * ([ProfileSuggestionsSection]), que muestra la antiguedad del Lote observado y ofrece un refresco
- * manual; el async y el estado "en vuelo" los aporta `MainShell`, no esta pantalla. El resumen de
- * actividad, los ajustes y "Borrar mis datos" quedan fuera de alcance (features propias); el estado
- * de color de avatar corrupto se degrada al primer `avatarColors` en [ProfileEditState.from].
+ * Tras la cabecera de identidad y antes de "Mis preferencias" se pintan la seccion **"Resumen"**
+ * ([ActivitySummarySection], que recibe el contador persistido de recetas generadas y el numero de
+ * Favoritas derivado) y despues la seccion **"Sugerencias"** ([ProfileSuggestionsSection]), que muestra
+ * la antiguedad del Lote observado y ofrece un refresco manual; el async y el estado "en vuelo" los
+ * aporta `MainShell`, no esta pantalla. Los ajustes y "Borrar mis datos" quedan fuera de alcance
+ * (features propias); el estado de color de avatar corrupto se degrada al primer `avatarColors` en
+ * [ProfileEditState.from].
  */
 @Composable
 fun ProfileScreen(
@@ -48,6 +50,8 @@ fun ProfileScreen(
     suggestionsGeneratedAt: Long?,
     isRefreshingSuggestions: Boolean,
     onRefreshSuggestions: () -> Unit,
+    recipesGeneratedCount: Int,
+    favoritesCount: Int,
     modifier: Modifier = Modifier,
 ) {
     var state by rememberSaveable(stateSaver = ProfileEditStateSaver) {
@@ -101,6 +105,13 @@ fun ProfileScreen(
                     persist(state.toProfile(profile, System.currentTimeMillis()))
                     editingIdentity = false
                 },
+            )
+        }
+
+        item {
+            ActivitySummarySection(
+                recipesGeneratedCount = recipesGeneratedCount,
+                favoritesCount = favoritesCount,
             )
         }
 

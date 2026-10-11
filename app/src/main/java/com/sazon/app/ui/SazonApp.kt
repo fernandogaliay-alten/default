@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
@@ -42,6 +43,7 @@ fun SazonApp(
     generationService: GenerationService,
     favoriteRepository: FavoriteRepository,
     favoriteService: FavoriteService,
+    activitySummaryRepository: ActivitySummaryRepository,
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
 ) {
@@ -77,6 +79,7 @@ fun SazonApp(
                     generationService = generationService,
                     favoriteRepository = favoriteRepository,
                     favoriteService = favoriteService,
+                    activitySummaryRepository = activitySummaryRepository,
                     seedRecipes = seedRecipes,
                     onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
                     modifier = modifier,
