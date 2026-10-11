@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# En WSL publica el JDK y el SDK de Linux (ver scripts/wsl-env.sh). Fuera de WSL no hace nada.
+# shellcheck source=scripts/wsl-env.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/wsl-env.sh"
+
 # Crea (o reutiliza) un worktree git para una feature, fuera del checkout base,
 # y lo siembra con local.properties para que Gradle encuentre el SDK de Android.
 #

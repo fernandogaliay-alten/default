@@ -2,9 +2,12 @@
 
 ## Estado verificado actual
 
-- Raíz del repositorio: `C:\Users\fernando.galiay\Documents\Default Project`
-- Camino estándar de arranque: `init.sh` con Git Bash (`bash init.sh` si `Git\bin` está en el PATH;
-  si no, `& "C:\Program Files\Git\bin\bash.exe" init.sh`)
+- Raíz del repositorio: `/mnt/c/Users/fernando.galiay/Documents/Default-Project` (WSL2) =
+  `C:\Users\fernando.galiay\Documents\Default-Project` (Windows)
+- Camino estándar de arranque: **`bash init.sh` en WSL** (nativo; ya no hace falta Git Bash). El
+  entorno de Linux (JDK 21, SDK de Android, `gh`) lo publica `scripts/wsl-env.sh`, que cargan
+  `init.sh`, `scripts/gradle.sh` y `scripts/new-worktree.sh`; `scripts/wsl-bootstrap.sh` lo instala
+  desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
@@ -2196,3 +2199,65 @@
 - Siguiente paso: sin cambios en el plan del MVP. `activity-summary` sigue en curso con la sesión
   relanzada; su WIP rompía 4 tests de `SuggestionBatchServiceTest` (`./gradlew test` fallaba) y esa
   sesión debe corregirlos antes de que el validador pueda aceptar.
+
+### Sesión 059
+
+- Fecha: 2026-10-11
+- Objetivo: dejar **todo el flujo corriendo nativo en WSL**. El repositorio vivía en `/mnt/c` pero se
+  trabajaba con Git Bash y el `java` de Windows: `bash init.sh` en WSL fallaba con
+  `ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH`.
+- Completado:
+  - `scripts/wsl-env.sh` (nuevo, se *sourcea*): publica `JAVA_HOME` (JDK 21 de Linux),
+    `ANDROID_HOME`/`ANDROID_SDK_ROOT` (SDK de Linux), `GRADLE_USER_HOME` en ext4 y el `PATH` de `gh`;
+    desactiva el file-watching de Gradle (`-Dorg.gradle.vfs.watch=false`, no fiable en DrvFs) y
+    normaliza `local.properties` cuando trae una ruta del SDK de Windows. Fuera de WSL no hace nada.
+  - `scripts/wsl-bootstrap.sh` (nuevo, idempotente, **sin sudo**): instala JDK 21 (Temurin,
+    `~/.local/opt/jdk-21`), el SDK de Android de Linux (`~/Android/Sdk`: cmdline-tools 19.0,
+    `platforms;android-36.1`, `build-tools;36.0.0`, `platform-tools`), `gh` nativo y reutiliza la sesión
+    de `gh` de Windows (su token está en el keyring, no en `hosts.yml`: `gh.exe auth token` →
+    `gh auth login --with-token`) y la distribución de Gradle ya descargada en Windows.
+  - `init.sh`, `scripts/gradle.sh` y `scripts/new-worktree.sh` sourcean `wsl-env.sh`.
+  - Worktrees: reparada la metadata de `activity-summary` y `chore-gradle-daemon-hang`, que guardaba
+    rutas `C:/...` creadas por Git Bash (en WSL salían `prunable` y `git status` dentro fallaba con
+    `not a git repository`). Ciclo completo probado desde WSL con un id desechable:
+    `scripts/new-worktree.sh` (crea, ramifica y siembra `local.properties` con la ruta Linux) y
+    `scripts/cleanup-worktree.sh` (elimina worktree y rama).
+  - Harness nativo: `gh` en `~/.local/bin/gh`, helper de credenciales de git apuntando al `gh` nativo
+    (antes invocaba al `gh.exe` de Windows por interop) y bloque de entorno en `~/.profile` para las
+    shells interactivas. `opencode` ya era el binario Linux (`~/.opencode/bin/opencode`, v2.0.26).
+  - Documentación: `AGENTS.md` ("Notas de entorno" reescritas para WSL: plataforma, JDK/SDK, caché de
+    Gradle, regla de worktrees desde WSL), `docs/technical-discovery.md` (`Testing and Verification` y
+    `Deployment and Operations`) y `.opencode/skills/github-flow/SKILL.md` (la sesión se lanza en WSL).
+- Verificación ejecutada:
+  1. `bash scripts/wsl-bootstrap.sh` dos veces (instalación y re-ejecución idempotente, sin descargas
+     nuevas).
+  2. Sonda de SDK: con `sdk.dir` = ruta de Windows (inexistente en WSL) y `ANDROID_HOME` al SDK de
+     Linux, `:app:processDebugResources` → `BUILD SUCCESSFUL` (AGP avisa de `sdk.dir` no válido y cae a
+     `ANDROID_HOME`); con `wsl-env.sh` cargado, `local.properties` queda en la ruta Linux y el aviso
+     desaparece.
+  3. `bash init.sh` en WSL (camino estándar, con `local.properties` apuntando todavía al SDK de
+     Windows): `./gradlew test` → `BUILD SUCCESSFUL` en 11m31s (**301 tests, 0 fallos, 0 errores, 0
+     omitidos**) y `./gradlew lint` → `BUILD SUCCESSFUL` en 2m20s; exit 0. Primera pasada, con la
+     descarga inicial de dependencias de Maven: **13m52s**. `local.properties` quedó apuntado a
+     `/home/fernandogaliay/Android/Sdk` durante la propia ejecución. Segunda pasada en caliente:
+     **8,7 s** en total (test y lint `UP-TO-DATE`, caché de configuración reutilizada).
+  4. Reescritura de `local.properties`: probada con la forma escapada de Android Studio (`sdk.dir=C\:\\...`)
+     y sin escapar; conserva otras claves (`ia.apiKey`), es idempotente con una ruta Linux ya correcta y
+     no crea el fichero si no existe.
+  5. `gh auth status`, `gh repo view` y `gh issue list` nativos en WSL; `git ls-remote origin` autentica
+     con el helper nativo (repo privado).
+  6. Ciclo de worktree de punta a punta (crear, abrir y eliminar) y `git worktree list` con los tres
+     worktrees operativos desde WSL.
+- Evidencia capturada: salida de todos los comandos anteriores y `git worktree list` reconstruido.
+- Ficheros actualizados: `scripts/wsl-env.sh` y `scripts/wsl-bootstrap.sh` (nuevos), `init.sh`,
+  `scripts/gradle.sh`, `scripts/new-worktree.sh`, `AGENTS.md`, `docs/technical-discovery.md`,
+  `.opencode/skills/github-flow/SKILL.md` y este registro. No se toca `feature_list.json` ni el código
+  de la app (WIP = 0 en esta rama).
+- Riesgo o incógnita abierta: (a) la metadata de un worktree guarda rutas absolutas en el formato del
+  sistema que lo creó, así que **se crean desde WSL** (ya documentado; el que se cree desde Git Bash
+  aparecerá `prunable` en WSL); (b) si Android Studio en Windows resincroniza el proyecto, reescribe
+  `local.properties` con la ruta de Windows y WSL la corrige en el siguiente build; (c) quedan restos de
+  la etapa Windows: el directorio vacío `Documents\Default Project-worktrees` y el worktree
+  `chore-gradle-daemon-hang` (PR #53 ya mergeado: candidato a `github-flow prune`).
+- Siguiente paso: sin cambios en el plan del MVP. `activity-summary` sigue `in_progress` en su worktree
+  (`d7bfb1b`), con las capturas provisionadas.

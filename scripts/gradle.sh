@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+# En WSL publica el JDK y el SDK de Linux (ver scripts/wsl-env.sh). Fuera de WSL no hace nada.
+# shellcheck source=scripts/wsl-env.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/wsl-env.sh"
+
 # Ejecuta Gradle sin dejar que un daemon sobreviviente cuelgue la shell que lo lanza.
 #
 # Por que existe: la herramienta de shell de los agentes (opencode) espera al arbol de procesos del

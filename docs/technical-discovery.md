@@ -387,7 +387,7 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 
 - Distribución como APK de depuración para el curso. **No** Play Store en el MVP.
 - La clave de IA se inyecta en tiempo de build desde `local.properties` (que no se versiona).
-- Sin CI obligatoria. El harness usa `init.sh` localmente.
+- Sin CI obligatoria. El harness usa `init.sh` localmente, en WSL (ver `Testing and Verification`).
 - Operación: la asume el propio estudiante; no hay entorno de producción.
 
 ## Testing and Verification
@@ -400,6 +400,13 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
 - `init.sh` debe ejecutar los tests de forma reproducible y ser el punto de entrada de verificación
   del harness.
+- **Entorno de verificación: WSL2 (Ubuntu).** `bash init.sh` corre `./gradlew test` y `./gradlew lint`
+  con **JDK 21** y un **SDK de Android de Linux** (el SDK de Windows solo trae binarios `.exe` y Gradle
+  en Linux no puede usarlos). `scripts/wsl-env.sh` publica ese entorno —`JAVA_HOME`, `ANDROID_HOME`,
+  `GRADLE_USER_HOME` en ext4, `PATH` de `gh`— y lo cargan `init.sh`, `scripts/gradle.sh` y
+  `scripts/new-worktree.sh`; `scripts/wsl-bootstrap.sh` lo instala de cero (idempotente, sin `sudo`).
+  Los `build/` y `.gradle/` del proyecto siguen bajo `/mnt/c` (visibles para Android Studio en
+  Windows); la caché de Gradle vive en ext4 porque DrvFs es mucho más lento.
 
 ## Observability
 
