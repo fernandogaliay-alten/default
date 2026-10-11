@@ -2358,7 +2358,10 @@
   aparecerá `prunable` en WSL); (b) si Android Studio en Windows resincroniza el proyecto, reescribe
   `local.properties` con la ruta de Windows y WSL la corrige en el siguiente build; (c) quedan restos de
   la etapa Windows: el directorio vacío `Documents\Default Project-worktrees` y el worktree
-  `chore-gradle-daemon-hang` (PR #53 ya mergeado: candidato a `github-flow prune`, que es idempotente).
+  `chore-gradle-daemon-hang` (PR #53 ya mergeado: candidato a `github-flow prune`, que es idempotente);
+  (d) el `adb` de WSL no ve el emulador (ni un móvil por USB) que corre en Windows, así que
+  `installDebug` desde WSL no encuentra dispositivo: la comprobación visual/manual sigue en Android
+  Studio (documentado en `AGENTS.md`).
 - Siguiente paso: sin cambios en el plan del MVP. `activity-summary` quedó **aceptada** (Sesión 058) y
   **mergeada** (PR #56) mientras corría esta sesión, con su worktree ya limpiado; la siguiente
   candidata es `ai-search` (`feature-spec`). Esta rama integra `origin/main` (`0de0719`) conservando
