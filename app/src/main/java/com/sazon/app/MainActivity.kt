@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
+import com.sazon.app.data.NetworkStatusSource
 import com.sazon.app.data.activity.ActivitySummaryDatabase
 import com.sazon.app.data.activity.RoomActivitySummaryRepository
 import com.sazon.app.data.favorites.FavoritesDatabase
@@ -18,6 +19,7 @@ import com.sazon.app.data.suggestions.SuggestionBatchDatabase
 import com.sazon.app.domain.activity.ActivitySummaryService
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
+import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
 import com.sazon.app.ui.theme.SazonTheme
@@ -55,6 +57,14 @@ class MainActivity : ComponentActivity() {
             // Costura aditiva: cada receta ai aceptada por el Generador suma al Resumen.
             onRecipesGenerated = { recipes -> activitySummaryService.recordAcceptedRecipes(recipes) },
         )
+        val aiSearchService = AiSearchService(
+            generator = generator,
+            taxonomy = taxonomy,
+            // Costura aditiva: cada receta ai aceptada por la Busqueda con IA suma al Resumen.
+            onRecipesGenerated = { recipes -> activitySummaryService.recordAcceptedRecipes(recipes) },
+        )
+        // Unica dependencia externa de la Home: la conectividad del bloque 2 (Busqueda con IA).
+        val networkStatusSource = NetworkStatusSource(applicationContext)
         val favoritesDatabase = FavoritesDatabase.build(applicationContext)
         val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
         val favoriteService = FavoriteService(favoriteRepository)
@@ -70,6 +80,8 @@ class MainActivity : ComponentActivity() {
                     favoriteRepository = favoriteRepository,
                     favoriteService = favoriteService,
                     activitySummaryRepository = activitySummaryRepository,
+                    aiSearchService = aiSearchService,
+                    networkStatusSource = networkStatusSource,
                     seedRecipes = seedRecipes,
                 )
             }

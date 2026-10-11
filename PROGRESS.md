@@ -17,7 +17,7 @@
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
   `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen`,
-  `recipe-detail-screen`, `favorites` y `activity-summary` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` (validador independiente, veredicto `accept`). El onboarding queda **completo**
   (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP
   (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados
   real (fórmula de `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña
@@ -27,15 +27,18 @@
   raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional; la
   pestaña Favoritos es real (guardar/quitar, persistencia local de una copia de la Receta y consulta sin
   conexión, con estados poblado/vacío).
-- Siguiente feature en orden de lista: `activity-summary` quedó `accepted` en la sesión 058 (validación
-  independiente), de modo que `ai-search` (depende de `generation-flow-with-validation`, `accepted`)
-  es la siguiente candidata.
+- Siguiente feature en orden de lista: `ai-search` quedó `accepted` en la sesión 061 (validación
+  independiente, rama `feature/ai-search`); el commit local lo hace el orquestador de `feature-flow` y
+  la publicación queda para `github-flow`. Tras ella, `real-ai-provider` (depende de `prompt-builder` y
+  `generation-flow-with-validation`, ambas `accepted`) es la siguiente candidata.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
-  `results-screen`, `recipe-detail-screen` y `favorites` ya aportan sus capturas
-  (`docs/design/concepts/results-screen/resultados/`,
-  `docs/design/concepts/recipe-detail-screen/detalle-receta/` y
-  `docs/design/concepts/favorites/favoritos/`).
+  `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
+  capturas (`docs/design/concepts/results-screen/resultados/`,
+  `docs/design/concepts/recipe-detail-screen/detalle-receta/`,
+  `docs/design/concepts/favorites/favoritos/`,
+  `docs/design/concepts/activity-summary/perfil-resumen/` y
+  `docs/design/concepts/ai-search/busqueda-ia/`).
 - Capturas de UI — cambio de política del harness (2026-10-11, sesión 055): en `github-flow`, una
   feature de UI sin capturas ya **no** bloquea sin crear nada ni ensucia el checkout base. `execute`
   **provisiona** la feature dentro de su propio worktree (issue, rama `feature/<id>` y worktree) y deja
@@ -47,14 +50,14 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna; `activity-summary` quedó `accepted` (validación independiente en la sesión
-  058, en la rama `feature/activity-summary`). WIP = 0.
+- Feature en curso: ninguna; `ai-search` quedó `accepted` en la sesión 061 (validación independiente,
+  veredicto `accept`, en la rama `feature/ai-search`). WIP = 0.
 - Bloqueo actual: ninguno
-- Última verificación (2026-10-11, `activity-summary`, validator): veredicto **`accept`** independiente
-  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`) y
-  `./gradlew testDebugUnitTest --rerun-tasks` (32/32 tareas), con parseo propio de los XML
-  (**316 tests/0 fallos/errores/saltados** en 49 suites) y del informe de lint (0 errores, 13 warnings
-  preexistentes, 0 en ficheros de la feature).
+- Última verificación (2026-10-12, `ai-search`, validator): veredicto **`accept`** independiente tras
+  re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`) y
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (32/32 tareas) con parseo propio de los XML
+  (**343 tests/0 fallos/errores/saltados** en 54 suites; 27 nuevos de `ai-search`) y del informe de
+  lint (0 errores, 13 warnings preexistentes, 0 en ficheros de la feature).
 
 ## Registro de sesiones
 
@@ -2366,3 +2369,106 @@
   **mergeada** (PR #56) mientras corría esta sesión, con su worktree ya limpiado; la siguiente
   candidata es `ai-search` (`feature-spec`). Esta rama integra `origin/main` (`0de0719`) conservando
   ambas aportaciones en `PROGRESS.md`.
+
+### Sesión 060
+
+- Fecha: 2026-10-12
+- Objetivo: implementar `ai-search` (bloque 2 de la Home: Búsqueda con IA y sus estados) según
+  `docs/specs/ai-search.md`, en el worktree de la rama `feature/ai-search`.
+- Completado:
+  - **Dominio puro** en `com.sazon.app.domain.search`: `AiSearchService.search(query, profile)` (normaliza
+    con `SearchMemo.key`, sirve el memo, llama a `RecipeGenerator.searchByText`, valida **receta a receta**
+    con `RecipeValidator.validateRecipe`, re-lanza `CancellationException`, degrada a `aiUnavailable` y
+    **no** memoiza el fallo, reporta aceptadas por `onRecipesGenerated`) y `SearchMemo` (memo de sesión en
+    memoria, clave `trim().lowercase()`).
+  - **Lógica/estado puro** en `com.sazon.app.ui.search`: `AiSearchQuery` (normalize/canSubmit),
+    `AiSearchCopy` (microcopy único), `AiSearchProgress` (cabecera + tres sublíneas + línea de prompt) y
+    `AiSearchOutcome.stageOf` (Results/Blocked/NoResults/Failure; el bloqueo por Perfil lo decide el
+    **motivo del descarte** `DIET_PATTERN`/`HARD_RESTRICTION`, no la consulta).
+  - **Costura de conectividad**: `com.sazon.app.data.NetworkStatusSource` (sobre `ConnectivityManager`,
+    `NET_CAPABILITY_INTERNET` + `NET_CAPABILITY_VALIDATED`) y permiso `ACCESS_NETWORK_STATE` en el
+    manifiesto. Sin dependencias nuevas.
+  - **Capa Compose delgada**: `AiSearchBar` (bloque 2 de la Home, píldora + destello + envío; deshabilitada
+    y con `OFFLINE_NOTE` sin conexión), `AiSearchFlow` (host de `PushedScreen.SEARCH`: carga reutilizando
+    `GeneratorGeneratingScreen` con `cancelLabel` aditivo y `ResultsScreen` con `ResultsOrigin.Search`, y
+    los estados de `AiSearchStates`) y `AiSearchStates` (bloqueado en ámbar `tertiaryContainer`, sin
+    resultados y fallo, cada uno con "Atrás" y su acción).
+  - **Integración sin DI**: `PushedScreen.SEARCH`; `HomeScreen` monta `AiSearchBar` con la conectividad y
+    la consulta; `MainShell` guarda la consulta en `rememberSaveable`, observa la conectividad y enruta
+    `SEARCH` a `AiSearchFlow` con los callbacks; `SazonApp`/`MainActivity` componen `AiSearchService` y
+    `NetworkStatusSource`.
+  - **Tests JVM nuevos** (27): `AiSearchServiceTest` 9, `SearchMemoTest` 5, `AiSearchOutcomeTest` 6,
+    `AiSearchQueryTest` 4 y `AiSearchProgressTest` 3.
+- Verificación ejecutada: `bash init.sh` (exit 0, `./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`, sin procesos largos); `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  (32/32 tareas) y `bash scripts/gradle.sh lint`, con parseo propio de los XML de resultados y del
+  informe de lint.
+- Evidencia capturada: **54 suites, 343 tests, 0 fallos/errores/saltados** (316 preexistentes en verde);
+  `AiSearchServiceTest` 9 (`accepted` vacío con dieta contraria + `DIET_PATTERN`; el falso real descarta
+  el pollo por dieta; gluten → `HARD_RESTRICTION`; fallo → `aiUnavailable` sin propagar; cancelación
+  re-lanzada; consulta en blanco no llama; memo no repite y el fallo no se memoiza; `onRecipesGenerated`
+  solo con aceptadas); lint **0 errores, 13 warnings** preexistentes y **0 en ficheros de la feature**
+  (se corrigió 1 Hint `AutoboxingStateCreation` en `AiSearchFlow.kt` con `mutableIntStateOf`).
+  Inspección: `domain.search` y la lógica pura de `ui.search` sin imports `android.*`/`androidx.*`;
+  `ui.results` intacto; sin cambios en `app/build.gradle.kts`, `gradle/libs.versions.toml`, dominio
+  aceptado, `data/**` (salvo `NetworkStatusSource`), la Taxonomía, `seed-recipes.json` ni `init.sh`; sin
+  hex sueltos ni iconos.
+- Ficheros creados: `app/src/main/java/com/sazon/app/domain/search/{AiSearchService,SearchMemo}.kt`,
+  `app/src/main/java/com/sazon/app/ui/search/{AiSearchQuery,AiSearchCopy,AiSearchProgress,AiSearchOutcome,AiSearchBar,AiSearchFlow,AiSearchStates}.kt`,
+  `app/src/main/java/com/sazon/app/data/NetworkStatusSource.kt` y los cinco tests en
+  `app/src/test/java/com/sazon/app/{domain,ui}/search/`.
+- Ficheros modificados: `AndroidManifest.xml` (permiso `ACCESS_NETWORK_STATE`), `MainActivity.kt`,
+  `ui/SazonApp.kt`, `ui/MainShell.kt`, `ui/home/HomeScreen.kt`, `ui/navigation/MainNavigationState.kt`
+  (`PushedScreen.SEARCH`), `ui/generator/GeneratorGeneratingScreen.kt` (`cancelLabel` aditivo con default
+  `"Cancelar"`), `feature_list.json` y este registro.
+- Docs actualizados: `docs/technical-discovery.md` (ubicación de `domain.search`/`ui.search`, estados y
+  costura `NetworkStatusSource` + permiso), `docs/domain-model.md` (dónde vive la orquestación de la
+  Búsqueda con IA y que el memo es de sesión) y `DESIGN.md` (captura aceptada `ai-search: busqueda-ia`).
+- Hallazgo (spec actualizada): el **Scenario 2** es inconsistente con el `FakeRecipeGenerator` real — un
+  Perfil vegano solo descarta "Pollo al ajillo" (las otras tres fixtures son vegetales), así que
+  `accepted` no queda vacío y el estado sería Resultados, no Bloqueado. La verificación exigida ("una
+  consulta que contradice el patrón de dieta devuelve cero recetas") se cubre con un generador cuya salida
+  es **toda** de dieta contraria; además se comprueba con el falso real que el pollo cae por
+  `DIET_PATTERN`. Anotado en `docs/specs/ai-search.md` (Unknowns/Findings).
+- Riesgo o incógnita abierta: el acabado visual (píldora + destello, ámbar del bloqueo, claro/oscuro) y
+  las pruebas manuales de emulador (barra sin conexión; carga cancelable; resultados con subtítulo;
+  bloqueo → Perfil) quedan para revisión de la persona tras el merge (AGENTS.md no automatiza UI de
+  emulador). Se mantiene la pregunta 1 abierta (errores/reintentos de la IA) hasta `real-ai-provider`.
+- Siguiente paso: validación independiente de `ai-search` con `feature-validator`; el commit local de la
+  rama lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`.
+
+### Sesión 061
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-search` de forma independiente y persistir la aceptación, en el worktree de la
+  rama `feature/ai-search`.
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`,
+  `feature-validator`); `feature_list.json` pasa a `accepted` con evidencia que nombra la validación
+  independiente; registrado el detalle en `docs/validations/ai-search.md`. Sin cambios de código tras
+  la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`, sin procesos largos), `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  (32/32 tareas) y parseó por su cuenta los XML de resultados y el informe de lint; inspeccionó pureza
+  de `domain.search`/`ui.search`, el alcance del diff y `ui.results`.
+- Evidencia capturada: **54 suites, 343 tests, 0 fallos/errores/saltados** (27 nuevos de `ai-search`,
+  316 preexistentes en verde), reproducidos exactamente respecto al implementer; lint **0 errores, 13
+  warnings** preexistentes y **0 en ficheros de la feature**; `ui.results` intacto; `data/**` solo el
+  nuevo `NetworkStatusSource`; `app/build.gradle.kts`, `gradle/libs.versions.toml`, dominio aceptado,
+  la Taxonomía, `seed-recipes.json` e `init.sh` sin cambios.
+- Hallazgos del validador (4 Low/informativos, ninguno bloqueante): (1) el **Scenario 2** es imposible
+  con el `FakeRecipeGenerator` real (un Perfil vegano solo descarta "Pollo al ajillo"; `accepted` no
+  queda vacío y el estado real sería Resultados, no Bloqueado); lo acepta como limitación de la fixture
+  de desarrollo, no de la lógica, porque la verificación exigida ("cero recetas" con dieta contraria)
+  se cubre con un test negativo genuino, el bloqueo por `DIET_PATTERN`/`HARD_RESTRICTION` se cubre en
+  `AiSearchOutcomeTest` y la inconsistencia está trazada en la spec/PROGRESS/evidencia; (2)
+  `AiSearchProgress.subLines(query)` no usa el parámetro (microcopy estable por diseño); (3) el memo se
+  indexa solo por consulta normalizada, como fija la spec; (4) rotar la página vuelve a carga, mismo
+  criterio que el Generador y declarado como *Unknown*. Sin hallazgos Critical/High/Medium; sin
+  acciones de seguridad requeridas.
+- Riesgo o incógnita abierta: el estado Bloqueado no es demostrable en smoke manual con el fake actual
+  (un camino manual demostrable exigiría una feature correctiva de fixture, fuera de alcance). Se
+  mantiene la revisión manual de la persona (barra sin conexión, carga cancelable, subtítulo de
+  resultados, acabado frente a las capturas) y la pregunta 1 abierta hasta `real-ai-provider`.
+- Siguiente paso: `feature_list.json` queda en `accepted` y el orquestador de `feature-flow` crea el
+  **commit local** de la rama `feature/ai-search` (nunca push ni PR: la publicación es del orquestador
+  de `github-flow`). Después, la siguiente candidata es `real-ai-provider`.

@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Sazón UI Specification Showcase</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-variant":"#f2dfd1","primary-fixed":"#ffdbd1","error-container":"#ffdad6","surface-container-high":"#f8e5d6","on-error-container":"#93000a","secondary-fixed":"#ceeda4","on-error":"#ffffff","on-primary-container":"#fffbff","on-tertiary-container":"#fffbff","inverse-surface":"#392e25","tertiary":"#805200","on-surface-variant":"#59413b","on-primary":"#ffffff","tertiary-container":"#a16900","inverse-on-surface":"#ffeee1","on-tertiary":"#ffffff","on-tertiary-fixed-variant":"#633f00","on-primary-fixed":"#3a0a00","primary-container":"#ca4a21","surface-container":"#feeadc","on-surface":"#231a11","outline":"#8c7169","on-tertiary-fixed":"#2a1800","primary":"#a83208","tertiary-fixed":"#ffddb5","tertiary-fixed-dim":"#ffb956","secondary":"#4c662c","background":"#fff8f5","surface-container-low":"#fff1e8","surface-container-lowest":"#ffffff","on-secondary":"#ffffff","surface-tint":"#ab350b","surface-container-highest":"#f2dfd1","surface-dim":"#e9d7c8","surface-bright":"#fff8f5","error":"#ba1a1a","on-primary-fixed-variant":"#862300","on-background":"#231a11","secondary-container":"#cbeaa1","outline-variant":"#e0bfb6","primary-fixed-dim":"#ffb59f","on-secondary-fixed-variant":"#354e16","secondary-fixed-dim":"#b2d18a","surface":"#fff8f5","on-secondary-fixed":"#102000","inverse-primary":"#ffb59f","on-secondary-container":"#506a2f"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter":"1rem","space-lg":"1.5rem","space-xs":"0.25rem","space-sm":"0.5rem","margin":"1rem","space-md":"1rem","space-xl":"2rem"},fontFamily:{"body-lg":["Inter"],"display-md":["Manrope"],"label-lg":["Inter"],"display-lg":["Manrope"],"label-sm":["Inter"],"label-md":["Inter"],"headline-sm":["Manrope"],"body-md":["Inter"],"headline-md":["Manrope"],"body-sm":["Inter"],"headline-lg":["Manrope"]},fontSize:{"body-lg":["16px",{lineHeight:"24px",letterSpacing:"0.01em",fontWeight:"400"}],"display-md":["30px",{lineHeight:"38px",letterSpacing:"-0.015em",fontWeight:"700"}],"label-lg":["14px",{lineHeight:"20px",letterSpacing:"0.01em",fontWeight:"600"}],"display-lg":["36px",{lineHeight:"44px",letterSpacing:"-0.02em",fontWeight:"700"}],"label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.04em",fontWeight:"500"}],"label-md":["12px",{lineHeight:"16px",letterSpacing:"0.03em",fontWeight:"600"}],"headline-sm":["18px",{lineHeight:"24px",letterSpacing:"0em",fontWeight:"600"}],"body-md":["14px",{lineHeight:"20px",letterSpacing:"0.015em",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",letterSpacing:"0em",fontWeight:"600"}],"body-sm":["12px",{lineHeight:"16px",letterSpacing:"0.02em",fontWeight:"400"}],"headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"700"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(43,33,24,0.04)]"><div class="h-16 w-full px-gutter flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-primary text-[28px]">skillet</span><span class="font-headline-lg text-headline-lg text-primary tracking-tight">Sazón</span></div><div class="hidden sm:inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-full bg-surface-container-high text-on-surface-variant text-label-sm font-label-sm"><span class="w-2 h-2 rounded-full bg-secondary"></span><span>Pixel 390x844 Spec</span></div></div><nav class="flex items-center gap-space-xs sm:gap-space-sm" data-active-classes="bg-primary-container text-on-primary-container font-label-md rounded-full px-space-md py-space-xs"><a aria-current="page" class="transition-colors bg-primary-container text-on-primary-container font-label-md rounded-full px-space-md py-space-xs" data-path="spec-canvas" href="#">Spec Canvas</a><a class="px-space-md py-space-xs rounded-full text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="interaction-states" href="#">State Matrices</a><a class="px-space-md py-space-xs rounded-full text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="design-tokens" href="#">Design Tokens</a></nav><div class="flex items-center gap-space-sm"><div class="hidden md:flex items-center px-space-sm py-space-xs rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-label-sm"><span class="material-symbols-outlined text-[16px] mr-1">palette</span>Light / Dark Dual Mode</div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Spec Master Header -->
+<section class="w-full px-gutter py-space-lg bg-surface-container-low shadow-sm">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-primary font-label-sm text-label-sm uppercase tracking-wider mb-1">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+<span>Material 3 Engineering Specs · Android UI</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+          Sazón — Inicio: Búsqueda con IA (Bloque 2) &amp; Estados
+        </h1>
+<p class="font-body-md text-on-surface-variant mt-1">
+          Flujo de consulta asistida por lenguaje natural, resolución semántica y pantallas de transición adaptativa.
+        </p>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container text-on-surface text-label-sm font-label-sm shadow-sm">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+          Pixel 390×844
+        </span>
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-surface-container text-on-surface text-label-sm font-label-sm shadow-sm">
+<span class="w-2.5 h-2.5 rounded-full bg-background"></span>
+          Modo Claro (#FFF8F0)
+        </span>
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-inverse-surface text-inverse-on-surface text-label-sm font-label-sm shadow-sm">
+<span class="w-2.5 h-2.5 rounded-full bg-[#18120E]"></span>
+          Modo Oscuro (#18120E)
+        </span>
+<span class="inline-flex items-center gap-1 px-space-sm py-1 rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-label-sm">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+          LTS v2.4
+        </span>
+</div>
+</div>
+</section>
+<!-- Interactive Simulator Switcher Banner -->
+<div class="w-full px-gutter py-space-sm bg-surface-container-high/60 backdrop-blur-sm">
+<div class="max-w-7xl mx-auto flex items-center justify-between text-on-surface-variant text-label-sm font-label-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">touch_app</span>
+<span>Haz clic en los botones interactivos de ambos marcos para probar microinteracciones y cancelar búsquedas.</span>
+</div>
+<div class="hidden sm:flex items-center gap-space-md">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span> Primary Terracotta (#D9552B)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary"></span> Olive (#5F7A3D)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#D4881A]"></span> Warm Honey (#F2A93B)</span>
+</div>
+</div>
+</div>
+<!-- SECTION 1: DUAL MOBILE COMPARISON CANVAS -->
+<section class="w-full px-gutter py-space-xl">
+<div class="max-w-7xl mx-auto">
+<div class="text-center md:text-left mb-space-lg">
+<span class="text-primary font-label-md text-label-md uppercase tracking-wider">Canvas de Renderizado 1:1</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-0.5">Comparativa Visual Paralela (Doble Chasis Pixel 390×844)</h2>
+<p class="font-body-md text-on-surface-variant max-w-2xl">
+          A la izquierda: pantalla de inicio en modo claro con la búsqueda activa y el modal de carga AI en superposición viva. A la derecha: pantalla de resultados en modo oscuro con ordenamiento inteligente y restricciones nutricionales activas.
+        </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-xl items-start justify-items-center">
+<!-- ======================= LEFT FRAME: MODO CLARO ======================= -->
+<div class="flex flex-col items-center w-full max-w-[420px]">
+<div class="flex items-center justify-between w-full px-space-xs mb-space-sm text-on-surface font-label-md text-label-md">
+<span class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+<strong>Modo Claro:</strong> Transición AI en Vivo
+            </span>
+<span class="text-on-surface-variant text-label-sm font-label-sm">Bloque 2 · Estado En Carga</span>
+</div>
+<!-- Phone Chassis (390 x 844 aspect) -->
+<div class="relative w-[390px] h-[844px] bg-[#FFF8F0] rounded-[48px] shadow-2xl overflow-hidden p-0 flex flex-col select-none">
+<!-- Ambient phone frame subtle rim -->
+<div class="absolute inset-0 rounded-[48px] pointer-events-none shadow-[inset_0_0_0_8px_#231A11,inset_0_0_0_10px_#8C7169]"></div>
+<!-- Status Bar -->
+<div class="relative z-30 w-full h-11 px-7 flex items-center justify-between text-[#231A11] font-label-sm text-[13px] pt-1">
+<span class="font-semibold tracking-tight">09:41</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[18px]">battery_full</span>
+</div>
+</div>
+<!-- Scrollable Home View Behind -->
+<div class="relative flex-1 overflow-y-auto px-4 pb-20 pt-1">
+<!-- Block 1: App Header -->
+<div class="flex items-center justify-between py-2 mb-3">
+<div class="flex items-center gap-2.5">
+<div class="w-10 h-10 rounded-full bg-[#CA4A21] text-white flex items-center justify-center font-headline-sm text-headline-sm tracking-tight shadow-sm">
+                    LC
+                  </div>
+<div>
+<span class="font-label-sm text-label-sm text-[#59413B] block -mb-0.5">Cocina de Hoy</span>
+<h3 class="font-headline-md text-headline-md text-[#231A11] leading-tight">Buenas tardes, Lucía</h3>
+</div>
+</div>
+<div class="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm text-[#231A11]">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</div>
+</div>
+<!-- Block 2: AI Search Bar (Active State) -->
+<div class="relative mb-4">
+<div class="w-full h-14 bg-white rounded-full shadow-md flex items-center px-4 gap-2.5">
+<span class="material-symbols-outlined text-[#CA4A21] text-[22px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<div class="flex-1">
+<span class="font-body-md text-body-md text-[#231A11] font-medium tracking-tight">“algo con pollo y arroz”</span>
+</div>
+<button class="w-7 h-7 rounded-full bg-[#F2DFD1] text-[#59413B] flex items-center justify-center hover:bg-[#CA4A21] hover:text-white transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<p class="font-label-sm text-label-sm text-[#8C7169] mt-1.5 px-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-[#CA4A21]">mic</span>
+<span>Pídeselo a la IA: «algo con pollo y arroz»</span>
+</p>
+</div>
+<!-- Background Home Cards (faded under modal) -->
+<div class="space-y-3 opacity-60">
+<div class="p-4 rounded-[24px] bg-white shadow-sm flex items-center gap-3">
+<div class="w-12 h-12 rounded-2xl bg-[#CBEAA1] text-[#506A2F] flex items-center justify-center">
+<span class="material-symbols-outlined text-[26px]">kitchen</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-[#231A11]">Despensa inteligente</h4>
+<p class="font-body-sm text-body-sm text-[#59413B]">14 ingredientes listos para usar</p>
+</div>
+</div>
+<div class="p-4 rounded-[24px] bg-white shadow-sm flex items-center gap-3">
+<div class="w-12 h-12 rounded-2xl bg-[#FFDBD1] text-[#CA4A21] flex items-center justify-center">
+<span class="material-symbols-outlined text-[26px]">timer</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-[#231A11]">Cenas en 20 min</h4>
+<p class="font-body-sm text-body-sm text-[#59413B]">Ideales para cocinar en sartén</p>
+</div>
+</div>
+</div>
+</div>
+<!-- OVERLAY / FULL-SCREEN WARM AI LOADING MODAL -->
+<div class="absolute inset-0 z-40 bg-[#FFF8F0]/95 backdrop-blur-md flex flex-col justify-between px-6 pt-14 pb-8 transition-opacity duration-300" id="left-loading-modal">
+<!-- Loading Header pill -->
+<div class="flex items-center justify-center">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFDBD1] text-[#CA4A21] font-label-sm text-label-sm shadow-sm">
+<span class="material-symbols-outlined text-[16px] animate-spin">cyclone</span>
+<span>Motor Culinario Sazón v2.4</span>
+</div>
+</div>
+<!-- Center Graphic & Typography -->
+<div class="flex flex-col items-center text-center my-auto">
+<!-- Plate timer animated graphic with steam swirl -->
+<div class="relative w-36 h-36 mb-6 flex items-center justify-center">
+<!-- Outer Warm Terracotta Glow Ring -->
+<div class="absolute inset-0 rounded-full bg-[#CA4A21]/10 animate-ping" style="animation-duration: 2.4s;"></div>
+<!-- Circular Plate SVG with dynamic progress bar -->
+<svg class="w-36 h-36 transform -rotate-90" viewbox="0 0 144 144">
+<circle class="shadow-inner" cx="72" cy="72" fill="#FFFFFF" r="60" stroke="#F2DFD1" stroke-width="8"></circle>
+<circle class="transition-all duration-1000 animate-pulse" cx="72" cy="72" fill="none" r="60" stroke="#CA4A21" stroke-dasharray="376.99" stroke-dashoffset="110" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<!-- Inner Plate Details / Culinary Icon -->
+<div class="absolute flex flex-col items-center justify-center text-[#CA4A21]">
+<span class="material-symbols-outlined text-[36px] animate-bounce" style="animation-duration: 1.8s;">skillet</span>
+<div class="flex gap-1 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#CA4A21] animate-pulse"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#CA4A21] animate-pulse delay-100"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#CA4A21] animate-pulse delay-200"></span>
+</div>
+</div>
+</div>
+<!-- Headline (Manrope Bold 28sp equivalent) -->
+<h3 class="font-headline-lg text-[26px] leading-8 text-[#231A11] tracking-tight font-bold mb-3 max-w-[280px]">
+                  Buscando recetas para ti…
+                </h3>
+<!-- Rotating Sublines cycling in Inter Medium -->
+<div class="h-12 flex items-center justify-center">
+<div class="font-body-md text-body-md text-[#59413B] font-medium transition-all duration-300" id="dynamic-stepper-text">
+                    Combinando tus ingredientes…
+                  </div>
+</div>
+<!-- Query Reminder Badge -->
+<div class="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white shadow-sm text-label-sm font-label-sm text-[#231A11]">
+<span class="text-[#CA4A21] font-semibold">Prompt:</span>
+<span>“algo con pollo y arroz”</span>
+</div>
+</div>
+<!-- Bottom Secondary Action: Cancelar -->
+<div class="w-full flex flex-col items-center">
+<button class="w-full h-12 rounded-full bg-white text-[#231A11] font-label-lg text-label-lg shadow-sm hover:bg-[#F2DFD1] active:scale-95 transition-all flex items-center justify-center gap-2" onclick="toggleLeftModal(false)" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+                  Cancelar búsqueda
+                </button>
+<span class="text-[#8C7169] font-label-sm text-label-sm mt-2">Manteniendo tu despensa y alergias activas</span>
+</div>
+</div>
+<!-- Soft Reset Button if user closed the modal in simulation -->
+<button class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-[#CA4A21] text-white text-label-sm font-label-sm shadow-lg items-center gap-1.5" id="left-reopen-btn" onclick="toggleLeftModal(true)">
+<span class="material-symbols-outlined text-[16px]">replay</span>
+              Reiniciar Simulación Carga
+            </button>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-space-sm text-center">
+            Pídeselo a la IA con autocompletado semántico, parsing de ingredientes e hilo de cancelación.
+          </p>
+</div>
+<!-- ======================= RIGHT FRAME: MODO OSCURO ======================= -->
+<div class="flex flex-col items-center w-full max-w-[420px]">
+<div class="flex items-center justify-between w-full px-space-xs mb-space-sm text-on-surface font-label-md text-label-md">
+<span class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-[#CA4A21]"></span>
+<strong>Modo Oscuro:</strong> Resultados con Filtros
+            </span>
+<span class="text-on-surface-variant text-label-sm font-label-sm">Query IA · 92% Coincidencia</span>
+</div>
+<!-- Phone Chassis (390 x 844 aspect) - Deep Dark Canvas -->
+<div class="relative w-[390px] h-[844px] bg-[#18120E] text-[#FFEEFE] rounded-[48px] shadow-2xl overflow-hidden p-0 flex flex-col select-none">
+<!-- Ambient phone frame subtle rim -->
+<div class="absolute inset-0 rounded-[48px] pointer-events-none shadow-[inset_0_0_0_8px_#2B2118,inset_0_0_0_10px_#59413B]"></div>
+<!-- Dark Status Bar -->
+<div class="relative z-30 w-full h-11 px-7 flex items-center justify-between text-[#FFEEFE] font-label-sm text-[13px] pt-1">
+<span class="font-semibold tracking-tight">09:42</span>
+<div class="flex items-center gap-1.5 opacity-90">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[18px]">battery_full</span>
+</div>
+</div>
+<!-- Screen Body (Scrollable) -->
+<div class="relative flex-1 overflow-y-auto px-4 pt-1 pb-24">
+<!-- Top App Bar with Circular Floating Back Button -->
+<div class="flex items-center justify-between py-2 mb-2">
+<button class="w-10 h-10 rounded-full bg-[#241C16] text-[#FFEEFE] flex items-center justify-center shadow-md hover:bg-[#322720] transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full bg-[#241C16] text-[#FFEEFE] flex items-center justify-center shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-[#241C16] text-[#FFEEFE] flex items-center justify-center shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark_border</span>
+</button>
+</div>
+</div>
+<!-- Main Results Heading -->
+<div class="mb-4">
+<h2 class="font-headline-lg text-[26px] leading-8 text-[#FFEEFE] tracking-tight font-bold">
+                  Resultados de tu búsqueda
+                </h2>
+<!-- Subtitle with exact requested quote styling -->
+<p class="font-body-md text-body-md text-[#FFDBD1] mt-0.5 font-medium flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-[#CA4A21]">magic_button</span>
+<span>“algo con pollo y arroz”</span>
+</p>
+</div>
+<!-- Ordering Chips (Horizontal scroll mock) -->
+<div class="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+<!-- Relevancia: Active pill in terracotta -->
+<button class="shrink-0 h-9 px-4 rounded-full bg-[#CA4A21] text-white font-label-md text-label-md font-semibold flex items-center gap-1 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">check</span>
+                  Relevancia
+                </button>
+<!-- Más rápida -->
+<button class="shrink-0 h-9 px-3.5 rounded-full bg-[#241C16] text-[#FFEEFE] font-label-md text-label-md hover:bg-[#322720] transition-colors flex items-center gap-1" type="button">
+                  Más rápida
+                </button>
+<!-- Más fácil -->
+<button class="shrink-0 h-9 px-3.5 rounded-full bg-[#241C16] text-[#FFEEFE] font-label-md text-label-md hover:bg-[#322720] transition-colors" type="button">
+                  Más fácil
+                </button>
+<!-- Mejor valoradas -->
+<button class="shrink-0 h-9 px-3.5 rounded-full bg-[#241C16] text-[#FFEEFE] font-label-md text-label-md hover:bg-[#322720] transition-colors" type="button">
+                  Mejor valoradas
+                </button>
+<!-- Ajustar chip with sliders icon -->
+<button class="shrink-0 h-9 px-3.5 rounded-full bg-[#392E25] text-[#FFDBD1] font-label-md text-label-md flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+                  Ajustar
+                </button>
+</div>
+<!-- Vertical Recipe Cards List (24px radius, warm food presentation) -->
+<div class="space-y-4">
+<!-- Recipe Card 1 -->
+<div class="w-full bg-[#241C16] rounded-[24px] p-3 shadow-md transition-all hover:bg-[#2b221b]">
+<div class="relative w-full h-44 rounded-[20px] overflow-hidden mb-3">
+<img class="w-full h-full object-cover" data-alt="A warm top-down photo of artisanal Spanish arroz con pollo simmering in a rustic clay pot. Saffron golden rice, tender chicken cuts, fresh bell peppers, and rosemary garnish under soft ambient natural kitchen lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLh-9VBkVp0aJ4Ua6UIE54LZKevl_N9iduPY_Q0XD-Zc90thsTaSuv8fCExUKlkTKdLy0N9uoK2z8J472hAWKWQPWMADmbKdBnIfxh68xYiUd4krr_bNPAP2uDN83UQC4zLM62wTKKlvqs2QHFEOiOzvCMqpwGyKjndN3BrArZieXgpZrycmZsH7XlN-CMt8UOMTvhXXSW0gNr9qMkV3xKXBmfnTrwX-RW_vAEyTtHQRfNAr5lrd0oAw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-[#18120E]/90 via-transparent to-black/20"></div>
+<!-- Heart toggle -->
+<button class="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-[#18120E]/70 backdrop-blur-md text-[#FFEEFE] flex items-center justify-center hover:text-[#CA4A21] transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">favorite_border</span>
+</button>
+<!-- Match Badge (Terracotta Pill) -->
+<div class="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#CA4A21] text-white font-label-sm text-label-sm font-semibold shadow-sm">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+                      92% coincidencia
+                    </div>
+</div>
+<div class="px-1 pb-1">
+<h3 class="font-headline-md text-headline-md text-[#FFEEFE] font-bold tracking-tight">
+                      Arroz meloso con pollo de corral y azafrán
+                    </h3>
+<p class="font-body-sm text-body-sm text-[#FFDBD1]/80 mt-0.5 line-clamp-1">
+                      Fondo tostado casero, pimiento morrón y toque de romero silvestre.
+                    </p>
+<div class="flex items-center justify-between mt-3 pt-2 text-[#E9D7C8]">
+<div class="flex items-center gap-2 font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-[#FFDBD1]">schedule</span>
+                          25 min
+                        </span>
+<span>·</span>
+<span>Fácil</span>
+<span>·</span>
+<span>2 pers.</span>
+</div>
+<span class="text-[#CA4A21] font-semibold text-label-sm flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+                        4.9 (184)
+                      </span>
+</div>
+</div>
+</div>
+<!-- Recipe Card 2 -->
+<div class="w-full bg-[#241C16] rounded-[24px] p-3 shadow-md transition-all hover:bg-[#2b221b]">
+<div class="relative w-full h-44 rounded-[20px] overflow-hidden mb-3">
+<img class="w-full h-full object-cover" data-alt="Warm Mediterranean bowl with grilled glazed lemon herb chicken skewers laid atop fluffy seasoned basmati rice with cucumber ribbons and fresh parsley. Golden ambient sunlight with warm clay pottery tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6xh1RdASOOion6OO8luagfNiS5Dn8KH4R3Wgw540BBwIcGAUVPyeudvpEHdozM_NyhtSFe3UqKz-jJOZNbw2TZD0R0Q6edgiz9N9PHawXYBY2aEPzzRhtHh-QfgydnccMiJM_WT94bvhyGKAASCYqI9xWBv0o-iUKa_2YgK74bWvZuhy_Tr0P_PaqORm3IyaEITpLSTcLxR6f8Yw2nOxs9uznU18HvFUzq3vifszidUGweZz1cAquXA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-[#18120E]/90 via-transparent to-black/20"></div>
+<!-- Heart toggle -->
+<button class="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-[#18120E]/70 backdrop-blur-md text-[#CA4A21] flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<!-- Match Badge (Olive Pill) -->
+<div class="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4C662C] text-white font-label-sm text-label-sm font-semibold shadow-sm">
+<span class="material-symbols-outlined text-[14px]">eco</span>
+                      88% coincidencia
+                    </div>
+</div>
+<div class="px-1 pb-1">
+<h3 class="font-headline-md text-headline-md text-[#FFEEFE] font-bold tracking-tight">
+                      Bowl de pollo al limón con arroz jazmín
+                    </h3>
+<p class="font-body-sm text-body-sm text-[#FFDBD1]/80 mt-0.5 line-clamp-1">
+                      Preparación rápida en sartén con aceite de oliva virgen extra.
+                    </p>
+<div class="flex items-center justify-between mt-3 pt-2 text-[#E9D7C8]">
+<div class="flex items-center gap-2 font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-[#FFDBD1]">schedule</span>
+                          20 min
+                        </span>
+<span>·</span>
+<span>Muy fácil</span>
+<span>·</span>
+<span>2 pers.</span>
+</div>
+<span class="text-[#CA4A21] font-semibold text-label-sm flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+                        4.8 (92)
+                      </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Secondary Action: 'Cambiar ingredientes' -->
+<div class="absolute bottom-0 inset-x-0 z-30 p-4 bg-gradient-to-t from-[#18120E] via-[#18120E]/95 to-transparent">
+<button class="w-full h-13 py-3 rounded-full bg-[#FFDBD1] text-[#3A0A00] font-label-lg text-label-lg font-semibold shadow-lg hover:bg-[#ffcbbd] active:scale-[0.99] transition-all flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[20px]">swap_horiz</span>
+                Cambiar ingredientes
+              </button>
+</div>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-space-sm text-center">
+            Pilas verticales con elevación cálida #241C16 y preservación estricta de la consulta entre comillas.
+          </p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2: ESTADOS CRÍTICOS Y REGLAS DE NEGOCIO (CANONICAL STATE BOARDS) -->
+<section class="w-full px-gutter py-space-xl bg-surface-container-low shadow-inner">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-space-lg gap-space-sm">
+<div>
+<span class="text-primary font-label-md text-label-md uppercase tracking-wider">Matriz de Confiabilidad y Seguridad</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-0.5">Estados Críticos y Reglas de Negocio</h2>
+<p class="font-body-md text-on-surface-variant max-w-2xl">
+            Comportamiento estricto frente a contingencias de conectividad, bloqueos profilácticos de salud alimentaria y descomposición modular del microciclo de carga.
+          </p>
+</div>
+<div class="inline-flex items-center gap-2 px-space-md py-1.5 rounded-full bg-surface-container-high text-on-surface text-label-sm font-label-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+<span>Reglas Auditadas: Fallo / Alergia / Feedback</span>
+</div>
+</div>
+<!-- Grid of 3 Structured State Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+<!-- ================= STATE A: FALLO DE RED / ERROR CON REINTENTO ================= -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<!-- Header Tag -->
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<span class="px-2.5 py-1 rounded-full bg-[#FFDAD6] text-[#93000A] font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">wifi_off</span>
+                Estado A: Conexión
+              </span>
+<span class="text-outline font-label-sm text-label-sm">Código 503 / Offline</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">
+              Fallo de Red / Error con Reintento
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+              La consulta escrita se mantiene <strong>intacta en memoria local</strong> para que el usuario nunca deba volver a escribir su prompt tras un corte de conectividad.
+            </p>
+<!-- Rendered Mock Component -->
+<div class="p-3.5 rounded-[20px] bg-surface-container space-y-3">
+<!-- Search bar with query held intact -->
+<div class="w-full h-12 bg-white rounded-full px-3.5 flex items-center justify-between shadow-xs">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
+<span class="font-body-md text-body-md text-on-surface truncate">“algo con pollo y arroz”</span>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px]">close</span>
+</div>
+<!-- Error Alert Card (Red/Terracotta subtle alert) -->
+<div class="p-3.5 rounded-[16px] bg-[#FFDAD6]/70 text-[#93000A] space-y-2">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[20px] shrink-0 mt-0.5">error_outline</span>
+<div>
+<h4 class="font-label-lg text-label-lg font-bold">No hemos podido buscar</h4>
+<p class="font-body-sm text-body-sm text-[#93000A]/90 mt-0.5">
+                      Revisa tu conexión a internet o el modo avión de tu dispositivo.
+                    </p>
+</div>
+</div>
+<!-- Primary Reintentar Button -->
+<button class="w-full h-10 mt-1 rounded-full bg-[#CA4A21] text-white font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+                  Reintentar sin perder mi texto
+                </button>
+</div>
+<!-- Offline status indicator -->
+<div class="flex items-center justify-center gap-1.5 text-label-sm font-label-sm text-[#8C7169] pt-1">
+<span class="w-2 h-2 rounded-full bg-[#BA1A1A]"></span>
+<span>Sin conexión · La búsqueda en la nube no está disponible</span>
+</div>
+</div>
+</div>
+<!-- Technical Specs Note -->
+<div class="mt-space-md pt-space-sm text-on-surface-variant font-body-sm text-[12px] space-y-1">
+<p><strong>Criterio UX:</strong> Caché reactiva en Zustand / StateFlow.</p>
+<p><strong>Comportamiento:</strong> Al pulsar <em>Reintentar</em>, se reenvía el payload JSON sin limpiar el <code class="px-1 py-0.5 rounded bg-surface-container font-mono text-[11px]">input.value</code>.</p>
+</div>
+</div>
+<!-- ================= STATE B: BLOQUEO ESTRICTO POR PERFIL ================= -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<!-- Header Tag -->
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<span class="px-2.5 py-1 rounded-full bg-[#FFDDB5] text-[#805200] font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+                Estado B: Filtro Clínico
+              </span>
+<span class="text-outline font-label-sm text-label-sm">Regla Inmutable</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">
+              Bloqueo Estricto por Perfil
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+              Demostración de seguridad: Perfil del usuario con dieta <strong>Vegano</strong> y <strong>Alergia a marisco</strong> que introduce prompts conflictivos (ej. <em>«carne»</em> o <em>«paella de marisco»</em>).
+            </p>
+<!-- Rendered Mock Component: Honey-tinted card (#FFF6E5 & #D4881A) -->
+<div class="p-3.5 rounded-[20px] bg-[#FFF8F0] space-y-3 shadow-inner">
+<!-- Conflict Indicator -->
+<div class="flex items-center justify-between px-3 py-1.5 rounded-full bg-white text-label-sm font-label-sm shadow-xs">
+<span class="text-[#8C7169]">Prompt bloqueado:</span>
+<span class="font-semibold line-through text-error">«paella de marisco»</span>
+</div>
+<!-- Warm Honey Guard Card -->
+<div class="p-4 rounded-[18px] bg-[#FFF6E5] text-[#633F00] shadow-sm">
+<div class="flex items-center gap-2 mb-1.5 text-[#D4881A]">
+<span class="material-symbols-outlined text-[24px]">gpp_maybe</span>
+<h4 class="font-headline-sm text-[16px] font-bold text-[#432C00]">Tu perfil no permite esta receta</h4>
+</div>
+<p class="font-body-sm text-body-sm text-[#5C3B00] leading-relaxed">
+                  Tu alimentación o tus alergias impiden esta búsqueda. Hemos mantenido tu preferencia inquebrantable: <strong>Vegano &amp; Sin Marisco</strong>.
+                </p>
+<!-- Action to inspect profile -->
+<button class="w-full h-10 mt-3 rounded-full bg-white text-[#805200] font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-xs hover:bg-[#FFDDB5] transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">manage_accounts</span>
+                  Revisar mi perfil de salud
+                </button>
+</div>
+<!-- Empty Plate Fallback Illustration -->
+<div class="p-3 rounded-[16px] bg-white text-center flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-[#FEF4E8] flex items-center justify-center text-[#D4881A] mb-1.5">
+<span class="material-symbols-outlined text-[20px]">no_meals</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[240px]">
+                  No hemos encontrado recetas compatibles con tus preferencias alimentarias.
+                </p>
+</div>
+</div>
+</div>
+<!-- Technical Specs Note -->
+<div class="mt-space-md pt-space-sm text-on-surface-variant font-body-sm text-[12px] space-y-1">
+<p><strong>Filtro Hard-Block:</strong> Ejecutado en capa de ingesta antes de inferencia.</p>
+<p><strong>Cero Alérgenos:</strong> El modelo nunca propone alternativas con trazas.</p>
+</div>
+</div>
+<!-- ================= STATE C: PANTALLA DE CARGA CÁLIDA AISLADA ================= -->
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<!-- Header Tag -->
+<div class="flex items-center justify-between pb-space-sm mb-space-md">
+<span class="px-2.5 py-1 rounded-full bg-[#FFDBD1] text-[#A83208] font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">motion_photos_on</span>
+                Estado C: Carga Profunda
+              </span>
+<span class="text-outline font-label-sm text-label-sm">Microciclos 1-3</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">
+              Pantalla de Carga Cálida a Pantalla Completa
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-space-md">
+              Desglose anatómico del componente de espera: plato de cocción con anillo de vapor pulsante y retroalimentación cognitiva secuencial.
+            </p>
+<!-- Rendered Mock Component: Isolated Generator Loading -->
+<div class="p-4 rounded-[20px] bg-[#FFF8F0] flex flex-col items-center text-center shadow-inner">
+<!-- Mini Plate Ring -->
+<div class="relative w-20 h-20 my-2 flex items-center justify-center">
+<svg class="w-20 h-20 transform -rotate-90" viewbox="0 0 80 80">
+<circle cx="40" cy="40" fill="#FFFFFF" r="32" stroke="#F2DFD1" stroke-width="5"></circle>
+<circle class="animate-pulse" cx="40" cy="40" fill="none" r="32" stroke="#CA4A21" stroke-dasharray="201" stroke-dashoffset="60" stroke-linecap="round" stroke-width="5"></circle>
+</svg>
+<span class="material-symbols-outlined text-primary text-[24px] absolute animate-spin" style="animation-duration: 4s;">soup_kitchen</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-bold mt-1">
+                Buscando recetas para ti…
+              </h4>
+<!-- Stepper Cycle List -->
+<div class="w-full text-left mt-3 space-y-2 bg-white p-3 rounded-[16px] shadow-xs">
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-primary font-semibold">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>1. Interpretando «pollo y arroz»</span>
+</div>
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-on-surface font-medium">
+<span class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></span>
+<span>2. Filtrando por alérgenos y dieta</span>
+</div>
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-outline opacity-60">
+<span class="w-4 h-4 rounded-full bg-surface-variant flex items-center justify-center text-[10px]">3</span>
+<span>3. Calibrando tiempos de cocción</span>
+</div>
+</div>
+<!-- Cancel Button with safe 48dp touch target -->
+<button class="w-full h-12 mt-3 rounded-full bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold hover:bg-surface-variant transition-colors flex items-center justify-center" type="button">
+                Cancelar operación
+              </button>
+</div>
+</div>
+<!-- Technical Specs Note -->
+<div class="mt-space-md pt-space-sm text-on-surface-variant font-body-sm text-[12px] space-y-1">
+<p><strong>Accesibilidad (A11y):</strong> <code class="px-1 py-0.5 rounded bg-surface-container font-mono text-[11px]">aria-live="polite"</code> en cada fase del stepper.</p>
+<p><strong>Touch target:</strong> 48dp mínimos en botón cancelar para evitar toques accidentales.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: TABLA DE ESPECIFICACIONES DE DISEÑO & DESIGN TOKENS -->
+<section class="w-full px-gutter py-space-xl">
+<div class="max-w-7xl mx-auto">
+<div class="mb-space-lg">
+<span class="text-primary font-label-md text-label-md uppercase tracking-wider">Directorio de Implementación</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-0.5">Mapeo de Tokens y Variables de Pantalla (Bloque 2)</h2>
+</div>
+<div class="overflow-x-auto rounded-[24px] bg-surface-container-lowest shadow-sm">
+<table class="w-full text-left font-body-sm text-body-sm text-on-surface">
+<thead class="bg-surface-container-high text-on-surface-variant font-label-md text-label-md">
+<tr>
+<th class="py-3 px-4">Componente</th>
+<th class="py-3 px-4">Modo Claro (#FFF8F0)</th>
+<th class="py-3 px-4">Modo Oscuro (#18120E)</th>
+<th class="py-3 px-4">Tipografía / Dimensiones</th>
+<th class="py-3 px-4">Regla de Negocio</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-3.5 px-4 font-semibold text-primary">Barra Búsqueda (Bloque 2)</td>
+<td class="py-3.5 px-4">Fondo blanco, sombra nivel 1, icono terracota</td>
+<td class="py-3.5 px-4">Superficie #241C16, texto crema, chispa terracota</td>
+<td class="py-3.5 px-4">Altura 56dp, radio 999px (Pill)</td>
+<td class="py-3.5 px-4">Pide texto natural; preserva strings en caso de error.</td>
+</tr>
+<tr class="hover:bg-surface-container/50 transition-colors bg-surface-container-low/40">
+<td class="py-3.5 px-4 font-semibold text-primary">Modal de Carga IA</td>
+<td class="py-3.5 px-4">Canvas #FFF8F0/95 con desenfoque de fondo</td>
+<td class="py-3.5 px-4">Canvas #18120E/95 con plato brillante</td>
+<td class="py-3.5 px-4">Manrope Bold 28sp + Inter Medium 14sp</td>
+<td class="py-3.5 px-4">Cicla 3 microtextos cada 1800ms con botón Cancelar accesible.</td>
+</tr>
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-3.5 px-4 font-semibold text-primary">Chips de Ordenación</td>
+<td class="py-3.5 px-4">Activo Terracota #CA4A21 / Reposo Blanco</td>
+<td class="py-3.5 px-4">Activo Terracota #CA4A21 / Reposo #241C16</td>
+<td class="py-3.5 px-4">Altura 36dp, radio 999px, Inter SemiBold</td>
+<td class="py-3.5 px-4">Relevancia seleccionada por defecto al llegar desde IA.</td>
+</tr>
+<tr class="hover:bg-surface-container/50 transition-colors bg-surface-container-low/40">
+<td class="py-3.5 px-4 font-semibold text-primary">Tarjetas de Receta</td>
+<td class="py-3.5 px-4">Blanco hueso con sombra suave difusa</td>
+<td class="py-3.5 px-4">Superficie #241C16 con relieve cálido</td>
+<td class="py-3.5 px-4">Radio 24px, imagen 16:11, badge coincidencia</td>
+<td class="py-3.5 px-4">Filtro vegano / alergias aplicado irrevocablemente.</td>
+</tr>
+<tr class="hover:bg-surface-container/50 transition-colors">
+<td class="py-3.5 px-4 font-semibold text-primary">Botón Sticky Inferior</td>
+<td class="py-3.5 px-4">Tonal #FFDBD1 con texto #3A0A00</td>
+<td class="py-3.5 px-4">Tonal #FFDBD1 con texto oscuro de alto contraste</td>
+<td class="py-3.5 px-4">Altura 52dp, clearance lateral 16px</td>
+<td class="py-3.5 px-4">Acción 'Cambiar ingredientes' con retorno instantáneo.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+<!-- Interactive Client Script for the Showcase -->
+<script>
+  // Stepper text cycler for loading modal
+  const loadingSteps = [
+    'Combinando tus ingredientes…',
+    'Ajustando a 30 minutos…',
+    'Evitando tus alergias y restricciones…',
+    'Calculando tiempos de cocción…'
+  ];
+  let currentStepIdx = 0;
+  const stepperElement = document.getElementById('dynamic-stepper-text');
+
+  if (stepperElement) {
+    setInterval(() => {
+      currentStepIdx = (currentStepIdx + 1) % loadingSteps.length;
+      stepperElement.style.opacity = '0';
+      setTimeout(() => {
+        stepperElement.textContent = loadingSteps[currentStepIdx];
+        stepperElement.style.opacity = '1';
+      }, 200);
+    }, 2200);
+  }
+
+  // Toggle Left Phone Modal
+  function toggleLeftModal(show) {
+    const modal = document.getElementById('left-loading-modal');
+    const reopenBtn = document.getElementById('left-reopen-btn');
+    if (!modal) return;
+
+    if (show) {
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      if (reopenBtn) reopenBtn.classList.add('hidden');
+    } else {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      if (reopenBtn) reopenBtn.classList.remove('hidden');
+    }
+  }
+</script></main><footer class="w-full bg-surface-container-low shadow-[0_-1px_8px_rgba(43,33,24,0.03)] py-space-lg"><div class="w-full px-gutter flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-primary text-[20px]">restaurant_menu</span><span>Sazón Culinary AI Mobile System • Android Architecture Specification</span></div><div class="flex items-center gap-space-md font-label-sm text-label-sm text-on-surface-variant"><span class="flex items-center gap-space-xs"><span class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest shadow-[0_1px_4px_rgba(43,33,24,0.1)]"></span>#FFF8F0 Cream Light</span><span class="flex items-center gap-space-xs"><span class="w-2.5 h-2.5 rounded-full bg-inverse-surface"></span>#18120E Deep Dark</span><span class="text-outline">v2.4 LTS</span></div></div></footer></body></html>
