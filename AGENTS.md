@@ -181,6 +181,10 @@ Una feature está hecha solo si se cumplen todas:
 - El **SDK de Windows no sirve** para compilar en WSL: solo trae binarios `.exe` (`aapt2.exe`,
   `adb.exe`, `zipalign.exe`) que Linux no puede ejecutar. Por eso hay un SDK de Linux. Android Studio
   en Windows sigue valiendo para editar y sincronizar, pero la verificación canónica corre en WSL.
+- **`adb` y los dispositivos**: el emulador (y un móvil por USB) los ve el `adb` que corre en **Windows**.
+  El `adb` de WSL está en otra red y no los ve, así que `bash scripts/gradle.sh installDebug` desde WSL
+  no encuentra dispositivo útil: la comprobación visual/manual sigue haciéndose en Android Studio. Solo
+  si se quiere instalar desde WSL hay que puentear `adb` (p. ej. invocando el `adb.exe` de Windows).
 - `local.properties` (fuera de control de versiones) lo regenera Android Studio con la ruta del SDK de
   Windows; `wsl-env.sh` la reescribe a la del SDK de Linux al detectar una ruta de Windows, así que no
   hay que mantenerlo a mano.

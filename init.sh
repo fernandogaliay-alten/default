@@ -37,4 +37,4 @@ echo "Verificacion completada correctamente."
 echo
 echo "Comandos manuales (no se ejecutan solos):"
 echo "  bash scripts/gradle.sh assembleDebug     # genera el APK de depuracion"
-echo "  bash scripts/gradle.sh installDebug      # instala en un emulador o dispositivo conectado"
+echo "  bash scripts/gradle.sh installDebug      # requiere un dispositivo visible para adb (en WSL, ver Notas de entorno)"
