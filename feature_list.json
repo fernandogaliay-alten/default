@@ -730,5 +730,19 @@
       "Pendiente de la persona (no automatizable, AGENTS.md no automatiza UI de emulador): revisión manual en Home, Resultados, Favoritos (lista y rejilla) y Detalle, en claro y oscuro, del glifo por categoría, el acento por cocina y el fallback contra el registro de DESIGN.md."
     ],
     "notes": "Feature de UI sin capturas nuevas por decisión de la persona (desviación documentada en DESIGN.md): el placeholder ya está definido en DESIGN.md/contexto como el fallback del diseño y esta feature solo lo extiende por categoría y cocina. Estrategia: glifo por categoryId, acento por cuisineId, mapeo puro y exhaustivo, fallback total, sin dependencias. Seam futuro para imágenes IA. Fuente: docs/build-brief.md no incluye imágenes en el MVP. Issue #77."
+  },
+  {
+    "id": "ai-verbose-diagnostics",
+    "area": "integration",
+    "title": "Diagnóstico fino de descartes y respuesta cruda de la IA (modo depuración)",
+    "user_visible_behavior": "El desarrollador ve en logcat ('SazonAi'), por cada llamada, por qué se descartó cada receta (deriva de tiempos vs alérgenos declarados) y, con el modo de depuración activado, el detalle de cada descarte y el JSON crudo devuelto por el modelo; el modo se puede volver a ocultar sin cambiar el comportamiento y nunca expone la clave ni la cabecera Authorization.",
+    "depends_on": ["ai-call-diagnostics"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' (vía 'bash init.sh') cubre que el resumen de descartes distingue las dos causas de INCOHERENT (deriva de tiempos vs declaredAllergens incompletos) y que con el modo de depuración activado el evento incluye el detalle del descarte y el contenido crudo del modelo, mientras que con el modo apagado el evento es idéntico al actual y ningún evento contiene la clave ni la cabecera Authorization",
+      "Prueba manual en emulador: con clave válida, buscar 'arroz con pollo' y ver en logcat ('SazonAi') el desglose de motivos; con el modo de depuración activado, el detalle de cada descarte y el JSON crudo del modelo (troceado si supera el límite de línea de Logcat); con el modo apagado, el log vuelve al formato anterior"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de ai-call-diagnostics, pedida por la persona tras una prueba real de búsqueda con 'arroz con pollo' (2026-10-12): el log SazonAi mostró received=6 accepted=2 discards={INCOHERENT=4} sin poder saber por qué. Alcance acordado: (A+B) desglosar INCOHERENT en sus dos causas del Validador (regla 4a: deriva de tiempos, steps.sumOf(minutes) vs totalMinutes > 5 min; regla 4b: declaredAllergens no cubre los alérgenos curados) mediante un contador/discriminador legible en el diagnóstico, sin exponer texto de recetas; (D) modo de depuración (interruptor, p. ej. en AiProviderPolicy o flag de BuildConfig) que añade al evento y al Log.d el detalle de cada descarte (con título) y el contenido crudo del modelo (choices[0].message.content), pensado para depurar ahora y volver a ocultar después. Restricciones: nunca registrar la clave ni la cabecera Authorization; con el modo apagado el comportamiento debe ser idéntico al actual; el JSON crudo puede ser largo (15 KB medidos) y Logcat trunca por línea (~4000 char), así que hay que trocearlo. El modo verboso debe quedar apagado por defecto en release (sugerido: activo solo en debug) y dejarse trazado como temporal en riesgos/ADR. FUERA de alcance: cambiar el proveedor/modelo, cambiar la semántica del Validador (sigue siendo la puerta dura), tocar Recipe.kt o el wire del contrato §4, telemetría/persistencia del diagnóstico y el filtrado por Perfil de AiSearchService (otra feature si se pide)."
   }
 ]
