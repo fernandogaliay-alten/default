@@ -679,5 +679,19 @@
       "PENDIENTE (no automatizable desde WSL, la persona, emulador de Android Studio en Windows): con devexpert.apiKey valida, logcat (SazonAi) muestra por llamada estado, intento, duracion, content=...c/...b, received=... accepted=... discards={...} y las recetas reales llegan a Resultados; con un lote sin recetas aceptadas el log indica el motivo; con la clave ausente o vaciada sigue el modo semilla sin fallar."
     ],
     "notes": "Feature correctiva de real-ai-provider (issue #72). Alcance acordado: (1) recalibrar AiProviderPolicy a la latencia real medida (socket 90->120 s, request 120->150 s, deadline 180->240 s; connect/MAX_ATTEMPTS/backoff/Retry-After sin cambios) porque el proveedor varía entre 28 y 116 s segun la carga y el modelo; (2) diagnóstico local más rico (AiCallEvent + Log.d de MainActivity) que explique un EMPTY: bytes de contenido, recetas recibidas vs aceptadas y el motivo del descarte. Evidencia de latencia (prompt real de 6 recetas, misma clave): chat 28,0/33,1/42,1/46,6 s, chat+json_object 85,3 s, chat-pro+json_schema 97,0 s, deepseek-v4-flash 52,6 s, mimo-v2.6-pro 115,8 s; mimo-v2.5/-pro dan 400 (listados pero no enrutados). response_format queda FUERA de alcance (decisión pendiente de la persona): el Validador ya garantiza que nada inválido llegue al usuario. Cambiar de proveedor (p. ej. OpenCode Zen/Go, tu suscripción) sería una feature + ADR aparte y no aporta robustez extra de forma (DevExpert chat-pro ya soporta json_schema)."
+  },
+  {
+    "id": "ai-response-format",
+    "area": "integration",
+    "title": "Formato JSON de la respuesta de la IA (json_object con fallback)",
+    "user_visible_behavior": "Con una clave válida, generar o buscar recetas pide al proveedor la respuesta en formato JSON (response_format json_object) y, si el proveedor lo rechazara, reintenta una vez sin ese formato; el usuario sigue viendo solo recetas válidas (el Validador no cambia) y el logcat indica qué modo se usó.",
+    "depends_on": ["ai-call-diagnostics"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que la petición incluye response_format cuando está activo y lo omite cuando no, que el fallback reintenta una sola vez ante 400/422 sin response_format y que nunca se serializa un response_format nulo, sin exponer la clave",
+      "Prueba manual en emulador: con clave válida siguen llegando recetas reales y el logcat ('SazonAi') indica el modo usado; con el interruptor apagado el comportamiento es idéntico al actual"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de real-ai-provider (issue #74), decidida por la persona. Alcance: (1) enviar response_format {type:json_object} en el alias chat actual (verificado HTTP 200); (2) fallback degradable: si el proveedor responde 400/422, reintentar una vez sin response_format; (3) interruptor en AiProviderPolicy (o flag) para poder apagarlo sin publicar; (4) observabilidad del modo usado y de si saltó el fallback, apoyada en el diagnóstico de ai-call-diagnostics; (5) no emitir response_format nulo (ojo con encodeDefaults = true de AiHttpClientFactory: usar explicitNulls = false, @EncodeDefault(NEVER) o un DTO de request aparte). FUERA de alcance: json_schema / pinnear chat-pro (más lento, 97 s medidos), cambiar de proveedor (OpenCode Zen/Go es la suscripción personal del harness; sería feature + ADR aparte) y tocar RecipeValidator (sigue siendo la puerta dura; el formato solo garantiza forma, no dominio)."
   }
 ]
