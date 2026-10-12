@@ -54,7 +54,10 @@ derivado y **no persistido**, con la formula en `com.sazon.app.ui.results.MatchS
 `docs/risks-and-open-questions.md`).
 
 - **RecipeIngredient**: `name`, `quantity`, `unit`, `isPantry`, `ingredientId` (opcional; `null`
-  cuando es ingrediente libre).
+  cuando es ingrediente libre). En **dominio** `quantity` es `Double` **no anulable**: el ingrediente
+  "al gusto" del wire del modelo (`"quantity": null` o ausente) se normaliza en el adaptador
+  (`com.sazon.app.data.ai`) a `quantity = 0.0` + `unit = null` antes de validar; ese par es lo que la
+  UI pinta como "Al gusto" y lo que el escalado de raciones **no** escala (ver `unit = null` abajo).
 - **RecipeStep**: `order`, `title`, `description`, `minutes`.
 - **Nutrition**: `kcal`, `protein`, `carbs`, `fat` (estimados).
 - **id**: lo aporta el paquete de recetas semilla; en las recetas `ai` lo asigna la app **al

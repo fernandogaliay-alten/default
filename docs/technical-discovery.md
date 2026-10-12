@@ -417,6 +417,12 @@ la IA** (`docs/domain/taxonomy.md` §4, sin `id` ni `source`) a Receta con el DT
 `Random`/reloj/`UUID`) y `source = ai` **antes** de validar, y aplica las reglas del Validador con
 `RecipeValidator.validateRecipe` y restricciones **neutras** -sin pre-filtrar por dieta/restricciones,
 asi el estado Bloqueado de `ai-search` sigue siendo alcanzable-, elemento a elemento y sin lanzar);
+los ingredientes del wire se decodifican con el DTO `AiIngredientDraft` de `quantity` **anulable**: una
+`quantity` nula o ausente es un ingrediente **"al gusto"** y se normaliza al mapear a `RecipeIngredient`
+a `quantity = 0.0` + `unit = null` (la `unit` del wire se descarta, porque sin cantidad no es
+interpretable), de modo que un unico ingrediente "al gusto" **no** descarta la receta entera (correctiva
+`ai-quantity-tolerance`); la canonicalizacion del `id` usa el ingrediente **ya normalizado** (las
+variantes nula/ausente/`0.0`+`null` comparten `id` y los ids ya existentes no cambian);
 el decode devuelve un **resultado tipado** `AiDecodeResult` (`accepted`, `received`, `discardedByReason`
 por `DiscardReason`, `incoherentByCause` —el desglose de los descartes `INCOHERENT` por su causa del
 Validador: `TIME_DRIFT` = regla 4a, `ALLERGEN_COVERAGE` = regla 4b—, `discards` y `contentChars`/
@@ -526,8 +532,10 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `Authorization: Bearer <clave>` y, con el interruptor activo (por defecto),
   `"response_format":{"type":"json_object"}` (forma; **no** `json_schema`; sin `stream`, `temperature`
   ni `max_tokens`, ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante** con
-  `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**), la app completa
-  `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
+  `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**; los
+  ingredientes con un DTO del wire `AiIngredientDraft` de `quantity` anulable que se normaliza a
+  "al gusto" —`0.0`+`unit = null`— cuando llega nula o ausente, correctiva `ai-quantity-tolerance`), la
+  app completa `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
   `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. El
   **formato de la peticion** se prueba en `OpenAiChatTest` (sin formato **no** aparece
   `response_format` ni un `null`; con `ResponseFormat.JSON_OBJECT` se emite `{"type":"json_object"}`) y
@@ -595,8 +603,13 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   `AiRecipePayloadTest` (decodifica, `source = ai` + `id` unico con duplicado literal, reglas del
   Validador, tolerancia y `matchScore` ignorado, resumen `received`/`accepted`/`discardedByReason` con
   los cuatro `DiscardReason` -dos de ellos con restricciones no neutras- y `contentState`
-  BLANK/ILLEGIBLE/RECIPES con longitudes UTF-16 vs UTF-8) y `AiRecipeIdsTest` (determinismo, unicidad y
-  formato del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService`
+  BLANK/ILLEGIBLE/RECIPES con longitudes UTF-16 vs UTF-8; y la **tolerancia del ingrediente "al
+  gusto"**, correctiva `ai-quantity-tolerance`: un ingrediente del wire con `quantity` nula, nula con
+  `unit` no nula o campo ausente se normaliza a `quantity == 0.0` + `unit == null`
+  -`IngredientFormat.quantityLabel` da `"Al gusto"`-, una `quantity` numerica se conserva intacta y un
+  lote con una receta "al gusto" y otra rota sigue aceptando la buena) y `AiRecipeIdsTest` (determinismo,
+  unicidad, formato del `id` y que las variantes `quantity` nula/ausente/`0.0`+`null` comparten `id`),
+  mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService`
   real con `accepted` no vacio. El **desglose de `INCOHERENT`** (`ai-verbose-diagnostics`) tambien se
   prueba: las dos causas (`TIME_DRIFT`/`ALLERGEN_COVERAGE`) en el evento y **coherentes con
   `RecipeValidator.validateRecipe`** (solo 4a / solo 4b / ambas -> `TIME_DRIFT` / ninguna), y que con el
