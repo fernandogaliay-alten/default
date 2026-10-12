@@ -37,7 +37,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
-| Iconos e imágenes de receta | Assets locales (`assets/icons/**`, `assets/img/recipes/**`) | Determinista, offline, sin coste |
+| Iconos e imágenes de receta | Sin imágenes empaquetadas: placeholder dibujado con Compose en `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) | Determinista, offline, sin coste |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
@@ -217,6 +217,19 @@ DI) y lo encadena por `SazonApp` y `MainShell` hasta `GeneratorFlow`. Testeado e
 caso negativo obligatorio del `build-brief`: una receta insegura no llega a `accepted`. Ver
 `docs/specs/generation-flow-with-validation.md`.
 
+La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) vive en
+`com.sazon.app.ui.artwork`: el mapeo es **puro** y testeable en JVM (`RecipeArtworkStyle`, sin Compose
+ni Android: `RecipeGlyph` con 18 miembros ↔ 18 `recipeCategories`, `RecipeAccent` con 10 acentos +
+`DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback total `null`/vacío/desconocido → `PLATE` +
+`DEFAULT`) y la capa Compose es un unico componente delgado, `RecipeArtwork(recipe, modifier,
+glyphSize)`, que pinta el bloque con degradado por **roles del tema** (`primaryContainer`,
+`secondaryContainer`, `tertiaryContainer`, `surfaceVariant`) y el glifo de linea con primitivas de
+`Canvas`. El llamante aporta el ratio/tamaño/recorte, asi que se conservan el 16:10 de las tarjetas
+(glifo 48 en `RecipeCard`, 56 en `ResultRecipeCard`), el 96x96 y el alto 96 de Favoritos (40) y el hero
+de 240 del Detalle (72). **No** se empaqueta `assets/img/recipes/**` en el MVP (drift preexistente de
+`docs/domain/taxonomy.md` §6); `RecipeArtwork` es el unico punto a cambiar cuando existan imagenes
+generadas por IA. Ver `docs/specs/recipe-artwork.md`.
+
 La **pantalla de Resultados** vive en `com.sazon.app.ui.results`, con logica **pura** testeable en JVM
 (sin Compose ni Android) y una capa Compose delgada. `MatchScore.of(recipe, preferences, taxonomy,
 userIngredients)` fija la formula **derivada** de `matchScore`: media ponderada en `0..100` de la
@@ -229,7 +242,8 @@ puntuadas y ordenadas por relevancia, `Empty`, o `Unavailable` con las semillas 
 `ResultsHeaders.of(...)` formatea titulo/subtitulo (Generador o Busqueda con IA, la consulta entre
 comillas). `ResultsScreen` monta el `Scaffold` (topBar con "Atras" + titulo/subtitulo, bottomBar "Cambiar
 ingredientes", y los estados poblado/vacio/degradado con "Reintentar") y `ResultRecipeCard` la tarjeta a
-ancho completo (degradado + glifo, meta y pildora de coincidencia, sin corazon ni click). La pantalla se
+ancho completo (imagen de receta `RecipeArtwork`, meta y pildora de coincidencia, sin corazon ni click).
+La pantalla se
 monta como *stage* de resultado dentro de `GeneratorFlow` (sin `PushedScreen.RESULTS`) para conservar los
 borradores; `ai-search` reutilizara `ResultsScreen` con `ResultsOrigin.Search`. Ver
 `docs/specs/results-screen.md`.
@@ -267,7 +281,8 @@ a medios (half-up, minimo el paso si `quantity > 0`), `unit = null` ("al gusto")
 `IngredientFormat` resuelve las etiquetas (`"½"`, `"4½ ud"`, `"300 g"`, `"Al gusto"`), `RecipeDetailFormat`
 los cuatro pares del hero (Tiempo/Dificultad/Comensales/Calorias, sin `matchScore`) y `RecipeDetailState`
 los comensales (acotados a `taxonomy.servings`) y la pestana activa. `RecipeDetailScreen` es la capa
-Compose: hero con degradado + "Atras" y corazon, tarjeta superpuesta con la meta, pestanas
+Compose: hero con la imagen de receta (`ui.artwork.RecipeArtwork`, 240 dp) + "Atras" y corazon, tarjeta
+superpuesta con la meta, pestanas
 Ingredientes/Pasos/Notas (timeline con pildora ambar de duracion y nutricion opcional), el `ServingsStepper`
 reutilizado **sin cambios** y barra inferior ("Guardar"/"Empezar a cocinar", costuras no-op de
 `favorites`/modo cocina). El detalle se hospeda como **overlay** en `MainShell`

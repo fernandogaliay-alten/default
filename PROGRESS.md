@@ -64,15 +64,26 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: **ninguna**. La cuarta **correctiva** de `real-ai-provider`, `ai-response-format`
-  (issue #74, `area: integration`, no UI), quedó **`accepted`** en la sesión 076 (validación
-  independiente, veredicto `accept`, rama `feature/ai-response-format`; la sesión 074 la dejó `passing`
-  y la 075 la reparó tras un `revise`). Envía `response_format {"type":"json_object"}` en el alias
-  `chat`, con un interruptor (`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`), un **fallback one-shot** sin
-  `response_format` solo ante 400/422 (respetando `MAX_ATTEMPTS = 2`) y observabilidad del modo/fallback
-  por `AiCallEvent`/`Log.d("SazonAi")`; `RecipeValidator` sigue intacto como puerta dura. Antes,
+- Última feature **`accepted`**: **`recipe-artwork`** (issue #77, `area: ui`), cerrada en la sesión 078
+  con validación independiente (veredicto `accept`, rama `feature/recipe-artwork`; la sesión 077 la dejó
+  `passing`). Es la primera feature del plan posterior al MVP ya cerrado. Sustituye las **4 copias** del
+  placeholder de receta
+  (degradado melocotón→oliva + `PlateGlyph` duplicado a mano) por un **único componente**
+  `ui.artwork.RecipeArtwork` con mapeo **puro** (`RecipeArtworkStyle`: glifo por `categoryId` —18
+  categorías reales—, acento del degradado por `cuisineId` —10 cocinas reales—) y **fallback total**
+  (id nulo/vacío/desconocido → plato + degradado por defecto). Sin dependencias nuevas, sin assets, sin
+  hex sueltos (roles del tema) y con la geometría aceptada intacta (16:10, 96x96, alto 96, hero 240;
+  glifos 48/56/40/40/72 dp). La desviación de capturas está autorizada (issue #77) y registrada en
+  `DESIGN.md`; **no** se crea `docs/design/concepts/recipe-artwork/`. WIP = 0. Antes:
+  la cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74, `area: integration`,
+  no UI), quedó **`accepted`** en la sesión 076 (validación independiente, veredicto `accept`, rama
+  `feature/ai-response-format`; la sesión 074 la dejó `passing` y la 075 la reparó tras un `revise`).
+  Envía `response_format {"type":"json_object"}` en el alias `chat`, con un interruptor
+  (`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`), un **fallback one-shot** sin `response_format` solo ante
+  400/422 (respetando `MAX_ATTEMPTS = 2`) y observabilidad del modo/fallback por
+  `AiCallEvent`/`Log.d("SazonAi")`; `RecipeValidator` sigue intacto como puerta dura. Antes,
   `ai-call-diagnostics` (issue #72) quedó `accepted` en la sesión 073. `ai-recipe-decode` (issue #70) en
-  la 071 y `ai-provider-timeouts` (issue #68) en la 069. El resto del plan sigue cerrado. WIP = 0.
+  la 071 y `ai-provider-timeouts` (issue #68) en la 069. El resto del plan sigue cerrado.
 - Cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74): implementada y
   autoverificada (`passing`) en la sesión 074 por el implementer, rama `feature/ai-response-format`.
   La validación independiente devolvió **`revise`** (Finding 1 Medium: el fallback podía añadir un
@@ -91,8 +102,45 @@
   formato (`format=JSON_OBJECT`/`NONE`, y la línea `FALLBACK` si el proveedor rechaza `json_object`);
   con un lote sin recetas aceptadas, que el log indique el motivo; con `RESPONSE_FORMAT_ENABLED=false`
   el comportamiento es idéntico al actual (sin `response_format`); con la clave ausente o inválida,
-  modo semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
-- Última verificación (2026-10-12, `ai-response-format`, implementer, **reparación del Finding 1**):
+  modo semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador). Para
+  `recipe-artwork` queda también la **revisión manual** de emulador (Home, Resultados, Favoritos
+  lista+rejilla y Detalle, en claro y oscuro) del acabado de los 18 glifos y los 11 degradados, contra
+  el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva.
+- Última verificación (2026-10-12, `recipe-artwork`, validator, sesión 078): **veredicto `accept`
+  independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
+  `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML (**60 suites /
+  413 tests / 0 fallos / 0 errores / 0 saltados**; `RecipeArtworkStyleTest` 8) y el informe de lint
+  (**0 errores, 13 warnings** preexistentes, 0 bajo `app/src`). Recomputó el mapeo desde el código contra
+  la Taxonomía real (18 `recipeCategories` → 18 `RecipeGlyph` distintos == `RecipeGlyph.entries`; 10
+  `cuisines` → 10 `RecipeAccent` distintos + `DEFAULT` == `RecipeAccent.entries`; `else`/`other` →
+  `PLATE`/`DEFAULT`), confirmó pureza de `ui.artwork`, sin hex sueltos, **0 `PlateGlyph`** en `app/src`,
+  5 puntos de llamada con geometría/tamaños preservados, disciplina de alcance (domain/Taxonomía/seed/
+  Room/build/`init.sh` intactos, sin dependencias) y que el implementer no hizo commit/push/PR. Sin
+  hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes (redacción "vertical" del degradado
+  cuando `Brush.linearGradient` es diagonal, idéntico al placeholder aceptado antes; Scenario 6 solo por
+  inspección, coherente con AGENTS.md). Detalle en `docs/validations/recipe-artwork.md`.
+- Verificación anterior (2026-10-12, `recipe-artwork`, implementer, sesión 077): **trabajo en disco, sin
+  commit**. `bash init.sh` exit 0 (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin
+  procesos largos) y, antes, tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.artwork.*"` (BUILD SUCCESSFUL);
+  parseo propio de los XML: **60 suites / 413 tests / 0 fallos / 0 errores / 0 saltados** (405 previos +
+  8 nuevos de `RecipeArtworkStyleTest`) y del informe de lint: **0 errores, 13 warnings preexistentes**
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+  `app/src`**. `RecipeArtworkStyleTest` itera la Taxonomía real vía
+  `System.getProperty("taxonomy.asset.path")`: 18 `recipeCategories` → 18 `RecipeGlyph` distintos
+  (== `RecipeGlyph.entries`) y 10 `cuisines` → 10 `RecipeAccent` distintos (+`DEFAULT` ==
+  `RecipeAccent.entries`), más determinismo, fallback total (`null`/`""`/`"  "`/desconocido →
+  `PLATE`+`DEFAULT`, también con una `Recipe` de ids vacíos) y caso negativo. `grep`: **0 apariciones de
+  `PlateGlyph`** en `app/src`; el degradado del placeholder (`primaryContainer` →
+  `secondaryContainer`) solo vive en `RecipeArtwork.kt` (el otro `Brush.linearGradient` es el hero
+  preexistente de `HomeScreen`, ajeno a la feature: finding anotado en la spec). `RecipeArtworkStyle.kt`
+  solo importa `domain.recipe.Recipe` (sin Compose/Android) y `ui/artwork` no tiene hex sueltos.
+  Geometría y tamaños preservados (16:10, 96x96, alto 96, hero 240; glifos 48/56/40/40/72 dp); `git
+  diff --stat` solo con los ficheros previstos y sin tocar build/lockfile/dominio/Taxonomía/
+  `seed-recipes.json`/Room/`ui.theme`/`init.sh`. `DESIGN.md` y `docs/technical-discovery.md`
+  actualizados; **no** se crea `docs/design/concepts/recipe-artwork/` (desviación autorizada, issue #77).
+- Verificación anterior (2026-10-12, `ai-response-format`, implementer, **reparación del Finding 1**):
   **trabajo en disco, sin commit**. La rama de fallback de `DevExpertRecipeGenerator` ahora exige
   `attempt < AiProviderPolicy.MAX_ATTEMPTS` y se quitó el `!usedFallback` redundante (`includeFormat`
   ya lo implica): un `503`/`IOException` en el 1.er intento (reintento de transporte) seguido de
@@ -1597,3 +1645,117 @@
 - Siguiente paso: **commit local** de la rama `feature/ai-response-format` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features
   del plan del MVP; el plan sigue **cerrado**.
+
+### Sesión 077
+
+- Fecha: 2026-10-12
+- Objetivo: implementar y autoverificar `recipe-artwork` (placeholder de receta por categoría y cocina,
+  issue #77, `area: ui`) según `docs/specs/recipe-artwork.md`, en la rama `feature/recipe-artwork`
+  (worktree); solo hasta implementación y autoverificación (`passing`), sin commit/push/PR (los hace el
+  orquestador).
+- Completado: paquete nuevo `com.sazon.app.ui.artwork` con **mapeo puro** y **un** componente Compose.
+  `RecipeArtworkStyle` (sin Compose/Android, solo `domain.recipe.Recipe`) fija `RecipeGlyph` (18
+  miembros ↔ 18 `recipeCategories` reales, `PLATE` = `other` **y** fallback), `RecipeAccent` (10
+  acentos ↔ 10 `cuisines` + `DEFAULT`), `RecipeStyle` y `glyphFor`/`accentFor`/`of(recipe)` con
+  **fallback total** (`null`/vacío/desconocido → `PLATE` + `DEFAULT`; nunca vacío ni excepción).
+  `RecipeArtwork(recipe, modifier, glyphSize = 48.dp)` pinta el bloque con `Brush.linearGradient` de
+  **roles del tema** (`primaryContainer`/`secondaryContainer`/`tertiaryContainer`/`surfaceVariant`) y
+  un `RecipeGlyphCanvas` privado con los 18 glifos de línea (trazo 2 dp, coordenadas normalizadas,
+  `PLATE` = los dos círculos concéntricos de siempre). `RecipeArtworkDefaults.GlyphSize` es el 48 dp
+  de la tarjeta. Se sustituyen las **4 copias** y se eliminan los `PlateGlyph` privados:
+  `RecipeCard` (16:10, 48 dp), `ResultRecipeCard` (16:10, 56), `FavoriteRecipeCard` (miniatura 96x96
+  con `clip(SazonShapes.small)` y bloque de la rejilla de alto 96, 40; se **conservan**
+  `HeartGlyph`/`HeartButton`/`DismissBackground` y el corazón superpuesto) y `DetailHero` (240 dp,
+  72 dp; `DetailHero` ahora recibe `recipe` y "Atrás"/corazón siguen siendo hermanos). Se limpian los
+  imports huérfanos (`Canvas`/`Brush`/`Color`/`Stroke`/`Alignment`/`size`/`Sazon*Container` según el
+  fichero). Sin dependencias nuevas, sin assets y sin hex sueltos. `RecipeArtworkStyleTest` itera la
+  **Taxonomía real**.
+- Verificación ejecutada: tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.artwork.*"` (BUILD SUCCESSFUL) y
+  gate estándar `bash init.sh` (exit 0, `./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin
+  procesos largos); parseo propio de los XML de `app/build/test-results/testDebugUnitTest/` y del
+  informe `app/build/reports/lint-results-debug.xml`; inspección de pureza, de ausencia de hex y de
+  `git diff --stat`.
+- Evidencia capturada: **60 suites / 413 tests / 0 fallos / 0 errores / 0 saltados** (405 previos + 8
+  nuevos de `RecipeArtworkStyleTest`: `cada_categoria_real_de_la_taxonomia_tiene_su_glifo_sin_duplicados`,
+  `cada_cocina_real_de_la_taxonomia_tiene_su_acento_sin_duplicados`, `el_mapeo_es_determinista`,
+  `un_id_nulo_vacio_o_desconocido_cae_al_fallback_de_plato_y_degradado_por_defecto`,
+  `el_fallback_reproduce_el_estilo_de_la_categoria_other`,
+  `un_id_desconocido_no_devuelve_el_estilo_de_ninguna_categoria_o_cocina_concreta`,
+  `el_estilo_de_una_receta_sale_de_su_categoria_y_su_cocina`,
+  `una_receta_sin_clasificar_no_lanza_y_usa_el_fallback`). El test lee
+  `docs/domain/taxonomy.json` por `System.getProperty("taxonomy.asset.path")` (mismo patrón que
+  `TaxonomyIntegrityTest`) y exige 18 categorías → 18 glifos distintos (`== RecipeGlyph.entries`) y 10
+  cocinas → 10 acentos distintos (`+ DEFAULT == RecipeAccent.entries`), determinismo, fallback total y
+  caso negativo (un id desconocido no comparte glifo con ninguna categoría concreta salvo `other` —el
+  propio fallback— ni acento con ninguna cocina real). Lint **0 errores y 13 warnings preexistentes**
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+  `app/src`**. `grep`: **0 apariciones de `PlateGlyph`** en `app/src`; el degradado del placeholder
+  (`primaryContainer` → `secondaryContainer`) solo vive en `RecipeArtwork.kt`. `RecipeArtworkStyle.kt`
+  sin Compose/Android; `ui/artwork` sin hex sueltos; geometría y tamaños intactos (16:10, 96x96, alto
+  96, hero 240; 48/56/40/40/72 dp); `git diff --stat` solo con los ficheros previstos.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/artwork/{RecipeArtworkStyle,RecipeArtwork}.kt`
+  y `app/src/test/java/com/sazon/app/ui/artwork/RecipeArtworkStyleTest.kt` (nuevos);
+  `app/src/main/java/com/sazon/app/ui/{home/RecipeCard.kt, results/ResultRecipeCard.kt,
+  favorites/FavoriteRecipeCard.kt, detail/RecipeDetailScreen.kt}` (modificados); `DESIGN.md`,
+  `docs/technical-discovery.md`, `docs/specs/recipe-artwork.md` (finding del grep), `feature_list.json`
+  y este registro. **No** se toca `app/build.gradle.kts`, `gradle/libs.versions.toml`, `domain/**`,
+  `data/**`, la Taxonomía, `seed-recipes.json`, `ui.theme/**`, `MainShell.kt`, `SazonApp.kt`,
+  `MainActivity.kt` ni `init.sh`; **no** se crea `docs/design/concepts/recipe-artwork/` (desviación
+  autorizada en el issue #77).
+- Hallazgos relevantes: (1) Kotlin **anida** los comentarios de bloque, así que `assets/img/recipes/**`
+  dentro de un KDoc abre un comentario anidado y rompe la compilación ("Unclosed comment"): se escribió
+  sin el `**`. (2) `Recipe.categoryId`/`cuisineId` **no son anulables**, así que el caso "sin
+  clasificar" real que cubre el test es un id **vacío o desconocido** (el mapeo puro sí acepta `null`
+  por si un futuro campo se anula). (3) El "grep de `Brush.linearGradient` solo en `RecipeArtwork.kt`"
+  de la spec es impreciso: `HomeScreen` ya usaba `Brush.linearGradient` (hero `primary` →
+  `inversePrimary`, ajeno a esta feature); el degradado **del placeholder** sí queda solo en
+  `RecipeArtwork.kt`. Anotado en la spec.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (fidelidad fina de los 18 glifos
+  line-art y contraste del glifo `onSurfaceVariant` sobre los 11 degradados). Queda para revisión manual
+  de la persona en el emulador (Home, Resultados, Favoritos lista+rejilla y Detalle, en claro y oscuro)
+  el acabado contra el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva.
+  No se ha hecho commit ni push. Se mantiene el backfill de capturas de UI de las features previas
+  (sesión 046).
+- Siguiente paso: **validación independiente** de `recipe-artwork` con `feature-validator`; después,
+  commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 078
+
+- Fecha: 2026-10-12
+- Objetivo: validar `recipe-artwork` de forma independiente y persistir la aceptación. Ejecutada por el
+  orquestador de `feature-flow` en la rama `feature/recipe-artwork` (worktree), solo hasta-aceptación;
+  **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente; creado `docs/validations/recipe-artwork.md`.
+  Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0) y, al verlo `UP-TO-DATE`, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML de resultados y
+  el informe `lint-results-debug.xml`, e inspeccionó el código y el diff.
+- Evidencia capturada: **60 suites / 413 tests / 0 fallos / 0 errores / 0 saltados**
+  (`RecipeArtworkStyleTest` 8; 405 preexistentes en verde) y lint **0 errores, 13 warnings** preexistentes
+  (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 bajo
+  `app/src`. El validador **recomputó** el mapeo contra la Taxonomía real: 18 `recipeCategories` → 18
+  `RecipeGlyph` distintos (`== RecipeGlyph.entries`) y 10 `cuisines` → 10 `RecipeAccent` distintos
+  (+`DEFAULT` `== RecipeAccent.entries`), `else`/`other` → `PLATE`/`DEFAULT`; confirmó la pureza de
+  `ui.artwork` (sin Compose/Android), la ausencia de hex sueltos, **0 `PlateGlyph`** en `app/src`, el
+  degradado del placeholder solo en `RecipeArtwork.kt`, los 5 puntos de llamada con geometría/tamaños
+  preservados (16:10, 96x96, alto 96, hero 240; glifos 48/56/40/40/72 dp), que `DESIGN.md` y
+  `docs/technical-discovery.md` quedan actualizados, la exención de capturas (issue #77) tratada como
+  autorizada, la disciplina de alcance y que el implementer no hizo commit/push/PR.
+- Ficheros actualizados por el orquestador: `feature_list.json` (`recipe-artwork` a `accepted` +
+  evidencia), `docs/validations/recipe-artwork.md` (nuevo) y este registro. Commit local de la rama
+  `feature/recipe-artwork`; la publicación queda para `github-flow`.
+- Hallazgos del validador (2 Low informativos, no bloqueantes): la redacción "vertical" del degradado
+  cuando `Brush.linearGradient` es diagonal (idéntico al placeholder aceptado antes, sin regresión);
+  Scenario 6 (roles del tema por claro/oscuro) es solo por inspección, coherente con el Verification Plan
+  y con AGENTS.md (no se automatiza UI de emulador). Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (fidelidad fina de los 18 glifos
+  line-art y contraste del glifo `onSurfaceVariant` sobre los 11 degradados). Queda para revisión manual de
+  la persona en el emulador (Home, Resultados, Favoritos lista+rejilla y Detalle, en claro y oscuro) el
+  acabado contra el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva. Se
+  mantiene el backfill de capturas de UI de las features previas (sesión 046).
+- Siguiente paso: commit local de la rama `feature/recipe-artwork` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. Después, `recipe-artwork` era la única feature
+  de este plan; el plan del MVP sigue cerrado y no hay más features `not_started`.
