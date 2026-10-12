@@ -689,9 +689,14 @@ ni los cuerpos; `detail` es el motivo/categoría (p. ej. `MISSING_KEY`, `HTTP 42
   vallas markdown. Se mitiga con la normalización de vallas, `ignoreUnknownKeys` y el decode elemento a
   elemento; JSON embebido en texto (p. ej. "Aquí tienes: {...}") **no** se repara (→ lista vacía /
   estado vacío). Candidato a correctiva si aparece en la práctica.
-- **Latencia real de 6 recetas**: si el proveedor tarda más de 60 s, la operación degrada a modo semilla.
-  El valor del deadline (y de `MAX_ATTEMPTS`) es revisable con evidencia real (correctiva, sin tocar el
-  dominio).
+- **Latencia real de 6 recetas**: si el proveedor tarda más que el deadline total, la operación degrada
+  a modo semilla. El valor del deadline (y de `MAX_ATTEMPTS`) es revisable con evidencia real
+  (correctiva, sin tocar el dominio).
+  > Resuelto por `ai-provider-timeouts` (correctiva, issue #68): con evidencia real de **HTTP 200 en
+  > 28,0 s** (6.194 tokens) para 6 recetas con el alias `chat`, los timeouts de `AiProviderPolicy`
+  > subieron a socket **90 s**, timeout por intento **120 s** y deadline total **180 s** (connect 10 s
+  > sin cambios), y el timeout de socket pasó a clasificarse como `TIMEOUT` (antes `NETWORK`). El
+  > `MAX_ATTEMPTS` y el backoff no cambian. Ver `docs/specs/ai-provider-timeouts.md`.
 - **Cuota semanal**: un 429 sostenido deja la app en modo semilla hasta el reset; **no** hay microcopy
   específico de cuota en el MVP (decisión de producto); el aviso genérico de modo degradado de la UI ya
   aceptada es suficiente.

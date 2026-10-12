@@ -12,10 +12,10 @@ enum class AiUnavailableReason {
     /** Falta la clave del proveedor (blank); no se hace ninguna peticion. */
     MISSING_KEY,
 
-    /** Se agoto el plazo total de la operacion o el timeout de un intento. */
+    /** Se agoto el plazo total de la operacion, el timeout por intento **o** el timeout de socket. */
     TIMEOUT,
 
-    /** Fallo de transporte/red (IOException) antes de obtener una respuesta HTTP. */
+    /** Fallo de transporte que **no** es un timeout: DNS, conexion rechazada/reset, etc. */
     NETWORK,
 
     /** HTTP 429: cuota agotada o limite de peticiones. */

@@ -32,8 +32,11 @@
   completo de punta a punta.
 - Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
   quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
-  local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. No hay
-  features `not_started` ni `passing` pendientes: el plan de features del MVP está **cerrado**.
+  local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. Después se
+  añadió la **correctiva** `ai-provider-timeouts` (issue #68), que quedó `accepted` en la sesión 069
+  (validación independiente, veredicto `accept`, rama `feature/ai-provider-timeouts`, sesión 068 la había
+  dejado `passing` implementada y autoverificada). No hay features `not_started` ni `in_progress`. El plan
+  de features del MVP sigue **cerrado**.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -53,12 +56,22 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna; `real-ai-provider` quedó **`accepted`** en la sesión 067 (validación
-  independiente, veredicto `accept`, en la rama `feature/real-ai-provider`). WIP = 0.
+- Feature en curso: ninguna. `ai-provider-timeouts` (correctiva de `real-ai-provider`, issue #68) quedó
+  **`accepted`** en la sesión 069 (validación independiente, veredicto `accept`, rama
+  `feature/ai-provider-timeouts`; la sesión 068 la había dejado `passing`). WIP = 0.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
   Studio (Windows): con clave válida, generar recetas reales; con la clave ausente o inválida, modo
   semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
-- Última verificación (2026-10-12, `real-ai-provider`, validator): veredicto **`accept`** independiente
+- Última verificación (2026-10-12, `ai-provider-timeouts`, validator): veredicto **`accept`** independiente
+  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
+  (**57 suites / 376 tests / 0 fallos/errores/saltados**; 371 preexistentes + 5 nuevos de `data.ai`:
+  `AiProviderPolicyTest` 10, `AiRecipePayloadTest` 5, `DevExpertRecipeGeneratorTest` 18) y del informe
+  de lint (0 errores, 13 warnings preexistentes, 0 bajo `app/src`). Comprobó con `javap` sobre los jars
+  reales la jerarquía de excepciones y la ausencia de otro techo de timeout. Detalle en
+  `docs/validations/ai-provider-timeouts.md`.
+- Verificación anterior (2026-10-12, `real-ai-provider`, validator): veredicto **`accept`** independiente
   tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`),
   `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` y
   `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*" checkDebugAarMetadata`,
@@ -994,3 +1007,114 @@
 - Siguiente paso: **commit local** de la rama `feature/real-ai-provider` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR) queda para `github-flow`, que nunca hace merge. Con esta
   feature, el plan de features del MVP queda **cerrado** (0 `not_started`, 0 `passing`).
+
+### Sesión 068
+
+- Fecha: 2026-10-12
+- Objetivo: implementar la correctiva `ai-provider-timeouts` (issue #68) según
+  `docs/specs/ai-provider-timeouts.md`, en la rama `feature/ai-provider-timeouts` (worktree); solo hasta
+  implementación y autoverificación (`passing`), **sin commit/push/PR** (los hace el orquestador).
+- Completado:
+  - `AiProviderPolicy` (único sitio de la política): `SOCKET_TIMEOUT_MILLIS` 30 s → **90 s**,
+    `REQUEST_TIMEOUT_MILLIS` 40 s → **120 s**, `TOTAL_DEADLINE_MILLIS` 60 s → **180 s** (KDoc con la
+    latencia medida: HTTP 200 en 28,0 s / 6.194 tokens, issue #68); `CONNECT_TIMEOUT_MILLIS` 10 s,
+    `MAX_ATTEMPTS` 2, `RETRY_BACKOFF_MILLIS` 500 ms y `RETRY_AFTER_MAX_MILLIS` 5 s **sin cambios**.
+    `attemptRequestTimeoutMillis` (recorte `min(120 s, restante)`) tampoco cambia de lógica.
+  - `AiProviderPolicy.transportFailureReason(cause)` nueva y **pura**: `HttpRequestTimeoutException`,
+    `java.net.SocketTimeoutException` e `InterruptedIOException` → `TIMEOUT`; `IOException` genérico
+    (incluido el `ConnectTimeoutException` de Ktor, que es un `java.net.ConnectException`) → `NETWORK`;
+    cualquier otra causa, incluido `null` → `UNEXPECTED`. Los **dos** bloques de `catch` de `sendAttempt`
+    (petición y `bodyAsText()`) pasan por ella, capturando `SocketTimeoutException` **antes** del
+    `IOException` genérico y relanzando `CancellationException` primero.
+  - KDoc de `AiUnavailableReason.TIMEOUT` (incluye timeout de socket) y `NETWORK` (fallo que no es
+    timeout); comentario de `throwDeadlineExhausted` referido a la constante.
+  - `AiProviderPolicyTest`: corregida la única aserción que codificaba el valor viejo
+    (`attemptRequestTimeoutMillis(REQUEST + 1)`), frontera del recorte (`REQUEST`/`REQUEST ± 1`,
+    `TOTAL_DEADLINE_MILLIS`, 0, negativo), test de **holgura** (`REAL_LATENCY_MILLIS = 28_000L`: socket
+    ≥ 2×, intento ≥ 3×, margen de reintento, connect 10 s) y test de **clasificación** del fallo de
+    transporte (positivos/negativos/nulo).
+  - `DevExpertRecipeGeneratorTest`: timeout de socket en los dos intentos → 2 intentos,
+    `AiUnavailableException(TIMEOUT)` y evento final `UNAVAILABLE` con `detail = "TIMEOUT"`; timeout de
+    socket y luego 200 → 2 intentos, recetas, evento `RETRY` con `detail = "TIMEOUT"` y backoff fijo de
+    500 ms; intento lento (35 s de reloj inyectado) → 1 llamada y recetas.
+  - Docs durables: `docs/technical-discovery.md` (valores nuevos + clasificación en el párrafo de
+    `data.ai`, "Integrations" y "Testing and Verification"), `docs/risks-and-open-questions.md` (bullet
+    "Errores y reintentos de la IA" en *Resueltas*) y `docs/specs/real-ai-provider.md` (nota de
+    resolución en el Unknown "Latencia real de 6 recetas"; el resto de la spec histórica no se reescribe).
+- Verificación ejecutada:
+  1. Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` →
+     `BUILD SUCCESSFUL`; parseo propio de los XML: **3 suites / 33 tests / 0 fallos / 0 errores /
+     0 saltados** (`AiProviderPolicyTest` 10, `AiRecipePayloadTest` 5, `DevExpertRecipeGeneratorTest` 18).
+  2. Gate `bash init.sh` → exit 0 (test + lint vía `scripts/gradle.sh`, sin procesos largos); parseo
+     propio de los XML: **57 suites / 376 tests / 0 fallos / 0 errores / 0 saltados** (371 preexistentes
+     + 5 nuevos, ninguno eliminado); `lint-results-debug.xml`: **0 errores y 13 warnings** preexistentes
+     (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0**
+     con localización bajo `app/src`.
+  3. Prueba de **regresión real** (temporal, revertida): con los valores viejos (socket 30 s) el test de
+     holgura **falla** en su primera aserción ("El socket timeout debe ser al menos 2x la latencia
+     medida"); con los nuevos queda verde. En `main`, un `SocketTimeoutException` caía en el `catch`
+     genérico de `IOException` y se etiquetaba `NETWORK` (hoy `TIMEOUT`).
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/AiProviderPolicy.kt`,
+  `.../DevExpertRecipeGenerator.kt`, `.../AiDiagnostics.kt` (modificados),
+  `app/src/test/java/com/sazon/app/data/ai/AiProviderPolicyTest.kt` y `.../DevExpertRecipeGeneratorTest.kt`
+  (modificados), `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
+  `docs/specs/real-ai-provider.md`, `feature_list.json` (`ai-provider-timeouts` a `passing`) y este
+  registro.
+- Hallazgos relevantes: el `git grep 30_000/40_000/60_000` en `data.ai` deja **dos** coincidencias, ambas
+  argumentos `remainingMillis` de `canRetry` en el test preexistente (`60_000L`), ninguna constante de
+  timeout; se dejan intactas para no alterar tests aceptados. `AiHttpClientFactory.kt` sigue leyendo las
+  constantes (no tiene literales propios), así que no se toca.
+- Riesgo o incógnita abierta: la **verificación end-to-end real** sigue siendo **manual** (la persona,
+  emulador de Android Studio en Windows; el `adb` de WSL no lo ve): (1) con `devexpert.apiKey` válida, el
+  Generador/Home/Búsqueda devuelven recetas reales (~28 s, carga cancelable) sin degradar a modo semilla;
+  (2) con la clave ausente, modo semilla sin fallar. La latencia real puede ser mayor y variable (28,0 s
+  es **una** medición): si aparecen operaciones > 90 s, la degradación sigue siendo honesta (`TIMEOUT`) y
+  la calibración es revisable en el mismo sitio. Se mantiene el backfill de capturas de UI (sesión 046).
+- Siguiente paso: **validación independiente** de `ai-provider-timeouts` con `feature-validator`
+  (la feature queda `passing`, **no** `accepted`); después, commit local de la rama (orquestador de
+  `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 069
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-provider-timeouts` de forma independiente y persistir la aceptación. Ejecutada
+  por el orquestador de `feature-flow` en la rama `feature/ai-provider-timeouts` (worktree), solo
+  hasta-aceptación; **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`);
+  `feature_list.json` pasa a `accepted` con evidencia que nombra la validación independiente; se añade
+  `docs/validations/ai-provider-timeouts.md`. Sin cambios de código tras la validación (solo
+  estado/evidencia/registro).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`); al ver test/lint en `UP-TO-DATE` forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), y parseó por su cuenta los XML de
+  resultados y el informe de lint. Comprobó con `javap` sobre los jars reales de la caché de Gradle la
+  jerarquía de excepciones (`HttpRequestTimeoutException extends java.io.IOException`;
+  `ConnectTimeoutException extends java.net.ConnectException`; el engine OkHttp mapea
+  `SocketTimeoutException` al typealias de Ktor) y que no hay `withTimeout` ni otro `*_MILLIS` que acote
+  al proveedor.
+- Evidencia capturada: **57 suites, 376 tests, 0 fallos/errores/saltados** (371 preexistentes + 5 nuevos
+  de `data.ai`: `AiProviderPolicyTest` 10, `AiRecipePayloadTest` 5, `DevExpertRecipeGeneratorTest` 18);
+  lint 0 errores y 13 warnings preexistentes, 0 bajo `app/src`. Escenarios 1-5 de la spec confirmados
+  (holgura con `REAL_LATENCY_MILLIS = 28_000L`; frontera del recorte `REQUEST`/`REQUEST±1`/
+  `TOTAL_DEADLINE`/`0`/negativo; tabla de clasificación positiva/negativa/`null` con socket timeout →
+  `TIMEOUT` y ya no `NETWORK`; socket+200 → `RETRY`/`detail = "TIMEOUT"` con backoff fijo 500 ms;
+  regresión de los 28 escenarios aceptados). Alcance: solo `data.ai`, sus tests y las tres docs;
+  `AiHttpClientFactory.kt`, `domain/**`, `ui/**`, `data/generator/**`, Room, assets, build/gradle,
+  manifiesto, `init.sh`, `scripts/**`, `DESIGN.md` y `docs/design/**` intactos; sin dependencias nuevas.
+  Seguridad: sin clave/token en el diff; `local.properties` ignorado; tests con la clave ficticia
+  `test-key`.
+- Hallazgos del validador (4 Low/informativos, ninguno bloqueante): redacción imprecisa de la spec sobre
+  qué aserciones fallan con los valores viejos (fallan 1, 3 y 4; la 2 se cumple con 40 ≥ 30, y la prueba
+  de regresión sigue siendo válida); el test de "intento lento" usa reloj inyectado y no ejercita el
+  plugin `HttpTimeout` real (el discriminador viejo-vs-nuevo es el test de holgura y los de socket
+  timeout); `docs/specs/real-ai-provider.md` conserva 30/40/60 s en sus secciones históricas a propósito;
+  la spec `docs/specs/ai-provider-timeouts.md` estaba sin commitear y el commit de aceptación la incluye.
+  Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda la verificación **manual** de la persona en el
+  emulador de Android Studio (Windows; el `adb` de WSL no lo ve): con clave válida, el
+  Generador/Home/Búsqueda devuelven recetas reales (~28 s) sin modo semilla y logcat con
+  `detail = "TIMEOUT"` (nunca `NETWORK`) si aún se agota; con clave ausente, modo semilla sin fallar.
+  Se mantiene el backfill de capturas de UI de features previas (sesión 046).
+- Siguiente paso: commit local de la rama `feature/ai-provider-timeouts` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow`. No hay más features pendientes en el plan.
