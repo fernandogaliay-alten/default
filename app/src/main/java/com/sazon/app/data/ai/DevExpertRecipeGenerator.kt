@@ -120,10 +120,10 @@ class DevExpertRecipeGenerator(
 
             when (val outcome = sendAttempt(prompt, remaining)) {
                 is AttemptOutcome.Success -> {
-                    val recipes = AiRecipePayload.decode(outcome.content, taxonomy)
-                    val callOutcome = if (recipes.isEmpty()) AiCallOutcome.EMPTY else AiCallOutcome.SUCCESS
-                    report(operation, callOutcome, attempt, outcome.status, startedAt, "HTTP ${outcome.status}")
-                    return recipes
+                    val result = AiRecipePayload.decode(outcome.content, taxonomy)
+                    val callOutcome = if (result.accepted.isEmpty()) AiCallOutcome.EMPTY else AiCallOutcome.SUCCESS
+                    report(operation, callOutcome, attempt, outcome.status, startedAt, "HTTP ${outcome.status}", result)
+                    return result.accepted
                 }
 
                 is AttemptOutcome.HttpFailure -> {
@@ -258,6 +258,7 @@ class DevExpertRecipeGenerator(
         httpStatus: Int?,
         startedAt: Long,
         detail: String,
+        decodeResult: AiDecodeResult? = null,
     ) {
         onEvent(
             AiCallEvent(
@@ -267,6 +268,12 @@ class DevExpertRecipeGenerator(
                 httpStatus = httpStatus,
                 durationMillis = (now() - startedAt).coerceAtLeast(0L),
                 detail = detail,
+                // Solo longitudes y motivos del decode; null/vacio cuando no hubo decode.
+                contentBytes = decodeResult?.contentBytes,
+                contentChars = decodeResult?.contentChars,
+                received = decodeResult?.received,
+                accepted = decodeResult?.accepted?.size,
+                discardedByReason = decodeResult?.discardedByReason ?: emptyMap(),
             ),
         )
     }

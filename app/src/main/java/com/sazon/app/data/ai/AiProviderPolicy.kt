@@ -28,24 +28,30 @@ object AiProviderPolicy {
     const val CONNECT_TIMEOUT_MILLIS = 10_000L
 
     /**
-     * Timeout de socket (lectura/escritura). Fijado a ~3x la latencia real medida del alias `chat`
-     * (6 recetas, HTTP 200 en 28,0 s / 6.194 tokens; issue #68): una lectura lenta no corta la
-     * respuesta antes de que el modelo termine de razonar.
+     * Timeout de socket (lectura/escritura). Cubre el **peor caso medido** de la misma clave y el
+     * mismo prompt de 6 recetas (issue #72): `mimo-v2.6-pro` **115,8 s**, con ~4,2 s de margen, y
+     * sigue siendo `>= 2x` el peor del alias diario `chat` (46,6 s). Con 90 s la lectura cortaba la
+     * respuesta antes de que el modelo terminara de razonar.
+     *
+     * Evidencia multi-modelo (6 recetas, HTTP 200): `chat` 28,0 / 33,1 / 42,1 / 46,6 s,
+     * `chat`+`json_object` 85,3 s, `chat-pro`+`json_schema` 97,0 s, `deepseek-v4-flash` 52,6 s,
+     * `mimo-v2.6-pro` 115,8 s.
      */
-    const val SOCKET_TIMEOUT_MILLIS = 90_000L
+    const val SOCKET_TIMEOUT_MILLIS = 120_000L
 
     /**
      * Timeout por intento (request). Techo por encima del de socket (el guardia de lectura salta
      * primero) para acotar una respuesta que gotea.
      */
-    const val REQUEST_TIMEOUT_MILLIS = 120_000L
+    const val REQUEST_TIMEOUT_MILLIS = 150_000L
 
     /**
-     * Deadline total por operacion, sumando todos los intentos. Cabe el intento lento medido (~28 s,
-     * con holgura) y, tras un primer intento agotado, un segundo intento recortado que sigue siendo
-     * mayor que dos veces esa latencia (issue #68).
+     * Deadline total por operacion, sumando todos los intentos. Cabe el peor intento medido
+     * (115,8 s), el backoff y **otro** intento igualmente lento
+     * (`240 - 115,8 - 0,5 = 123,7 s >= 115,8 s`), asi que una latencia alta no degrada a modo semilla
+     * antes de tiempo (issue #72).
      */
-    const val TOTAL_DEADLINE_MILLIS = 180_000L
+    const val TOTAL_DEADLINE_MILLIS = 240_000L
 
     /** Maximo de intentos: el primero mas **un** reintento. */
     const val MAX_ATTEMPTS = 2

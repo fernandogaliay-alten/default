@@ -413,6 +413,10 @@ referencia a la latencia medida (issue #68).
   > 90 s, la degradación seguirá siendo honesta (`TIMEOUT`) y la calibración es revisable en el mismo
   sitio (nueva correctiva), incluidos timeouts distintos por alias (`chat` vs. `chat-pro`), hoy fuera de
   alcance.
+  > Recalibrada por `ai-call-diagnostics` (correctiva, issue #72): con evidencia de varios
+  > modelos/modos el peor caso medido es `mimo-v2.6-pro` con **115,8 s**, así que la política pasa a
+  > socket **120 s**, intento **150 s** y deadline **240 s** (connect, `MAX_ATTEMPTS`, backoff y
+  > `Retry-After` sin cambios). Ver `docs/specs/ai-call-diagnostics.md`.
 - **UX de la espera**: 180 s de deadline es mucha pantalla de carga; Generador y Búsqueda tienen
   "Cancelar". Si molesta, el arreglo sería de UI (progreso/estimación), no de esta feature.
 - **Recorte por intento y caché de clientes de Ktor**: `timeout { requestTimeoutMillis = … }` cambia la
@@ -426,6 +430,9 @@ referencia a la latencia medida (issue #68).
   explícitos y el clasificador decide el motivo (mismo comportamiento en ambos casos).
 - **El motivo de descarte del Validador sigue sin registrarse en el proveedor** (limitación aceptada de
   `real-ai-provider`); no cambia aquí.
+  > Resuelto por `ai-call-diagnostics` (correctiva, issue #72): `AiRecipePayload.decode` devuelve un
+  > resultado y `AiCallEvent` reporta el resumen de motivos; el proveedor ya no pierde el porqué de un
+  > `EMPTY`. Ver `docs/specs/ai-call-diagnostics.md`.
 
 ## Validator Checklist
 

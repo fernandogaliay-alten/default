@@ -53,11 +53,15 @@ class MainActivity : ComponentActivity() {
             taxonomy = taxonomy,
             client = aiClient,
             onEvent = { event ->
-                // Diagnostico local: nunca incluye la clave, la cabecera Authorization ni los cuerpos.
+                // Diagnostico local: nunca incluye la clave, la cabecera Authorization ni los cuerpos,
+                // solo longitudes del contenido, recuentos de recetas y el resumen de motivos.
                 Log.d(
                     "SazonAi",
                     "${event.operation} ${event.outcome} attempt=${event.attempt} " +
-                        "status=${event.httpStatus} ${event.durationMillis}ms ${event.detail}",
+                        "status=${event.httpStatus} ${event.durationMillis}ms " +
+                        "content=${event.contentChars}c/${event.contentBytes}b " +
+                        "received=${event.received} accepted=${event.accepted} " +
+                        "discards=${event.discardedByReason} ${event.detail}",
                 )
             },
         )

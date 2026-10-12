@@ -42,7 +42,9 @@
   `feature/ai-recipe-decode`). El adaptador real ya decodifica la **forma real** del contrato §4 (sin
   `id` ni `source`), completa `id` (`ai-<sha256>` determinista) y `source = ai` antes de aplicar
   `RecipeValidator.validateRecipe`; `Recipe.kt`/`RecipeValidator.kt` intactos. No hay features
-  `not_started` ni `in_progress`: el plan del MVP sigue **cerrado**.
+  `not_started`, `in_progress` ni `passing`: la tercera **correctiva** de `real-ai-provider`,
+  `ai-call-diagnostics` (issue #72), quedó **`accepted`** en la sesión 073 (validación independiente,
+  veredicto `accept`, rama `feature/ai-call-diagnostics`). El plan del MVP sigue **cerrado**.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -62,13 +64,29 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna. `ai-recipe-decode` (correctiva de `real-ai-provider`, issue #70) quedó
-  **`accepted`** en la sesión 071 (validación independiente, veredicto `accept`, rama
-  `feature/ai-recipe-decode`; la sesión 070 la había dejado `passing`). WIP = 0.
+- Feature en curso: **ninguna**. `ai-call-diagnostics` (correctiva de `real-ai-provider`, issue #72)
+  quedó **`accepted`** en la sesión 073 (validación independiente, veredicto `accept`, rama
+  `feature/ai-call-diagnostics`; la sesión 072 la había dejado `passing`). Con ella, la política de
+  timeouts queda recalibrada a la latencia real (socket 120 s, request 150 s, deadline 240 s) y el
+  `Log.d("SazonAi")` explica cada llamada (longitudes del contenido, recibidas vs aceptadas y motivo
+  del descarte). `ai-recipe-decode` (issue #70) quedó `accepted` en la sesión 071 y `ai-provider-timeouts`
+  (issue #68) en la 069. El resto del plan sigue cerrado. WIP = 0.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
-  Studio (Windows): con clave válida, generar recetas reales; con la clave ausente o inválida, modo
+  Studio (Windows): con clave válida, generar recetas reales y comprobar en logcat (`SazonAi`) el
+  detalle enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`); con un
+  lote sin recetas aceptadas, que el log indique el motivo; con la clave ausente o inválida, modo
   semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
-- Última verificación (2026-10-12, `ai-recipe-decode`, validator): veredicto **`accept`** independiente
+- Última verificación (2026-10-12, `ai-call-diagnostics`, validator): veredicto **`accept`** independiente
+  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
+  (**58 suites / 393 tests / 0 fallos/errores/saltados**; 386 preexistentes + 7 nuevos de `data.ai`:
+  `AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 11,
+  `DevExpertRecipeGeneratorTest` 23) y del informe de lint (0 errores, 10 warnings, todos en el
+  build/version catalog, 0 bajo `app/src`). Reprodujo la **regresión por aritmética**: con los valores
+  viejos (90/120/180) fallan `SOCKET > peor caso`, `SOCKET ≥ 2×` el peor del alias `chat` y el margen de
+  reintento; con 120/150/240 las tres son ciertas. Detalle en `docs/validations/ai-call-diagnostics.md`.
+- Verificación anterior (2026-10-12, `ai-recipe-decode`, validator): veredicto **`accept`** independiente
   tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
   `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
   `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
@@ -1258,3 +1276,142 @@
 - Siguiente paso: commit local de la rama `feature/ai-recipe-decode` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR) queda para `github-flow`, que nunca hace merge. No hay más
   features pendientes en el plan.
+
+### Sesión 072
+
+- Fecha: 2026-10-12
+- Objetivo: implementar la correctiva `ai-call-diagnostics` (issue #72) según
+  `docs/specs/ai-call-diagnostics.md`, en la rama `feature/ai-call-diagnostics` (worktree); solo hasta
+  implementación y autoverificación (`passing`), **sin commit/push/PR** (los hace el orquestador).
+- Completado:
+  - `AiProviderPolicy` (único sitio de la política): `SOCKET_TIMEOUT_MILLIS` **90 s → 120 s**,
+    `REQUEST_TIMEOUT_MILLIS` **120 s → 150 s**, `TOTAL_DEADLINE_MILLIS` **180 s → 240 s**;
+    `CONNECT_TIMEOUT_MILLIS` (10 s), `MAX_ATTEMPTS` (2), `RETRY_BACKOFF_MILLIS` (500 ms) y
+    `RETRY_AFTER_MAX_MILLIS` (5 s) **intactos**, y `attemptRequestTimeoutMillis`/`canRetry`/`Retry-After`
+    sin cambio de lógica. KDoc con la evidencia multi-modelo (peor caso `mimo-v2.6-pro` 115,8 s; alias
+    diario `chat` 28,0/33,1/42,1/46,6 s; `chat`+`json_object` 85,3 s; `chat-pro`+`json_schema` 97,0 s;
+    `deepseek-v4-flash` 52,6 s).
+  - **Diagnóstico de `EMPTY`**: `AiDecodeResult.kt` nuevo (`internal enum AiContentState`
+    BLANK/ILLEGIBLE/RECIPES + `internal data class AiDecodeResult` con `accepted`, `received`,
+    `discardedByReason`, `contentChars`, `contentBytes`, `contentState`). `AiRecipePayload.decode` deja
+    de devolver `List<Recipe>` y devuelve el resultado: cuenta `received`/`accepted`, cuenta los
+    descartes **por motivo** (solo motivos presentes, en orden de `DiscardReason`, perdiendo el `detail`
+    a propósito) y calcula longitudes UTF-16/UTF-8 (`0/0` si el contenido está en blanco); sigue **sin
+    lanzar** y con `constraints` por defecto `NEUTRAL_CONSTRAINTS` (el proveedor **no** pre-filtra: el
+    estado Bloqueado de `ai-search` se conserva).
+  - `AiDiagnostics.kt`: `AiCallEvent` gana **5 campos aditivos** con default (`contentBytes`,
+    `contentChars`, `received`, `accepted` = `null`; `discardedByReason` = `emptyMap()`);
+    `DevExpertRecipeGenerator.report(...)` los rellena desde el resultado del decode (`null`/vacío
+    cuando no hubo decode: clave ausente, `RETRY`, `UNAVAILABLE`, deadline). `MainActivity`:
+    `Log.d("SazonAi", …)` pasa a mostrar `content=…c/…b`, `received=…`, `accepted=…` y `discards={…}`.
+    **Nunca** clave, `Authorization`, cuerpos ni títulos: solo longitudes, recuentos y motivos.
+  - Tests (7 nuevos): `AiProviderPolicyTest` recalibrado (`REAL_LATENCY_MILLIS = 115_800L` +
+    `CHAT_WORST_LATENCY_MILLIS = 46_600L`, invariantes y márgenes de Scenario 1, frontera del recorte);
+    `AiRecipePayloadTest` 11 (adaptado a `.accepted` + resumen con los **cuatro** `DiscardReason`
+    representables con restricciones no neutras y en orden del enum + `contentState` con longitudes
+    UTF-16 vs UTF-8 + tolerancia/ids/reglas/`matchScore`); `DevExpertRecipeGeneratorTest` 23
+    (escenario 2 `EMPTY` por vacío/ilegible con longitudes y 0/0, escenario 3 lote parcial con
+    `{SCHEMA:2, INCOHERENT:1}`, escenario 4 todas descartadas → `EMPTY` con motivos sin lanzar y
+    escenario 5 no-fuga de clave/cabecera/cuerpos/títulos).
+  - Docs durables: `docs/technical-discovery.md` (párrafo de `data.ai` con 120/150/240 y el decode
+    tipado, *Integrations*, *Observability* con los campos nuevos y el detalle de `EMPTY`, *Testing and
+    Verification* con el peor caso y los tests del evento), `docs/risks-and-open-questions.md` (bullet
+    "Errores y reintentos de la IA"), y notas de *Unknown* en `docs/specs/real-ai-provider.md` (latencia
+    y `AiCallEvent`) y `docs/specs/ai-provider-timeouts.md` (latencia y "el motivo no se registraba").
+- Verificación ejecutada:
+  1. Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` →
+     `BUILD SUCCESSFUL`; **50 tests / 0 fallos** (`AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6,
+     `AiRecipePayloadTest` 11, `DevExpertRecipeGeneratorTest` 23).
+  2. Prueba de **regresión real** (temporal, revertida): con los valores viejos (90/120/180) el test de
+     holgura **falla** en su primera aserción ("El socket timeout debe superar el peor caso medido
+     (mimo-v2.6-pro, 115,8 s)"; `90_000 > 115_800` es falso); con los nuevos queda verde.
+  3. Gate `bash init.sh` → **exit 0** (test + lint vía `scripts/gradle.sh`, sin procesos largos);
+     parseo propio de los XML: **58 suites / 393 tests / 0 fallos / 0 errores / 0 saltados** (386
+     preexistentes + 7 nuevos, ninguno eliminado); `lint-results-debug.xml`: **0 errores** y **7
+     warnings** preexistentes (GradleDependency 5, NewerVersionAvailable 1, OldTargetApi 1), todos en el
+     build/version catalog y **0 bajo `app/src`** (la diferencia frente a los 13 históricos es del
+     chequeo de versiones disponibles de lint, que depende de su caché de red; ningún warning nuevo).
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/AiDecodeResult.kt` (nuevo),
+  `.../AiProviderPolicy.kt`, `.../AiRecipePayload.kt`, `.../AiDiagnostics.kt`,
+  `.../DevExpertRecipeGenerator.kt` y `app/src/main/java/com/sazon/app/MainActivity.kt` (log),
+  `app/src/test/java/com/sazon/app/data/ai/{AiProviderPolicyTest,AiRecipePayloadTest,DevExpertRecipeGeneratorTest}.kt`,
+  las cuatro docs y este registro + `feature_list.json`. **No** se toca `Recipe.kt`,
+  `RecipeValidator.kt`, `AiRecipeDraft.kt`, `AiRecipeIds.kt`, `AiHttpClientFactory.kt`, `OpenAiChat.kt`,
+  `domain/**`, `data/generator/**`, `ui/**`, las bases Room, `app/src/main/assets/**`,
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `AndroidManifest.xml`, `init.sh`, `scripts/**`,
+  `DESIGN.md` ni `docs/design/**`; sin dependencias nuevas; sin capturas de UI (no es feature de UI).
+- Hallazgo relevante (spec actualizada): el `internal` que la spec proponía para
+  `AiDecodeResult`/`AiContentState` **no compila** con `AiRecipePayload.decode` público
+  (`'public' function exposes its 'internal' return type`). Resuelto con el criterio que la spec pide:
+  los dos tipos siguen `internal` y `decode` pasa a `internal fun` (el objeto `AiRecipePayload` sigue
+  público); los tests JVM del mismo módulo lo usan por los *friend paths*, igual que ya hacían con
+  `AiRecipeIds`/`AiRecipeDraft`. Anotado en "Hallazgos de la sesión de implementación" de la spec.
+- Riesgo o incógnita abierta: la **verificación manual** sigue siendo de la persona (emulador de Android
+  Studio en Windows; el `adb` de WSL no lo ve): con `devexpert.apiKey` válida, logcat (`SazonAi`) debe
+  mostrar por llamada estado, intento, duración, `content=…c/…b`, `received=… accepted=…` y
+  `discards={…}`, con las recetas reales llegando a Resultados; con un lote sin recetas aceptadas el log
+  debe indicar el motivo; con la clave ausente o vaciada sigue el modo semilla. Sigue vigente el margen
+  estrecho con `mimo-v2.6-pro` (115,8 s vs socket 120 s: otra medición por encima degradará como
+  `TIMEOUT` honesto, revisable en el mismo sitio) y el `Unknown` de que `DIET_PATTERN`/`HARD_RESTRICTION`
+  no son alcanzables en producción (restricciones neutras). Se mantiene el backfill de capturas de UI
+  (sesión 046).
+- Siguiente paso: **validación independiente** de `ai-call-diagnostics` con `feature-validator` (la
+  feature queda `passing`, **no** `accepted`); después, commit local de la rama
+  `feature/ai-call-diagnostics` (orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 073
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-call-diagnostics` de forma independiente y persistir la aceptación. Ejecutada
+  por el orquestador de `feature-flow` en la rama `feature/ai-call-diagnostics` (worktree), solo
+  hasta-aceptación; **sin push ni PR** (la publicación es de `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`); `feature_list.json`
+  pasa a `accepted` con la evidencia de la validación independiente; sin cambios de código tras la
+  validación. Commit local de la rama `feature/ai-call-diagnostics` (lo hace el orquestador).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`, sin procesos largos) y, al ver la primera pasada en `UP-TO-DATE`, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con **parseo propio** de los XML y del
+  informe de lint.
+- Evidencia capturada: **58 suites / 393 tests / 0 fallos/errores/saltados** (386 preexistentes + 7
+  nuevos de `data.ai`: `AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 11,
+  `DevExpertRecipeGeneratorTest` 23; regresión `RecipeValidatorTest` intacta); lint 0 errores y 10
+  warnings (todos en el build/version catalog, **0 bajo `app/src`**). Reprodujo la **regresión de forma
+  independiente por aritmética**: con los valores viejos (90/120/180) fallan `SOCKET > peor caso`
+  (`90_000 > 115_800` falso), `SOCKET ≥ 2×` el peor del alias `chat` (`90_000 ≥ 2×46_600` falso) y el
+  margen de reintento (`180_000-115_800-500 ≥ 115_800` falso); con 120/150/240 las tres son ciertas.
+  Confirmó los escenarios 1-6 (holgura con `REAL_LATENCY_MILLIS` = 115_800 y frontera del recorte;
+  `EMPTY` por vacío/ilegible con `received=0`/`accepted=0` y longitudes `0/0` vs `>0` y 1 sola llamada;
+  lote parcial `received=4 accepted=1 {SCHEMA:2, INCOHERENT:1}`; los **cuatro** `DiscardReason`
+  representables con restricciones no neutras y en orden del enum; todas descartadas → `EMPTY` con
+  motivos sin lanzar; no-fuga: ningún `toString()` de evento contiene `test-key`, `Bearer`/`Authorization`,
+  el cuerpo del modelo ni títulos), que `AiProviderPolicy` sigue siendo el **único** sitio de la política
+  (connect 10 s, `MAX_ATTEMPTS` 2, backoff 500 ms, `Retry-After` ≤ 5 s y
+  `attemptRequestTimeoutMillis`/`canRetry` sin cambios), que `decode` no lanza y usa restricciones neutras
+  por defecto (el estado Bloqueado de `ai-search` se conserva) y que `response_format` queda fuera.
+  Disciplina de alcance verificada (solo `data.ai` + el `Log.d` de `MainActivity` + 4 docs; `Recipe.kt`,
+  `RecipeValidator.kt`, `AiRecipeDraft.kt`, `AiRecipeIds.kt`, `AiHttpClientFactory.kt`, `OpenAiChat.kt`,
+  `domain/**`, `ui/**`, Room, Taxonomía, assets, build/version catalog, `AndroidManifest.xml`, `init.sh`,
+  `scripts/**`, `DESIGN.md` y `docs/design/**` intactos; sin dependencias nuevas; sin capturas de UI) y
+  seguridad (sin claves/secretos en el diff; `local.properties` ignorado; tests con `test-key`; el evento
+  no expone clave, `Authorization`, cuerpos ni títulos). Detalle en
+  `docs/validations/ai-call-diagnostics.md`.
+- Hallazgos del validador (3 Low informativos, ninguno bloqueante): `contentState` (BLANK vs ILLEGIBLE)
+  no viaja en el evento (la distinción va por las longitudes `0/0` vs `>0`); el número de warnings de
+  lint oscila con su caché de red (siempre 0 bajo `app/src`); `AiRecipePayload.decode` pasó de `public`
+  a `internal` (con `AiDecodeResult`/`AiContentState`) para no exponer un tipo `internal` desde una API
+  pública, sin llamadores fuera del módulo. Sin hallazgos Critical/High/Medium.
+- Ficheros actualizados: `feature_list.json` (feature a `accepted` con la evidencia del validador),
+  `docs/validations/ai-call-diagnostics.md` (nuevo) y este registro. Sin cambios de código tras la
+  validación.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda para la persona la **verificación manual** en el
+  emulador de Android Studio (Windows; el `adb` de WSL no lo ve): con `devexpert.apiKey` válida, logcat
+  (`SazonAi`) muestra por llamada estado, intento, duración, `content=…c/…b`, `received=… accepted=…` y
+  `discards={…}`, y las recetas reales llegan a Resultados; con un lote sin recetas aceptadas el log
+  indica el motivo; con la clave ausente o vaciada sigue el modo semilla. Se mantiene el margen estrecho
+  con `mimo-v2.6-pro` (115,8 s vs socket 120 s) y el `Unknown` de que `DIET_PATTERN`/`HARD_RESTRICTION`
+  no son alcanzables en producción (restricciones neutras). Se mantiene el backfill de capturas de UI
+  (sesión 046).
+- Siguiente paso: **commit local** de la rama `feature/ai-call-diagnostics` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features
+  del plan del MVP; si aparece un defecto visual/manual, se corrige con una feature correctiva nueva.

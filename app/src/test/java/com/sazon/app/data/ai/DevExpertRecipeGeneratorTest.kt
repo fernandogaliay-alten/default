@@ -420,6 +420,124 @@ class DevExpertRecipeGeneratorTest {
         assertTrue(events.none { it.toString().contains(KEY) })
     }
 
+    // Escenario 2 de `docs/specs/ai-call-diagnostics.md`: un 200 con contenido vacio o ilegible deja
+    // el evento en EMPTY explicando las longitudes del contenido y 0 recibidas/aceptadas, en una sola
+    // llamada (sin reintento).
+    @Test
+    fun un_contenido_vacio_o_ilegible_se_explica_en_el_evento_como_empty() = runTest {
+        val cases = listOf("" to 0, "   " to 0, "lo siento, no puedo ayudarte" to 28)
+
+        cases.forEach { (content, expectedChars) ->
+            val events = mutableListOf<AiCallEvent>()
+            val mock = MockAi { _, _ -> okBody(content) }
+
+            val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+                .suggestByPreferences(perfil())
+
+            assertTrue("El contenido '$content' debe dar lista vacia", recipes.isEmpty())
+            assertEquals("El contenido '$content' no debe reintentar", 1, mock.calls)
+
+            val event = events.last()
+            assertEquals(AiCallOutcome.EMPTY, event.outcome)
+            assertEquals("HTTP 200", event.detail)
+            assertEquals(0, event.received ?: -1)
+            assertEquals(0, event.accepted ?: -1)
+            assertTrue("Un EMPTY sin descartes no tiene motivos", event.discardedByReason.isEmpty())
+            assertEquals("Longitudes del contenido de '$content'", expectedChars, event.contentChars ?: -1)
+            if (expectedChars == 0) {
+                assertEquals("El contenido en blanco no tiene bytes", 0, event.contentBytes ?: -1)
+            } else {
+                assertTrue("El texto ilegible tiene bytes", (event.contentBytes ?: 0) > 0)
+            }
+        }
+    }
+
+    // Escenario 3: un lote parcial deja el evento en SUCCESS con recibidas, aceptadas y el resumen de
+    // motivos de descarte.
+    @Test
+    fun un_lote_parcial_se_explica_en_el_evento_con_recibidas_aceptadas_y_motivos() = runTest {
+        val content = """{"recipes":[
+            {"title":"Rota"},
+            ${contractRecipe(title = "Comida inexistente", mealTypeId = "second_breakfast")},
+            ${contractRecipe(title = "Tiempos incoherentes", totalMinutes = 60)},
+            ${contractRecipe()}
+        ]}"""
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> okBody(content) }
+
+        val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+            .generateFromIngredients(emptyList(), constraints())
+
+        assertEquals(1, recipes.size)
+        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals(1, mock.calls)
+
+        val event = events.last()
+        assertEquals(AiCallOutcome.SUCCESS, event.outcome)
+        assertEquals(4, event.received ?: -1)
+        assertEquals(1, event.accepted ?: -1)
+        assertEquals(
+            mapOf(DiscardReason.SCHEMA to 2, DiscardReason.INCOHERENT to 1),
+            event.discardedByReason,
+        )
+    }
+
+    // Escenario 4: un lote en el que ninguna receta sobrevive queda EMPTY (no lanza), con N recibidas
+    // y el motivo del descarte explicando el vacio.
+    @Test
+    fun un_lote_sin_recetas_aceptadas_queda_empty_con_el_motivo() = runTest {
+        val content = """{"recipes":[{"title":"Rota"},${contractRecipe(totalMinutes = 60)}]}"""
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> okBody(content) }
+
+        val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+            .generateFromIngredients(emptyList(), constraints())
+
+        assertTrue("No debe lanzar: el lote queda vacio", recipes.isEmpty())
+        assertEquals(1, mock.calls)
+
+        val event = events.last()
+        assertEquals(AiCallOutcome.EMPTY, event.outcome)
+        assertEquals(2, event.received ?: -1)
+        assertEquals(0, event.accepted ?: -1)
+        assertTrue("El motivo debe explicar el EMPTY", event.discardedByReason.isNotEmpty())
+        assertEquals(
+            mapOf(DiscardReason.SCHEMA to 1, DiscardReason.INCOHERENT to 1),
+            event.discardedByReason,
+        )
+    }
+
+    // Escenario 5: ningun evento expone la clave, la cabecera Authorization, el cuerpo del modelo ni
+    // los titulos de las recetas; solo longitudes, recuentos y motivos.
+    @Test
+    fun ningun_evento_expone_la_clave_ni_los_cuerpos() = runTest {
+        val events = mutableListOf<AiCallEvent>()
+        val bodies = listOf(
+            openAiBody(recipeEnvelope(arroz())),
+            openAiBody("lo siento, no puedo ayudarte"),
+        )
+
+        bodies.forEach { body ->
+            val mock = MockAi { _, _ -> respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders()) }
+            provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+                .suggestByPreferences(perfil())
+        }
+
+        assertTrue(events.isNotEmpty())
+        events.forEach { event ->
+            val text = event.toString()
+            assertFalse("Nunca la clave", text.contains(KEY))
+            assertFalse("Nunca la cabecera Authorization", text.contains("Bearer"))
+            assertFalse("Nunca la cabecera Authorization", text.contains("Authorization"))
+            assertFalse("Nunca el cuerpo del modelo", text.contains("lo siento, no puedo ayudarte"))
+            assertFalse("Nunca el titulo de una receta", text.contains("Arroz salteado con verduras"))
+        }
+
+        // El evento si explica: longitudes y desenlace, sin cuerpos.
+        assertTrue(events.any { it.outcome == AiCallOutcome.SUCCESS && (it.contentChars ?: 0) > 0 })
+        assertTrue(events.any { it.outcome == AiCallOutcome.EMPTY && (it.contentChars ?: 0) > 0 })
+    }
+
     // Escenario 7 de `docs/specs/ai-recipe-decode.md` (regresion real del bug #70): un 200 con la
     // **forma real** del contrato §4 (JSON literal, sin `id` ni `source`) se resuelve en recetas y el
     // `GenerationService` real las acepta con `aiUnavailable == false`. Con el codigo de `main`
@@ -553,6 +671,47 @@ private fun userContent(requestJson: String): String =
 
 private fun recipeEnvelope(vararg recipes: Recipe): String =
     """{"recipes":[${recipes.joinToString(",") { RecipeJson.encode(it) }}]}"""
+
+/**
+ * Receta del contrato §4 como **JSON literal** (sin `id` ni `source`, los posee la app): la forma que
+ * el modelo envia de verdad. Se usa para probar el diagnostico del decode (escenarios 3 y 4 de
+ * `docs/specs/ai-call-diagnostics.md`).
+ *
+ * Por defecto es **coherente** (el unico paso suma `stepMinutes` = 25 = `totalMinutes`, ingredientes
+ * sin alergenos declarados). Para forzar un descarte por tiempos, sube `totalMinutes` sin tocar
+ * `stepMinutes`.
+ */
+private fun contractRecipe(
+    title: String = "Arroz salteado con verduras",
+    mealTypeId: String = "lunch",
+    cuisineId: String = "asian",
+    difficultyId: String = "easy",
+    totalMinutes: Int = 25,
+    stepMinutes: Int = 25,
+): String = """
+    {
+      "title": "$title",
+      "description": "Un arroz rapido con verduras.",
+      "categoryId": "rice",
+      "mealTypeId": "$mealTypeId",
+      "cuisineId": "$cuisineId",
+      "totalMinutes": $totalMinutes,
+      "prepMinutes": 10,
+      "cookMinutes": 15,
+      "difficultyId": "$difficultyId",
+      "servings": 2,
+      "ingredients":[
+        {"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},
+        {"name":"Zanahoria","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"zanahoria"}
+      ],
+      "steps":[
+        {"order":1,"title":"Cocer el arroz","description":"Cuece el arroz.","minutes":$stepMinutes}
+      ],
+      "tips":[],
+      "nutrition":null,
+      "declaredAllergens":[]
+    }
+""".trimIndent()
 
 private fun perfil(
     dietPattern: String = "omnivore",

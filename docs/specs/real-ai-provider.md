@@ -697,6 +697,12 @@ ni los cuerpos; `detail` es el motivo/categoría (p. ej. `MISSING_KEY`, `HTTP 42
   > subieron a socket **90 s**, timeout por intento **120 s** y deadline total **180 s** (connect 10 s
   > sin cambios), y el timeout de socket pasó a clasificarse como `TIMEOUT` (antes `NETWORK`). El
   > `MAX_ATTEMPTS` y el backoff no cambian. Ver `docs/specs/ai-provider-timeouts.md`.
+  > Recalibrado después por `ai-call-diagnostics` (correctiva, issue #72): con la misma clave y el
+  > mismo prompt de 6 recetas la latencia varía entre modelos/modos —`chat` 28,0 / 33,1 / 42,1 /
+  > 46,6 s, `chat`+`json_object` 85,3 s, `chat-pro`+`json_schema` 97,0 s, `deepseek-v4-flash` 52,6 s
+  > y `mimo-v2.6-pro` **115,8 s** (peor caso)—, así que los timeouts pasan a socket **120 s**, intento
+  > **150 s** y deadline **240 s** (connect, `MAX_ATTEMPTS`, backoff y `Retry-After` sin cambios). Ver
+  > `docs/specs/ai-call-diagnostics.md`.
 - **Cuota semanal**: un 429 sostenido deja la app en modo semilla hasta el reset; **no** hay microcopy
   específico de cuota en el MVP (decisión de producto); el aviso genérico de modo degradado de la UI ya
   aceptada es suficiente.
@@ -704,6 +710,11 @@ ni los cuerpos; `detail` es el motivo/categoría (p. ej. `MISSING_KEY`, `HTTP 42
   backoff fijo de 500 ms (comportamiento documentado y testeado).
 - **`AiCallEvent` no se persiste ni se muestra**: es diagnóstico en `Logcat`; el motivo de descarte del
   Validador sigue registrándose donde ya se registra (llamadores), no en el proveedor.
+  > Anotado por `ai-call-diagnostics` (correctiva, issue #72): el proveedor **ya** reporta el motivo en
+  > el evento —`AiCallEvent` gana `contentChars`/`contentBytes`, `received`/`accepted` y
+  > `discardedByReason` (recuento por `DiscardReason`), y `DevExpertRecipeGenerator` los rellena desde el
+  > resultado de `AiRecipePayload.decode`—. Sigue sin persistirse ni mostrarse en la UI; el `Log.d` de
+  > `MainActivity` es el único sitio que lo imprime. Ver `docs/specs/ai-call-diagnostics.md`.
 - **Clave en el APK**: riesgo ya asumido y documentado (ADR 0002, tabla de riesgos); esta feature no lo
   cambia.
 

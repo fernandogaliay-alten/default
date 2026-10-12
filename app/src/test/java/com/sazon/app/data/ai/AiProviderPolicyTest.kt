@@ -78,35 +78,46 @@ class AiProviderPolicyTest {
         assertEquals(0L, AiProviderPolicy.attemptRequestTimeoutMillis(-1_000L))
     }
 
-    // Escenario 1 (de `docs/specs/ai-provider-timeouts.md`): la politica admite la latencia real
-    // medida (28,0 s / 6.194 tokens, issue #68). Con los valores viejos (30/40/60 s) las tres
-    // primeras aserciones fallan: es la prueba de regresion de la correctiva.
+    // Escenario 1 (de `docs/specs/ai-call-diagnostics.md`): la politica admite la latencia real
+    // medida de **varios** modelos/modos (issue #72), con el peor caso `mimo-v2.6-pro` a 115,8 s y el
+    // peor del alias diario `chat` a 46,6 s. Con los valores viejos (socket 90 s / request 120 s /
+    // deadline 180 s) fallan `SOCKET > WORST`, `SOCKET >= 2x CHAT_WORST` y el margen de reintento: es
+    // la prueba de regresion de la correctiva.
     @Test
-    fun la_politica_admite_con_holgura_la_latencia_real_medida() {
+    fun la_politica_admite_con_holgura_la_latencia_real_de_varios_modelos() {
         assertTrue(
-            "El socket timeout debe ser al menos 2x la latencia medida",
-            AiProviderPolicy.SOCKET_TIMEOUT_MILLIS >= 2 * REAL_LATENCY_MILLIS,
+            "El socket timeout debe superar el peor caso medido (mimo-v2.6-pro, 115,8 s)",
+            AiProviderPolicy.SOCKET_TIMEOUT_MILLIS > REAL_LATENCY_MILLIS,
+        )
+        assertTrue(
+            "El socket timeout debe cubrir al menos 2x el peor caso del alias diario 'chat' (46,6 s)",
+            AiProviderPolicy.SOCKET_TIMEOUT_MILLIS >= 2 * CHAT_WORST_LATENCY_MILLIS,
         )
         assertTrue(
             "El timeout por intento no debe ser menor que el de socket",
             AiProviderPolicy.REQUEST_TIMEOUT_MILLIS >= AiProviderPolicy.SOCKET_TIMEOUT_MILLIS,
         )
-        assertTrue(
-            "Con deadline holgado cada intento debe cubrir al menos 3x la latencia medida",
-            AiProviderPolicy.attemptRequestTimeoutMillis(AiProviderPolicy.TOTAL_DEADLINE_MILLIS) >=
-                3 * REAL_LATENCY_MILLIS,
+        assertEquals(
+            "Con deadline holgado el intento usa el techo por intento",
+            AiProviderPolicy.REQUEST_TIMEOUT_MILLIS,
+            AiProviderPolicy.attemptRequestTimeoutMillis(AiProviderPolicy.TOTAL_DEADLINE_MILLIS),
         )
         assertTrue(
-            "Tras agotar el primer intento debe quedar margen para otro intento lento",
-            AiProviderPolicy.TOTAL_DEADLINE_MILLIS - AiProviderPolicy.REQUEST_TIMEOUT_MILLIS >=
-                2 * REAL_LATENCY_MILLIS,
+            "El deadline total debe caber el intento completo mas el backoff",
+            AiProviderPolicy.TOTAL_DEADLINE_MILLIS >
+                AiProviderPolicy.REQUEST_TIMEOUT_MILLIS + AiProviderPolicy.RETRY_BACKOFF_MILLIS,
         )
         assertTrue(
-            "Con lo que sobra del deadline debe haber margen para un reintento",
+            "Tras el peor intento medido mas el backoff debe quedar deadline para otro intento igual de lento",
+            AiProviderPolicy.TOTAL_DEADLINE_MILLIS - REAL_LATENCY_MILLIS - AiProviderPolicy.RETRY_BACKOFF_MILLIS >=
+                REAL_LATENCY_MILLIS,
+        )
+        assertTrue(
+            "Con lo que sobra del deadline debe haber margen para un reintento igual de lento",
             AiProviderPolicy.canRetry(
                 attempt = 1,
                 remainingMillis = AiProviderPolicy.TOTAL_DEADLINE_MILLIS -
-                    AiProviderPolicy.REQUEST_TIMEOUT_MILLIS -
+                    REAL_LATENCY_MILLIS -
                     AiProviderPolicy.RETRY_BACKOFF_MILLIS,
             ),
         )
@@ -169,7 +180,13 @@ class AiProviderPolicyTest {
 }
 
 /**
- * Latencia real de referencia (issue #68): una operacion de 6 recetas con el alias `chat` devuelve
- * HTTP 200 en **28,0 s** (6.194 tokens). La politica de timeouts debe admitirla con holgura.
+ * Peor latencia real medida (issue #72): una operacion de 6 recetas con `mimo-v2.6-pro` devuelve
+ * HTTP 200 en **115,8 s**. La politica de timeouts debe admitirla con holgura (socket 120 s).
  */
-private const val REAL_LATENCY_MILLIS = 28_000L
+private const val REAL_LATENCY_MILLIS = 115_800L
+
+/**
+ * Peor latencia medida del alias diario `chat` (issue #72): 46,6 s (las otras mediciones fueron
+ * 28,0 / 33,1 / 42,1 s). El socket timeout debe cubrir al menos el doble.
+ */
+private const val CHAT_WORST_LATENCY_MILLIS = 46_600L

@@ -3,6 +3,8 @@ package com.sazon.app.data.ai
 import com.sazon.app.domain.recipe.RecipeSource
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.domain.taxonomy.TaxonomyJson
+import com.sazon.app.domain.validation.DiscardReason
+import com.sazon.app.domain.validation.RecipeConstraints
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -17,19 +19,28 @@ import org.junit.Test
  * `RecipeJson.encode(recipe)`, que **si** incluye `id` y `source` y por eso no reproducia lo que el
  * modelo envia. Aqui los cuerpos son literales del contrato (nunca `RecipeJson.encode`).
  *
+ * Ademas del resultado (`accepted`), se prueba el **diagnostico** que la correctiva
+ * `ai-call-diagnostics` (issue #72) anade al decode: `received`/`accepted`/`discardedByReason` (los
+ * cuatro `DiscardReason`) y `contentState`/longitudes del contenido.
+ *
  * Taxonomia real. El proveedor **no** pre-filtra por dieta/restricciones (restricciones neutras).
  */
 class AiRecipePayloadTest {
 
     private val taxonomy = taxonomy()
 
+    private fun decode(
+        content: String?,
+        constraints: RecipeConstraints = AiProviderPolicy.NEUTRAL_CONSTRAINTS,
+    ): AiDecodeResult = AiRecipePayload.decode(content, taxonomy, constraints)
+
     // Escenario 1: forma real del contrato -> 1 receta valida, con source/id completados.
     @Test
     fun un_contrato_valido_devuelve_las_recetas() {
-        val recipes = AiRecipePayload.decode(envelope(arrozDraft()), taxonomy)
+        val result = decode(envelope(arrozDraft()))
 
-        assertEquals(1, recipes.size)
-        val recipe = recipes.single()
+        assertEquals(1, result.accepted.size)
+        val recipe = result.accepted.single()
         assertEquals("Arroz salteado con verduras", recipe.title)
         assertEquals("Un arroz rapido con verduras.", recipe.description)
         assertEquals("rice", recipe.categoryId)
@@ -41,27 +52,33 @@ class AiRecipePayloadTest {
         assertEquals(2, recipe.steps.size)
         assertEquals(RecipeSource.AI, recipe.source)
         assertTrue("El id lo completa la app", recipe.id.startsWith(AiRecipeIds.PREFIX))
+
+        assertEquals(AiContentState.RECIPES, result.contentState)
+        assertEquals(1, result.received)
+        assertTrue("Sin descartes en un lote valido", result.discardedByReason.isEmpty())
+        assertTrue("El contenido leido tiene longitud real", result.contentChars > 0)
+        assertTrue("El contenido leido tiene bytes reales", result.contentBytes > 0)
     }
 
     @Test
     fun una_receta_rota_dentro_de_un_lote_legible_no_tumba_el_resto() {
-        val recipes = AiRecipePayload.decode(
-            envelope(arrozDraft(), """{"title":"Rota"}"""),
-            taxonomy,
-        )
+        val result = decode(envelope(arrozDraft(), """{"title":"Rota"}"""))
 
-        assertEquals(1, recipes.size)
-        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals(1, result.accepted.size)
+        assertEquals("Arroz salteado con verduras", result.accepted.single().title)
+        assertEquals("El elemento roto tambien cuenta como recibido", 2, result.received)
+        assertEquals(mapOf(DiscardReason.SCHEMA to 1), result.discardedByReason)
     }
 
     @Test
     fun una_valla_markdown_envolvente_se_quita() {
         val fenced = "```json\n${envelope(arrozDraft())}\n```"
 
-        val recipes = AiRecipePayload.decode(fenced, taxonomy)
+        val result = decode(fenced)
 
-        assertEquals(1, recipes.size)
-        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals(1, result.accepted.size)
+        assertEquals("Arroz salteado con verduras", result.accepted.single().title)
+        assertEquals(AiContentState.RECIPES, result.contentState)
     }
 
     // Escenario 5: tolerancia preservada (nunca lanza ni reintenta).
@@ -78,48 +95,81 @@ class AiRecipePayloadTest {
         )
 
         cases.forEach { content ->
-            val recipes = AiRecipePayload.decode(content, taxonomy)
-            assertTrue("El contenido '$content' debe dar lista vacia", recipes.isEmpty())
+            val result = decode(content)
+            assertTrue("El contenido '$content' debe dar lista vacia", result.accepted.isEmpty())
+            assertEquals("El contenido '$content' no tiene recetas", 0, result.received)
+            assertTrue("El contenido '$content' no descarta recetas", result.discardedByReason.isEmpty())
+            assertTrue(
+                "El contenido '$content' es blanco o ilegible",
+                result.contentState == AiContentState.BLANK || result.contentState == AiContentState.ILLEGIBLE,
+            )
         }
-        assertTrue("null debe dar lista vacia", AiRecipePayload.decode(null, taxonomy).isEmpty())
+        val nullResult = decode(null)
+        assertTrue("null debe dar lista vacia", nullResult.accepted.isEmpty())
+        assertEquals(AiContentState.BLANK, nullResult.contentState)
+    }
+
+    // Escenario 2: EMPTY por contenido en blanco o ilegible, con longitudes coherentes (0/0 vs > 0).
+    @Test
+    fun el_estado_del_contenido_y_las_longitudes_distinguen_blanco_ilegible_y_recetas() {
+        listOf(null, "", "   ", "\n").forEach { blank ->
+            val result = decode(blank)
+            assertEquals(AiContentState.BLANK, result.contentState)
+            assertEquals(0, result.contentChars)
+            assertEquals(0, result.contentBytes)
+            assertEquals(0, result.received)
+        }
+
+        val illegible = decode("lo siento, no puedo ayudarte")
+        assertEquals(AiContentState.ILLEGIBLE, illegible.contentState)
+        assertEquals(28, illegible.contentChars)
+        assertEquals(28, illegible.contentBytes)
+
+        // `contentChars` son unidades UTF-16 y `contentBytes` UTF-8: el emoji lo distingue.
+        val unicode = decode("sí, 🤖")
+        assertEquals(AiContentState.ILLEGIBLE, unicode.contentState)
+        assertEquals(6, unicode.contentChars)
+        assertEquals(9, unicode.contentBytes)
+
+        val recipes = decode(envelope(arrozDraft()))
+        assertEquals(AiContentState.RECIPES, recipes.contentState)
+        assertTrue(recipes.contentChars > 0 && recipes.contentBytes > 0)
     }
 
     @Test
     fun el_proveedor_no_prefiltra_por_dieta_ni_restricciones_duras() {
         // Con restricciones neutras, el pollo (tag poultry) y el "Pan" libre (gluten) llegan tal cual:
         // el filtrado por Perfil es del llamador (asi el estado Bloqueado de ai-search sigue vivo).
-        val recipes = AiRecipePayload.decode(
-            envelope(arrozDraft(), polloDraft(), bocadilloDraft()),
-            taxonomy,
-        )
+        val result = decode(envelope(arrozDraft(), polloDraft(), bocadilloDraft()))
 
-        assertEquals(3, recipes.size)
-        assertTrue(recipes.any { it.title == "Pollo al ajillo" })
-        assertTrue(recipes.any { it.title == "Bocadillo de tomate" })
+        assertEquals(3, result.accepted.size)
+        assertTrue(result.accepted.any { it.title == "Pollo al ajillo" })
+        assertTrue(result.accepted.any { it.title == "Bocadillo de tomate" })
+        assertTrue("Sin filtrado no hay descartes", result.discardedByReason.isEmpty())
     }
 
     // Escenario 2: id unico en la llamada y source = ai, incluso con una receta repetida literal.
     @Test
     fun cada_receta_recibe_un_id_unico_y_source_ai_con_un_duplicado_literal() {
-        val recipes = AiRecipePayload.decode(
-            envelope(arrozDraft(), polloDraft(), arrozDraft()),
-            taxonomy,
-        )
+        val result = decode(envelope(arrozDraft(), polloDraft(), arrozDraft()))
 
-        assertEquals(3, recipes.size)
-        assertTrue("Todas son ai", recipes.all { it.source == RecipeSource.AI })
-        assertTrue("Todas con id no vacio y prefijo ai-", recipes.all { it.id.startsWith(AiRecipeIds.PREFIX) })
-        assertEquals("No puede haber dos ids iguales", 3, recipes.map { it.id }.toSet().size)
+        assertEquals(3, result.accepted.size)
+        assertTrue("Todas son ai", result.accepted.all { it.source == RecipeSource.AI })
+        assertTrue(
+            "Todas con id no vacio y prefijo ai-",
+            result.accepted.all { it.id.startsWith(AiRecipeIds.PREFIX) },
+        )
+        assertEquals("No puede haber dos ids iguales", 3, result.accepted.map { it.id }.toSet().size)
         assertTrue(
             "El duplicado literal se desambigua",
-            recipes.map { it.id }.any { it.endsWith("-2") },
+            result.accepted.map { it.id }.any { it.endsWith("-2") },
         )
     }
 
     // Escenario 4: las reglas del Validador siguen aplicandose y el elemento roto no tumba el resto.
     @Test
     fun las_reglas_del_validador_siguen_aplicandose_y_la_valida_sobrevive() {
-        val recipes = AiRecipePayload.decode(
+        val result = decode(
             envelope(
                 draftJson(title = "Comida inexistente", mealTypeId = "second_breakfast"),
                 draftJson(title = "Cocina inexistente", cuisineId = "martian"),
@@ -128,20 +178,85 @@ class AiRecipePayloadTest {
                 draftJson(title = "Tiempos incoherentes", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
                 draftJson(title = "Receta valida"),
             ),
-            taxonomy,
         )
 
-        assertEquals(1, recipes.size)
-        assertEquals("Receta valida", recipes.single().title)
+        assertEquals(1, result.accepted.size)
+        assertEquals("Receta valida", result.accepted.single().title)
+        assertEquals(5, result.received)
+        assertEquals(
+            mapOf(DiscardReason.SCHEMA to 3, DiscardReason.INCOHERENT to 1),
+            result.discardedByReason,
+        )
     }
 
     // Escenario 6: matchScore lo sigue derivando la app (el del modelo se ignora).
     @Test
     fun el_matchscore_del_contrato_se_ignora_y_la_receta_sale_sin_score() {
-        val recipes = AiRecipePayload.decode(envelope(draftJson(matchScore = 92)), taxonomy)
+        val result = decode(envelope(draftJson(matchScore = 92)))
 
-        assertEquals(1, recipes.size)
-        assertNull("El score es derivado y no persistido", recipes.single().matchScore)
+        assertEquals(1, result.accepted.size)
+        assertNull("El score es derivado y no persistido", result.accepted.single().matchScore)
+    }
+
+    // Escenario 3 (diagnostico): el resumen del decode cuenta recibidas, aceptadas y motivos, en el
+    // orden de `DiscardReason`.
+    @Test
+    fun el_resumen_del_decode_cuenta_recibidas_aceptadas_y_motivos_del_descarte() {
+        val result = decode(
+            envelope(
+                draftJson(title = "Comida inexistente", mealTypeId = "second_breakfast"),
+                draftJson(title = "Tiempos incoherentes", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
+                arrozDraft(),
+            ),
+        )
+
+        assertEquals(3, result.received)
+        assertEquals(1, result.accepted.size)
+        assertEquals(
+            mapOf(DiscardReason.SCHEMA to 1, DiscardReason.INCOHERENT to 1),
+            result.discardedByReason,
+        )
+        assertEquals(
+            "Los motivos van en el orden del enum",
+            listOf(DiscardReason.SCHEMA, DiscardReason.INCOHERENT),
+            result.discardedByReason.keys.toList(),
+        )
+    }
+
+    // Escenario 3: con restricciones **no neutras** el resumen expresa tambien DIET_PATTERN y
+    // HARD_RESTRICTION: los **cuatro** DiscardReason son representables.
+    @Test
+    fun las_restricciones_no_neutras_permiten_representar_los_cuatro_motivos_de_descarte() {
+        val veganYGluten = RecipeConstraints(dietPatternId = "vegan", hardRestrictionIds = setOf("gluten"))
+
+        val result = decode(
+            envelope(
+                """{"title":"Rota"}""",
+                polloDraft(),
+                bocadilloDraft(),
+                draftJson(title = "Tiempos incoherentes", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
+                arrozDraft(),
+            ),
+            constraints = veganYGluten,
+        )
+
+        assertEquals(5, result.received)
+        assertEquals(1, result.accepted.size)
+        assertEquals("Arroz salteado con verduras", result.accepted.single().title)
+        assertEquals(
+            "Los cuatro motivos, en el orden del enum",
+            listOf(
+                DiscardReason.SCHEMA,
+                DiscardReason.DIET_PATTERN,
+                DiscardReason.HARD_RESTRICTION,
+                DiscardReason.INCOHERENT,
+            ),
+            result.discardedByReason.keys.toList(),
+        )
+        assertEquals(1, result.discardedByReason[DiscardReason.SCHEMA])
+        assertEquals(1, result.discardedByReason[DiscardReason.DIET_PATTERN])
+        assertEquals(1, result.discardedByReason[DiscardReason.HARD_RESTRICTION])
+        assertEquals(1, result.discardedByReason[DiscardReason.INCOHERENT])
     }
 
     private fun envelope(vararg draftJson: String): String =
