@@ -33,7 +33,10 @@ que parta de "esto es lo que tengo" y aplique de forma fiable las restricciones 
 Explícitamente **fuera del MVP**. Son evolutivos (backlog post-MVP), no se descartan:
 
 - Lista de la compra.
-- Modo cocina con temporizadores reales.
+- ~~Modo cocina con temporizadores reales.~~ **Ampliación del MVP (issue #76, 2026-10-12): entra en el
+  MVP** como feature `cooking-mode` (pasos a pantalla completa con temporizador por paso y aviso en
+  pantalla). El Non-Goal "Notificaciones y recordatorios" sigue vigente: el aviso al terminar es
+  **visual**, sin notificación de sistema, sonido ni vibración.
 - Compartir / exportar recetas.
 - Multi-idioma.
 - Notificaciones y recordatorios.

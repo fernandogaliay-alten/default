@@ -269,11 +269,33 @@ los cuatro pares del hero (Tiempo/Dificultad/Comensales/Calorias, sin `matchScor
 los comensales (acotados a `taxonomy.servings`) y la pestana activa. `RecipeDetailScreen` es la capa
 Compose: hero con degradado + "Atras" y corazon, tarjeta superpuesta con la meta, pestanas
 Ingredientes/Pasos/Notas (timeline con pildora ambar de duracion y nutricion opcional), el `ServingsStepper`
-reutilizado **sin cambios** y barra inferior ("Guardar"/"Empezar a cocinar", costuras no-op de
-`favorites`/modo cocina). El detalle se hospeda como **overlay** en `MainShell`
+reutilizado **sin cambios** y barra inferior ("Guardar"/"Empezar a cocinar": "Guardar" sigue siendo la
+costura no-op de `favorites` y "Empezar a cocinar" ya se cablea desde `MainShell` al modo cocina). El
+detalle se hospeda como **overlay** en `MainShell`
 (`var detailRecipe by remember`), de modo que se pinta **encima** de la Home o del Generador **sin
 desmontarlos** (se conservan el resultado y el borrador); abre desde las tarjetas de Resultados y de la
 Home. Ver `docs/specs/recipe-detail-screen.md`.
+
+El **Modo cocina** (ampliacion del MVP, issue #76) vive en `com.sazon.app.ui.cooking`, con logica
+**pura** testeable en JVM (sin Compose ni Android) y capa Compose delgada. `CookingTimerState` es la
+maquina de estados del **temporizador por paso** (`IDLE`/`RUNNING`/`PAUSED`/`FINISHED`): `of(minutes)`
+fija `total`/`remaining` en Inactivo (`minutes <= 0` deja `hasDuration = false` y la UI oculta el bloque
+entero), y `start`/`pause`/`resume`/`reset`/`tick(deltaMillis)` son transiciones inmutables y
+**deterministas**: el tiempo solo entra por `tick`, que descuenta unicamente en Marcha, acota a cero y
+pasa a Terminado sin seguir contando (las transiciones invalidas son no-op). `CookingModeState` guarda
+el paso actual (`stepIndex`/`totalSteps`), los pasos hechos (`completedOrders`, por `RecipeStep.order`)
+y el temporizador; **no** guarda la `Recipe` (para el `Saver`), y `next`/`previous` reciben la
+`List<RecipeStep>`, acotan a `0..totalSteps-1` y **reinan el temporizador al del paso nuevo** mientras
+el marcado persiste. `CookingModeFormat` formatea el progreso (`"Paso 2 de 5"` + la fraccion de la
+barra, `0f` sin pasos), la duracion (`"10 min"`) y la cuenta atras `mm:ss` en `Locale.ROOT`.
+`CookingModeScreen` es la capa Compose (cabecera con "Atras" circular y barra fina terracota, tarjeta
+del paso con circulo numerado y tachado/atenuado `0.45` si esta hecho, bloque miel del temporizador con
+sus cuatro estados, aviso **en pantalla** "¡Listo!" en miel/oliva — nunca `error` —, fila "Marcar paso
+como hecho" y barra inferior "Anterior" + "Siguiente"→"Terminar", con `CookingModeStateSaver` y un
+`LaunchedEffect` que solo alimenta `tick(1000)`). Se hospeda como **overlay** en `MainShell`
+(`var cookingRecipe by remember`) **encima** del Detalle y cablea la costura `onStartCooking` que
+`recipe-detail-screen` dejo no-op. Sin notificacion de sistema, sonido, vibracion ni persistencia
+(Non-Goals del MVP). Ver `docs/specs/cooking-mode.md`.
 
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,

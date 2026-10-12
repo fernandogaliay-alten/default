@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sazón — Modo Cocina (Paso a Paso con Temporizador)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            terracotta: {
+              DEFAULT: '#D9552B',
+              container: '#FFDCCF',
+              dark: '#B7411B',
+            },
+            olive: {
+              DEFAULT: '#5F7A3D',
+              container: '#E5ECD8',
+            },
+            honey: {
+              DEFAULT: '#F2A93B',
+              container: '#FEF3DF',
+              dark: '#C88318',
+            },
+            cream: {
+              DEFAULT: '#FFF8F0',
+              surface: '#FFFFFF',
+              border: '#E8DDD3',
+            },
+            charcoal: {
+              DEFAULT: '#2B2118',
+              muted: '#7A6A5D',
+            },
+            darkbg: {
+              DEFAULT: '#18120E',
+              surface: '#241C16',
+              surfaceAlt: '#312720',
+              border: '#3D3128',
+              text: '#F5ECE4',
+              muted: '#A8978A',
+            }
+          },
+          fontFamily: {
+            heading: ['Manrope', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 16px rgba(43, 33, 24, 0.06)',
+            'soft-dark': '0 4px 16px rgba(0, 0, 0, 0.25)',
+            'sticky': '0 -4px 16px rgba(43, 33, 24, 0.06)',
+            'sticky-dark': '0 -4px 16px rgba(0, 0, 0, 0.35)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes subtlePulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.02); opacity: 0.94; }
+    }
+    .animate-subtle-pulse {
+      animation: subtlePulse 2.4s ease-in-out infinite;
+    }
+    /* Hide scrollbar for clean presentation */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-[#F4ECE4] text-[#2B2118] font-body p-4 sm:p-8 min-h-screen">
+
+  <!-- Document Header & Specs Bar -->
+  <header class="max-w-[1400px] mx-auto mb-8 bg-white rounded-3xl p-6 sm:p-8 shadow-soft border border-cream-border">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-cream-border pb-5 mb-5">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-terracotta text-white font-heading font-bold text-xl">S</span>
+        <div>
+          <span class="text-xs font-semibold tracking-wider uppercase text-terracotta bg-terracotta-container px-2.5 py-0.5 rounded-full">Material 3 • Android UI • Pixel 390×844</span>
+          <h1 class="font-heading font-extrabold text-2xl sm:text-3xl text-charcoal tracking-tight mt-1">Sazón — Modo Cocina (Step-by-Step Cooking Mode)</h1>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 text-xs font-medium">
+        <span class="px-3 py-1.5 rounded-full bg-cream border border-cream-border text-charcoal">Fondo Claro: <code class="font-mono text-terracotta font-semibold">#FFF8F0</code></span>
+        <span class="px-3 py-1.5 rounded-full bg-[#18120E] text-[#F5ECE4]">Fondo Oscuro: <code class="font-mono text-honey font-semibold">#18120E</code></span>
+        <span class="px-3 py-1.5 rounded-full bg-honey-container text-[#8F5707] font-semibold border border-[#E9C788]/60">Temporizador Miel: <code class="font-mono">#F2A93B</code></span>
+      </div>
+    </div>
+    <p class="text-charcoal-muted text-sm sm:text-base max-w-4xl leading-relaxed">
+      Pantalla completa accesible desde el botón flotante <em>«Empezar a cocinar»</em> del Detalle de Receta. Sin barra de navegación inferior, con progreso lineal en terracota, tipografía en cifras tabulares, tarjeta destacada para el paso actual y temporizador con soporte exhaustivo de sus cuatro estados: <strong>Inactivo</strong>, <strong>En marcha</strong> (con cuenta regresiva pulsante), <strong>Pausado</strong> y <strong>Terminado</strong> (notificación de éxito miel/oliva, nunca rojo).
+    </p>
+  </header>
+
+  <!-- Main Canvas: Side by Side (Light & Dark Mode) -->
+  <main class="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mb-12">
+
+    <!-- ==========================================
+         CANONICAL PHONE FRAME: MODO CLARO
+         ========================================== -->
+    <section class="flex flex-col items-center">
+      <div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-terracotta"></span>
+          <span class="font-heading font-bold text-sm text-charcoal">Modo Claro (Canvas Canónico)</span>
+        </div>
+        <span class="text-xs bg-white text-charcoal-muted px-2.5 py-1 rounded-full border border-cream-border font-medium">Estado: En Marcha (Running)</span>
+      </div>
+
+      <!-- Pixel Device 390x844 Outer Shell -->
+      <div class="w-[390px] h-[844px] bg-cream rounded-[48px] shadow-2xl border-[8px] border-[#2B2118] overflow-hidden flex flex-col relative select-none">
+        
+        <!-- Android Status Bar -->
+        <div class="h-10 pt-2 px-6 flex items-center justify-between text-xs font-semibold text-charcoal z-20">
+          <span class="tabular-nums">09:41</span>
+          <div class="flex items-center gap-1.5 text-charcoal">
+            <span class="material-symbols-outlined text-[15px]">wifi</span>
+            <span class="material-symbols-outlined text-[15px]">signal_cellular_4_bar</span>
+            <span class="material-symbols-outlined text-[17px]">battery_full</span>
+          </div>
+        </div>
+
+        <!-- Top Area: Back Button + Progress + Progress Bar -->
+        <div class="px-5 pt-1 pb-3 z-20">
+          <div class="flex items-center justify-between mb-2">
+            <!-- Floating circular back button (min 48dp touch target) -->
+            <button class="w-11 h-11 rounded-full bg-white shadow-soft flex items-center justify-center text-charcoal active:scale-95 transition hover:bg-[#FAF4ED]" aria-label="Volver al detalle de receta">
+              <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+            </button>
+            <div class="text-right">
+              <span class="text-xs font-medium text-charcoal-muted uppercase tracking-wider block">Progreso</span>
+              <span class="font-heading font-bold text-sm text-charcoal tabular-nums">Paso 2 de 5</span>
+            </div>
+          </div>
+
+          <!-- Thin linear progress bar under top area with terracotta fill -->
+          <div class="w-full bg-[#E8DDD3] h-1.5 rounded-full overflow-hidden mt-1" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+            <div class="bg-terracotta h-full rounded-full transition-all duration-300" style="width: 40%;"></div>
+          </div>
+        </div>
+
+        <!-- Scrollable Inner Content Area -->
+        <div class="flex-1 overflow-y-auto px-5 pb-24 no-scrollbar">
+          
+          <!-- Recipe Title (Manrope Bold 24sp, single line ellipsized) -->
+          <div class="pt-2 pb-4">
+            <span class="text-[11px] font-semibold tracking-wider uppercase text-olive font-heading block">Cocinando ahora</span>
+            <h2 class="font-heading font-extrabold text-[24px] text-charcoal leading-tight truncate" title="Arroz meloso con pollo y azafrán">
+              Arroz meloso con pollo y azafrán
+            </h2>
+          </div>
+
+          <!-- Large Current-Step Card (White surface, 24px radius, soft shadow) -->
+          <article class="bg-white rounded-[24px] p-5 shadow-soft border border-[#FAF1E8] mb-4">
+            
+            <!-- Step Header: Numbered terracotta circle + Step Title -->
+            <div class="flex items-start gap-3.5 mb-3">
+              <div class="w-10 h-10 rounded-full bg-terracotta text-white flex items-center justify-center font-heading font-bold text-lg shrink-0 shadow-sm">
+                2
+              </div>
+              <div class="flex-1 min-w-0 pt-0.5">
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-charcoal-muted block">Técnica principal</span>
+                <h3 class="font-heading font-semibold text-[22px] text-charcoal leading-snug">
+                  Dorar el pollo de corral
+                </h3>
+              </div>
+            </div>
+
+            <!-- Step Body Text (Inter 16sp, line-height 1.5, wraps and scrolls if long) -->
+            <p class="font-body text-[15px] text-charcoal leading-relaxed mb-5">
+              En una cazuela baja o paella con tres cucharadas de aceite de oliva virgen extra caliente, sella las piezas de pollo a fuego medio-alto hasta que adquieran un tono dorado homogéneo y la piel quede crujiente. Reserva el jugo para el sofrito.
+            </p>
+
+            <!-- Per-Step Timer Block: Estado "Running / En marcha" (Honey #F2A93B accent) -->
+            <div class="bg-honey-container/70 border border-[#F2A93B]/30 rounded-[20px] p-4 mb-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-honey text-[18px]">timer</span>
+                  <span class="text-xs font-semibold uppercase tracking-wider text-[#8F5707]">Temporizador de paso</span>
+                </div>
+                <!-- Honey pill with step duration -->
+                <span class="inline-flex items-center gap-1 bg-white/90 text-[#8F5707] text-xs font-bold px-2.5 py-1 rounded-full border border-honey/30 shadow-xs tabular-nums">
+                  <span class="w-1.5 h-1.5 rounded-full bg-honey animate-ping"></span>
+                  10 min
+                </span>
+              </div>
+
+              <!-- Countdown Display & Control: Tabular Figures "09:42" -->
+              <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-honey/20 flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-semibold uppercase tracking-wider text-charcoal-muted block">Tiempo restante</span>
+                  <div class="font-heading font-extrabold text-[34px] text-charcoal tracking-tight tabular-nums leading-none mt-0.5 flex items-baseline gap-1">
+                    <span class="text-honey">09:42</span>
+                    <span class="text-xs text-charcoal-muted font-medium">/ 10:00</span>
+                  </div>
+                </div>
+
+                <!-- Timer Control: Running State (Pause Button) -->
+                <div class="flex items-center gap-2">
+                  <button class="w-12 h-12 rounded-full bg-honey hover:bg-honey-dark text-white flex items-center justify-center shadow-md active:scale-95 transition group" aria-label="Pausar temporizador">
+                    <span class="material-symbols-outlined text-[24px]">pause</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Microstatus hint -->
+              <p class="text-[11px] text-[#8F5707] font-medium mt-2.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">notifications_active</span>
+                Sonará una alerta cálida al completar los 10 minutos.
+              </p>
+            </div>
+
+            <!-- Complete Step Row: Checkbox with exact label "Marcar paso como hecho" -->
+            <label class="flex items-center gap-3 p-3 rounded-2xl hover:bg-cream/60 cursor-pointer border border-transparent hover:border-cream-border transition">
+              <input type="checkbox" class="w-5 h-5 rounded-md text-terracotta focus:ring-terracotta border-[#C7B7A9] accent-terracotta cursor-pointer">
+              <span class="font-heading font-semibold text-sm text-charcoal select-none">Marcar paso como hecho</span>
+            </label>
+          </article>
+
+          <!-- Upcoming Step Teaser (for context and visual depth) -->
+          <div class="bg-white/60 rounded-2xl p-3.5 border border-cream-border/70 flex items-center justify-between opacity-80">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-full bg-[#E8DDD3] text-charcoal-muted flex items-center justify-center font-heading font-semibold text-xs tabular-nums">
+                3
+              </div>
+              <span class="font-heading text-xs font-semibold text-charcoal-muted truncate max-w-[200px]">Pochado de verduras y azafrán</span>
+            </div>
+            <span class="text-[11px] text-charcoal-muted font-medium tabular-nums">8 min</span>
+          </div>
+
+        </div>
+
+        <!-- Sticky Bottom Action Bar (White, soft top shadow, two buttons side by side) -->
+        <div class="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md px-5 py-3.5 shadow-sticky border-t border-cream-border z-30">
+          <div class="flex items-center gap-3">
+            <!-- Outline "Anterior" (enabled on step 2) -->
+            <button class="flex-1 h-12 rounded-full border border-cream-border bg-white text-charcoal font-heading font-bold text-sm hover:bg-cream active:scale-98 transition flex items-center justify-center gap-1.5 shadow-xs">
+              <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+              Anterior
+            </button>
+
+            <!-- Terracotta Primary "Siguiente" -->
+            <button class="flex-1 h-12 rounded-full bg-terracotta text-white font-heading font-bold text-sm hover:bg-terracotta-dark active:scale-98 transition flex items-center justify-center gap-1.5 shadow-md">
+              Siguiente
+              <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         CANONICAL PHONE FRAME: MODO OSCURO
+         ========================================== -->
+    <section class="flex flex-col items-center">
+      <div class="flex items-center justify-between w-full max-w-[390px] mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-honey"></span>
+          <span class="font-heading font-bold text-sm text-charcoal">Modo Oscuro (#18120E / #241C16)</span>
+        </div>
+        <span class="text-xs bg-white text-charcoal-muted px-2.5 py-1 rounded-full border border-cream-border font-medium">Estado: ¡Listo! (Finished)</span>
+      </div>
+
+      <!-- Pixel Device 390x844 Dark Outer Shell -->
+      <div class="w-[390px] h-[844px] bg-darkbg rounded-[48px] shadow-2xl border-[8px] border-[#2B2118] overflow-hidden flex flex-col relative select-none">
+        
+        <!-- Android Status Bar (Dark) -->
+        <div class="h-10 pt-2 px-6 flex items-center justify-between text-xs font-semibold text-darkbg-text z-20">
+          <span class="tabular-nums">09:41</span>
+          <div class="flex items-center gap-1.5 text-darkbg-text">
+            <span class="material-symbols-outlined text-[15px]">wifi</span>
+            <span class="material-symbols-outlined text-[15px]">signal_cellular_4_bar</span>
+            <span class="material-symbols-outlined text-[17px]">battery_full</span>
+          </div>
+        </div>
+
+        <!-- Top Area: Back Button + Progress + Progress Bar (Dark) -->
+        <div class="px-5 pt-1 pb-3 z-20">
+          <div class="flex items-center justify-between mb-2">
+            <!-- Floating circular back button (Dark) -->
+            <button class="w-11 h-11 rounded-full bg-darkbg-surface shadow-soft-dark border border-darkbg-border flex items-center justify-center text-darkbg-text active:scale-95 transition hover:bg-darkbg-surfaceAlt" aria-label="Volver">
+              <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+            </button>
+            <div class="text-right">
+              <span class="text-xs font-medium text-darkbg-muted uppercase tracking-wider block">Progreso</span>
+              <span class="font-heading font-bold text-sm text-darkbg-text tabular-nums">Paso 2 de 5</span>
+            </div>
+          </div>
+
+          <!-- Thin linear progress bar with terracotta fill -->
+          <div class="w-full bg-darkbg-surfaceAlt h-1.5 rounded-full overflow-hidden mt-1">
+            <div class="bg-terracotta h-full rounded-full transition-all duration-300" style="width: 40%;"></div>
+          </div>
+        </div>
+
+        <!-- Scrollable Inner Content Area (Dark) -->
+        <div class="flex-1 overflow-y-auto px-5 pb-24 no-scrollbar">
+          
+          <!-- Recipe Title -->
+          <div class="pt-2 pb-4">
+            <span class="text-[11px] font-semibold tracking-wider uppercase text-olive font-heading block">Cocinando ahora</span>
+            <h2 class="font-heading font-extrabold text-[24px] text-darkbg-text leading-tight truncate" title="Arroz meloso con pollo y azafrán">
+              Arroz meloso con pollo y azafrán
+            </h2>
+          </div>
+
+          <!-- Large Current-Step Card (Dark: Surface #241C16, 24px radius) -->
+          <article class="bg-darkbg-surface rounded-[24px] p-5 shadow-soft-dark border border-darkbg-border mb-4">
+            
+            <!-- Step Header -->
+            <div class="flex items-start gap-3.5 mb-3">
+              <div class="w-10 h-10 rounded-full bg-terracotta text-white flex items-center justify-center font-heading font-bold text-lg shrink-0 shadow-sm">
+                2
+              </div>
+              <div class="flex-1 min-w-0 pt-0.5">
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-darkbg-muted block">Técnica principal</span>
+                <h3 class="font-heading font-semibold text-[22px] text-darkbg-text leading-snug">
+                  Dorar el pollo de corral
+                </h3>
+              </div>
+            </div>
+
+            <!-- Step Body Text -->
+            <p class="font-body text-[15px] text-darkbg-muted leading-relaxed mb-5">
+              En una cazuela baja o paella con tres cucharadas de aceite de oliva virgen extra caliente, sella las piezas de pollo a fuego medio-alto hasta que adquieran un tono dorado homogéneo y la piel quede crujiente. Reserva el jugo para el sofrito.
+            </p>
+
+            <!-- Per-Step Timer Block: Estado "Finished / Terminado" (Honey/Olive soft success notice, NEVER RED) -->
+            <div class="bg-[#2D2419] border border-honey/40 rounded-[20px] p-4 mb-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-olive text-[18px]">check_circle</span>
+                  <span class="text-xs font-semibold uppercase tracking-wider text-honey">Temporizador completado</span>
+                </div>
+                <!-- Finished pill badge -->
+                <span class="inline-flex items-center gap-1 bg-olive/20 text-[#A6C97E] text-xs font-bold px-2.5 py-1 rounded-full border border-olive/30 tabular-nums">
+                  <span class="material-symbols-outlined text-[13px]">done</span>
+                  10 min
+                </span>
+              </div>
+
+              <!-- Finished Countdown & Success Banner -->
+              <div class="bg-darkbg-surfaceAlt rounded-2xl p-3.5 border border-olive/30 flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-semibold uppercase tracking-wider text-darkbg-muted block">Tiempo cumplido</span>
+                  <div class="font-heading font-extrabold text-[32px] text-darkbg-text tracking-tight tabular-nums leading-none mt-0.5 flex items-center gap-2">
+                    <span class="text-[#A6C97E]">00:00</span>
+                    <!-- Soft success notice "¡Listo!" with honey/olive tint (NEVER red) -->
+                    <span class="text-xs font-bold font-heading px-2.5 py-1 rounded-full bg-olive/30 text-[#CBE7A5] border border-olive/50 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px]">celebration</span>
+                      ¡Listo!
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Timer Finished: Replay or Reset Control -->
+                <div class="flex items-center gap-2">
+                  <button class="w-12 h-12 rounded-full bg-darkbg-surface hover:bg-[#3D3128] text-honey border border-honey/40 flex items-center justify-center shadow-md active:scale-95 transition" aria-label="Reiniciar temporizador">
+                    <span class="material-symbols-outlined text-[22px]">replay</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Olive/Honey soft feedback -->
+              <p class="text-[11px] text-[#D8B67B] font-medium mt-2.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] text-olive">skillet</span>
+                El pollo está en su punto. Puedes continuar con el siguiente paso.
+              </p>
+            </div>
+
+            <!-- Complete Step Row: Checkbox marked (Done) -->
+            <label class="flex items-center gap-3 p-3 rounded-2xl bg-darkbg-surfaceAlt/60 cursor-pointer border border-olive/30 transition">
+              <input type="checkbox" checked class="w-5 h-5 rounded-md text-terracotta focus:ring-terracotta border-darkbg-border accent-terracotta cursor-pointer">
+              <span class="font-heading font-semibold text-sm text-darkbg-text select-none">Marcar paso como hecho</span>
+            </label>
+          </article>
+
+          <!-- Step 5 Teaser (Shows "Terminar" on last step convention) -->
+          <div class="bg-darkbg-surface/50 rounded-2xl p-3.5 border border-darkbg-border flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs text-darkbg-muted">
+              <span class="material-symbols-outlined text-[15px] text-honey">info</span>
+              En el Paso 5 de 5 el botón principal cambia a <strong>«Terminar»</strong>.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sticky Bottom Action Bar (Dark: White/Dark surface, soft shadow) -->
+        <div class="absolute bottom-0 left-0 right-0 bg-darkbg-surface/95 backdrop-blur-md px-5 py-3.5 shadow-sticky-dark border-t border-darkbg-border z-30">
+          <div class="flex items-center gap-3">
+            <!-- Outline "Anterior" -->
+            <button class="flex-1 h-12 rounded-full border border-darkbg-border bg-darkbg-surfaceAlt text-darkbg-text font-heading font-bold text-sm hover:bg-[#3D3128] active:scale-98 transition flex items-center justify-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+              Anterior
+            </button>
+
+            <!-- Terracotta Primary "Siguiente" -->
+            <button class="flex-1 h-12 rounded-full bg-terracotta text-white font-heading font-bold text-sm hover:bg-terracotta-dark active:scale-98 transition flex items-center justify-center gap-1.5 shadow-md">
+              Siguiente
+              <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       DETAILED MATRIX: THE 4 TIMER STATES + EDGE CASES
+       ========================================== -->
+  <section class="max-w-[1400px] mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-soft border border-cream-border mb-12">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="material-symbols-outlined text-honey text-2xl">schedule</span>
+      <h2 class="font-heading font-bold text-xl text-charcoal">Matriz de Estados del Temporizador (Honey #F2A93B)</h2>
+    </div>
+    <p class="text-charcoal-muted text-sm mb-6 max-w-3xl">
+      Requisitos específicos del prompt: El temporizador debe contemplar exactamente 4 estados, cuenta en cifras tabulares, acento miel y notificación suave en tono miel/oliva (nunca rojo). Si un paso no tiene duración definida, el bloque se oculta.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+      
+      <!-- Estado 1: Idle (Iniciar) -->
+      <div class="bg-cream rounded-2xl p-4 border border-cream-border flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-cream-border/60 text-charcoal">1. Idle (Inactivo)</span>
+            <span class="text-xs font-bold text-[#8F5707] bg-honey-container px-2 py-0.5 rounded-full border border-honey/20">10 min</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-cream-border mb-3">
+            <span class="text-[10px] text-charcoal-muted uppercase block font-semibold">Duración paso</span>
+            <div class="font-heading font-bold text-2xl text-charcoal tabular-nums">10:00</div>
+          </div>
+          <p class="text-xs text-charcoal-muted mb-4 leading-relaxed">
+            Listo para empezar. Muestra la duración total y el botón de acción directa «Iniciar».
+          </p>
+        </div>
+        <button class="w-full h-11 rounded-full bg-honey hover:bg-honey-dark text-white font-heading font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+          <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+          Iniciar
+        </button>
+      </div>
+
+      <!-- Estado 2: Running (En marcha + countdown pulsante) -->
+      <div class="bg-honey-container/50 rounded-2xl p-4 border border-honey/30 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-honey text-white">2. Running</span>
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-[#8F5707] bg-white px-2 py-0.5 rounded-full border border-honey/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-honey animate-ping"></span>
+              En marcha
+            </span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-honey/30 mb-3 animate-subtle-pulse">
+            <span class="text-[10px] text-[#8F5707] uppercase block font-semibold">Cuenta atrás</span>
+            <div class="font-heading font-extrabold text-2xl text-honey tabular-nums">09:42</div>
+          </div>
+          <p class="text-xs text-[#8F5707] mb-4 leading-relaxed">
+            Cuenta regresiva en cifras tabulares con animación de pulso sutil y botón para pausar en cualquier instante.
+          </p>
+        </div>
+        <button class="w-full h-11 rounded-full bg-honey hover:bg-honey-dark text-white font-heading font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+          <span class="material-symbols-outlined text-[18px]">pause</span>
+          Pausar
+        </button>
+      </div>
+
+      <!-- Estado 3: Paused (Pausado) -->
+      <div class="bg-cream rounded-2xl p-4 border border-cream-border flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#D9CFBF] text-charcoal">3. Paused</span>
+            <span class="text-xs font-bold text-charcoal-muted bg-white px-2 py-0.5 rounded-full border border-cream-border">Pausado</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-cream-border mb-3">
+            <span class="text-[10px] text-charcoal-muted uppercase block font-semibold">Tiempo congelado</span>
+            <div class="font-heading font-bold text-2xl text-charcoal-muted tabular-nums">06:15</div>
+          </div>
+          <p class="text-xs text-charcoal-muted mb-4 leading-relaxed">
+            El temporizador se detiene sin perder el tiempo transcurrido. Permite reanudar o reiniciar a cero.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="w-10 h-11 rounded-full border border-cream-border bg-white text-charcoal-muted hover:bg-cream flex items-center justify-center transition">
+            <span class="material-symbols-outlined text-[18px]">replay</span>
+          </button>
+          <button class="flex-1 h-11 rounded-full bg-honey hover:bg-honey-dark text-white font-heading font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+            <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+            Reanudar
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado 4: Finished (¡Listo! Notificación Miel/Oliva, nunca rojo) -->
+      <div class="bg-olive-container/60 rounded-2xl p-4 border border-olive/30 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-olive text-white">4. Finished</span>
+            <span class="text-xs font-bold text-olive bg-white px-2 py-0.5 rounded-full border border-olive/30">00:00</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-olive/40 mb-3 flex items-center justify-between">
+            <div>
+              <span class="text-[10px] text-olive uppercase block font-semibold">Notificación suave</span>
+              <div class="font-heading font-extrabold text-2xl text-olive tabular-nums">¡Listo!</div>
+            </div>
+            <span class="material-symbols-outlined text-olive text-2xl">check_circle</span>
+          </div>
+          <p class="text-xs text-[#44582B] mb-4 leading-relaxed">
+            Notificación de éxito suave con tinte miel/oliva (estrictamente sin tonos rojos). Detiene la cuenta regresiva.
+          </p>
+        </div>
+        <button class="w-full h-11 rounded-full bg-olive hover:bg-[#4E6631] text-white font-heading font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+          <span class="material-symbols-outlined text-[18px]">done_all</span>
+          Aceptar y continuar
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Regla especial: Paso sin duración definida -->
+    <div class="mt-6 p-4 rounded-2xl bg-[#FFF8F0] border border-[#E8DDD3] flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 text-charcoal">
+        <span class="material-symbols-outlined text-terracotta text-lg">visibility_off</span>
+        <span><strong>Regla de negocio condicional:</strong> Si un paso no tiene duración definida (ej. emplatar, salpimentar o reposar sin reloj), el bloque completo del temporizador se oculta automáticamente.</span>
+      </div>
+      <span class="px-2.5 py-1 rounded-md bg-white border border-[#E8DDD3] font-medium text-charcoal-muted">Hidden state automático</span>
+    </div>
+
+    <!-- Regla especial: Primer y Último paso en el Sticky Bar -->
+    <div class="mt-3 p-4 rounded-2xl bg-[#FFF8F0] border border-[#E8DDD3] flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 text-charcoal">
+        <span class="material-symbols-outlined text-terracotta text-lg">swap_horiz</span>
+        <span><strong>Regla de navegación en barra inferior:</strong> En el Paso 1 de 5 el botón <em>«Anterior»</em> está deshabilitado. En el último paso (Paso 5 de 5) el botón primario de terracota conmuta de <em>«Siguiente»</em> a <em>«Terminar»</em>.</span>
+      </div>
+      <span class="px-2.5 py-1 rounded-md bg-white border border-[#E8DDD3] font-medium text-terracotta font-semibold">«Terminar» en Paso final</span>
+    </div>
+  </section>
+
+</body>
+</html>
