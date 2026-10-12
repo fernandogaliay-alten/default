@@ -18,7 +18,9 @@ pantalla/visual) debe tener sus **capturas de referencia** antes de implementars
   detiene, te las pide y la feature queda `blocked`. En `github-flow`, además, `execute` deja la carpeta
   de petición (con `README.md` + `stitch-prompt.md`) **dentro del worktree** de la feature, sin lanzar
   sesión ni ensuciar la base. Tú dejas cada subcarpeta `<pantalla>/` con sus tres ficheros y reanudas
-  con `github-flow execute <feature-id>`.
+  con `github-flow execute <feature-id>`. Si no quieres copiarlas a mano, pásale la ruta de origen:
+  `github-flow execute <feature-id> --captures <ruta>` importa los exports desde esa carpeta (WSL o
+  Windows) al worktree y, si validan, reanuda la sesión.
 - La spec de la feature nombra esas pantallas en su sección "Visual Design Impact".
 - Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
 

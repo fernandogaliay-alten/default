@@ -52,7 +52,9 @@ Antes de escribir código:
   (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
   **no** se reanuda con un `feature-flow` suelto, que dejaría la publicación fuera de `github-flow`.
   `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección visual
-  obligatoria, no opcional.
+  obligatoria, no opcional. Si prefieres no copiarlas a mano, pásale la ruta: `github-flow execute
+  <feature-id> --captures <ruta>` importa los exports desde esa carpeta (WSL o Windows) al worktree y,
+  si validan, reanuda la sesión en la misma ejecución.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
 ## Acuerdos de trabajo con la persona
