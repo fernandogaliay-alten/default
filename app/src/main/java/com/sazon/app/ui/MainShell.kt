@@ -48,6 +48,7 @@ import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.cooking.CookingModeScreen
 import com.sazon.app.ui.detail.RecipeDetailScreen
 import com.sazon.app.ui.favorites.FavoritesScreen
 import com.sazon.app.ui.generator.GeneratorFlow
@@ -87,6 +88,10 @@ import kotlinx.coroutines.launch
  * `AiSearchBar` con la conectividad observada de [NetworkStatusSource] y, al enviar, empuja
  * [PushedScreen.SEARCH], que monta [AiSearchFlow] sobre [AiSearchService]. La consulta vive en
  * `rememberSaveable` (sobrevive a empujar/sacar la pagina y a la rotacion).
+ *
+ * Desde el **Detalle**, "Empezar a cocinar" abre el **Modo cocina** ([CookingModeScreen]) como segundo
+ * overlay: recorre los pasos con progreso, marcado y temporizador, y "Atras"/"Terminar" vuelven al
+ * Detalle intacto.
  */
 @Composable
 fun MainShell(
@@ -119,6 +124,10 @@ fun MainShell(
     // Detalle hospedado como overlay: `Recipe` no es serializable, asi que vive en `remember` (rotar
     // cierra el detalle, igual que el `result` de Resultados; Unknown de la spec).
     var detailRecipe by remember { mutableStateOf<Recipe?>(null) }
+    // Modo cocina hospedado como segundo overlay, **encima** del Detalle: al cerrarlo (o "Terminar")
+    // se vuelve al Detalle intacto. `Recipe` no es serializable, asi que vive en `remember` (rotar
+    // cierra el modo, igual que el Detalle).
+    var cookingRecipe by remember { mutableStateOf<Recipe?>(null) }
     // Consulta de la Busqueda con IA: sobrevive a empujar/sacar la pagina (la Home se desmonta al
     // empujar) y a la rotacion.
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -255,8 +264,18 @@ fun MainShell(
                 taxonomy = taxonomy,
                 isSaved = favorites.any { it.recipe.id == recipe.id },
                 onToggleSave = { scope.launch { favoriteService.toggle(recipe) } },
-                onStartCooking = {},
+                onStartCooking = { cookingRecipe = recipe },
                 onBack = { detailRecipe = null },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // Modo cocina: se pinta encima del Detalle sin desmontarlo; "Atras"/"Terminar" vuelven al
+        // Detalle con su estado intacto.
+        cookingRecipe?.let { recipe ->
+            CookingModeScreen(
+                recipe = recipe,
+                onClose = { cookingRecipe = null },
                 modifier = Modifier.fillMaxSize(),
             )
         }

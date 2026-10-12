@@ -44,7 +44,9 @@
   `RecipeValidator.validateRecipe`; `Recipe.kt`/`RecipeValidator.kt` intactos. No hay features
   `not_started`, `in_progress` ni `passing`: la tercera **correctiva** de `real-ai-provider`,
   `ai-call-diagnostics` (issue #72), quedó **`accepted`** en la sesión 073 (validación independiente,
-  veredicto `accept`, rama `feature/ai-call-diagnostics`). El plan del MVP sigue **cerrado**.
+  veredicto `accept`, rama `feature/ai-call-diagnostics`). El plan del MVP sigue **cerrado**; la
+  ampliación **`cooking-mode`** (issue #76) quedó **`accepted`** en la sesión 078 (ver abajo). No hay
+  ninguna entrada de `feature_list.json` no aceptada.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -83,7 +85,16 @@
   400/422 (respetando `MAX_ATTEMPTS = 2`) y observabilidad del modo/fallback por
   `AiCallEvent`/`Log.d("SazonAi")`; `RecipeValidator` sigue intacto como puerta dura. Antes,
   `ai-call-diagnostics` (issue #72) quedó `accepted` en la sesión 073. `ai-recipe-decode` (issue #70) en
-  la 071 y `ai-provider-timeouts` (issue #68) en la 069. El resto del plan sigue cerrado.
+  la 071 y `ai-provider-timeouts` (issue #68) en la 069. El resto del plan sigue cerrado. WIP = 0.
+  Después se añadió la ampliación de UI **`cooking-mode`** (issue #76, "Modo cocina con temporizadores"),
+  que quedó `blocked`/provisioned por falta de capturas, se reanudó cuando la persona dejó
+  `docs/design/concepts/cooking-mode/modo-cocina/` (`screen.png`, `code.html`, `DESIGN.md`), y en la
+  **sesión 077** el implementer la dejó **`passing`** (implementada y autoverificada) hasta que la
+  **sesión 078** la cerró **`accepted`** con validación independiente (rama `feature/cooking-mode`).
+  El Modo cocina es ya real: lógica pura `ui.cooking` (máquina del temporizador con `tick`, paso actual,
+  navegación y marcado) + `CookingModeScreen` como overlay encima del Detalle, cableando el
+  `onStartCooking` que antes era un no-op; sin notificación de sistema ni persistencia (Non-Goals),
+  sin dependencias nuevas.
 - Cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74): implementada y
   autoverificada (`passing`) en la sesión 074 por el implementer, rama `feature/ai-response-format`.
   La validación independiente devolvió **`revise`** (Finding 1 Medium: el fallback podía añadir un
@@ -105,7 +116,10 @@
   modo semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador). Para
   `recipe-artwork` queda también la **revisión manual** de emulador (Home, Resultados, Favoritos
   lista+rejilla y Detalle, en claro y oscuro) del acabado de los 18 glifos y los 11 degradados, contra
-  el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva.
+  el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva. Con la
+  misma limitación queda la **verificación manual** de `cooking-mode`: abrir una receta, pulsar
+  "Empezar a cocinar" y recorrer los pasos con "Siguiente"/"Anterior"/"Terminar", con el temporizador
+  (Iniciar/Pausar/Reanudar/Reiniciar y el aviso "¡Listo!" al llegar a cero).
 - Última verificación (2026-10-12, `recipe-artwork`, validator, sesión 078): **veredicto `accept`
   independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
   `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
@@ -140,6 +154,19 @@
   diff --stat` solo con los ficheros previstos y sin tocar build/lockfile/dominio/Taxonomía/
   `seed-recipes.json`/Room/`ui.theme`/`init.sh`. `DESIGN.md` y `docs/technical-discovery.md`
   actualizados; **no** se crea `docs/design/concepts/recipe-artwork/` (desviación autorizada, issue #77).
+- Última verificación (2026-10-12, `cooking-mode`, implementer, sesión 077): **trabajo en disco, sin commit**.
+  `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`, sin procesos largos); tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"` en verde (**29 tests /
+  0 fallos**). Parseo propio de los XML del gate: **62 suites / 434 tests / 0 fallos / 0 errores / 0
+  saltados** (59 suites / 405 tests previos + 29 nuevos: `CookingTimerStateTest` 11,
+  `CookingModeStateTest` 10, `CookingModeFormatTest` 8) y del informe de lint (0 errores, 13 warnings
+  preexistentes, 0 bajo `app/src`). `ui.cooking` puro (sin Compose/Android; solo `domain.recipe` y
+  `Locale`) + `CookingModeScreen` (única capa Compose); `MainShell` es el único fichero existente
+  modificado (overlay `cookingRecipe` encima del Detalle y `onStartCooking` cableado); build/lockfile,
+  `domain/**`, `data/**`, Taxonomía, `seed-recipes.json`, `ui/detail/**`, `MainNavigationState.kt`,
+  `ServingsStepper.kt`, Room/Perfil, `scripts/**` e `init.sh` intactos; sin dependencias nuevas. Docs:
+  `docs/technical-discovery.md`, `DESIGN.md` (`cooking-mode`: `modo-cocina`) y `docs/build-brief.md`
+  (ampliación del MVP, issue #76).
 - Verificación anterior (2026-10-12, `ai-response-format`, implementer, **reparación del Finding 1**):
   **trabajo en disco, sin commit**. La rama de fallback de `DevExpertRecipeGenerator` ahora exige
   `attempt < AiProviderPolicy.MAX_ATTEMPTS` y se quitó el `!usedFallback` redundante (`includeFormat`
@@ -1649,6 +1676,81 @@
 ### Sesión 077
 
 - Fecha: 2026-10-12
+- Objetivo: implementar `cooking-mode` (Modo cocina: pasos a pantalla completa con temporizadores,
+  ampliación del MVP issue #76) segun `docs/specs/cooking-mode.md`, en la rama `feature/cooking-mode`
+  (worktree); solo hasta implementación y autoverificación (`passing`), sin commit/push/PR (los hace el
+  orquestador). Ejecutada por el subagente `implementer` (`feature-implementer`).
+- Completado:
+  - **Gate de UI satisfecho**: las capturas obligatorias existen en
+    `docs/design/concepts/cooking-mode/modo-cocina/` (`screen.png`, `code.html`, `DESIGN.md`) mas la
+    petición (`README.md`) y el prompt (`stitch-prompt.md`); la implementación sigue esa dirección
+    (Stitch no generó una variante por estado del temporizador: los cuatro se derivan de la misma
+    captura).
+  - Lógica **pura** en `com.sazon.app.ui.cooking` (sin Compose ni Android; testeable en JVM):
+    `CookingTimerState` (enum `CookingTimerStatus` + máquina `of/start/pause/resume/reset/tick`: el
+    tiempo solo entra por `tick(deltaMillis)`, descuenta únicamente En marcha, acota a cero y pasa a
+    Terminado sin seguir contando; transiciones inválidas y `delta <= 0` son **no-op**; `of(minutes)`
+    con `minutes <= 0` deja `hasDuration = false` y la UI oculta el bloque); `CookingModeState`
+    (`initial`, `next`/`previous` que acotan a `0..totalSteps-1` y **reinician** el temporizador al
+    paso nuevo, `toggleCompleted` por `RecipeStep.order` **independiente** del índice y del
+    temporizador, `withTimer`; **no** guarda la `Recipe` y usa `getOrNull` para no lanzar);
+    `CookingModeFormat` (`progressLabel` "Paso 2 de 5", `progressFraction` acotada (0f sin pasos),
+    `durationLabel` "10 min", `countdown` mm:ss en `Locale.ROOT` con clamp a 0 y `FINISHED_NOTICE`
+    "¡Listo!").
+  - Capa Compose **delgada** `CookingModeScreen`: `Scaffold` (fondo crema + barra inferior blanca),
+    cabecera con "Atrás" circular, "Progreso"/"Paso X de N" en cifras tabulares y barra fina terracota;
+    título de la receta (una línea, elipsis) y tarjeta del paso con círculo numerado terracota y
+    tachado/atenuado `0.45` si está hecho; bloque del temporizador solo si `hasDuration`, con acento
+    miel (`tertiaryContainer`/`tertiary`): píldora `durationLabel`, cuenta atrás `countdown` en cifras
+    tabulares, y los cuatro estados (Inactivo "Iniciar" · En marcha "Pausar" con pulso sutil · Pausado
+    "Reanudar" + "Reiniciar" · Terminado "00:00" + aviso **"¡Listo!"** miel/oliva, **nunca** `error`, +
+    "Reiniciar"); fila "Marcar paso como hecho"; barra inferior `OutlinedButton` "Anterior"
+    (deshabilitado en el primero) + primario terracota "Siguiente" (→ "Terminar" en el último);
+    `CookingModeStateSaver` (`rememberSaveable`) y un `LaunchedEffect(state.timer.status)` que solo
+    alimenta `tick(1000)` (el reloj real queda fuera de la lógica pura). Guarda defensiva para receta
+    sin pasos (mensaje + barra "Atrás"/"Terminar").
+  - Integración: `MainShell` gana `var cookingRecipe by remember` (segundo overlay **encima** del
+    Detalle, sin desmontarlo) y cablea `onStartCooking = { cookingRecipe = recipe }`; "Atrás"/"Terminar"
+    vuelven al Detalle intacto. **Sin** cambios en la firma de `RecipeDetailScreen`.
+- Verificación ejecutada: `bash init.sh` -> **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`, sin procesos largos); tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"` -> `BUILD SUCCESSFUL`
+  (3 suites / 29 tests / 0 fallos); parseo propio de los XML de resultados
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`) y del informe `lint-results-debug.xml`;
+  inspección de importaciones de la lógica pura y de `git status`.
+- Evidencia capturada: **62 suites / 434 tests / 0 fallos / 0 errores / 0 saltados** (59 suites / 405
+  tests previos + **29 nuevos**: `CookingTimerStateTest` 11, `CookingModeStateTest` 10,
+  `CookingModeFormatTest` 8); lint **0 errores** y 13 warnings preexistentes (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 con localización bajo
+  `app/src`**; `init.sh` con código 0. `CookingTimerState`/`CookingModeState`/`CookingModeFormat` solo
+  importan `domain.recipe`/`java.util.Locale`; `git status` limitado a los ficheros previstos
+  (`ui/cooking/**` nuevos, `MainShell.kt` modificado, docs).
+- Ficheros creados/cambiados:
+  `app/src/main/java/com/sazon/app/ui/cooking/{CookingTimerState,CookingModeState,CookingModeFormat,
+  CookingModeScreen}.kt` y
+  `app/src/test/java/com/sazon/app/ui/cooking/{CookingTimerStateTest,CookingModeStateTest,
+  CookingModeFormatTest}.kt` (nuevos), `app/src/main/java/com/sazon/app/ui/MainShell.kt` (integracion),
+  `docs/technical-discovery.md`, `DESIGN.md`, `docs/build-brief.md`, `feature_list.json`
+  (`cooking-mode` a `passing` con la evidencia) y este registro.
+- Hallazgos relevantes: la spec fija la lógica pura y el reparto con la capa Compose, así que la
+  implementación no necesitó desviarse; el único ajuste fue derivar los cuatro estados del temporizador
+  de la captura única (Stitch no generó variantes por estado) y traducir a microcopy de app los textos
+  de la matriz de estados, que son notas de diseño; el pulso de "En marcha" se implementó con
+  `rememberInfiniteTransition` (dirección de la captura, detalle visual). Nota para el validador: el
+  `<` del botón "Anterior" y el zócalo del detalle no se tocan; la tarjeta del paso no reproduce el
+  rótulo decorativo "Técnica principal" de la captura porque `RecipeStep` no tiene ese dato (solo
+  `order`/`title`/`description`/`minutes`), y la spec define la tarjeta como círculo + título + cuerpo.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (rotar con el modo abierto lo
+  cierra, como el Detalle; `delay(1000)` acumula deriva bajo carga; la etiqueta fina de los controles
+  del temporizador en Terminado queda como detalle visual). Queda la **verificación manual** de la
+  persona en el emulador (abrir el modo desde "Empezar a cocinar", recorrer los pasos, temporizador
+  Iniciar/Pausar/Reanudar/Reiniciar, aviso "¡Listo!" y acabado claro/oscuro contra
+  `docs/design/concepts/cooking-mode/modo-cocina/`); no es automatizable desde WSL y un defecto visual
+  se corrige con feature correctiva. Se mantiene el backfill de capturas de UI de la sesión 046.
+- Siguiente paso: **validación independiente** de `cooking-mode` con `feature-validator`; después,
+  commit local de la rama `feature/cooking-mode` (lo hace el orquestador de `feature-flow`) y
+  publicación (push + PR, sin merge) por `github-flow`.
+- Nota de integración: la sesión 077 la ejecutaron en paralelo dos ramas (una por feature); se conservan las **dos** entradas.
 - Objetivo: implementar y autoverificar `recipe-artwork` (placeholder de receta por categoría y cocina,
   issue #77, `area: ui`) según `docs/specs/recipe-artwork.md`, en la rama `feature/recipe-artwork`
   (worktree); solo hasta implementación y autoverificación (`passing`), sin commit/push/PR (los hace el
@@ -1723,6 +1825,41 @@
 ### Sesión 078
 
 - Fecha: 2026-10-12
+- Objetivo: validar `cooking-mode` de forma independiente y persistir la aceptación. Ejecutada por el
+  orquestador de `feature-flow` en la rama `feature/cooking-mode` (worktree), solo hasta-aceptación;
+  **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`); `feature_list.json`
+  pasa a `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación. Commit local `feat: complete cooking-mode` (lo hace el orquestador).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0; test/lint `UP-TO-DATE` en la
+  primera pasada) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (30/30 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML de resultados
+  y el informe `lint-results-debug.xml`, e inspeccionó el código y las capturas.
+- Evidencia capturada: **62 suites / 434 tests / 0 fallos / 0 errores / 0 saltados** (29 en `ui.cooking`:
+  `CookingTimerStateTest` 11, `CookingModeStateTest` 10, `CookingModeFormatTest` 8); lint **0 errores** y
+  13 warnings preexistentes, **0 bajo `app/src`**. El validador confirmó los Scenarios 1-7 contra el
+  artefacto (overlay de `MainShell` cableando `onStartCooking`; `next`/`previous` con reinicio del
+  temporizador y no-op en los extremos; cuenta atrás determinista por `tick(1000)` hasta `FINISHED`/`0` y
+  aviso "¡Listo!" en `secondaryContainer` nunca `error`; pausa congela y reanudar continúa; marcado
+  idempotente e independiente con tachado + `alpha 0.45`; `hasDuration` oculta el bloque; receta sin
+  pasos sin crash), la pureza de `ui.cooking`, el gate de capturas satisfecho (mtime 22:34 anterior a los
+  fuentes) y la disciplina de alcance (build/lockfile, dominio, `data/**`, Taxonomía, `seed-recipes.json`,
+  `ui/detail/**`, `MainNavigationState.kt`, `ServingsStepper.kt`, Room/Perfil, `scripts/**` e `init.sh`
+  intactos; sin dependencias nuevas, sin iconos ni permisos). Sin hallazgos Critical/High/Medium; 3 Low
+  informativos no bloqueantes (el título de la receta no aparece en la guarda defensiva de la receta sin
+  pasos —ruta prácticamente inalcanzable—; el export etiqueta el estado Terminado también como
+  "Temporizador completado", pulido visual; `Implementation Tasks`/`Validator Checklist` de la spec sin
+  marcar). Sin hallazgos de seguridad.
+- Ficheros actualizados: `feature_list.json` (`cooking-mode` a `accepted`) y este registro.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda la **verificación manual** de la persona en el
+  emulador (abrir el modo desde "Empezar a cocinar", recorrer los pasos, temporizador
+  Iniciar/Pausar/Reanudar/Reiniciar, aviso "¡Listo!" y acabado claro/oscuro contra
+  `docs/design/concepts/cooking-mode/modo-cocina/`); un defecto visual se corrige con feature correctiva.
+  Se mantiene el backfill de capturas de UI de la sesión 046.
+- Siguiente paso: commit local de la rama `feature/cooking-mode` (lo hace el orquestador de
+  `feature-flow`); la **publicación** (push + PR contra `main`, sin merge) queda para `github-flow`. No
+  hay más features del plan del MVP; el plan sigue **cerrado**.
+- Nota de integración: la sesión 078 corrió en paralelo para dos features; se conservan las **dos** entradas de aceptación.
 - Objetivo: validar `recipe-artwork` de forma independiente y persistir la aceptación. Ejecutada por el
   orquestador de `feature-flow` en la rama `feature/recipe-artwork` (worktree), solo hasta-aceptación;
   **sin push ni PR** (publica `github-flow`).
