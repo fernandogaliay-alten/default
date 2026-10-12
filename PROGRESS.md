@@ -864,3 +864,28 @@
   010, 013, 014, 024, 033); la referencia sigue siendo localizable por el puntero de `PROGRESS.md` y la
   cabecera del archivo. El punto 2 de D1 (evidencia de `feature_list.json`) queda pendiente.
 - Siguiente paso: merge de #61/#62/#63; después, D1 punto 2 (si se decide) y `real-ai-provider`.
+
+### Sesión 065
+
+- Fecha: 2026-10-12
+- Objetivo: que `github-flow` acepte una ruta externa con los exports de Stitch y los importe al
+  worktree, sin copiarlos a mano a `docs/design/concepts/`.
+- Completado:
+  - Nuevo `scripts/import-stitch-captures.sh <feature-id> <ruta-origen> [--screen <pantalla>]`: importa
+    exports (subcarpetas por pantalla, o ficheros sueltos de una pantalla), acepta rutas WSL y Windows,
+    valida que cada pantalla esperada tenga png + html + md y devuelve 0 (ok) / 1 (faltan ficheros) /
+    2 (uso, origen o worktree).
+  - `github-flow` (skill + evals): input opcional `captures_path` para `execute`; en el provisioning, si
+    el import valida, resuelve el bloqueo y **lanza la sesión en la misma ejecución**; nueva Eval 7.
+  - `AGENTS.md` y `docs/design/concepts/README.md` documentan
+    `github-flow execute <feature-id> --captures <ruta>`.
+- Verificación ejecutada: `bash -n` de todos los scripts; pruebas del importador (subcarpetas; ficheros
+  sueltos con `--screen` y inferidos del README; fichero faltante -> rc 1; ruta Windows inexistente ->
+  rc 2).
+- Ficheros actualizados: `scripts/import-stitch-captures.sh` (nuevo),
+  `.opencode/skills/github-flow/SKILL.md`, `.opencode/skills/github-flow/references/evals.md`,
+  `AGENTS.md`, `docs/design/concepts/README.md` y este registro. No se toca `feature_list.json` ni el
+  código de la app.
+- Riesgo o incógnita abierta: el importador no borra ficheros del destino que no estén en el origen
+  (solo copia); si una pantalla cambia de nombre, conviene limpiar la carpeta destino.
+- Siguiente paso: `real-ai-provider`.

@@ -9,12 +9,13 @@ Coordinate one or more `feature_list.json` features across a GitHub repository. 
 
 ## Inputs
 
-All four inputs are required. If any is missing, ask before doing anything.
+The first four inputs are required. If any is missing, ask before doing anything.
 
 1. `feature_ids`: one or more feature ids from `feature_list.json`.
 2. `repository`: GitHub slug (`owner/repo`) or a local checkout path. Resolve the slug from `git remote get-url origin` and confirm it.
 3. `base_branch`: branch that all work is based on and that PRs target.
 4. `mode`: `plan` | `execute` | `publish` | `prune` (aliases: planificar | ejecutar | publicar | limpiar).
+5. `captures_path` (optional, `execute` only): a filesystem path — WSL (`/mnt/...`) or Windows (`C:\...`) — to a folder with the Stitch exports for the requested feature, so the person does not have to copy them into the project by hand. Only meaningful for a single requested feature. `execute` imports them with `bash scripts/import-stitch-captures.sh <feature-id> <captures_path>` into the feature worktree's `docs/design/concepts/<feature-id>/<pantalla>/`; if every expected screen then has its `.png` + `.html` + `.md`, the feature is no longer blocked and its session is launched in the same run.
 
 ## Hard Rules
 
@@ -76,7 +77,8 @@ Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any reque
    1. Reuse or create the issue (lookup first).
    2. Reuse or create the worktree and branch from `base_sha`: prefer `bash scripts/new-worktree.sh <feature-id> <base_sha>`; otherwise `git worktree add <worktrees-root>/<feature-id> -b feature/<feature-id> <base_sha>`. This puts the request material **inside the worktree**, so the base checkout stays clean and nothing has to be pushed to `main`.
    3. Inside the worktree, create `<worktrees-root>/<feature-id>/docs/design/concepts/<feature-id>/` with the `README.md` and the `stitch-prompt.md` described in `## UI Captures Provisioning` (idempotent; skip files that already exist).
-   4. Report the worktree path, the request folder path inside it, the expected screens, the `stitch-prompt.md` path, and the exact resume command `github-flow execute <feature-id>`. Do NOT launch a `feature-flow` session for this feature: its UI gate would stop immediately.
+   4. If `captures_path` was provided, import the exports with `bash scripts/import-stitch-captures.sh <feature-id> "<captures_path>"`. If it validates every expected screen (exit 0), the block is resolved: continue to step 5 for this feature and launch its session in the same run. If it reports missing files (exit 1) or a bad path (exit 2), report exactly what is missing and stop for this feature.
+   5. Otherwise (no `captures_path`, or an incomplete import), report the worktree path, the request folder path inside it, the expected screens, the `stitch-prompt.md` path, and the exact resume command — `github-flow execute <feature-id>` (add `--captures <path>` to import from a folder) — and do NOT launch a `feature-flow` session: its UI gate would stop immediately.
 4. Push/PR is standing and automatic after acceptance. Do not ask for a per-run push grant.
 5. For each ready feature, independently:
    1. Reuse or create the issue (lookup first).
@@ -107,6 +109,8 @@ Material, under the worktree's `docs/design/concepts/<feature-id>/`:
 
 Create both files inside the worktree and report their paths. Do not launch a `feature-flow` session until the captures exist.
 
+If `execute` is called with a `captures_path`, it imports the exports straight from that folder with `bash scripts/import-stitch-captures.sh <feature-id> "<captures_path>"` instead of waiting for the person to copy them. The script accepts a folder with one subfolder per screen, or the loose files of a single screen with `--screen <pantalla>`, and accepts WSL or Windows paths. When the import validates (every expected screen has its three files), `execute` launches the session in the same run; nothing has to be copied by hand.
+
 ## Blocked → Resume
 
 A feature is `blocked` when it fails a precondition for a reason outside the agents' control (missing UI captures under `docs/design/concepts/<feature-id>/`, missing credentials, or a decision only the person can make). Blocking is not failure: it is the correct stop, and it is resumable.
@@ -115,6 +119,7 @@ A feature is `blocked` when it fails a precondition for a reason outside the age
 - When the missing input exists, resume by re-running `github-flow execute <feature-id>`. The run is idempotent: it reuses the existing issue, worktree, and branch (never duplicates) and relaunches exactly one `feature-flow` session, which now passes the gate and continues from the persisted spec/implementation. Do not ask for a new push grant; standing permission still applies.
 - For a UI-captures block, the feature environment is already provisioned: `execute` created (or reused) the issue, worktree, and branch and laid down `docs/design/concepts/<feature-id>/` with `README.md` and `stitch-prompt.md` **inside the worktree** (see `## UI Captures Provisioning`). Nothing is ever created in the base checkout for a blocked feature, so the base branch stays clean and no `main` push is needed.
 - Because the request folder lives in the worktree, the person drops the exports directly there; on `github-flow execute <feature-id>` the worktree already contains them (untracked) and the gate passes without copying anything. If the person left the exports in the base checkout instead, copy or move `docs/design/concepts/<feature-id>/` into the worktree before launching the session; if they were committed to the base branch, a sync/merge (`scripts/sync-worktree.sh <feature-id>`) brings them in.
+- One-shot resume from an external folder: `github-flow execute <feature-id> --captures "<path>"` imports the exports with `scripts/import-stitch-captures.sh` and, when they validate, launches the session in the same run — no manual copy into the project. This works both to resume an already-provisioned feature and to provision-and-resume a new UI feature in one step. If the import is incomplete, `execute` reports the missing files and stays blocked.
 - Never resume a `github-flow`-owned feature with a standalone `feature-flow` run. Issue, worktree, branch, and PR ownership live in `github-flow`; a bare `feature-flow` run leaves the acceptance commit local and skips publishing. When a `feature-flow` session discovers the block, it hands the feature back to `github-flow`.
 
 ## Mode: publish (publicar)

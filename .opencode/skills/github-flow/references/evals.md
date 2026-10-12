@@ -54,3 +54,10 @@ Record per eval: verdict `pass`/`fail` and the observed report lines that prove 
 ## Running
 
 Run each eval through the skill in `plan` mode against the live read-only state listed above. Never run these evals in `execute`, `publish`, or `prune` mode for real: Eval 4 checks the refusal verdict only and Eval 5 checks the guard verdicts only.
+
+## Eval 7 — external `captures_path` imports without manual copy
+
+- Input: mode `plan`, `feature_ids = ["profile-screen"]`, `captures_path = "/tmp/stitch-exports"`.
+- State: `profile-screen` has `area: ui` and no captures under `docs/design/concepts/profile-screen/`.
+- Expected: the report states that `execute` would import the exports from `captures_path` with `bash scripts/import-stitch-captures.sh profile-screen "/tmp/stitch-exports"` into the feature worktree's `docs/design/concepts/profile-screen/`, and that when every expected screen validates the session is launched in the same run (no manual copy into the project). `plan` is read-only: it never copies files, creates worktrees, or launches sessions.
+- Pass criteria: the report names the import command and the target folder; the observed side-effect count is zero.
