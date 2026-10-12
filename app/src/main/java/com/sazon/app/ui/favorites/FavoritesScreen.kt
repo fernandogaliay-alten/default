@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,10 +34,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.favorites.Favorite
@@ -200,36 +210,85 @@ private fun FavoritesSortRow(
             }
         }
         Spacer(modifier = Modifier.size(SazonSpacing.sm))
-        ViewModeButton(
-            label = "Lista",
-            active = viewMode == FavoritesViewMode.LIST,
-            onClick = { onSelectViewMode(FavoritesViewMode.LIST) },
-        )
-        Spacer(modifier = Modifier.size(4.dp))
-        ViewModeButton(
-            label = "Rejilla",
-            active = viewMode == FavoritesViewMode.GRID,
-            onClick = { onSelectViewMode(FavoritesViewMode.GRID) },
+        ViewModeToggle(
+            viewMode = viewMode,
+            onSelect = onSelectViewMode,
         )
     }
 }
 
+/**
+ * Toggle lista/rejilla compacto (direccion de `docs/design/concepts/favorites/favoritos/`): una pill
+ * `surface` con sombra suave que contiene dos botones circulares solo con icono. El activo se rellena
+ * en `primary` (terracota) con el glifo en `onPrimary`; el inactivo no lleva relleno y usa
+ * `onSurfaceVariant`. Los glifos se dibujan con Compose (el repo no tiene `material-icons-*`).
+ */
 @Composable
-private fun ViewModeButton(
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
+private fun ViewModeToggle(
+    viewMode: FavoritesViewMode,
+    onSelect: (FavoritesViewMode) -> Unit,
 ) {
-    FilterChip(
-        selected = active,
-        onClick = onClick,
-        label = { Text(text = label) },
+    Surface(
         shape = SazonPillShape,
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondary,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
-        ),
-    )
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .selectableGroup()
+                .padding(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ViewModeIconButton(
+                description = "Lista",
+                selected = viewMode == FavoritesViewMode.LIST,
+                onClick = { onSelect(FavoritesViewMode.LIST) },
+            ) { tint ->
+                ListGlyph(tint = tint, modifier = Modifier.size(16.dp))
+            }
+            ViewModeIconButton(
+                description = "Rejilla",
+                selected = viewMode == FavoritesViewMode.GRID,
+                onClick = { onSelect(FavoritesViewMode.GRID) },
+            ) { tint ->
+                GridGlyph(tint = tint, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Boton circular solo con icono del [ViewModeToggle]: seleccionable con rol de radio y descripcion,
+ * de modo que el estado no se transmite solo por color.
+ */
+@Composable
+private fun ViewModeIconButton(
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    glyph: @Composable (Color) -> Unit,
+) {
+    val fill = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val tint = if (selected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(fill)
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton,
+            )
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        glyph(tint)
+    }
 }
 
 /** Nota discreta "Disponibles sin conexion" con un glifo de nube tachada dibujado con Compose. */
@@ -343,6 +402,54 @@ private fun BookmarkGlyph(tint: Color, modifier: Modifier = Modifier) {
             close()
         }
         drawPath(path = path, color = tint)
+    }
+}
+
+/** Glifo de lista (rectangulo con linea superior, forma del `view_agenda`) dibujado con Compose. */
+@Composable
+private fun ListGlyph(tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeWidth = 1.5.dp.toPx()
+        val corner = 2.dp.toPx()
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(0.16f * size.width, 0.16f * size.height),
+            size = Size(0.68f * size.width, 0.68f * size.height),
+            cornerRadius = CornerRadius(corner),
+            style = Stroke(width = strokeWidth),
+        )
+        drawLine(
+            color = tint,
+            start = Offset(0.16f * size.width, 0.38f * size.height),
+            end = Offset(0.84f * size.width, 0.38f * size.height),
+            strokeWidth = strokeWidth,
+        )
+    }
+}
+
+/** Glifo de rejilla (cuatro cuadrados redondeados en 2x2, forma del `grid_view`) con Compose. */
+@Composable
+private fun GridGlyph(tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeWidth = 1.5.dp.toPx()
+        val corner = 2.dp.toPx()
+        val cell = 0.36f
+        val second = cell + 0.12f
+        val origins = listOf(
+            0f to 0f,
+            second to 0f,
+            0f to second,
+            second to second,
+        )
+        origins.forEach { (x, y) ->
+            drawRoundRect(
+                color = tint,
+                topLeft = Offset(x * size.width, y * size.height),
+                size = Size(cell * size.width, cell * size.height),
+                cornerRadius = CornerRadius(corner),
+                style = Stroke(width = strokeWidth),
+            )
+        }
     }
 }
 

@@ -7,7 +7,7 @@ package com.sazon.app.ui.favorites
  * `Saver`; una clave desconocida degrada a [RECENT].
  */
 enum class FavoritesSort(val label: String, val key: String) {
-    RECENT("Añadidas recientemente", "recent"),
+    RECENT("Recientes", "recent"),
     TIME("Tiempo", "time"),
     DIFFICULTY("Dificultad", "difficulty");
 

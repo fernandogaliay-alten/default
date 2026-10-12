@@ -133,6 +133,13 @@ with a thin line-art plate icon"), y esa feature solo lo **extiende** por catego
 dirección visual aplicable es la tabla de la sección **Imagen de receta** de `Components` (más abajo),
 que es contra la que se revisa el acabado en el emulador.
 
+**Excepción de capturas (desviación documentada, issue #85):** `favorites-sort-controls` **no** genera
+capturas nuevas ni carpeta `docs/design/concepts/favorites-sort-controls/`. El toggle lista/rejilla
+icónico ya está en la captura aceptada `favorites/favoritos` y el único cambio de microcopy
+("Recientes") es un **acortamiento** del label existente. La dirección visual aplicable es esa captura
+más las secciones **FilterChip** y **Toggle lista/rejilla de Favoritos** de `Components` (más abajo),
+contra las que se revisa el acabado en el emulador.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -218,7 +225,14 @@ nada lo es.
     tarjetas (`RecipeCard` 48 dp de glifo, `ResultRecipeCard` 56), el 96x96 y el alto 96 de Favoritos
     (40) y el hero de 240 del Detalle (72). Es el **único punto a cambiar** cuando existan imágenes
     generadas por IA.
-- **FilterChip**: fila desplazable; seleccionado relleno de terracota.
+- **FilterChip**: fila desplazable; seleccionado relleno de terracota. En Favoritos el chip de orden
+  por defecto se lee **"Recientes"** (microcopy corto, sin recorte; feature `favorites-sort-controls`).
+- **Toggle lista/rejilla de Favoritos** (`ViewModeToggle`, feature `favorites-sort-controls`): píldora
+  `surface` con sombra suave que contiene **dos botones circulares de 28dp solo con icono**; el activo
+  se rellena en `primary` (terracota) con el glifo en `onPrimary` y el inactivo no lleva relleno y usa
+  el glifo en `onSurfaceVariant`. Los glifos de lista y rejilla se dibujan con Compose (sin dependencia
+  de iconos) y cada botón se anuncia con descripción ("Lista"/"Rejilla") y estado seleccionado por rol
+  de radio, para no depender solo del color.
 - **Stepper** de comensales: `− 2 +` con cifras tabulares.
 - **Paso de receta**: línea de tiempo vertical con círculos numerados en terracota y una píldora
   ámbar con la duración.
@@ -247,7 +261,8 @@ nada lo es.
    IA disponible, se muestran las recetas locales).
 5. **Detalle**: foto ancha, tarjeta superpuesta con metadatos, pestañas Ingredientes · Pasos · Notas,
    barra inferior con "Guardar" y "Empezar a cocinar".
-6. **Favoritos**: búsqueda, orden, lista, estado vacío con nota "Disponibles sin conexión".
+6. **Favoritos**: búsqueda, orden (chip por defecto **"Recientes"**) con el toggle lista/rejilla
+   icónico, lista, estado vacío con nota "Disponibles sin conexión".
 7. **Perfil**: identidad (nombre y color de avatar con vista previa), preferencias editables
    (alimentación, estilo, cocinas, ingredientes que me gustan e ingredientes que evito), comensales
    habituales, tarjeta ámbar de alérgenos, Resumen de actividad (recetas generadas y favoritas),

@@ -66,7 +66,21 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Última feature **`accepted`**: **`recipe-artwork`** (issue #77, `area: ui`), cerrada en la sesión 078
+- Última feature **`accepted`**: **`favorites-sort-controls`** (issue #85, `area: ui`), cerrada en la
+  sesión 082 con validación independiente (veredicto `accept`, rama `feature/favorites-sort-controls`; la
+  sesión 081 la dejó `passing`). Es una **correctiva de `favorites`**: el chip de orden por defecto pasa
+  de "Añadidas recientemente" a **"Recientes"** (dejaba de recortarse) y los dos chips de texto
+  "Lista"/"Rejilla" se sustituyen por el **toggle compacto icónico** de la captura aceptada
+  (`docs/design/concepts/favorites/favoritos/code.html` líneas 89-97): píldora `surface` con dos botones
+  circulares de 28dp solo con icono (activo `primary`/`onPrimary`, inactivo sin relleno con
+  `onSurfaceVariant`), con los glifos `ListGlyph`/`GridGlyph` dibujados con `Canvas` (el repo no tiene
+  `material-icons`). Solo cambia el literal del label de `FavoritesSort.RECENT` (key/entries/fromKey/
+  `Saver` intactos) más la capa Compose; sin lógica nueva, sin dependencias y sin tocar dominio,
+  persistencia, `ui.theme` ni el resto de la pantalla. La desviación de capturas está autorizada
+  (issue #85, misma clase que #77) y registrada en `DESIGN.md` (microcopy "Recientes" + toggle icónico);
+  **no** se crea `docs/design/concepts/favorites-sort-controls/`. Detalle en
+  `docs/validations/favorites-sort-controls.md`. WIP = 0. Antes:
+  la por aquel entonces última feature **`accepted`**: **`recipe-artwork`** (issue #77, `area: ui`), cerrada en la sesión 078
   con validación independiente (veredicto `accept`, rama `feature/recipe-artwork`; la sesión 077 la dejó
   `passing`). Es la primera feature del plan posterior al MVP ya cerrado. Sustituye las **4 copias** del
   placeholder de receta
@@ -2012,3 +2026,103 @@
 - Siguiente paso: **commit local** de la rama `feature/ai-verbose-diagnostics` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features del
   plan del MVP; el plan sigue **cerrado**.
+
+### Sesión 081
+
+- Fecha: 2026-10-13
+- Objetivo: implementar `favorites-sort-controls` (correctiva de `favorites`) en el worktree de la rama
+  `feature/favorites-sort-controls`: acortar el chip de orden por defecto a "Recientes" (dejaba de
+  recortarse) y sustituir los dos chips de texto "Lista"/"Rejilla" por el toggle icónico de la captura
+  aceptada. Solo hasta implementación y autoverificación (`passing`), sin commit/push/PR.
+- Completado:
+  - **Microcopy** (`FavoritesSort.kt`): `RECENT("Añadidas recientemente", "recent")` →
+    `RECENT("Recientes", "recent")`; solo el literal. `key`, entries, `fromKey` (desconocido → `RECENT`)
+    y la semántica de orden (`savedAt` desc) intactos, así que `FavoritesSortSaver` y los tests siguen
+    valiendo.
+  - **Toggle icónico** (`FavoritesScreen.kt`): se elimina `ViewModeButton` (dos `FilterChip` de texto) y
+    nace `ViewModeToggle` — `Surface(shape = SazonPillShape, color = surface, shadowElevation = 2.dp)`
+    con relleno interior de 2dp y dos `ViewModeIconButton` circulares de 28dp
+    (`size(28.dp).clip(CircleShape).background(...)`) seleccionables. Activo = `primary`/`onPrimary`;
+    inactivo = sin relleno (`Color.Transparent`) con `onSurfaceVariant`. Accesible:
+    `Row(selectableGroup())` + `selectable(role = Role.RadioButton)` + `semantics { contentDescription }`
+    ("Lista"/"Rejilla"). Glifos privados `ListGlyph` (rectángulo redondeado + línea a 1/3, `view_agenda`)
+    y `GridGlyph` (cuatro cuadrados redondeados 2×2, `grid_view`) dibujados con `Canvas`, patrón de
+    `CloudOffGlyph`/`BookmarkGlyph`; el repo no tiene `material-icons-*` y no se añaden dependencias.
+    `FavoritesSortRow` conserva el `LazyRow(Modifier.weight(1f))` con los tres `FilterChip` de orden.
+  - **`DESIGN.md`**: registra el microcopy vigente "Recientes" (Core Screen 6 + bullet `FilterChip`), el
+    toggle lista/rejilla icónico (28dp, activo terracota) y la **excepción de capturas** autorizada de
+    `favorites-sort-controls` (issue #85; no se crea `docs/design/concepts/favorites-sort-controls/`),
+    en la misma línea que la de `recipe-artwork` (#77).
+- Verificación ejecutada: `bash init.sh` en WSL (test + lint vía `scripts/gradle.sh`, sin procesos largos)
+  con **exit 0**; parseo propio de los XML de resultados y del informe de lint; greps de alcance.
+- Evidencia capturada: gate **64 suites / 456 tests / 0 fallos / 0 errores / 0 saltados**
+  (`FavoritesListTest` 9, `FavoriteServiceTest` 6, `RoomFavoriteRepositoryTest` 9 siguen verdes porque
+  usan enums/keys, no `.label`); lint **0 errores y 13 warnings preexistentes** (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0** en
+  `app/src/main/java/com/sazon/app/ui/favorites`. Greps: **0** referencias a `ViewModeButton`, **0**
+  literales de texto "Lista"/"Rejilla" como etiqueta de botón (los únicos literales son las
+  `contentDescription` exigidas por el Scenario 6) y **0** hex sueltos en `ui.favorites`. `git diff
+  --name-only` solo lista `DESIGN.md`, `FavoritesScreen.kt` y `FavoritesSort.kt`; `app/build.gradle.kts`,
+  `gradle/libs.versions.toml` e `init.sh` intactos, y sin tocar dominio, persistencia, `ui.theme`,
+  `FavoriteRecipeCard.kt`, `FavoritesList.kt`, `FavoritesViewMode.kt`, `MainShell`/`SazonApp`/
+  `MainActivity` ni las capturas `docs/design/concepts/favorites/**`.
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/ui/favorites/FavoritesSort.kt`,
+  `app/src/main/java/com/sazon/app/ui/favorites/FavoritesScreen.kt`, `DESIGN.md`, `feature_list.json` y
+  este registro.
+- Hallazgos relevantes: el export de la captura aceptada todavía rotula el chip como "Añadidas
+  recientemente"; se deja intacto a propósito (es el export histórico) y el microcopy vigente queda
+  registrado en `DESIGN.md`. La `contentDescription` "Lista"/"Rejilla" es la única aparición de esos
+  literales en el código y es **obligatoria** (Scenario 6): no es texto de botón.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (recorte con tipografía muy grande;
+  objetivo táctil de 28dp por debajo de los 48dp de `DESIGN.md`, igual que los `FilterChip` de la fila;
+  fidelidad fina de los glifos, que no tiene test). La verificación **manual** en emulador (chip
+  "Recientes" entero y toggle icónico en claro/oscuro) la hace la persona tras el merge; AGENTS.md no
+  automatiza UI de emulador y un defecto visual se corrige con una feature correctiva.
+- Siguiente paso: **validación independiente** de `favorites-sort-controls` con `feature-validator`;
+  después, commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 082
+
+- Fecha: 2026-10-13
+- Objetivo: validar `favorites-sort-controls` (correctiva de `favorites`) de forma independiente y
+  persistir la aceptación. Ejecutada por el orquestador de `feature-flow` en la rama
+  `feature/favorites-sort-controls` (worktree), solo hasta-aceptación; **sin push ni PR** (publica
+  `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con evidencia que nombra la validación independiente. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`) y, al verlo `UP-TO-DATE` (no lo tomó como evidencia), forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y `lint --rerun-tasks` (30/30
+  tareas); parseó por su cuenta los XML de resultados y el informe `lint-results-debug.xml`, e inspeccionó
+  el diff real.
+- Evidencia capturada: **64 suites / 456 tests / 0 fallos / 0 errores / 0 saltados** (`FavoritesListTest`
+  9, `FavoriteServiceTest` 6, `RoomFavoriteRepositoryTest` 9 verdes); lint **0 errores y 13 warnings
+  preexistentes** (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), **todos** en build/version catalog y **0** bajo `app/src`. Reprodujo los números del
+  implementer. Confirmó los Scenarios 1-7 inspeccionables: `FavoritesSort.RECENT.label == "Recientes"`
+  con `key`/entries/`fromKey`/`Saver` intactos; `ViewModeToggle` (`Surface(SazonPillShape, surface,
+  shadowElevation = 2.dp)` + `Row(selectableGroup())` con dos botones circulares de 28dp
+  `selectable(role = Role.RadioButton)` y `contentDescription` "Lista"/"Rejilla"; activo
+  `primary`/`onPrimary`, inactivo `Color.Transparent`/`onSurfaceVariant`); `ListGlyph`/`GridGlyph` con
+  `Canvas` (sin `material-icons`); **0** `ViewModeButton`, **0** literales "Lista"/"Rejilla" como texto de
+  botón (solo las 2 `contentDescription`) y **0** hex sueltos en `ui/favorites`; disciplina de alcance
+  (build/lockfile/`init.sh`/dominio/`data`/`ui.theme`/tarjetas/`MainShell`/`SazonApp`/`MainActivity`/
+  capturas/stitch intactos, sin dependencias nuevas) y que el implementer **no** hizo commit/push/PR.
+  Confirmó además la **exención de capturas** (issue #85) registrada en la spec, en `feature_list.json` y
+  en `DESIGN.md`, y que **no** existe ni se crea `docs/design/concepts/favorites-sort-controls/`.
+- Ficheros actualizados: `feature_list.json` (feature a `accepted` con la evidencia del validador),
+  `docs/validations/favorites-sort-controls.md` (nuevo) y este registro. Sin cambios de código.
+- Hallazgos del validador (3 Low informativos, no bloqueantes): los 28dp del toggle frente al objetivo
+  táctil de 48dp de `DESIGN.md` (se sigue la captura aceptada; `Unknown` de la spec, revisión de la
+  persona); el acabado visual puro (recorte del chip, fidelidad de los glifos, claro/oscuro) queda para la
+  persona (`AGENTS.md` no automatiza UI de emulador); la rama va 3 commits por detrás de `origin/main`, que
+  `github-flow` sincroniza antes de publicar. Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: ninguno nuevo; se mantienen los `Unknown` de la spec. Queda la verificación
+  **manual** de emulador de la persona (chip "Recientes" entero y sin recorte, toggle icónico en claro y
+  oscuro) contra la captura aceptada `docs/design/concepts/favorites/favoritos/` y el registro de
+  `DESIGN.md`; un defecto visual se corrige con una feature correctiva.
+- Siguiente paso: **commit local** de la rama `feature/favorites-sort-controls` (lo hace el orquestador de
+  `feature-flow`); la publicación queda para `github-flow` (`sync-worktree.sh` + push + PR
+  `[favorites-sort-controls] …` con `Closes #85`). Tras esta feature, la siguiente correctiva pendiente es
+  `profile-stats-heading`.
