@@ -133,6 +133,14 @@ with a thin line-art plate icon"), y esa feature solo lo **extiende** por catego
 dirección visual aplicable es la tabla de la sección **Imagen de receta** de `Components` (más abajo),
 que es contra la que se revisa el acabado en el emulador.
 
+**Excepción de capturas (desviación documentada, issue #86):** `profile-stats-heading` **no** genera
+capturas nuevas ni carpeta `docs/design/concepts/profile-stats-heading/`. Es un cambio de **microcopy de
+una sola cadena**: la dirección visual aplicable es la captura aceptada `activity-summary:
+perfil-resumen`, que titula la sección "Resumen", y el **titular visible** del bloque de cifras del
+Perfil pasa a ser **"Estadísticas"** para explicitar que las dos tarjetas ("recetas generadas" y
+"favoritas") son estadística informativa y **no navegable**. El resto de la sección (layout, tokens,
+orden de secciones y tarjetas `Surface`) no cambia.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -250,8 +258,9 @@ nada lo es.
 6. **Favoritos**: búsqueda, orden, lista, estado vacío con nota "Disponibles sin conexión".
 7. **Perfil**: identidad (nombre y color de avatar con vista previa), preferencias editables
    (alimentación, estilo, cocinas, ingredientes que me gustan e ingredientes que evito), comensales
-   habituales, tarjeta ámbar de alérgenos, Resumen de actividad (recetas generadas y favoritas),
-   acción "Actualizar sugerencias" con la fecha del último refresco, y ajustes.
+   habituales, tarjeta ámbar de alérgenos, bloque de cifras titulado **"Estadísticas"** (recetas
+   generadas y favoritas, informativas y **no navegables**), acción "Actualizar sugerencias" con la
+   fecha del último refresco, y ajustes.
 
 ## Responsive Baseline
 
