@@ -32,12 +32,18 @@ números eran **posicionales** y no se renumeran retroactivamente.
   deadline total 240 s (calibrados contra el peor caso medido: `mimo-v2.6-pro` en 115,8 s; el alias
   diario `chat` mide 28,0–46,6 s y `chat-pro`+`json_schema` 97,0 s);
   máximo **1 reintento** (2 intentos) solo ante timeout/`IOException`/408/429/5xx, con backoff fijo de
-  500 ms y `Retry-After` respetado solo si ≤ 5 s; **nunca** se reintentan 400/401/403/404/422. El fallo
+  500 ms y `Retry-After` respetado solo si ≤ 5 s; **nunca** se reintentan 400/401/403/404/422. Con el
+  `response_format` activo, un `400`/`422` **con presupuesto de intentos** (es decir, en el 1.er intento)
+  dispara el **fallback** de formato: un único reintento sin la
+  clave, camino **aparte** del transporte (`isRetryableStatus` no cambia), sin backoff y consumiendo el
+  2.º intento (`ai-response-format`, issue #74). El `400`/`422` del 2.º intento ya no tiene presupuesto:
+  degrada a `HTTP_ERROR` sin una 3.ª petición (la operación nunca supera `MAX_ATTEMPTS = 2`). El fallo
   de transporte se clasifica por su causa: timeout de socket o de petición → `TIMEOUT` (el modelo tardó
   en responder), conexión/red → `NETWORK`. Un 200 ilegible o vacío **no** lanza: devuelve
   las recetas decodificables (posiblemente vacías) y la pantalla muestra su estado vacío con
   "Reintentar". El diagnóstico local (`AiCallEvent` + `Log.d("SazonAi", …)`) explica cada llamada con
-  estado, intento, duración, longitudes del contenido (`content=…c/…b`), `received`/`accepted` y el
+  estado, intento, duración, el modo de formato (`format=JSON_OBJECT`/`NONE`) y si saltó el fallback
+  (`FALLBACK`), longitudes del contenido (`content=…c/…b`), `received`/`accepted` y el
   resumen de motivos de descarte (`discards={…}`), sin exponer nunca la clave ni los cuerpos. Cuota
   agotada (429 sostenido) y clave ausente degradan a **modo semilla** sin
   microcopy específico de cuota. Ver `docs/specs/real-ai-provider.md`,
@@ -76,7 +82,10 @@ números eran **posicionales** y no se renumeran retroactivamente.
 - **Proveedor/modelo de IA** (antes pregunta 1): **DevExpert Inference**, API compatible con OpenAI
   (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, `Bearer DEVEXPERT_API_KEY`).
   Alias `chat` (diario) y `chat-pro` (avanzado); cuota semanal. La app usa HTTP directo + parsing
-  tolerante del `RecipeValidator` (no depende de structured outputs). Ver `docs/adr/0003-ai-provider.md`.
+  tolerante del `RecipeValidator`; desde `ai-response-format` (issue #74) pide
+  `response_format: {"type":"json_object"}` (forma) con fallback one-shot ante `400`/`422` e interruptor
+  en `AiProviderPolicy`, sin depender de `json_schema`/structured outputs forzados (siguen descartados).
+  Ver `docs/adr/0003-ai-provider.md`.
 - **Licencias de iconos y fotos de receta** (era la pregunta 2 de la tabla): resuelta como **no
   bloqueante**. La app es personal y no se publica, así que la elección de assets es libre y se
   prioriza la comodidad: iconos vía Material Symbols (incluido en Material 3) y fotos con placeholders

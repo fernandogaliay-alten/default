@@ -35,6 +35,13 @@ import kotlinx.serialization.json.Json
  * backoff/`Retry-After`, nunca 4xx no reintentables) y traduce los fallos a [AiUnavailableException],
  * que los llamadores aceptados ya entienden como **modo semilla**.
  *
+ * Con el interruptor [responseFormatEnabled] activo (por defecto) cada peticion pide
+ * `response_format: {"type":"json_object"}`. Si el proveedor responde **400/422** con presupuesto de
+ * intentos (es decir, en el primer intento), se hace **una** peticion de fallback **sin** la clave
+ * (consume el segundo intento; nunca mas de una por operacion, sin backoff). Un 400/422 sin
+ * presupuesto (el segundo intento) degrada como el resto; el resto de estados no cambian la politica
+ * de reintentos de transporte.
+ *
  * Un 200 ilegible o vacio **no** lanza: devuelve las recetas decodificables (posiblemente vacias).
  * La [CancellationException] se **relanza** siempre. El diagnostico local se emite por [onEvent]
  * (default no-op) y nunca incluye la clave ni las cabeceras.
@@ -44,6 +51,7 @@ class DevExpertRecipeGenerator(
     private val taxonomy: Taxonomy,
     private val client: HttpClient,
     private val model: String = AiProviderPolicy.MODEL_ALIAS,
+    private val responseFormatEnabled: Boolean = AiProviderPolicy.RESPONSE_FORMAT_ENABLED,
     private val onEvent: (AiCallEvent) -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
 ) : RecipeGenerator {
@@ -111,34 +119,62 @@ class DevExpertRecipeGenerator(
         // 2. Deadline total, fijado UNA vez antes del primer intento.
         val deadline = now() + AiProviderPolicy.TOTAL_DEADLINE_MILLIS
         var attempt = 1
+        // El fallback de formato se hace como maximo UNA vez por operacion (consume el 2. intento).
+        var usedFallback = false
 
         while (true) {
+            val includeFormat = responseFormatEnabled && !usedFallback
             val remaining = deadline - now()
             if (remaining <= 0) {
-                throwDeadlineExhausted(operation, attempt, startedAt)
+                throwDeadlineExhausted(operation, attempt, startedAt, formatOf(includeFormat))
             }
 
-            when (val outcome = sendAttempt(prompt, remaining)) {
+            when (val outcome = sendAttempt(prompt, remaining, includeFormat)) {
                 is AttemptOutcome.Success -> {
                     val result = AiRecipePayload.decode(outcome.content, taxonomy)
                     val callOutcome = if (result.accepted.isEmpty()) AiCallOutcome.EMPTY else AiCallOutcome.SUCCESS
-                    report(operation, callOutcome, attempt, outcome.status, startedAt, "HTTP ${outcome.status}", result)
+                    report(
+                        operation, callOutcome, attempt, outcome.status, startedAt, "HTTP ${outcome.status}", result,
+                        responseFormat = formatOf(includeFormat),
+                    )
                     return result.accepted
                 }
 
                 is AttemptOutcome.HttpFailure -> {
                     val retryDelay = AiProviderPolicy.retryDelayMillis(outcome.retryAfter)
                     val retryable = AiProviderPolicy.isRetryableStatus(outcome.status)
-                    if (retryable && hasRetryMargin(deadline, attempt, retryDelay)) {
-                        report(operation, AiCallOutcome.RETRY, attempt, outcome.status, startedAt, "HTTP ${outcome.status}")
+                    // 400/422 con el formato activo: fallback one-shot antes de la logica de transporte.
+                    // La guarda de presupuesto (`attempt < MAX_ATTEMPTS`) impide una tercera peticion
+                    // cuando el reintento de transporte ya consumio el segundo intento: en ese caso el
+                    // 400/422 cae en la rama actual (UNAVAILABLE/HTTP_ERROR). `includeFormat` ya implica
+                    // `!usedFallback`, asi que no se repite esa condicion.
+                    val fallback = includeFormat &&
+                        AiProviderPolicy.requiresResponseFormatFallback(outcome.status) &&
+                        attempt < AiProviderPolicy.MAX_ATTEMPTS
+                    if (fallback) {
+                        usedFallback = true
+                        report(
+                            operation, AiCallOutcome.FALLBACK, attempt, outcome.status, startedAt,
+                            "HTTP ${outcome.status}", responseFormat = AiResponseFormat.JSON_OBJECT,
+                        )
+                        // Sin backoff: el fallback consume el segundo intento (MAX_ATTEMPTS = 2).
+                        attempt += 1
+                    } else if (retryable && hasRetryMargin(deadline, attempt, retryDelay)) {
+                        report(
+                            operation, AiCallOutcome.RETRY, attempt, outcome.status, startedAt,
+                            "HTTP ${outcome.status}", responseFormat = formatOf(includeFormat),
+                        )
                         delay(retryDelay)
                         attempt += 1
                     } else if (retryable && attempt < AiProviderPolicy.MAX_ATTEMPTS) {
                         // Fallo reintentable, pero el plazo total impide otro intento: el motivo es el
                         // deadline; un estado reintentable agotado por numero de intentos conserva su motivo.
-                        throwDeadlineExhausted(operation, attempt, startedAt)
+                        throwDeadlineExhausted(operation, attempt, startedAt, formatOf(includeFormat))
                     } else {
-                        report(operation, AiCallOutcome.UNAVAILABLE, attempt, outcome.status, startedAt, "HTTP ${outcome.status}")
+                        report(
+                            operation, AiCallOutcome.UNAVAILABLE, attempt, outcome.status, startedAt,
+                            "HTTP ${outcome.status}", responseFormat = formatOf(includeFormat),
+                        )
                         throw AiUnavailableException(
                             AiProviderPolicy.unavailableReason(outcome.status),
                             "El proveedor de IA respondio ${outcome.status}.",
@@ -148,13 +184,19 @@ class DevExpertRecipeGenerator(
 
                 is AttemptOutcome.TransportFailure -> {
                     if (hasRetryMargin(deadline, attempt, AiProviderPolicy.RETRY_BACKOFF_MILLIS)) {
-                        report(operation, AiCallOutcome.RETRY, attempt, null, startedAt, outcome.reason.name)
+                        report(
+                            operation, AiCallOutcome.RETRY, attempt, null, startedAt, outcome.reason.name,
+                            responseFormat = formatOf(includeFormat),
+                        )
                         delay(AiProviderPolicy.RETRY_BACKOFF_MILLIS)
                         attempt += 1
                     } else if (attempt < AiProviderPolicy.MAX_ATTEMPTS) {
-                        throwDeadlineExhausted(operation, attempt, startedAt)
+                        throwDeadlineExhausted(operation, attempt, startedAt, formatOf(includeFormat))
                     } else {
-                        report(operation, AiCallOutcome.UNAVAILABLE, attempt, null, startedAt, outcome.reason.name)
+                        report(
+                            operation, AiCallOutcome.UNAVAILABLE, attempt, null, startedAt, outcome.reason.name,
+                            responseFormat = formatOf(includeFormat),
+                        )
                         throw AiUnavailableException(
                             outcome.reason,
                             "Fallo de transporte al llamar a la IA.",
@@ -167,7 +209,7 @@ class DevExpertRecipeGenerator(
     }
 
     /** Un intento HTTP. Los fallos se devuelven como datos; la cancelacion se relanza siempre. */
-    private suspend fun sendAttempt(prompt: BuiltPrompt, remainingMillis: Long): AttemptOutcome {
+    private suspend fun sendAttempt(prompt: BuiltPrompt, remainingMillis: Long, includeFormat: Boolean): AttemptOutcome {
         val response = try {
             client.post(AiProviderPolicy.endpointUrl()) {
                 contentType(ContentType.Application.Json)
@@ -180,6 +222,7 @@ class DevExpertRecipeGenerator(
                             ChatMessage(role = SYSTEM_ROLE, content = prompt.system),
                             ChatMessage(role = USER_ROLE, content = prompt.user),
                         ),
+                        responseFormat = if (includeFormat) ResponseFormat.JSON_OBJECT else null,
                     ),
                 )
             }
@@ -243,8 +286,16 @@ class DevExpertRecipeGenerator(
      * El plazo total ([AiProviderPolicy.TOTAL_DEADLINE_MILLIS]) es lo que impide otro intento: el motivo
      * de degradacion es `TIMEOUT`.
      */
-    private fun throwDeadlineExhausted(operation: AiOperation, attempt: Int, startedAt: Long): Nothing {
-        report(operation, AiCallOutcome.UNAVAILABLE, attempt, null, startedAt, DEADLINE_DETAIL)
+    private fun throwDeadlineExhausted(
+        operation: AiOperation,
+        attempt: Int,
+        startedAt: Long,
+        responseFormat: AiResponseFormat,
+    ): Nothing {
+        report(
+            operation, AiCallOutcome.UNAVAILABLE, attempt, null, startedAt, DEADLINE_DETAIL,
+            responseFormat = responseFormat,
+        )
         throw AiUnavailableException(
             AiUnavailableReason.TIMEOUT,
             "Se agoto el plazo total de la peticion a la IA.",
@@ -259,6 +310,7 @@ class DevExpertRecipeGenerator(
         startedAt: Long,
         detail: String,
         decodeResult: AiDecodeResult? = null,
+        responseFormat: AiResponseFormat = AiResponseFormat.NONE,
     ) {
         onEvent(
             AiCallEvent(
@@ -274,9 +326,14 @@ class DevExpertRecipeGenerator(
                 received = decodeResult?.received,
                 accepted = decodeResult?.accepted?.size,
                 discardedByReason = decodeResult?.discardedByReason ?: emptyMap(),
+                responseFormat = responseFormat,
             ),
         )
     }
+
+    /** Modo del evento segun si el intento llevo `response_format`. */
+    private fun formatOf(includeFormat: Boolean): AiResponseFormat =
+        if (includeFormat) AiResponseFormat.JSON_OBJECT else AiResponseFormat.NONE
 }
 
 private const val SYSTEM_ROLE = "system"
