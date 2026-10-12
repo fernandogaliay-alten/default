@@ -599,5 +599,19 @@
       "PENDIENTE manual (la persona, emulador de Android Studio en Windows; el adb de WSL no lo ve): (1) con `devexpert.apiKey` valida en local.properties, `bash scripts/gradle.sh assembleDebug` + generar desde el Generador (y Home/Busqueda con IA) -> llegan recetas del proveedor que pasan el Validador; (2) con la clave vaciada o ausente -> modo semilla sin fallar. Cambiar local.properties exige reconstruir. No automatizable desde WSL."
     ],
     "notes": "Proveedor decidido: DevExpert Inference (API compatible con OpenAI; base https://inference.devexpert.io/v1, POST /chat/completions, modelos chat/chat-pro). Es lo último que se conecta. La clave va en local.properties y no se versiona (ADR 0002). Ver ADR 0003."
+  },
+  {
+    "id": "ai-provider-timeouts",
+    "area": "integration",
+    "title": "Timeouts del proveedor de IA ajustados a la latencia real",
+    "user_visible_behavior": "Con una clave válida, generar o buscar recetas devuelve recetas reales del proveedor en lugar de degradar a modo semilla por agotar el timeout de socket o el deadline total.",
+    "depends_on": ["real-ai-provider"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que la política admite la latencia real (socket, request y deadline holgados) y que un timeout de socket se clasifica como TIMEOUT, con casos negativos en la frontera",
+      "Prueba manual en emulador: con clave válida, el Generador devuelve recetas reales del proveedor (no modo semilla); con clave ausente, sigue degradando a modo semilla sin fallar"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de real-ai-provider (issue #68). Causa raíz: el alias chat (modelo con reasoning) tarda ~28 s o más en devolver 6 recetas completas, por encima del SOCKET_TIMEOUT_MILLIS = 30 s y del TOTAL_DEADLINE_MILLIS = 60 s, de modo que la operación agota el socket timeout, reintenta y luego agota el deadline: la app degrada a modo semilla. Evidencia: logcat del emulador (RETRY/NETWORK ~30 s y UNAVAILABLE/TIMEOUT ~60 s) y petición equivalente al endpoint que devuelve HTTP 200 en 28,0 s (6.194 tokens) desde WSL. No es la clave ni el endpoint (la misma configuración responde 200 con la clave de local.properties). Arreglo previsto: subir los timeouts de AiProviderPolicy a la latencia real y mapear SocketTimeoutException -> TIMEOUT (hoy se etiqueta NETWORK). Toca solo data.ai y sus tests; no cambia dominio ni UI. Candidato ya previsto en los Unknowns de docs/specs/real-ai-provider.md."
   }
 ]
