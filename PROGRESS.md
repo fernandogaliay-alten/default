@@ -36,7 +36,13 @@
   añadió la **correctiva** `ai-provider-timeouts` (issue #68), que quedó `accepted` en la sesión 069
   (validación independiente, veredicto `accept`, rama `feature/ai-provider-timeouts`, sesión 068 la había
   dejado `passing` implementada y autoverificada). No hay features `not_started` ni `in_progress`. El plan
-  de features del MVP sigue **cerrado**.
+  de features del MVP sigue **cerrado**. Después se añadió una segunda **correctiva** de
+  `real-ai-provider`, `ai-recipe-decode` (issue #70): implementada y autoverificada (`passing`) en la
+  sesión 070 y **`accepted`** en la sesión 071 (validación independiente, veredicto `accept`, rama
+  `feature/ai-recipe-decode`). El adaptador real ya decodifica la **forma real** del contrato §4 (sin
+  `id` ni `source`), completa `id` (`ai-<sha256>` determinista) y `source = ai` antes de aplicar
+  `RecipeValidator.validateRecipe`; `Recipe.kt`/`RecipeValidator.kt` intactos. No hay features
+  `not_started` ni `in_progress`: el plan del MVP sigue **cerrado**.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -56,13 +62,24 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna. `ai-provider-timeouts` (correctiva de `real-ai-provider`, issue #68) quedó
-  **`accepted`** en la sesión 069 (validación independiente, veredicto `accept`, rama
-  `feature/ai-provider-timeouts`; la sesión 068 la había dejado `passing`). WIP = 0.
+- Feature en curso: ninguna. `ai-recipe-decode` (correctiva de `real-ai-provider`, issue #70) quedó
+  **`accepted`** en la sesión 071 (validación independiente, veredicto `accept`, rama
+  `feature/ai-recipe-decode`; la sesión 070 la había dejado `passing`). WIP = 0.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
   Studio (Windows): con clave válida, generar recetas reales; con la clave ausente o inválida, modo
   semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
-- Última verificación (2026-10-12, `ai-provider-timeouts`, validator): veredicto **`accept`** independiente
+- Última verificación (2026-10-12, `ai-recipe-decode`, validator): veredicto **`accept`** independiente
+  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
+  (**58 suites / 386 tests / 0 fallos/errores/saltados**; 376 preexistentes + 10 nuevos de `data.ai`:
+  `AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 8,
+  `DevExpertRecipeGeneratorTest` 19) y del informe de lint (0 errores, 13 warnings preexistentes, 0 bajo
+  `app/src`). Reprodujo el bug y el arreglo de forma independiente con un verificador Java fuera del
+  repo (16/16): el mismo JSON literal sin `id`/`source` por el camino de `main` acepta 0 / descarta 1
+  como SCHEMA, mientras `AiRecipePayload.decode` acepta 1. Detalle en
+  `docs/validations/ai-recipe-decode.md`.
+- Verificación anterior (2026-10-12, `ai-provider-timeouts`, validator): veredicto **`accept`** independiente
   tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
   `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
   `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
@@ -1118,3 +1135,126 @@
   Se mantiene el backfill de capturas de UI de features previas (sesión 046).
 - Siguiente paso: commit local de la rama `feature/ai-provider-timeouts` (lo hace el orquestador de
   `feature-flow`); la publicación queda para `github-flow`. No hay más features pendientes en el plan.
+
+### Sesión 070
+
+- Fecha: 2026-10-12
+- Objetivo: implementar la correctiva `ai-recipe-decode` (issue #70) según
+  `docs/specs/ai-recipe-decode.md`, en la rama `feature/ai-recipe-decode` (worktree); solo hasta
+  implementación y autoverificación (`passing`), **sin commit/push/PR** (los hace el orquestador).
+- Completado:
+  - **Causa raíz corregida**: `AiRecipePayload.decode` delegaba en `RecipeValidator.validateResponse`,
+    que deserializa cada elemento con `Recipe.serializer()`; `Recipe.id`/`source` son **obligatorios** y
+    el contrato §4 **no los pide**, así que toda receta caía como `SCHEMA` y la operación quedaba EMPTY.
+  - **Capa anti-corrupción en `data.ai`** (sin tocar el dominio):
+    - `AiRecipeDraft` (nuevo): DTO del **wire** del contrato §4 (sin `id`/`source`/`matchScore`) que
+      reutiliza `RecipeIngredient`/`RecipeStep`/`Nutrition`; `toRecipe(id)` fija `source = RecipeSource.AI`
+      y `matchScore = null`. Con `ignoreUnknownKeys = true`, un `id`/`source`/`matchScore` del modelo se
+      ignora (los posee la app).
+    - `AiRecipeIds` (nuevo): id **determinista** = `ai-` + SHA-256 hex minúscula de la cadena canónica
+      (prefijo `ai-recipe-v1`, separadores `U+001F`/`U+001E`), **sin `Random`, reloj ni `UUID`**; un
+      duplicado exacto en la misma llamada se desambigua con `-2`/`-3`… (determinista por orden).
+    - `AiRecipePayload.decode` reescrito: `content` nulo/blanco → vacío; valla markdown (se conserva);
+      parseo tolerante del root `{"recipes":[...]}`; elemento a elemento con `AiRecipeDraft` (el que no
+      encaja se salta = descarte SCHEMA sin tumbar el resto); la app completa `id`/`source` **antes** de
+      `RecipeValidator.validateRecipe(recipe, taxonomy, AiProviderPolicy.NEUTRAL_CONSTRAINTS)`; nunca
+      lanza. KDoc actualizado.
+  - **Tests con la forma REAL del contrato** (JSON **literal** sin `id`/`source`; nunca
+    `RecipeJson.encode`, que era el punto ciego de #70): `AiRecipePayloadTest` reescrito (8) con los
+    escenarios 1, 2, 4, 5 y 6; `AiRecipeIdsTest` nuevo (6) con el escenario 3; y
+    `DevExpertRecipeGeneratorTest` ampliado (19) con el escenario 7 (regresión end-to-end con
+    `GenerationService` real). Los 18 tests previos de esa suite se conservan intactos (siguen usando su
+    envelope con `RecipeJson.encode`, que ejercita el camino con `ingredientId` para dieta/restricciones).
+  - **Docs durables**: `docs/technical-discovery.md` (párrafo de `data.ai` + *Integrations* + *Testing and
+    Verification*), `docs/domain-model.md` (drift del `id` corregido: la app asigna `id` y `source = ai`
+    **al decodificar** la respuesta, no "al persistir") y `docs/domain/taxonomy.md` §4 (una línea: `id`,
+    `source` y `matchScore` los pone la app; el modelo no debe enviarlos).
+- Verificación ejecutada:
+  1. Reproducción del bug con un **test temporal** (creado y borrado en esta sesión): sobre el mismo JSON
+     literal sin `id`/`source`, el camino viejo (`RecipeValidator.validateResponse`, el de `main`) acepta
+     **0** y descarta 1 como `SCHEMA`, mientras `AiRecipePayload.decode` acepta **1**. `BUILD SUCCESSFUL`.
+  2. Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` →
+     `BUILD SUCCESSFUL`; parseo propio de los XML: **4 suites / 43 tests / 0 fallos / 0 errores /
+     0 saltados** (`AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 8,
+     `DevExpertRecipeGeneratorTest` 19).
+  3. Gate `bash init.sh` → **exit 0** (test + lint vía `scripts/gradle.sh`, sin procesos largos); parseo
+     propio de los XML: **58 suites / 386 tests / 0 fallos / 0 errores / 0 saltados** (376 preexistentes +
+     10 nuevos, ninguno eliminado); `lint-results-debug.xml`: **0 errores y 13 warnings** preexistentes
+     (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0**
+     con localización bajo `app/src`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/{AiRecipeDraft,AiRecipeIds}.kt`
+  (nuevos), `.../AiRecipePayload.kt` (modificado), `app/src/test/java/com/sazon/app/data/ai/{AiRecipeIdsTest}.kt`
+  (nuevo), `.../{AiRecipePayloadTest,DevExpertRecipeGeneratorTest}.kt` (modificados),
+  `docs/technical-discovery.md`, `docs/domain-model.md`, `docs/domain/taxonomy.md`,
+  `docs/specs/ai-recipe-decode.md` (hallazgo), `feature_list.json` (`ai-recipe-decode` a `passing`) y este
+  registro. **No** se toca `Recipe.kt`, `RecipeValidator.kt`, `RecipeJson.kt`, `AiProviderPolicy.kt`,
+  `AiDiagnostics.kt`, `OpenAiChat.kt`, `AiHttpClientFactory.kt`, `DevExpertRecipeGenerator.kt`,
+  `domain/**`, `data/generator/**`, `ui/**`, las bases Room, `app/src/main/assets/**`,
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `AndroidManifest.xml`, `init.sh`, `scripts/**`,
+  `DESIGN.md` ni `docs/design/**`; sin dependencias nuevas; sin capturas de UI (no es feature de UI).
+- Inspección de decisiones: `git grep "validateResponse" app/src/main` deja solo la **definición** en
+  `RecipeValidator.kt` y dos comentarios KDoc (`GenerationService`, `AiSearchService`): sin llamador real
+  (decisión documentada; el método no se modifica y sigue cubierto por `RecipeValidatorTest`). El esquema
+  **no** se debilita: `id`/`source` siguen obligatorios en `Recipe`.
+- Hallazgo de spec anotado: la lista de campos de `AiRecipeIds.canonical` **omitía `tips`**, pero el
+  *Unknown* de la spec afirma que "un cambio de contenido (p. ej. tips) cambia el `id`". Se incluyen los
+  `tips` en la cadena canónica (de lo contrario, recetas que solo difieren en los trucos compartirían
+  `id` entre llamadas) y el test `AiRecipeIdsTest.contenido_distinto_produce_id_distinto` lo cubre.
+- Riesgo o incógnita abierta: la **verificación manual** sigue siendo de la persona (emulador de Android
+  Studio en Windows; el `adb` de WSL no lo ve): con `devexpert.apiKey` válida, la búsqueda *"arroz con
+  pollo"* y el Generador muestran recetas reales que pasan el Validador (logcat `SUCCESS` en vez de
+  `EMPTY`); con la clave vaciada o ausente, modo semilla sin fallar. Sigue vigente el *Unknown* de
+  robustez del modelo fuera del contrato §4 (un campo obligatorio ausente/mal tipado descarta esa receta;
+  no tumba el lote) y el de estabilidad de ids (un cambio de contenido cambia el `id`; el Favorito
+  conserva su copia). Se mantiene el backfill de capturas de UI (sesión 046).
+- Siguiente paso: **validación independiente** de `ai-recipe-decode` con `feature-validator` (la feature
+  queda `passing`, **no** `accepted`); después, commit local de la rama `feature/ai-recipe-decode`
+  (orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 071
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-recipe-decode` (issue #70) de forma independiente y persistir la aceptación.
+  Ejecutada por el orquestador de `feature-flow` en la rama `feature/ai-recipe-decode` (worktree), solo
+  hasta-aceptación; **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`); `feature_list.json`
+  pasa a `accepted` con evidencia que nombra la validación independiente; se añade
+  `docs/validations/ai-recipe-decode.md`. Sin cambios de código tras la validación (solo
+  estado/evidencia/registro).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`); al ver test/lint en `UP-TO-DATE` forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas, 2m39s) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas, 2m43s), y parseó por su cuenta los XML de
+  resultados y el informe de lint. Reprodujo además el bug y el arreglo con un verificador Java propio
+  fuera del repo (`/tmp/opencode/sazon-verify/`, JDK 21 sobre las clases compiladas + `taxonomy.json`
+  real; ningún fichero del repo tocado), con **16/16 comprobaciones**.
+- Evidencia capturada: **58 suites, 386 tests, 0 fallos/errores/saltados** (376 preexistentes + 10 nuevos
+  de `data.ai`: `AiProviderPolicyTest` 10, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 8,
+  `DevExpertRecipeGeneratorTest` 19); lint 0 errores y 13 warnings preexistentes, 0 bajo `app/src`.
+  Escenarios 1-7 confirmados: forma real del contrato → recetas válidas con `source = AI`, id `ai-<sha256>`
+  y `matchScore = null`; id único con duplicado literal (`-2`/`-3`) y determinista por contenido; reglas
+  del Validador vivas (ids de Taxonomía inexistentes → `SCHEMA`; deriva de tiempos → `INCOHERENT`; un
+  elemento roto no tumba el lote); tolerancia sin lanzar; y regresión end-to-end con `GenerationService`
+  real. **Discriminador de #70** verificado de forma independiente: el mismo JSON literal sin `id`/`source`
+  por el camino de `main` (`RecipeValidator.validateResponse`) da `accepted 0` / 1 descarte `SCHEMA`,
+  mientras `AiRecipePayload.decode` da 1 receta. Alcance: solo `data.ai` (+2 nuevos), sus 3 tests, 3 docs
+  y harness; `Recipe.kt`, `RecipeValidator.kt`, `RecipeJson.kt`, `AiProviderPolicy.kt`, `AiDiagnostics.kt`,
+  `OpenAiChat.kt`, `AiHttpClientFactory.kt`, `DevExpertRecipeGenerator.kt`, `domain/**`, `ui/**`,
+  `data/generator/**`, Room, assets, build/gradle, manifiesto, `init.sh`, `scripts/**`, `DESIGN.md` y
+  `docs/design/**` intactos; sin dependencias nuevas. Seguridad: sin claves/secretos en el diff;
+  `local.properties` ignorado; tests con `test-key`; el `id` es un hash one-way sin PII.
+- Hallazgos del validador (3 Low + varios informativos, ninguno bloqueante): (1) la cadena canónica del
+  `id` omite `RecipeStep.description` (dos recetas que solo difieren en la prosa de un paso comparten `id`
+  base entre llamadas; impacto bajo, cumple la lista de campos de la spec; sugerencia de correctiva
+  futura con vector dorado); (2) la frase añadida a `docs/domain/taxonomy.md` §4 sobre `matchScore`
+  convive con el prompt real que todavía lo pide (drift preexistente, `PromptBuilder` fuera de alcance);
+  (3) falta vector dorado del hash y un test de que un `id`/`source` del modelo se ignora (verificado
+  externamente por el validador). Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: la **verificación manual** sigue siendo de la persona (emulador de Android
+  Studio en Windows; el `adb` de WSL no lo ve): con `devexpert.apiKey` válida, la búsqueda *"arroz con
+  pollo"* y el Generador muestran recetas reales que pasan el Validador (logcat `SUCCESS` en vez de
+  `EMPTY`); con la clave vaciada o ausente, modo semilla sin fallar. Se mantiene el backfill de capturas
+  de UI de features previas (sesión 046).
+- Siguiente paso: commit local de la rama `feature/ai-recipe-decode` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR) queda para `github-flow`, que nunca hace merge. No hay más
+  features pendientes en el plan.

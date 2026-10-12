@@ -350,9 +350,13 @@ timeout por intento (`HttpRequestTimeoutException`) o `InterruptedIOException` -
 de `IOException` (DNS, conexion rechazada/reset; el `ConnectTimeoutException` de Ktor no es un timeout
 del modelo) -> `NETWORK`. La clave ausente lanza
 `MISSING_KEY` **sin** ninguna peticion; un 200 ilegible o vacio **no** lanza (devuelve las recetas
-decodificables, posiblemente vacias via `AiRecipePayload.decode`, que parsea **elemento a elemento**
-con `RecipeValidator` y restricciones **neutras** para **no** pre-filtrar por dieta/restricciones -asi
-el estado Bloqueado de `ai-search` sigue siendo alcanzable-); la `CancellationException` se relanza
+decodificables, posiblemente vacias via `AiRecipePayload.decode`, que mapea el **wire del contrato de
+la IA** (`docs/domain/taxonomy.md` §4, sin `id` ni `source`) a Receta con el DTO `AiRecipeDraft`,
+**completa `id`** (`AiRecipeIds`: `ai-` + SHA-256 hex del contenido, determinista y sin
+`Random`/reloj/`UUID`) y `source = ai` **antes** de validar, y aplica las reglas del Validador con
+`RecipeValidator.validateRecipe` y restricciones **neutras** -sin pre-filtrar por dieta/restricciones,
+asi el estado Bloqueado de `ai-search` sigue siendo alcanzable-, elemento a elemento y sin lanzar); la
+`CancellationException` se relanza
 siempre. `AiHttpClientFactory` construye el cliente (OkHttp, `ContentNegotiation` +
 `HttpTimeout`, `expectSuccess = false`; `MockEngine` en tests), los DTOs del envelope OpenAI estan en
 `OpenAiChat` y `MainActivity` inyecta `BuildConfig.DEVEXPERT_API_KEY` (desde `local.properties`) y
@@ -447,9 +451,10 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
   `Authorization: Bearer <clave>` (sin `response_format`, `stream`, `temperature` ni `max_tokens`,
-  ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante**
-  (`AiRecipePayload` + `RecipeValidator` con restricciones **neutras**, elemento a elemento, sin
-  lanzar). La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
+  ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante** con
+  `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**), la app completa
+  `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
+  `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
   timeouts calibrados contra la latencia real medida, connect 10 s / socket 90 s / request 120 s /
   deadline 180 s) y clasifica el fallo de transporte por su causa (timeout de socket o de peticion ->
   `TIMEOUT`; conexion o red -> `NETWORK`); los fallos se traducen a `AiUnavailableException` tipada
@@ -492,9 +497,14 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   real medida** (`REAL_LATENCY_MILLIS = 28_000L`: socket >= 2x, intento >= 3x, margen para un reintento
   lento), la **frontera del recorte** por intento y la **clasificacion del fallo de transporte**
   (timeout de socket/peticion -> `TIMEOUT`; conexion/red -> `NETWORK`; resto -> `UNEXPECTED`), con el
-  `detail` del `AiCallEvent`. Suites en `app/src/test/java/com/sazon/app/data/ai`:
-  `AiProviderPolicyTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`. La prueba
-  end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
+  `detail` del `AiCallEvent`. El decode se prueba con la **forma real** del contrato §4 (JSON literal
+  **sin `id` ni `source`**, nunca `RecipeJson.encode`, que era el punto ciego del issue #70):
+  `AiRecipePayloadTest` (decodifica, `source = ai` + `id` unico con duplicado literal, reglas del
+  Validador, tolerancia y `matchScore` ignorado) y `AiRecipeIdsTest` (determinismo, unicidad y formato
+  del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService` real
+  con `accepted` no vacio. Suites en `app/src/test/java/com/sazon/app/data/ai`:
+  `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`.
+  La prueba end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
   Validation Plan).
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
 - `init.sh` debe ejecutar los tests de forma reproducible y ser el punto de entrada de verificación
