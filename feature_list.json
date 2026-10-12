@@ -796,5 +796,21 @@
     ],
     "evidence": [],
     "notes": "Feature correctiva de ai-recipe-decode, pedida por la persona tras la prueba real de búsqueda 'arroz con pollo' con el diagnóstico verboso de ai-verbose-diagnostics (2026-10-12). Causa raíz confirmada con el JSON crudo del modelo: RecipeIngredient.quantity es Double (no anulable) en domain.recipe y el modelo emite 'perejil fresco' con \"quantity\":null y \"unit\":null (al gusto); el decode de AiRecipeDraft falla y la receta COMPLETA se descarta como SCHEMA. Evidencia: de 6 recibidas, las 3 que traían quantity null (español, mediterráneo, risotto) cayeron por SCHEMA y las 3 sin él (curry, asiático, mexicano) no; los ids de Taxonomía usados (spanish/mediterranean/italian/asian/mexican/indian, lunch/dinner, medium/easy, rice) son todos válidos; el seed no usa ninguna quantity nula. Arreglo: en la capa anti-corrupción data.ai (AiRecipeDraft) introducir un DTO de ingrediente del wire con quantity anulable (y campos tolerantes) que mapee a RecipeIngredient; cuando quantity es null, normalizar a 'Al gusto' (unit = null; la cantidad queda irrelevante porque IngredientFormat.quantityLabel pinta 'Al gusto' con unit==null y ServingScaler no escala). NO se toca el dominio aceptado (Recipe.kt/RecipeIngredient/RecipeValidator/UI). Cubrir también quantity/unit ausentes. FUERA de alcance: la deriva de tiempos (INCOHERENT/TIME_DRIFT del curry, pasos 34 min vs totalMinutes 40) y cambiar MAX_STEP_TOTAL_DRIFT_MINUTES; son feature aparte si se piden."
+  },
+  {
+    "id": "recipe-photos",
+    "area": "ui",
+    "title": "Fotos de plato por receta semilla y categoría",
+    "user_visible_behavior": "Las tarjetas y el detalle muestran una fotografía del plato — foto propia por receta semilla, foto de su categoría como respaldo para las recetas generadas por IA y una imagen genérica por defecto cuando no encaja ninguna — en lugar del bloque de color plano con glifo.",
+    "depends_on": ["recipe-artwork"],
+    "status": "blocked",
+    "verification": [
+      "Capturas de referencia obligatorias en docs/design/concepts/recipe-photos/fotos-semillas/ y docs/design/concepts/recipe-photos/fotos-categorias/ (.png + .html + md) antes de implementar",
+      "'./gradlew test' cubre en JVM la cadena de respaldo (receta semilla -> categoría -> por defecto) y comprueba que cada receta semilla, cada una de las 18 categorías y el caso por defecto resuelven un asset existente",
+      "Las 4 copias del placeholder usan el componente único RecipeArtwork con la foto; el glifo dibujado queda solo como último recurso si faltara el asset",
+      "Prueba manual en emulador: las tarjetas y el detalle muestran fotos (claro y oscuro) y ninguna receta aparece sin foto"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de recipe-artwork (issue #79). Cambia un no-goal del MVP de docs/build-brief.md ('sin imágenes ni assets'): las fotos viajan empaquetadas como assets offline; requiere un ADR nuevo que lo ajuste y actualizar docs (build-brief, technical-discovery, DESIGN.md, risks-and-open-questions). Fuente de las fotos: la persona las genera en Stitch con docs/design/concepts/recipe-photos/stitch-prompt.md; el orquestador descarga las imágenes desde las URLs del export (lh3.googleusercontent.com/aida-public/... a 1200x896) y las mapea por la clave impresa bajo cada foto. Cobertura: 12 recetas semilla (foto propia) + 18 categorías (respaldo para recetas de IA) + 1 imagen por defecto (genérica/neutra, clave 'default', para cuando no encaja ninguna). BLOCKED hasta que existan las capturas; reanudar con github-flow execute recipe-photos (o --captures <ruta>)."
   }
 ]
