@@ -5,7 +5,7 @@
 - Spec: `docs/specs/ai-verbose-diagnostics.md`
 - Rol: `validator` (agente con contexto limpio, skill `feature-validator`), **independiente** del implementer
 - Rama / worktree: `feature/ai-verbose-diagnostics`
-- Estado validado: `passing` (sesión 077, implementer) — sin commit
+- Estado validado: `passing` (sesión 079, implementer) — sin commit
 - Dependencia: `ai-call-diagnostics` (`accepted`, sesión 073) — satisfecha
 - **Veredicto: `accept`**
 

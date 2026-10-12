@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -34,9 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.favorites.Favorite
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.artwork.RecipeArtwork
 import com.sazon.app.ui.home.RecipeCardFormat
-import com.sazon.app.ui.theme.SazonPrimaryContainer
-import com.sazon.app.ui.theme.SazonSecondaryContainer
 import com.sazon.app.ui.theme.SazonShapes
 import com.sazon.app.ui.theme.SazonSpacing
 
@@ -44,9 +42,9 @@ import com.sazon.app.ui.theme.SazonSpacing
 private const val TABULAR_FIGURES = "tnum"
 
 /**
- * Tarjeta horizontal de Favorito (`RecipeListCard` de `DESIGN.md`): miniatura degradada 96x96
- * redondeada con glifo de plato, titulo (2 lineas), meta en cifras tabulares y el **corazon** a la
- * derecha (relleno; quita el Favorito). Tap en la tarjeta abre el Detalle.
+ * Tarjeta horizontal de Favorito (`RecipeListCard` de `DESIGN.md`): miniatura 96x96 redondeada con
+ * la imagen de `ui.artwork.RecipeArtwork`, titulo (2 lineas), meta en cifras tabulares y el
+ * **corazon** a la derecha (relleno; quita el Favorito). Tap en la tarjeta abre el Detalle.
  *
  * La quita secundaria es un swipe a la derecha con la accion visible "Eliminar" sobre el
  * [SwipeToDismissBox] de Material 3 (sin dependencia de iconos); tanto el corazon como el swipe llaman
@@ -83,7 +81,7 @@ fun FavoriteRecipeCard(
                     .padding(SazonSpacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                RecipeThumbnail()
+                RecipeThumbnail(recipe = favorite.recipe)
                 Spacer(modifier = Modifier.width(SazonSpacing.md))
                 FavoriteText(
                     taxonomy = taxonomy,
@@ -98,8 +96,9 @@ fun FavoriteRecipeCard(
 }
 
 /**
- * Version compacta en rejilla del Favorito (dos columnas): miniatura degradada arriba con el corazon
- * superpuesto, titulo y meta debajo. Comparte la logica de [FavoriteRecipeCard].
+ * Version compacta en rejilla del Favorito (dos columnas): imagen de `RecipeArtwork` arriba (alto 96,
+ * glifo 40 dp) con el corazon superpuesto, titulo y meta debajo. Comparte la logica de
+ * [FavoriteRecipeCard].
  */
 @Composable
 fun FavoriteRecipeTile(
@@ -115,18 +114,13 @@ fun FavoriteRecipeTile(
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(96.dp)
-                    .background(
-                        Brush.linearGradient(listOf(SazonPrimaryContainer, SazonSecondaryContainer)),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                PlateGlyph(
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(40.dp),
+            Box(modifier = Modifier.fillMaxWidth()) {
+                RecipeArtwork(
+                    recipe = favorite.recipe,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp),
+                    glyphSize = 40.dp,
                 )
                 Box(
                     modifier = Modifier
@@ -161,21 +155,16 @@ fun FavoriteRecipeTile(
     }
 }
 
-/** Miniatura 96x96 redondeada con el degradado melocoton->oliva y el glifo de plato. */
+/** Miniatura 96x96 redondeada con la imagen de receta ([RecipeArtwork]) y glifo a 40 dp. */
 @Composable
-private fun RecipeThumbnail() {
-    Box(
+private fun RecipeThumbnail(recipe: Recipe) {
+    RecipeArtwork(
+        recipe = recipe,
         modifier = Modifier
             .size(96.dp)
-            .clip(SazonShapes.small)
-            .background(Brush.linearGradient(listOf(SazonPrimaryContainer, SazonSecondaryContainer))),
-        contentAlignment = Alignment.Center,
-    ) {
-        PlateGlyph(
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(40.dp),
-        )
-    }
+            .clip(SazonShapes.small),
+        glyphSize = 40.dp,
+    )
 }
 
 /** Titulo (2 lineas) y meta de la tarjeta horizontal. */
@@ -241,24 +230,6 @@ private fun DismissBackground() {
             color = MaterialTheme.colorScheme.onPrimary,
             textAlign = TextAlign.End,
             modifier = Modifier.padding(horizontal = SazonSpacing.lg),
-        )
-    }
-}
-
-/** Glifo de plato (dos circulos concentricos) dibujado sin dependencias de iconos. */
-@Composable
-private fun PlateGlyph(tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val stroke = Stroke(width = 2.dp.toPx())
-        drawCircle(
-            color = tint,
-            radius = size.minDimension / 2f - stroke.width,
-            style = stroke,
-        )
-        drawCircle(
-            color = tint,
-            radius = size.minDimension * 0.28f,
-            style = stroke,
         )
     }
 }

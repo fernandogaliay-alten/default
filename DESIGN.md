@@ -125,6 +125,13 @@ Backfill pendiente:
 - `profile-screen`: `perfil`, `perfil-editar`
 - `manual-suggestions-refresh`: `perfil-sugerencias`
 
+**Excepción de capturas (desviación documentada, issue #77):** `recipe-artwork` **no** genera capturas
+nuevas ni carpeta `docs/design/concepts/recipe-artwork/`. El placeholder ya estaba definido en este
+documento y en el prompt de Stitch como el **fallback** del diseño ("soft peach-to-olive gradient block
+with a thin line-art plate icon"), y esa feature solo lo **extiende** por categoría y cocina. La
+dirección visual aplicable es la tabla de la sección **Imagen de receta** de `Components` (más abajo),
+que es contra la que se revisa el acabado en el emulador.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -179,6 +186,37 @@ nada lo es.
 - **RecipeCard** (vertical): imagen 16:10 redondeada, título a 2 líneas máximo, fila de metadatos
   `tiempo · dificultad · comensales` y una píldora terracota con el porcentaje de coincidencia.
 - **RecipeListCard** (horizontal): miniatura 96x96, texto a la derecha, corazón a la derecha.
+- **Imagen de receta** (`ui.artwork.RecipeArtwork`, feature `recipe-artwork`): bloque con **degradado** +
+  **glifo de línea** dibujado con Compose (sin assets ni dependencia de iconos). El **glifo** identifica
+  la categoría (`categoryId`) y el **acento del degradado** la cocina (`cuisineId`), de modo que dos
+  recetas de la misma categoría y distinta cocina no se ven iguales:
+  - Glifo por categoría (18, la Taxonomía real): `pasta`, `rice`, `soup_cream`, `salad`, `meat`,
+    `poultry`, `fish_seafood`, `vegetarian`, `vegan`, `legume_stew`, `pizza_bread`, `egg_breakfast`,
+    `sandwich_wrap`, `tapas_appetizer`, `dessert`, `smoothie_drink`, `casserole_oven` y `other` → plato.
+  - Acento por cocina (10, la Taxonomía real): el degradado va de `start` (arriba) a `end` (abajo),
+    siempre con roles del tema (nunca hex propios), así que el modo oscuro usa los `*Container`
+    oscuros. Tabla:
+
+    | `cuisineId` | `RecipeAccent` | `start` → `end` |
+    |---|---|---|
+    | `spanish` | `EMBER` | `surfaceVariant` → `primaryContainer` |
+    | `mediterranean` | `GROVE` | `secondaryContainer` → `primaryContainer` |
+    | `italian` | `TOMATO` | `primaryContainer` → `tertiaryContainer` |
+    | `asian` | `GINGER` | `tertiaryContainer` → `primaryContainer` |
+    | `japanese` | `SESAME` | `surfaceVariant` → `secondaryContainer` |
+    | `indian` | `CURRY` | `tertiaryContainer` → `secondaryContainer` |
+    | `mexican` | `CHILI` | `primaryContainer` → `surfaceVariant` |
+    | `american` | `HONEY` | `tertiaryContainer` → `surfaceVariant` |
+    | `middle_eastern` | `CLAY` | `secondaryContainer` → `surfaceVariant` |
+    | `latin` | `ROSE` | `secondaryContainer` → `tertiaryContainer` |
+    | (nulo/vacío/desconocido) | `DEFAULT` | `primaryContainer` → `secondaryContainer` |
+
+  - **Fallback total**: un id nulo, vacío o desconocido pinta el **plato** (dos círculos concéntricos)
+    con el degradado **melocotón→oliva** (`DEFAULT`) de siempre; nunca un bloque vacío ni una excepción.
+  - El glifo se tiñe con `onSurfaceVariant` y el componente no fija forma: mantiene el 16:10 de las
+    tarjetas (`RecipeCard` 48 dp de glifo, `ResultRecipeCard` 56), el 96x96 y el alto 96 de Favoritos
+    (40) y el hero de 240 del Detalle (72). Es el **único punto a cambiar** cuando existan imágenes
+    generadas por IA.
 - **FilterChip**: fila desplazable; seleccionado relleno de terracota.
 - **Stepper** de comensales: `− 2 +` con cifras tabulares.
 - **Paso de receta**: línea de tiempo vertical con círculos numerados en terracota y una píldora
@@ -252,5 +290,9 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 2. ¿Existe nombre de producto e icono definitivos, o "Sazón" es un marcador de posición?
 3. **Resuelto (2026-10-06):** el modo oscuro **entra en el MVP**. Se implementa la variante oscura con
    `darkBackground`/`darkSurface` y los acentos terracota y oliva (feature `design-tokens-and-theme`).
-4. ¿Las fotos de receta son reales (banco de imágenes) o ilustraciones? Afecta al tono general.
+4. **Resuelto (2026-10-12, `recipe-artwork`):** en el MVP **no** hay fotos de receta: no se empaqueta
+   `assets/img/recipes/` ni una dependencia de imágenes. La imagen se resuelve con el placeholder
+   dibujado `ui.artwork.RecipeArtwork` (glifo por categoría + acento por cocina + fallback total,
+   determinista y offline); ver la sección **Imagen de receta** de `Components`. Cuando existan
+   imágenes generadas por IA, `RecipeArtwork` es el único punto a cambiar.
 5. ¿La ilustración de los estados vacíos es un estilo definido (línea, color plano) o se improvisa?
