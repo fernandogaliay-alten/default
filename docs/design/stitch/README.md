@@ -45,3 +45,25 @@ El prompt largo (`docs/design/stitch-prompt.md`) se trunca en Stitch y no genera
 
 Reglas: dirección visual, no pixel-perfect; manda `DESIGN.md` ante contradicción. Los iconos/imágenes de
 Stitch son placeholders (en la app se resuelven con Material Symbols y degradados propios).
+
+## Paquetes listos por feature (`features/`)
+
+Para el **backfill** de capturas (features de UI aceptadas antes de la política de capturas) hay un
+prompt **autocontenido por feature** en `features/<feature-id>.md`: incluye el contexto
+(`00-contexto.md`) y las partes de sus pantallas, listo para pegar en una conversación de Stitch por
+feature y guardar cada export en `docs/design/concepts/<feature-id>/<pantalla>/`. No sustituyen a las
+partes de arriba (`00`–`21`), que son la fuente.
+
+| Feature | Pantallas | Parte(s) |
+|---|---|---|
+| `design-tokens-and-theme` | `design-system` | `01` |
+| `onboarding-shell-and-identity` | `bienvenida` | `02` |
+| `onboarding-diet-style-cuisines` | `dieta`, `estilo`, `cocinas` | `03`, `04`, `05` |
+| `onboarding-ingredients-safety-kitchen` | `ingredientes`, `alergias`, `tu-cocina` | `06`, `07`, `08` |
+| `home-offline-blocks` | `home`, `home-sin-conexion` | `09`, `10` |
+| `local-result-filters` | `filtros-tus-recetas` | `09` (solo el bloque "Tus recetas") |
+| `generator-ingredients-step` | `generador-ingredientes` | `12` |
+| `generator-settings-step` | `generador-ajustes` | `13` |
+| `generation-flow-with-validation` | `generador-cargando`, `resultados-preview` | `14`, `15` |
+| `profile-screen` | `perfil`, `perfil-editar` | `18`, `19` |
+| `manual-suggestions-refresh` | `perfil-sugerencias` | `20` |
