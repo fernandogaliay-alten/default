@@ -38,6 +38,11 @@ internal object AiRecipeIds {
      *
      * Ingredientes, pasos y tips respetan su **orden** (es semantico en el prompt y en la receta);
      * `declaredAllergens` se **ordena** (es un conjunto, como en el Perfil).
+     *
+     * El ingrediente se canonicaliza **ya normalizado** ([AiIngredientDraft.toRecipeIngredient]): asi
+     * `"quantity":null`, `quantity` ausente y `quantity: 0.0` + `unit:null` comparten `id` (misma
+     * receta a ojos de la app) y los ids de las recetas ya decodificables **no cambian** (para un
+     * ingrediente con cantidad numerica el par cantidad/unidad normalizado es el mismo de antes).
      */
     fun canonical(draft: AiRecipeDraft): String = buildString {
         append(ALGORITHM_VERSION)
@@ -52,7 +57,8 @@ internal object AiRecipeIds {
         appendField(draft.difficultyId)
         appendField(draft.servings.toString())
         appendField(
-            draft.ingredients.joinToString(LIST_SEPARATOR) { ingredient ->
+            draft.ingredients.joinToString(LIST_SEPARATOR) { wireIngredient ->
+                val ingredient = wireIngredient.toRecipeIngredient()
                 listOf(
                     ingredient.name,
                     ingredient.quantity.toString(),

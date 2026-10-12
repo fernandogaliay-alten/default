@@ -11,6 +11,7 @@ import com.sazon.app.domain.validation.DiscardReason
 import com.sazon.app.domain.validation.RecipeConstraints
 import com.sazon.app.domain.validation.RecipeValidation
 import com.sazon.app.domain.validation.RecipeValidator
+import com.sazon.app.ui.detail.IngredientFormat
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -377,6 +378,145 @@ class AiRecipePayloadTest {
     private fun envelope(vararg draftJson: String): String =
         """{"recipes":[${draftJson.joinToString(",")}]}"""
 
+    // --- Escenarios de `docs/specs/ai-quantity-tolerance.md` (correctiva de ai-recipe-decode) ---
+
+    // Escenario 1: `quantity` y `unit` nulas -> "Al gusto" y la receta se acepta.
+    @Test
+    fun un_ingrediente_al_gusto_con_quantity_y_unit_nulas_no_tumba_la_receta() {
+        val result = decode(envelope(draftJson(ingredients = AL_GUSTO_INGREDIENTS)))
+
+        assertEquals("La receta 'al gusto' ya no cae por SCHEMA", 1, result.accepted.size)
+        assertTrue("Sin descartes", result.discardedByReason.isEmpty())
+        val perejil = result.accepted.single().ingredients.single { it.name == "Perejil fresco" }
+        assertEquals(0.0, perejil.quantity, 0.0)
+        assertNull(perejil.unit)
+        assertEquals("Al gusto", IngredientFormat.quantityLabel(perejil.quantity, perejil.unit))
+    }
+
+    // Escenario 2: `quantity` nula con `unit` no nula -> la unidad del wire se descarta.
+    @Test
+    fun la_unit_del_wire_se_descarta_cuando_la_quantity_es_nula() {
+        val result = decode(envelope(draftJson(ingredients = AL_GUSTO_INGREDIENTS_WITH_UNIT)))
+
+        assertEquals(1, result.accepted.size)
+        val perejil = result.accepted.single().ingredients.single { it.name == "Perejil fresco" }
+        assertEquals(0.0, perejil.quantity, 0.0)
+        assertNull("Sin cantidad la unidad no es interpretable", perejil.unit)
+    }
+
+    // Escenario 3: el campo `quantity` ausente se normaliza igual que el nulo.
+    @Test
+    fun un_ingrediente_sin_quantity_se_normaliza_igual_que_uno_nulo() {
+        val sinCampo = decode(envelope(draftJson(ingredients = AL_GUSTO_INGREDIENTS_QUANTITY_ABSENT)))
+        val conNull = decode(envelope(draftJson(ingredients = AL_GUSTO_INGREDIENTS)))
+
+        assertEquals(1, sinCampo.accepted.size)
+        val perejil = sinCampo.accepted.single().ingredients.single { it.name == "Perejil fresco" }
+        assertEquals(0.0, perejil.quantity, 0.0)
+        assertNull(perejil.unit)
+        assertEquals(
+            "El campo ausente y el nulo dan el mismo ingrediente",
+            conNull.accepted.single().ingredients,
+            sinCampo.accepted.single().ingredients,
+        )
+    }
+
+    // Escenario 4: una `quantity` numerica y su unidad se conservan intactas.
+    @Test
+    fun la_quantity_numerica_se_conserva_intacta() {
+        val result = decode(envelope(arrozDraft()))
+
+        val ingredients = result.accepted.single().ingredients
+        val arroz = ingredients.single { it.name == "Arroz" }
+        assertEquals(200.0, arroz.quantity, 0.0)
+        assertEquals(MeasureUnit.GRAM, arroz.unit)
+        val zanahoria = ingredients.single { it.name == "Zanahoria" }
+        assertEquals(1.0, zanahoria.quantity, 0.0)
+        assertEquals(MeasureUnit.UNIT, zanahoria.unit)
+    }
+
+    // Escenario 5: lote mixto "al gusto" + rota: la buena sobrevive y la rota sigue contando.
+    @Test
+    fun un_lote_con_una_receta_al_gusto_y_una_rota_sigue_aceptando_la_buena() {
+        val result = decode(
+            envelope(
+                draftJson(ingredients = AL_GUSTO_INGREDIENTS),
+                """{"title":"Rota"}""",
+            ),
+        )
+
+        assertEquals(1, result.accepted.size)
+        assertEquals("Arroz salteado con verduras", result.accepted.single().title)
+        assertEquals("La rota tambien cuenta como recibida", 2, result.received)
+        assertEquals(mapOf(DiscardReason.SCHEMA to 1), result.discardedByReason)
+    }
+
+    // Escenario 6: tolerar la cantidad NO relaja las reglas del Validador.
+    @Test
+    fun tolerar_la_cantidad_no_relaja_las_reglas_del_validador() {
+        val inexistente = decode(
+            envelope(
+                draftJson(
+                    title = "Comida inexistente",
+                    mealTypeId = "second_breakfast",
+                    ingredients = AL_GUSTO_INGREDIENTS,
+                ),
+            ),
+        )
+        assertEquals(0, inexistente.accepted.size)
+        assertEquals(mapOf(DiscardReason.SCHEMA to 1), inexistente.discardedByReason)
+
+        // Los pasos del contrato suman 25 min: totalMinutes 60 deja una deriva > 5 min (regla 4a).
+        val deriva = decode(
+            envelope(
+                draftJson(
+                    ingredients = AL_GUSTO_INGREDIENTS,
+                    totalMinutes = 60,
+                    prepMinutes = 20,
+                    cookMinutes = 40,
+                ),
+            ),
+        )
+        assertEquals(0, deriva.accepted.size)
+        assertEquals(mapOf(DiscardReason.INCOHERENT to 1), deriva.discardedByReason)
+    }
+
+    // Escenario 7: `source`/`id`/`matchScore` siguen siendo de la app.
+    @Test
+    fun una_receta_al_gusto_recibe_source_id_y_matchscore_de_la_app() {
+        val result = decode(envelope(draftJson(ingredients = AL_GUSTO_INGREDIENTS)))
+
+        val recipe = result.accepted.single()
+        assertEquals(RecipeSource.AI, recipe.source)
+        assertTrue("El id lo completa la app", recipe.id.startsWith(AiRecipeIds.PREFIX))
+        assertNull(recipe.matchScore)
+    }
+
+    // El DTO del wire normaliza en el mapeo (una sola fuente para "Al gusto").
+    @Test
+    fun el_dto_del_wire_normaliza_la_cantidad_nula_a_al_gusto() {
+        assertEquals(
+            RecipeIngredient("Perejil fresco", 0.0, unit = null, isPantry = true, ingredientId = "perejil"),
+            AiIngredientDraft(
+                "Perejil fresco",
+                quantity = null,
+                unit = MeasureUnit.GRAM,
+                isPantry = true,
+                ingredientId = "perejil",
+            ).toRecipeIngredient(),
+        )
+        assertEquals(
+            AL_GUSTO_QUANTITY,
+            AiIngredientDraft("Perejil fresco").toRecipeIngredient().quantity,
+            0.0,
+        )
+        assertEquals(
+            "Una cantidad numerica se mapea 1:1",
+            RecipeIngredient("Arroz", 200.0, MeasureUnit.GRAM, ingredientId = "arroz"),
+            AiIngredientDraft("Arroz", 200.0, MeasureUnit.GRAM, ingredientId = "arroz").toRecipeIngredient(),
+        )
+    }
+
     private fun taxonomy(): Taxonomy {
         val path = checkNotNull(System.getProperty("taxonomy.asset.path")) {
             "Falta la propiedad de sistema taxonomy.asset.path"
@@ -402,6 +542,15 @@ private const val LECHE_INGREDIENTS =
     """[{"name":"Leche","quantity":250,"unit":"ml","isPantry":false,"ingredientId":"leche"}]"""
 private const val LECHE_STEPS =
     """[{"order":1,"title":"Calentar la leche","description":"Calienta la leche.","minutes":25}]"""
+
+// Ingrediente "al gusto" del modelo real: `quantity` nula (p. ej. perejil fresco). Los tres variantes
+// del wire (nula, nula con `unit` y campo ausente) deben normalizarse igual.
+private const val AL_GUSTO_INGREDIENTS =
+    """[{"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},{"name":"Perejil fresco","quantity":null,"unit":null,"isPantry":true,"ingredientId":"perejil"}]"""
+private const val AL_GUSTO_INGREDIENTS_WITH_UNIT =
+    """[{"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},{"name":"Perejil fresco","quantity":null,"unit":"g","isPantry":true,"ingredientId":"perejil"}]"""
+private const val AL_GUSTO_INGREDIENTS_QUANTITY_ABSENT =
+    """[{"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},{"name":"Perejil fresco","isPantry":true,"ingredientId":"perejil"}]"""
 
 private fun arrozDraft(): String = draftJson()
 

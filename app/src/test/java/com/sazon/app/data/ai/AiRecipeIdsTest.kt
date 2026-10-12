@@ -2,7 +2,6 @@ package com.sazon.app.data.ai
 
 import com.sazon.app.domain.recipe.MeasureUnit
 import com.sazon.app.domain.recipe.Nutrition
-import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeStep
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -83,13 +82,34 @@ class AiRecipeIdsTest {
 
         assertEquals(sorted, reversed)
     }
+
+    // Escenario 7 de `docs/specs/ai-quantity-tolerance.md`: las variantes del wire "al gusto"
+    // comparten id (misma receta a ojos de la app).
+    @Test
+    fun la_cantidad_nula_la_ausente_y_la_normalizada_comparten_id() {
+        val nula = AiRecipeIds.idFor(
+            draft(ingredients = listOf(AiIngredientDraft("Perejil fresco", quantity = null, unit = null))),
+            mutableSetOf(),
+        )
+        val ausente = AiRecipeIds.idFor(
+            draft(ingredients = listOf(AiIngredientDraft("Perejil fresco"))),
+            mutableSetOf(),
+        )
+        val normalizada = AiRecipeIds.idFor(
+            draft(ingredients = listOf(AiIngredientDraft("Perejil fresco", quantity = 0.0, unit = null))),
+            mutableSetOf(),
+        )
+
+        assertEquals(ausente, nula)
+        assertEquals(normalizada, nula)
+    }
 }
 
 private fun draft(
     title: String = "Arroz salteado con verduras",
-    ingredients: List<RecipeIngredient> = listOf(
-        RecipeIngredient("Arroz", 200.0, MeasureUnit.GRAM, ingredientId = "arroz"),
-        RecipeIngredient("Zanahoria", 1.0, MeasureUnit.UNIT, ingredientId = "zanahoria"),
+    ingredients: List<AiIngredientDraft> = listOf(
+        AiIngredientDraft("Arroz", 200.0, MeasureUnit.GRAM, ingredientId = "arroz"),
+        AiIngredientDraft("Zanahoria", 1.0, MeasureUnit.UNIT, ingredientId = "zanahoria"),
     ),
     steps: List<RecipeStep> = listOf(
         RecipeStep(1, "Cocer el arroz", "Cuece el arroz.", 12),
