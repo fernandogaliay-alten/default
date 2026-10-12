@@ -1,5 +1,7 @@
 package com.sazon.app.data.ai
 
+import com.sazon.app.domain.validation.DiscardReason
+
 /**
  * Motivo por el que la IA quedo no disponible para una operacion.
  *
@@ -68,7 +70,10 @@ enum class AiOperation {
  *
  * Se emite por la costura aditiva `onEvent` del proveedor (por defecto no-op) y `MainActivity` lo
  * cablea a `android.util.Log`. **Nunca** contiene la clave, la cabecera `Authorization` ni los
- * cuerpos: [detail] es la categoria/motivo (p. ej. `MISSING_KEY`, `HTTP 429`, `deadline`).
+ * cuerpos: [detail] es la categoria/motivo (p. ej. `MISSING_KEY`, `HTTP 429`, `deadline`) y los
+ * campos del decode son **longitudes** ([contentChars]/[contentBytes]), recuentos
+ * ([received]/[accepted]) y el **resumen de motivos** ([discardedByReason]), nunca el texto del
+ * modelo ni titulos de recetas.
  */
 data class AiCallEvent(
     val operation: AiOperation,
@@ -77,4 +82,14 @@ data class AiCallEvent(
     val httpStatus: Int?,
     val durationMillis: Long,
     val detail: String,
+    /** Bytes UTF-8 del `content` del modelo; `null` si no hubo decode (clave ausente, retry, deadline). */
+    val contentBytes: Int? = null,
+    /** Caracteres (unidades UTF-16) del `content` del modelo; `null` si no hubo decode. */
+    val contentChars: Int? = null,
+    /** Recetas recibidas en el array `recipes`; `null` si no hubo decode. */
+    val received: Int? = null,
+    /** Recetas que el decode acepto; `null` si no hubo decode. */
+    val accepted: Int? = null,
+    /** Resumen de descartes por motivo, en orden de [DiscardReason]; vacio si no hubo descartes. */
+    val discardedByReason: Map<DiscardReason, Int> = emptyMap(),
 )

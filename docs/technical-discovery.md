@@ -337,14 +337,16 @@ El **proveedor de IA real** vive en `com.sazon.app.data.ai` y es la **unica** ca
 (junto al cableado de `MainActivity`). `DevExpertRecipeGenerator` implementa el puerto
 `RecipeGenerator`: las tres operaciones componen su prompt con `PromptBuilder` y llaman al mismo
 `execute`, que aplica la politica fija de `AiProviderPolicy` en un **unico** sitio (connect 10 s,
-socket 90 s, timeout por intento 120 s, deadline total 180 s; maximo **1 reintento** ante
+socket 120 s, timeout por intento 150 s, deadline total 240 s; maximo **1 reintento** ante
 timeout/`IOException`/408/429/5xx con backoff fijo de 500 ms y `Retry-After` solo si <= 5 s; nunca
-400/401/403/404/422; el timeout de cada intento se **recorta** a `min(120 s, restante)`), cierra la
+400/401/403/404/422; el timeout de cada intento se **recorta** a `min(150 s, restante)`), cierra la
 pregunta 1 de `docs/risks-and-open-questions.md` y traduce los fallos a `AiUnavailableException`
 tipada, que los llamadores aceptados ya entienden como **modo semilla**. Los timeouts estan
-calibrados contra la **latencia real medida** del alias `chat` (6 recetas, HTTP 200 en 28,0 s / 6.194
-tokens; issue #68): el timeout de socket y el de peticion son holgados y el deadline deja margen para
-un segundo intento lento. El fallo de transporte se clasifica por su causa en
+calibrados contra la **peor latencia real medida** de la misma clave y el mismo prompt de 6 recetas
+(issue #72): `mimo-v2.6-pro` **115,8 s**, con el alias diario `chat` entre 28,0 y 46,6 s y
+`chat`+`json_object` / `chat-pro`+`json_schema` / `deepseek-v4-flash` en 85,3 / 97,0 / 52,6 s; el
+socket cubre el peor caso con margen y el deadline deja sitio a otro intento igualmente lento tras el
+backoff. El fallo de transporte se clasifica por su causa en
 `AiProviderPolicy.transportFailureReason`: timeout de socket (`java.net.SocketTimeoutException`),
 timeout por intento (`HttpRequestTimeoutException`) o `InterruptedIOException` -> `TIMEOUT`; el resto
 de `IOException` (DNS, conexion rechazada/reset; el `ConnectTimeoutException` de Ktor no es un timeout
@@ -355,7 +357,10 @@ la IA** (`docs/domain/taxonomy.md` §4, sin `id` ni `source`) a Receta con el DT
 **completa `id`** (`AiRecipeIds`: `ai-` + SHA-256 hex del contenido, determinista y sin
 `Random`/reloj/`UUID`) y `source = ai` **antes** de validar, y aplica las reglas del Validador con
 `RecipeValidator.validateRecipe` y restricciones **neutras** -sin pre-filtrar por dieta/restricciones,
-asi el estado Bloqueado de `ai-search` sigue siendo alcanzable-, elemento a elemento y sin lanzar); la
+asi el estado Bloqueado de `ai-search` sigue siendo alcanzable-, elemento a elemento y sin lanzar);
+el decode devuelve un **resultado tipado** `AiDecodeResult` (`accepted`, `received`, `discardedByReason`
+por `DiscardReason`, `contentChars`/`contentBytes` y `contentState` BLANK/ILLEGIBLE/RECIPES) en lugar
+de perder el motivo del descarte: asi un `EMPTY` es diagnosticable sin exponer el cuerpo. La
 `CancellationException` se relanza
 siempre. `AiHttpClientFactory` construye el cliente (OkHttp, `ContentNegotiation` +
 `HttpTimeout`, `expectSuccess = false`; `MockEngine` en tests), los DTOs del envelope OpenAI estan en
@@ -455,8 +460,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**), la app completa
   `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
   `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
-  timeouts calibrados contra la latencia real medida, connect 10 s / socket 90 s / request 120 s /
-  deadline 180 s) y clasifica el fallo de transporte por su causa (timeout de socket o de peticion ->
+  timeouts calibrados contra la peor latencia real medida, connect 10 s / socket 120 s / request 150 s /
+  deadline 240 s) y clasifica el fallo de transporte por su causa (timeout de socket o de peticion ->
   `TIMEOUT`; conexion o red -> `NETWORK`); los fallos se traducen a `AiUnavailableException` tipada
   (modo semilla). Ningun modulo fuera de
   `data.ai` (salvo el cableado de `MainActivity`) conoce Ktor; `FakeRecipeGenerator` se mantiene para
@@ -493,16 +498,24 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
   ficticia): contrato de la peticion (URL, `Authorization: Bearer`, `model` y `messages`), reintentos y
   `Retry-After`, no-reintento de 4xx, deadline, cancelacion, clave ausente (0 peticiones), 200 ilegible
-  y la degradacion de los llamadores reales. Ademas, la **holgura de la politica frente a la latencia
-  real medida** (`REAL_LATENCY_MILLIS = 28_000L`: socket >= 2x, intento >= 3x, margen para un reintento
-  lento), la **frontera del recorte** por intento y la **clasificacion del fallo de transporte**
+  y la degradacion de los llamadores reales. Ademas, la **holgura de la politica frente al peor caso
+  medido** (`REAL_LATENCY_MILLIS = 115_800L`, `mimo-v2.6-pro`; `CHAT_WORST_LATENCY_MILLIS = 46_600L`:
+  `socket > peor` y `socket >= 2x` el peor del alias `chat`, `request >= socket`, deadline que cabe el
+  peor intento mas el backoff mas otro igualmente lento y `canRetry` cierto), la **frontera del recorte**
+  por intento y la **clasificacion del fallo de transporte**
   (timeout de socket/peticion -> `TIMEOUT`; conexion/red -> `NETWORK`; resto -> `UNEXPECTED`), con el
-  `detail` del `AiCallEvent`. El decode se prueba con la **forma real** del contrato §4 (JSON literal
+  `detail` del `AiCallEvent`. El **diagnostico del evento** tambien se prueba: `EMPTY` por contenido
+  vacio o ilegible (longitudes `content=…c/…b`, `received`/`accepted` a 0), lote parcial (`received`,
+  `accepted` y `discardedByReason` con `SCHEMA`/`INCOHERENT`), lote sin aceptadas (`EMPTY` con motivos)
+  y no-fuga (ningun `toString()` de evento lleva clave, `Authorization`, el cuerpo del modelo ni
+  titulos). El decode se prueba con la **forma real** del contrato §4 (JSON literal
   **sin `id` ni `source`**, nunca `RecipeJson.encode`, que era el punto ciego del issue #70):
   `AiRecipePayloadTest` (decodifica, `source = ai` + `id` unico con duplicado literal, reglas del
-  Validador, tolerancia y `matchScore` ignorado) y `AiRecipeIdsTest` (determinismo, unicidad y formato
-  del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService` real
-  con `accepted` no vacio. Suites en `app/src/test/java/com/sazon/app/data/ai`:
+  Validador, tolerancia y `matchScore` ignorado, resumen `received`/`accepted`/`discardedByReason` con
+  los cuatro `DiscardReason` -dos de ellos con restricciones no neutras- y `contentState`
+  BLANK/ILLEGIBLE/RECIPES con longitudes UTF-16 vs UTF-8) y `AiRecipeIdsTest` (determinismo, unicidad y
+  formato del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService`
+  real con `accepted` no vacio. Suites en `app/src/test/java/com/sazon/app/data/ai`:
   `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`.
   La prueba end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
   Validation Plan).
@@ -520,12 +533,18 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 ## Observability
 
 - Sin telemetría. El diagnóstico se hace con **log local de eventos de IA**: proveedor, código de
-  respuesta, duración y **motivo de descarte del validador**.
+  respuesta, duración, **longitudes del contenido**, **recetas recibidas vs. aceptadas** y **resumen
+  del motivo de descarte del validador**.
 - El **evento local de IA** está materializado como la costura `AiCallEvent` (`com.sazon.app.data.ai`:
   operación, desenlace `SUCCESS`/`EMPTY`/`RETRY`/`UNAVAILABLE`, intento, estado HTTP, duración y
-  `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—), con default no-op y cableada a
-  `android.util.Log` en `MainActivity`. **Nunca** incluye la clave ni la cabecera `Authorization`, no
-  se persiste y no se muestra en la UI.
+  `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—, más `contentChars`/`contentBytes`
+  del `content` del modelo, `received`/`accepted` y `discardedByReason` con el recuento por
+  `DiscardReason`), con default no-op y cableada a
+  `android.util.Log` en `MainActivity`. **Nunca** incluye la clave ni la cabecera `Authorization`, ni el
+  cuerpo del modelo ni títulos de recetas (solo longitudes, recuentos y motivos); no
+  se persiste y no se muestra en la UI. Con `EMPTY`, el log distingue contenido en blanco
+  (`0 c/0 b`), ilegible (longitudes > 0, `0` recibidas) y lote sin ninguna receta aceptada
+  (`received > 0`, `accepted = 0` y `discards={…}`).
 - El motivo del descarte es la señal más valiosa del producto: indica si el problema es el prompt o
   el modelo.
 
