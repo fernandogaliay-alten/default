@@ -405,8 +405,14 @@ la IA** (`docs/domain/taxonomy.md` §4, sin `id` ni `source`) a Receta con el DT
 `RecipeValidator.validateRecipe` y restricciones **neutras** -sin pre-filtrar por dieta/restricciones,
 asi el estado Bloqueado de `ai-search` sigue siendo alcanzable-, elemento a elemento y sin lanzar);
 el decode devuelve un **resultado tipado** `AiDecodeResult` (`accepted`, `received`, `discardedByReason`
-por `DiscardReason`, `contentChars`/`contentBytes` y `contentState` BLANK/ILLEGIBLE/RECIPES) en lugar
-de perder el motivo del descarte: asi un `EMPTY` es diagnosticable sin exponer el cuerpo. La
+por `DiscardReason`, `incoherentByCause` —el desglose de los descartes `INCOHERENT` por su causa del
+Validador: `TIME_DRIFT` = regla 4a, `ALLERGEN_COVERAGE` = regla 4b—, `discards` y `contentChars`/
+`contentBytes` con `contentState` BLANK/ILLEGIBLE/RECIPES) en lugar
+de perder el motivo del descarte: asi un `EMPTY` es diagnosticable sin exponer el cuerpo. Las causas de
+incoherencia se calculan **siempre** (correctiva `ai-verbose-diagnostics`) sin tocar el Validador: la
+decision de aceptar/descartar sigue siendo suya; solo el **detalle** por descarte (motivo, causa y
+titulo) y el `content` crudo del modelo quedan detras del interruptor `verboseDiagnostics` del
+generador (apagado por defecto; `MainActivity` lo activa solo en debug, `BuildConfig.DEBUG`). La
 `CancellationException` se relanza
 siempre. `AiHttpClientFactory` construye el cliente (OkHttp, `ContentNegotiation` +
 `HttpTimeout`, `expectSuccess = false`; `MockEngine` en tests), los DTOs del envelope OpenAI estan en
@@ -569,9 +575,15 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   los cuatro `DiscardReason` -dos de ellos con restricciones no neutras- y `contentState`
   BLANK/ILLEGIBLE/RECIPES con longitudes UTF-16 vs UTF-8) y `AiRecipeIdsTest` (determinismo, unicidad y
   formato del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService`
-  real con `accepted` no vacio. Suites en `app/src/test/java/com/sazon/app/data/ai`:
-  `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest`, `OpenAiChatTest` y
-  `DevExpertRecipeGeneratorTest`.
+  real con `accepted` no vacio. El **desglose de `INCOHERENT`** (`ai-verbose-diagnostics`) tambien se
+  prueba: las dos causas (`TIME_DRIFT`/`ALLERGEN_COVERAGE`) en el evento y **coherentes con
+  `RecipeValidator.validateRecipe`** (solo 4a / solo 4b / ambas -> `TIME_DRIFT` / ninguna), y que con el
+  interruptor apagado `discards`/`rawContent` quedan vacios y con el activo llevan el detalle con titulo
+  y el `content` del modelo; el troceado y el formateo puros se prueban en `AiVerboseDiagnosticsTest`
+  (reconstruccion por concatenacion, limite de Logcat, pares suplentes, newlines saneados y no-fuga).
+  Suites en `app/src/test/java/com/sazon/app/data/ai`:
+  `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest`, `OpenAiChatTest`,
+  `AiVerboseDiagnosticsTest` y `DevExpertRecipeGeneratorTest`.
   La prueba end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
   Validation Plan).
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
@@ -595,17 +607,30 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   duración y `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—, más el modo de
   `response_format` usado (`responseFormat = JSON_OBJECT`/`NONE`, `ai-response-format`),
   `contentChars`/`contentBytes`
-  del `content` del modelo, `received`/`accepted` y `discardedByReason` con el recuento por
-  `DiscardReason`), con default no-op y cableada a
-  `android.util.Log` en `MainActivity` (`format=…` en la línea `SazonAi`). **Nunca** incluye la clave ni
-  la cabecera `Authorization`, ni el
-  cuerpo del modelo ni títulos de recetas (solo longitudes, recuentos y motivos); no
+  del `content` del modelo, `received`/`accepted`, `discardedByReason` con el recuento por
+  `DiscardReason` y `incoherentByCause` con el **desglose** de los descartes `INCOHERENT`
+  (`TIME_DRIFT` = regla 4a deriva de tiempos, `ALLERGEN_COVERAGE` = regla 4b `declaredAllergens`
+  incompletos; correctiva `ai-verbose-diagnostics`), con default no-op y cableada a
+  `android.util.Log` en `MainActivity` (`format=…` e `incoherent={…}` en la línea `SazonAi`; el segmento
+  solo aparece cuando hay causas, de modo que un lote sin `INCOHERENT` loguea byte a byte lo de antes).
+  **Nunca** incluye la clave ni la cabecera `Authorization`; en el camino por defecto tampoco el
+  cuerpo del modelo ni títulos de recetas (solo longitudes, recuentos y motivos). No
   se persiste y no se muestra en la UI. Con `EMPTY`, el log distingue contenido en blanco
   (`0 c/0 b`), ilegible (longitudes > 0, `0` recibidas) y lote sin ninguna receta aceptada
   (`received > 0`, `accepted = 0` y `discards={…}`); con `FALLBACK`, que el intento con `json_object`
   fue rechazado con `400`/`422` y se reintenta sin formato.
+- **Modo de diagnóstico verboso (temporal, debug-only).** El interruptor `verboseDiagnostics` de
+  `DevExpertRecipeGenerator` (**apagado por defecto**; `MainActivity` lo activa solo en
+  `BuildConfig.DEBUG`) añade al evento `discards` (motivo + causa + **título**) y `rawContent` (el
+  `choices[0].message.content` crudo del modelo), y `MainActivity` emite una línea `discard[i/n]` por
+  descarte y el crudo troceado en líneas `raw[i/n]` (helper puro `AiVerboseDiagnostics`, 3 000
+  caracteres por trozo, sin partir pares suplentes). Con el interruptor apagado nada de esto viaja: el
+  evento es el de antes. Es una ayuda de desarrollo **temporal** para depurar el prompt (ver
+  `docs/risks-and-open-questions.md`); aun en debug, la clave y `Authorization` nunca aparecen (el
+  crudo es el `content` del modelo, no la petición).
 - El motivo del descarte es la señal más valiosa del producto: indica si el problema es el prompt o
-  el modelo.
+  el modelo; el desglose `incoherent={TIME_DRIFT=…, ALLERGEN_COVERAGE=…}` dice **cuál** de las dos
+  reglas de coherencia falló.
 
 ## Constraints
 

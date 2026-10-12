@@ -44,10 +44,14 @@ números eran **posicionales** y no se renumeran retroactivamente.
   "Reintentar". El diagnóstico local (`AiCallEvent` + `Log.d("SazonAi", …)`) explica cada llamada con
   estado, intento, duración, el modo de formato (`format=JSON_OBJECT`/`NONE`) y si saltó el fallback
   (`FALLBACK`), longitudes del contenido (`content=…c/…b`), `received`/`accepted` y el
-  resumen de motivos de descarte (`discards={…}`), sin exponer nunca la clave ni los cuerpos. Cuota
+  resumen de motivos de descarte (`discards={…}`), sin exponer nunca la clave ni los cuerpos. El
+  resumen se **desglosa** además en `incoherent={TIME_DRIFT=…, ALLERGEN_COVERAGE=…}` para decir cuál
+  de las dos reglas de coherencia del Validador falló (4a deriva de tiempos vs. 4b `declaredAllergens`
+  incompletos; correctiva `ai-verbose-diagnostics`); el segmento solo aparece si hay causas. Cuota
   agotada (429 sostenido) y clave ausente degradan a **modo semilla** sin
   microcopy específico de cuota. Ver `docs/specs/real-ai-provider.md`,
-  `docs/specs/ai-provider-timeouts.md` y `docs/specs/ai-call-diagnostics.md`.
+  `docs/specs/ai-provider-timeouts.md`, `docs/specs/ai-call-diagnostics.md` y
+  `docs/specs/ai-verbose-diagnostics.md`.
 - **Política de trazas** (antes pregunta 5, la de trazas): resuelta en `recipe-validator`. Se aplica
   tal cual la política conservadora de `docs/domain/taxonomy.md` §7: la Taxonomía ya marca los
   posibles trazas con el alérgeno y su keyword (p. ej. `avena` con `gluten`). El validador **no**
@@ -127,6 +131,7 @@ Evolutivos aceptados, a planificar después del MVP:
 | La verificación depende del emulador y es lenta | Media | Bajo | Mantener el dominio testeable en JVM sin Android |
 | El flujo se rompe si el proveedor cambia de formato | Media | Medio | Interfaz `RecipeGenerator` + mapping aislado en la implementación |
 | El onboarding de 7 pasos añade fricción y abandono | Media | Medio | Pasos cortos, una decisión por pantalla, progreso visible, preferencias de estilo opcionales |
+| Diagnóstico verboso de IA (debug-only) deja contenido crudo y títulos en el log | Media | Bajo | **Deuda temporal**: activo solo en debug (`BuildConfig.DEBUG`), apagado en release, sin persistencia; criterio de retirada: cuando esté entendida la causa de `INCOHERENT` y ajustado el prompt, se retira el interruptor (`ai-verbose-diagnostics`); coste: volumen de log (~5 líneas de ~3 KB por llamada más una por descarte, posible rate-limit de Logcat) |
 | La Búsqueda con IA es el único punto de Home que exige red y rompe la sensación offline del resto | Media | Medio | Degradar solo ese bloque con aviso claro; el resto de Home intacto |
 | La Búsqueda con IA se percibe como "rota" cuando el Perfil bloquea lo que el usuario escribe | Media | Medio | Estado vacío que explica el motivo y enlaza a editar el Perfil |
 | El Perfil duplica pantallas del onboarding y divergen | Media | Alto | Regla "un editor, dos entradas": reutilizar los mismos componentes |

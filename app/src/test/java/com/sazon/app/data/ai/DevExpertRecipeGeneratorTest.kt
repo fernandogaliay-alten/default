@@ -816,12 +816,146 @@ class DevExpertRecipeGeneratorTest {
         }
     }
 
+    // --- Escenarios de `docs/specs/ai-verbose-diagnostics.md` (correctiva de ai-call-diagnostics) ---
+
+    // Escenario 1: el evento distingue las dos causas de INCOHERENT, con el modo depuracion apagado.
+    @Test
+    fun el_evento_distingue_las_dos_causas_de_incoherent_sin_depuracion() = runTest {
+        val content = """{"recipes":[
+            ${contractRecipe(title = "Tiempos incoherentes", totalMinutes = 60)},
+            ${contractRecipe(title = "Leche caliente", ingredients = LECHE_INGREDIENTS)}
+        ]}"""
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> okBody(content) }
+
+        provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+            .generateFromIngredients(emptyList(), constraints())
+
+        val event = events.last()
+        assertEquals(AiCallOutcome.EMPTY, event.outcome)
+        assertEquals(mapOf(DiscardReason.INCOHERENT to 2), event.discardedByReason)
+        assertEquals(
+            mapOf(AiIncoherentCause.TIME_DRIFT to 1, AiIncoherentCause.ALLERGEN_COVERAGE to 1),
+            event.incoherentByCause,
+        )
+        assertEquals(
+            "Las causas van en el orden del enum",
+            listOf(AiIncoherentCause.TIME_DRIFT, AiIncoherentCause.ALLERGEN_COVERAGE),
+            event.incoherentByCause.keys.toList(),
+        )
+        assertTrue("Sin depuracion no hay detalle", event.discards.isEmpty())
+        assertNull("Sin depuracion no hay crudo", event.rawContent)
+    }
+
+    // Escenario 3: con el interruptor apagado (por defecto) no hay detalle ni cuerpo crudo, y ningun
+    // titulo aparece en el `toString()` del evento.
+    @Test
+    fun con_el_modo_de_depuracion_apagado_el_evento_no_lleva_detalle_ni_crudo() = runTest {
+        val content = """{"recipes":[
+            {"title":"Rota"},
+            ${contractRecipe(title = "Tiempos incoherentes", totalMinutes = 60)}
+        ]}"""
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> okBody(content) }
+
+        provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+            .generateFromIngredients(emptyList(), constraints())
+
+        val event = events.last()
+        assertTrue(event.discards.isEmpty())
+        assertNull(event.rawContent)
+
+        val text = event.toString()
+        assertFalse("Nunca un titulo de receta", text.contains("Tiempos incoherentes"))
+        assertFalse("Nunca el titulo del elemento ilegible", text.contains("Rota"))
+        assertFalse("Nunca el cuerpo del modelo", text.contains("{\"recipes\""))
+    }
+
+    // Escenario 4: con el interruptor activo el evento lleva el crudo del modelo (varios KB, igual al
+    // `content` servido) y el detalle por descarte con titulo y causa; el render del log (que en
+    // `MainActivity` solo itera) trocea el crudo de forma reconstruible.
+    @Test
+    fun con_el_modo_de_depuracion_activo_el_evento_lleva_detalle_y_crudo_troceado() = runTest {
+        val content = """{"recipes":[
+            {"title":"Rota"},
+            ${contractRecipe(title = "Tiempos incoherentes", totalMinutes = 60)},
+            ${contractRecipe(title = "Leche caliente", ingredients = LECHE_INGREDIENTS)},
+            ${(0 until 30).joinToString(",") { contractRecipe(title = "Relleno $it") }}
+        ]}"""
+        assertTrue("El cuerpo debe ser de varios KB", content.length > 5_000)
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> okBody(content) }
+
+        provider(
+            client = AiHttpClientFactory.create(mock.engine),
+            verboseDiagnostics = true,
+            onEvent = { events += it },
+        ).generateFromIngredients(emptyList(), constraints())
+
+        val event = events.last()
+        assertEquals("El crudo es el content del modelo", content, event.rawContent)
+        assertEquals(
+            listOf(
+                AiDiscardDetail(DiscardReason.SCHEMA, null, "Rota"),
+                AiDiscardDetail(DiscardReason.INCOHERENT, AiIncoherentCause.TIME_DRIFT, "Tiempos incoherentes"),
+                AiDiscardDetail(DiscardReason.INCOHERENT, AiIncoherentCause.ALLERGEN_COVERAGE, "Leche caliente"),
+            ),
+            event.discards,
+        )
+
+        // El render del log: una linea por descarte y el crudo troceado reconstruible (esto es lo que
+        // `MainActivity` emite con `Log.d("SazonAi", …)`).
+        val discardLines = AiVerboseDiagnostics.discardLines(event.discards)
+        val rawLines = AiVerboseDiagnostics.rawLines(event.rawContent)
+        assertEquals(3, discardLines.size)
+        assertTrue("El crudo de varios KB debe trocearse", rawLines.size > 1)
+        rawLines.forEach { assertTrue(it.startsWith("raw[")) }
+        assertEquals(content, rawLines.joinToString("") { it.substringAfter("] ") })
+        assertTrue(discardLines[1].contains("INCOHERENT/TIME_DRIFT"))
+        assertTrue(discardLines[1].contains("title=\"Tiempos incoherentes\""))
+    }
+
+    // Escenario 5: ni el evento ni las lineas del log exponen la clave ni `Authorization`, con el
+    // interruptor en cualquiera de sus dos modos.
+    @Test
+    fun ningun_evento_ni_linea_expone_la_clave_ni_authorization_en_ningun_modo() = runTest {
+        listOf(false, true).forEach { verbose ->
+            val events = mutableListOf<AiCallEvent>()
+            val mock = MockAi { _, _ -> okBody(recipeEnvelope(arroz())) }
+
+            provider(
+                client = AiHttpClientFactory.create(mock.engine),
+                verboseDiagnostics = verbose,
+                onEvent = { events += it },
+            ).suggestByPreferences(perfil())
+
+            assertTrue(events.isNotEmpty())
+            events.forEach { event ->
+                val render = listOf(event.toString()) +
+                    AiVerboseDiagnostics.discardLines(event.discards) +
+                    AiVerboseDiagnostics.rawLines(event.rawContent)
+                render.forEach { line ->
+                    assertFalse("Nunca la clave", line.contains(KEY))
+                    assertFalse("Nunca la cabecera Authorization", line.contains("Bearer"))
+                    assertFalse("Nunca la cabecera Authorization", line.contains("Authorization"))
+                }
+            }
+
+            // El crudo, cuando existe, es el `content` del modelo y viaja troceado.
+            if (verbose) {
+                assertNotNull(events.last().rawContent)
+                assertTrue(AiVerboseDiagnostics.rawLines(events.last().rawContent).isNotEmpty())
+            }
+        }
+    }
+
     private fun provider(
         apiKey: String = KEY,
         client: HttpClient,
         responseFormatEnabled: Boolean = AiProviderPolicy.RESPONSE_FORMAT_ENABLED,
         onEvent: (AiCallEvent) -> Unit = {},
         now: () -> Long = System::currentTimeMillis,
+        verboseDiagnostics: Boolean = false,
     ) = DevExpertRecipeGenerator(
         apiKey = apiKey,
         taxonomy = taxonomy,
@@ -829,6 +963,7 @@ class DevExpertRecipeGeneratorTest {
         responseFormatEnabled = responseFormatEnabled,
         onEvent = onEvent,
         now = now,
+        verboseDiagnostics = verboseDiagnostics,
     )
 
     private suspend fun captureUnavailable(block: suspend () -> Unit): AiUnavailableException? {
@@ -949,6 +1084,8 @@ private fun contractRecipe(
     difficultyId: String = "easy",
     totalMinutes: Int = 25,
     stepMinutes: Int = 25,
+    ingredients: String = CONTRACT_INGREDIENTS,
+    declaredAllergens: String = "[]",
 ): String = """
     {
       "title": "$title",
@@ -961,18 +1098,23 @@ private fun contractRecipe(
       "cookMinutes": 15,
       "difficultyId": "$difficultyId",
       "servings": 2,
-      "ingredients":[
-        {"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},
-        {"name":"Zanahoria","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"zanahoria"}
-      ],
+      "ingredients":$ingredients,
       "steps":[
         {"order":1,"title":"Cocer el arroz","description":"Cuece el arroz.","minutes":$stepMinutes}
       ],
       "tips":[],
       "nutrition":null,
-      "declaredAllergens":[]
+      "declaredAllergens":$declaredAllergens
     }
 """.trimIndent()
+
+/** Ingredientes por defecto del contrato: sin alergenos curados (una 4b no salta por ellos). */
+private const val CONTRACT_INGREDIENTS =
+    """[{"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},{"name":"Zanahoria","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"zanahoria"}]"""
+
+/** Ingrediente con alergeno **curado** (lactosa): dispara la regla 4b si no se declara. */
+private const val LECHE_INGREDIENTS =
+    """[{"name":"Leche","quantity":250,"unit":"ml","isPantry":false,"ingredientId":"leche"}]"""
 
 private fun perfil(
     dietPattern: String = "omnivore",
