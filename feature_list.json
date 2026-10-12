@@ -812,5 +812,35 @@
     ],
     "evidence": [],
     "notes": "Feature correctiva de recipe-artwork (issue #79). Cambia un no-goal del MVP de docs/build-brief.md ('sin imágenes ni assets'): las fotos viajan empaquetadas como assets offline; requiere un ADR nuevo que lo ajuste y actualizar docs (build-brief, technical-discovery, DESIGN.md, risks-and-open-questions). Fuente de las fotos: la persona las genera en Stitch con docs/design/concepts/recipe-photos/stitch-prompt.md; el orquestador descarga las imágenes desde las URLs del export (lh3.googleusercontent.com/aida-public/... a 1200x896) y las mapea por la clave impresa bajo cada foto. Cobertura: 12 recetas semilla (foto propia) + 18 categorías (respaldo para recetas de IA) + 1 imagen por defecto (genérica/neutra, clave 'default', para cuando no encaja ninguna). BLOCKED hasta que existan las capturas; reanudar con github-flow execute recipe-photos (o --captures <ruta>)."
+  },
+  {
+    "id": "favorites-sort-controls",
+    "area": "ui",
+    "title": "Controles de orden compactos en Favoritos (chip 'Recientes' + toggle lista/rejilla icónico)",
+    "user_visible_behavior": "En la pestaña Favoritos el chip de orden por defecto se lee 'Recientes' y ya no aparece recortado, y el selector lista/rejilla pasa a ser un par de botones circulares solo con icono (activo en terracota) dentro de una píldora, como la captura aceptada; el resto de la pantalla (buscador, nota sin conexión, tarjetas, estado vacío) no cambia.",
+    "depends_on": ["favorites"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' (vía 'bash init.sh') sigue en verde; no hay lógica de orden nueva que testear en JVM (FavoritesSort/FavoritesList intactos) y el acabado visual se revisa contra la captura aceptada docs/design/concepts/favorites/favoritos/",
+      "Prueba manual en emulador: en Favoritos el chip 'Recientes' se ve entero (sin recorte) y el toggle lista/rejilla funciona con dos botones de icono (activo en terracota), en claro y oscuro",
+      "DESIGN.md registra la desviación de microcopy ('Recientes' en vez de 'Añadidas recientemente') y el toggle icónico"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de favorites, pedida por la persona (2026-10-13). Motivo: el chip 'Añadidas recientemente' (el orden por defecto, FavoritesSort.RECENT) salía recortado porque FavoritesSortRow pone los 3 chips de orden en un LazyRow(Modifier.weight(1f)) que comparte línea con dos chips de texto 'Lista'/'Rejilla', y el viewport del LazyRow es más estrecho que el primer chip. Solución acordada: (1) acortar el label de FavoritesSort.RECENT a 'Recientes'; (2) sustituir los dos chips de texto por el toggle compacto de dos botones circulares solo con icono (activo terracota) de la captura aceptada (docs/design/concepts/favorites/favoritos/code.html, líneas 89-97). El chip conserva su función: es el orden por defecto (RECENT ordena por savedAt descendente; los otros criterios son Tiempo y Dificultad). Desviación de capturas autorizada por la persona: no se crea docs/design/concepts/favorites-sort-controls/; la dirección visual es la captura aceptada favorites/favoritos (que ya usa el toggle icónico) y el nuevo microcopy se registra en DESIGN.md. Sin cambios de estado ni de la lógica de orden; sin dependencias nuevas (los iconos se dibujan con Compose, el repo no tiene material-icons)."
+  },
+  {
+    "id": "profile-stats-heading",
+    "area": "ui",
+    "title": "Titular 'Estadísticas' en el resumen del Perfil",
+    "user_visible_behavior": "En el Perfil, el bloque de tarjetas de cifras (recetas generadas y favoritas) se titula 'Estadísticas' en lugar de 'Resumen', dejando claro que son estadísticas informativas y no navegables; el resto del Perfil no cambia.",
+    "depends_on": ["activity-summary"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' (vía 'bash init.sh') sigue en verde; el titular es un literal de UI y no hay lógica nueva que testear en JVM",
+      "Prueba manual en emulador: el bloque de cifras del Perfil muestra 'Estadísticas' y las tarjetas siguen sin navegación",
+      "DESIGN.md registra la desviación de microcopy ('Estadísticas' en vez de 'Resumen')"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de activity-summary, pedida por la persona (2026-10-13). Motivo: tras guardar dos recetas generadas por IA, el Perfil mostraba '2 favoritas' bajo el titular 'Resumen', que no dejaba claro que esas tarjetas son solo estadística (no navegables); la persona pidió un titular que lo explicite. Cambio: el literal 'Resumen' de ActivitySummarySection pasa a 'Estadísticas' (solo microcopy; el Non-Goal 'no se añade navegación' de docs/specs/activity-summary.md sigue intacto). Desviación de capturas autorizada por la persona: no se crea docs/design/concepts/profile-stats-heading/; la dirección visual es la captura aceptada docs/design/concepts/activity-summary/perfil-resumen/ y el nuevo titular se registra en DESIGN.md."
   }
 ]
