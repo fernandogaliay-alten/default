@@ -6,6 +6,9 @@
          estado de conectividad (NetworkStatusSource); no hay trafico de red. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Proveedor de IA real (data.ai, Ktor): sin este permiso la primera peticion falla. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

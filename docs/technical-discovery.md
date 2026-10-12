@@ -17,8 +17,11 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
   excepción `android.disallowKotlinSourceSets=false` en `gradle.properties` para registrar sus fuentes
   generadas; sin ella, la configuración falla.
 - Coroutines + Flow para asincronía.
-- Cliente HTTP (Retrofit o Ktor) + `kotlinx.serialization` contra la API compatible con OpenAI de
-  **DevExpert Inference** (proveedor decidido; ver `docs/adr/0003-ai-provider.md`).
+- Cliente HTTP: **Ktor Client** (engine **OkHttp**) + `kotlinx.serialization` contra la API compatible
+  con OpenAI de **DevExpert Inference** (proveedor decidido; ver `docs/adr/0003-ai-provider.md`). El
+  version catalog fija **Ktor 3.6.0**; OkHttp queda **forzado a 5.4.0** en `app/build.gradle.kts`
+  porque Ktor 3.6.0 arrastra 5.5.0, cuyo artefacto Android exige `compileSdk 37` (el repo compila
+  contra API 36.1) y rompe `checkDebugAarMetadata`. Ver "Constraints".
 - Inyección de dependencias ligera. En un proyecto de curso, manual o Koin es suficiente; Hilt añade
   ceremonia.
 - Tests: JUnit en JVM. El dominio no debe depender de Android para poder testarse sin emulador.
@@ -35,7 +38,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | Assets locales (`assets/icons/**`, `assets/img/recipes/**`) | Determinista, offline, sin coste |
-| Clave de IA | `BuildConfig`, desde `local.properties` | Decisión de demo; ver riesgos |
+| Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
 versiones. Los `id` nunca se renombran.
@@ -330,6 +333,25 @@ la Firma de preferencias (es clave de cache del Lote, no contenido del prompt). 
 (`PromptBuilderTest`). La implementacion real del proveedor lo consumira. Ver
 `docs/specs/prompt-builder.md`.
 
+El **proveedor de IA real** vive en `com.sazon.app.data.ai` y es la **unica** capa que conoce Ktor
+(junto al cableado de `MainActivity`). `DevExpertRecipeGenerator` implementa el puerto
+`RecipeGenerator`: las tres operaciones componen su prompt con `PromptBuilder` y llaman al mismo
+`execute`, que aplica la politica fija de `AiProviderPolicy` en un **unico** sitio (connect 10 s,
+socket 30 s, timeout por intento 40 s, deadline total 60 s; maximo **1 reintento** ante
+timeout/`IOException`/408/429/5xx con backoff fijo de 500 ms y `Retry-After` solo si <= 5 s; nunca
+400/401/403/404/422; el timeout de cada intento se **recorta** a `min(40 s, restante)`), cierra la
+pregunta 1 de `docs/risks-and-open-questions.md` y traduce los fallos a `AiUnavailableException`
+tipada, que los llamadores aceptados ya entienden como **modo semilla**. La clave ausente lanza
+`MISSING_KEY` **sin** ninguna peticion; un 200 ilegible o vacio **no** lanza (devuelve las recetas
+decodificables, posiblemente vacias via `AiRecipePayload.decode`, que parsea **elemento a elemento**
+con `RecipeValidator` y restricciones **neutras** para **no** pre-filtrar por dieta/restricciones -asi
+el estado Bloqueado de `ai-search` sigue siendo alcanzable-); la `CancellationException` se relanza
+siempre. `AiHttpClientFactory` construye el cliente (OkHttp, `ContentNegotiation` +
+`HttpTimeout`, `expectSuccess = false`; `MockEngine` en tests), los DTOs del envelope OpenAI estan en
+`OpenAiChat` y `MainActivity` inyecta `BuildConfig.DEVEXPERT_API_KEY` (desde `local.properties`) y
+cablea el diagnostico a `Log`. El manifiesto declara el permiso `INTERNET`. Ver
+`docs/specs/real-ai-provider.md`.
+
 El Tema de la app vive en `com.sazon.app.ui.theme` y es la unica fuente de verdad visual,
 materializada desde `DESIGN.md`: `Color.kt` (paleta + `LightColorScheme`/`DarkColorScheme` con todos
 los roles sobrescritos, sin purple/pink por defecto), `Type.kt` (`SazonTypography` + familias
@@ -414,6 +436,16 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
   junto a `GenerationConstraints`, la costura minima de `generateFromIngredients`.
+- **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
+  Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
+  `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
+  `Authorization: Bearer <clave>` (sin `response_format`, `stream`, `temperature` ni `max_tokens`,
+  ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante**
+  (`AiRecipePayload` + `RecipeValidator` con restricciones **neutras**, elemento a elemento, sin
+  lanzar). La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio) y
+  los fallos se traducen a `AiUnavailableException` tipada (modo semilla). Ningun modulo fuera de
+  `data.ai` (salvo el cableado de `MainActivity`) conoce Ktor; `FakeRecipeGenerator` se mantiene para
+  test/desarrollo. Ver `docs/specs/real-ai-provider.md`.
 - `FakeRecipeGenerator` (datos fijos, sin red) es la implementación por defecto en desarrollo y
   tests, y permite construir y validar toda la app antes de elegir proveedor. Vive en
   `com.sazon.app.data.generator` (Kotlin puro, sin Android ni red) y sus fixtures incluyen, a
@@ -443,6 +475,13 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   política de caché, escalado de raciones.
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
+- **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
+  ficticia): contrato de la peticion (URL, `Authorization: Bearer`, `model` y `messages`), reintentos y
+  `Retry-After`, no-reintento de 4xx, deadline, cancelacion, clave ausente (0 peticiones), 200 ilegible
+  y la degradacion de los llamadores reales. Suites en `app/src/test/java/com/sazon/app/data/ai`:
+  `AiProviderPolicyTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`. La prueba
+  end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
+  Validation Plan).
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
 - `init.sh` debe ejecutar los tests de forma reproducible y ser el punto de entrada de verificación
   del harness.
@@ -458,6 +497,11 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 
 - Sin telemetría. El diagnóstico se hace con **log local de eventos de IA**: proveedor, código de
   respuesta, duración y **motivo de descarte del validador**.
+- El **evento local de IA** está materializado como la costura `AiCallEvent` (`com.sazon.app.data.ai`:
+  operación, desenlace `SUCCESS`/`EMPTY`/`RETRY`/`UNAVAILABLE`, intento, estado HTTP, duración y
+  `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—), con default no-op y cableada a
+  `android.util.Log` en `MainActivity`. **Nunca** incluye la clave ni la cabecera `Authorization`, no
+  se persiste y no se muestra en la UI.
 - El motivo del descarte es la señal más valiosa del producto: indica si el problema es el prompt o
   el modelo.
 
@@ -470,6 +514,11 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   Favoritos deben funcionar sin conexión.
 - **Tamaño del APK**: las imágenes locales de receta suman; conviene formato WebP y resolución
   moderada.
+- **OkHttp frente a `compileSdk`**: Ktor 3.6.0 trae OkHttp 5.5.0, cuyo artefacto Android
+  (`okhttp-android`) declara `minCompileSdk=37`; con `compileSdk` 36.1 la verificación del AAR
+  (`checkDebugAarMetadata`) falla. El build **fuerza OkHttp 5.4.0** en `app/build.gradle.kts` (la
+  última cuyo artefacto Android acepta `compileSdk 36`). Antes de subir OkHttp/Ktor hay que comprobar
+  el `minCompileSdk` del AAR o subir `compileSdk` (y su plataforma del SDK).
 - **Tiempo de curso**: el MVP debe priorizar el corte vertical sobre la amplitud de features.
 - **Complejidad de build**: Kotlin/Compose conlleva Gradle, SDK y emulador; es el mayor coste de
   arranque del proyecto.

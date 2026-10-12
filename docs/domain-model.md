@@ -83,7 +83,8 @@ Puerto con tres operaciones:
 
 Las tres devuelven `Recipe` y **todas** pasan por el Validador. `constraints` es
 `GenerationConstraints` (`profile`, `servings` y los ajustes opcionales del paso del generador).
-Implementación real: pendiente. Implementación de test: `FakeRecipeGenerator` (en `data.generator`,
+Implementación real: `DevExpertRecipeGenerator` (en `data.ai`, Ktor + DevExpert Inference;
+`docs/specs/real-ai-provider.md`). Implementación de test: `FakeRecipeGenerator` (en `data.generator`,
 determinista y sin red).
 
 ### Política de la Búsqueda con IA

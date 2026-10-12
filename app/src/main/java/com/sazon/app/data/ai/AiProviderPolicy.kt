@@ -1,0 +1,98 @@
+package com.sazon.app.data.ai
+
+import com.sazon.app.domain.validation.RecipeConstraints
+
+/**
+ * Politica de la IA en un **unico sitio**: endpoint, alias de modelo, timeouts, reintentos y
+ * degradacion. Son constantes y decisiones **puras** (sin HTTP), de modo que se testean en JVM.
+ *
+ * Cierra la pregunta abierta 1 de `docs/risks-and-open-questions.md` (ver
+ * `docs/specs/real-ai-provider.md`).
+ */
+object AiProviderPolicy {
+
+    /** Base de la API compatible con OpenAI de DevExpert Inference (`docs/adr/0003-ai-provider.md`). */
+    const val BASE_URL = "https://inference.devexpert.io/v1"
+
+    /** Ruta del endpoint de chat completions. */
+    const val CHAT_COMPLETIONS_PATH = "/chat/completions"
+
+    /** Alias del modelo diario. El alias aislado, no el nombre real, puede cambiar sin romper nada. */
+    const val MODEL_ALIAS = "chat"
+
+    /** Timeout de conexion (connect). */
+    const val CONNECT_TIMEOUT_MILLIS = 10_000L
+
+    /** Timeout de socket (lectura). */
+    const val SOCKET_TIMEOUT_MILLIS = 30_000L
+
+    /** Timeout por intento (request). */
+    const val REQUEST_TIMEOUT_MILLIS = 40_000L
+
+    /** Deadline total por operacion, sumando todos los intentos. */
+    const val TOTAL_DEADLINE_MILLIS = 60_000L
+
+    /** Maximo de intentos: el primero mas **un** reintento. */
+    const val MAX_ATTEMPTS = 2
+
+    /** Backoff fijo entre intentos. */
+    const val RETRY_BACKOFF_MILLIS = 500L
+
+    /** `Retry-After` solo se respeta si no supera este umbral; si no, se usa el backoff fijo. */
+    const val RETRY_AFTER_MAX_MILLIS = 5_000L
+
+    /**
+     * Restricciones "neutras": el proveedor **no** pre-filtra por dieta ni por restricciones duras.
+     *
+     * `dietPatternId = ""` es a proposito un id que no existe en la Taxonomia (`dietPattern("") == null`),
+     * asi que la regla 2 del validador es un no-op, y `hardRestrictionIds` vacio deja la regla 3 sin
+     * candidatos. Los tres llamadores ya validan con el Perfil efectivo; si el proveedor pre-filtrara,
+     * el estado **Bloqueado** de `ai-search` (decidido por el motivo del descarte) se degradaria a
+     * "sin resultados".
+     */
+    val NEUTRAL_CONSTRAINTS = RecipeConstraints(dietPatternId = "", hardRestrictionIds = emptySet())
+
+    /** URL completa del endpoint (`BASE_URL` + `CHAT_COMPLETIONS_PATH`). */
+    fun endpointUrl(): String = BASE_URL + CHAT_COMPLETIONS_PATH
+
+    /**
+     * Un estado HTTP es reintentable solo si es 408 (timeout), 429 (cuota) o 5xx. Un 400/401/403/404/422
+     * y demas 4xx **nunca** se reintentan.
+     */
+    fun isRetryableStatus(statusCode: Int): Boolean =
+        statusCode == 408 || statusCode == 429 || statusCode in 500..599
+
+    /**
+     * Backoff a esperar antes del reintento segun la cabecera `Retry-After`.
+     *
+     * Solo se interpreta como **segundos** y solo se respeta en el rango `0..5` s; cualquier otro
+     * valor (30, ausente, no numerico, formato fecha HTTP) cae al backoff fijo
+     * [RETRY_BACKOFF_MILLIS].
+     */
+    fun retryDelayMillis(retryAfterHeaderValue: String?): Long {
+        val seconds = retryAfterHeaderValue?.trim()?.toLongOrNull() ?: return RETRY_BACKOFF_MILLIS
+        val millis = seconds * 1_000L
+        return if (seconds >= 0 && millis <= RETRY_AFTER_MAX_MILLIS) millis else RETRY_BACKOFF_MILLIS
+    }
+
+    /**
+     * Timeout de un intento: se recorta al tiempo restante del deadline total
+     * (`min(REQUEST_TIMEOUT_MILLIS, remainingMillis)`). Un `remaining` no positivo se trata como 0.
+     */
+    fun attemptRequestTimeoutMillis(remainingMillis: Long): Long =
+        minOf(REQUEST_TIMEOUT_MILLIS, remainingMillis.coerceAtLeast(0L))
+
+    /**
+     * Hay margen para un nuevo intento: queda menos del maximo y el backoff fijo no agota el deadline
+     * restante.
+     */
+    fun canRetry(attempt: Int, remainingMillis: Long): Boolean =
+        attempt < MAX_ATTEMPTS && remainingMillis - RETRY_BACKOFF_MILLIS > 0
+
+    /**
+     * Motivo de la degradacion para un estado HTTP de fallo: 429 -> [AiUnavailableReason.RATE_LIMITED];
+     * cualquier otro 4xx/5xx -> [AiUnavailableReason.HTTP_ERROR].
+     */
+    fun unavailableReason(statusCode: Int): AiUnavailableReason =
+        if (statusCode == 429) AiUnavailableReason.RATE_LIMITED else AiUnavailableReason.HTTP_ERROR
+}

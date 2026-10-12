@@ -1,6 +1,7 @@
 package com.sazon.app
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,9 +10,10 @@ import com.sazon.app.data.AssetTaxonomySource
 import com.sazon.app.data.NetworkStatusSource
 import com.sazon.app.data.activity.ActivitySummaryDatabase
 import com.sazon.app.data.activity.RoomActivitySummaryRepository
+import com.sazon.app.data.ai.AiHttpClientFactory
+import com.sazon.app.data.ai.DevExpertRecipeGenerator
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
-import com.sazon.app.data.generator.FakeRecipeGenerator
 import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
 import com.sazon.app.data.suggestions.RoomSuggestionBatchRepository
@@ -42,7 +44,23 @@ class MainActivity : ComponentActivity() {
         val activitySummaryRepository =
             RoomActivitySummaryRepository(activitySummaryDatabase.activitySummaryDao())
         val activitySummaryService = ActivitySummaryService(activitySummaryRepository)
-        val generator = FakeRecipeGenerator()
+        // Proveedor de IA real (DevExpert Inference, Ktor) tras el puerto RecipeGenerator. La clave
+        // se inyecta en BuildConfig desde local.properties (no versionada); se crea tras cargar la
+        // Taxonomia y lo comparten los tres servicios, igual que antes con el generador falso.
+        val aiClient = AiHttpClientFactory.create()
+        val generator = DevExpertRecipeGenerator(
+            apiKey = BuildConfig.DEVEXPERT_API_KEY,
+            taxonomy = taxonomy,
+            client = aiClient,
+            onEvent = { event ->
+                // Diagnostico local: nunca incluye la clave, la cabecera Authorization ni los cuerpos.
+                Log.d(
+                    "SazonAi",
+                    "${event.operation} ${event.outcome} attempt=${event.attempt} " +
+                        "status=${event.httpStatus} ${event.durationMillis}ms ${event.detail}",
+                )
+            },
+        )
         val suggestionBatchService = SuggestionBatchService(
             generator = generator,
             repository = suggestionBatchRepository,
