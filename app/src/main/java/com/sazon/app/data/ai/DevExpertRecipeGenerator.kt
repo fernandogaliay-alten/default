@@ -21,6 +21,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import java.io.IOException
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -184,10 +185,13 @@ class DevExpertRecipeGenerator(
             }
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (timeout: HttpRequestTimeoutException) {
-            return AttemptOutcome.TransportFailure(AiUnavailableReason.TIMEOUT, timeout)
-        } catch (io: IOException) {
-            return AttemptOutcome.TransportFailure(AiUnavailableReason.NETWORK, io)
+        } catch (failure: HttpRequestTimeoutException) {
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
+        } catch (failure: SocketTimeoutException) {
+            // java.net, ANTES del IOException generico: es un timeout del modelo, no un fallo de red.
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
+        } catch (failure: IOException) {
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
         } catch (unexpected: Exception) {
             throw AiUnavailableException(
                 AiUnavailableReason.UNEXPECTED,
@@ -205,10 +209,13 @@ class DevExpertRecipeGenerator(
             response.bodyAsText()
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (timeout: HttpRequestTimeoutException) {
-            return AttemptOutcome.TransportFailure(AiUnavailableReason.TIMEOUT, timeout)
-        } catch (io: IOException) {
-            return AttemptOutcome.TransportFailure(AiUnavailableReason.NETWORK, io)
+        } catch (failure: HttpRequestTimeoutException) {
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
+        } catch (failure: SocketTimeoutException) {
+            // java.net, ANTES del IOException generico: es un timeout del modelo, no un fallo de red.
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
+        } catch (failure: IOException) {
+            return AttemptOutcome.TransportFailure(AiProviderPolicy.transportFailureReason(failure), failure)
         } catch (_: Exception) {
             // 200 con cuerpo ilegible: no es un error, simplemente no hay recetas.
             return AttemptOutcome.Success(status, content = null)
@@ -232,7 +239,10 @@ class DevExpertRecipeGenerator(
         return AiProviderPolicy.canRetry(attempt, remaining) && remaining - delayMillis > 0
     }
 
-    /** El plazo total (60 s) es lo que impide otro intento: el motivo de degradacion es `TIMEOUT`. */
+    /**
+     * El plazo total ([AiProviderPolicy.TOTAL_DEADLINE_MILLIS]) es lo que impide otro intento: el motivo
+     * de degradacion es `TIMEOUT`.
+     */
     private fun throwDeadlineExhausted(operation: AiOperation, attempt: Int, startedAt: Long): Nothing {
         report(operation, AiCallOutcome.UNAVAILABLE, attempt, null, startedAt, DEADLINE_DETAIL)
         throw AiUnavailableException(

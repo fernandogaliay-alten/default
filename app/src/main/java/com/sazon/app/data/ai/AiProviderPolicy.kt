@@ -1,6 +1,10 @@
 package com.sazon.app.data.ai
 
 import com.sazon.app.domain.validation.RecipeConstraints
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.SocketTimeoutException
 
 /**
  * Politica de la IA en un **unico sitio**: endpoint, alias de modelo, timeouts, reintentos y
@@ -23,14 +27,25 @@ object AiProviderPolicy {
     /** Timeout de conexion (connect). */
     const val CONNECT_TIMEOUT_MILLIS = 10_000L
 
-    /** Timeout de socket (lectura). */
-    const val SOCKET_TIMEOUT_MILLIS = 30_000L
+    /**
+     * Timeout de socket (lectura/escritura). Fijado a ~3x la latencia real medida del alias `chat`
+     * (6 recetas, HTTP 200 en 28,0 s / 6.194 tokens; issue #68): una lectura lenta no corta la
+     * respuesta antes de que el modelo termine de razonar.
+     */
+    const val SOCKET_TIMEOUT_MILLIS = 90_000L
 
-    /** Timeout por intento (request). */
-    const val REQUEST_TIMEOUT_MILLIS = 40_000L
+    /**
+     * Timeout por intento (request). Techo por encima del de socket (el guardia de lectura salta
+     * primero) para acotar una respuesta que gotea.
+     */
+    const val REQUEST_TIMEOUT_MILLIS = 120_000L
 
-    /** Deadline total por operacion, sumando todos los intentos. */
-    const val TOTAL_DEADLINE_MILLIS = 60_000L
+    /**
+     * Deadline total por operacion, sumando todos los intentos. Cabe el intento lento medido (~28 s,
+     * con holgura) y, tras un primer intento agotado, un segundo intento recortado que sigue siendo
+     * mayor que dos veces esa latencia (issue #68).
+     */
+    const val TOTAL_DEADLINE_MILLIS = 180_000L
 
     /** Maximo de intentos: el primero mas **un** reintento. */
     const val MAX_ATTEMPTS = 2
@@ -95,4 +110,24 @@ object AiProviderPolicy {
      */
     fun unavailableReason(statusCode: Int): AiUnavailableReason =
         if (statusCode == 429) AiUnavailableReason.RATE_LIMITED else AiUnavailableReason.HTTP_ERROR
+
+    /**
+     * Motivo de degradacion de un fallo de **transporte** (sin estado HTTP). Es pura y decide el
+     * diagnostico local en un unico sitio.
+     *
+     * - `HttpRequestTimeoutException` (timeout por intento de Ktor) y `SocketTimeoutException`
+     *   (`java.net`, el timeout de socket real que expone el engine OkHttp en JVM: "el modelo tardo en
+     *   responder") e `InterruptedIOException` (call timeout de OkHttp) -> [AiUnavailableReason.TIMEOUT].
+     * - `IOException` generico (DNS, conexion rechazada, reset...) -> [AiUnavailableReason.NETWORK].
+     *   `java.net.ConnectException` (el `ConnectTimeoutException` de Ktor) **no** es un timeout del
+     *   modelo: nunca se llego a hablar con el proveedor, asi que es red.
+     * - Cualquier otra causa (incluido `null`) -> [AiUnavailableReason.UNEXPECTED].
+     */
+    fun transportFailureReason(cause: Throwable?): AiUnavailableReason = when {
+        cause is HttpRequestTimeoutException -> AiUnavailableReason.TIMEOUT
+        cause is SocketTimeoutException -> AiUnavailableReason.TIMEOUT
+        cause is InterruptedIOException -> AiUnavailableReason.TIMEOUT
+        cause is IOException -> AiUnavailableReason.NETWORK
+        else -> AiUnavailableReason.UNEXPECTED
+    }
 }

@@ -25,14 +25,18 @@ números eran **posicionales** y no se renumeran retroactivamente.
 
 ### Resueltas
 
-- **Errores y reintentos de la IA** (era la pregunta 1): resuelta en `real-ai-provider`. La política
-  es fija y vive en un **único** sitio, `com.sazon.app.data.ai.AiProviderPolicy`: connect 10 s, socket
-  30 s, timeout por intento 40 s y deadline total 60 s; máximo **1 reintento** (2 intentos) solo ante
-  timeout/`IOException`/408/429/5xx, con backoff fijo de 500 ms y `Retry-After` respetado solo si
-  ≤ 5 s; **nunca** se reintentan 400/401/403/404/422. Un 200 ilegible o vacío **no** lanza: devuelve
+- **Errores y reintentos de la IA** (era la pregunta 1): resuelta en `real-ai-provider`, con los
+  timeouts recalibrados por `ai-provider-timeouts`. La política es fija y vive en un **único** sitio,
+  `com.sazon.app.data.ai.AiProviderPolicy`: connect 10 s, socket 90 s, timeout por intento 120 s y
+  deadline total 180 s (calibrados contra la latencia real medida: HTTP 200 en 28,0 s con 6 recetas);
+  máximo **1 reintento** (2 intentos) solo ante timeout/`IOException`/408/429/5xx, con backoff fijo de
+  500 ms y `Retry-After` respetado solo si ≤ 5 s; **nunca** se reintentan 400/401/403/404/422. El fallo
+  de transporte se clasifica por su causa: timeout de socket o de petición → `TIMEOUT` (el modelo tardó
+  en responder), conexión/red → `NETWORK`. Un 200 ilegible o vacío **no** lanza: devuelve
   las recetas decodificables (posiblemente vacías) y la pantalla muestra su estado vacío con
   "Reintentar". Cuota agotada (429 sostenido) y clave ausente degradan a **modo semilla** sin
-  microcopy específico de cuota. Ver `docs/specs/real-ai-provider.md`.
+  microcopy específico de cuota. Ver `docs/specs/real-ai-provider.md` y
+  `docs/specs/ai-provider-timeouts.md`.
 - **Política de trazas** (antes pregunta 5, la de trazas): resuelta en `recipe-validator`. Se aplica
   tal cual la política conservadora de `docs/domain/taxonomy.md` §7: la Taxonomía ya marca los
   posibles trazas con el alérgeno y su keyword (p. ej. `avena` con `gluten`). El validador **no**

@@ -337,11 +337,18 @@ El **proveedor de IA real** vive en `com.sazon.app.data.ai` y es la **unica** ca
 (junto al cableado de `MainActivity`). `DevExpertRecipeGenerator` implementa el puerto
 `RecipeGenerator`: las tres operaciones componen su prompt con `PromptBuilder` y llaman al mismo
 `execute`, que aplica la politica fija de `AiProviderPolicy` en un **unico** sitio (connect 10 s,
-socket 30 s, timeout por intento 40 s, deadline total 60 s; maximo **1 reintento** ante
+socket 90 s, timeout por intento 120 s, deadline total 180 s; maximo **1 reintento** ante
 timeout/`IOException`/408/429/5xx con backoff fijo de 500 ms y `Retry-After` solo si <= 5 s; nunca
-400/401/403/404/422; el timeout de cada intento se **recorta** a `min(40 s, restante)`), cierra la
+400/401/403/404/422; el timeout de cada intento se **recorta** a `min(120 s, restante)`), cierra la
 pregunta 1 de `docs/risks-and-open-questions.md` y traduce los fallos a `AiUnavailableException`
-tipada, que los llamadores aceptados ya entienden como **modo semilla**. La clave ausente lanza
+tipada, que los llamadores aceptados ya entienden como **modo semilla**. Los timeouts estan
+calibrados contra la **latencia real medida** del alias `chat` (6 recetas, HTTP 200 en 28,0 s / 6.194
+tokens; issue #68): el timeout de socket y el de peticion son holgados y el deadline deja margen para
+un segundo intento lento. El fallo de transporte se clasifica por su causa en
+`AiProviderPolicy.transportFailureReason`: timeout de socket (`java.net.SocketTimeoutException`),
+timeout por intento (`HttpRequestTimeoutException`) o `InterruptedIOException` -> `TIMEOUT`; el resto
+de `IOException` (DNS, conexion rechazada/reset; el `ConnectTimeoutException` de Ktor no es un timeout
+del modelo) -> `NETWORK`. La clave ausente lanza
 `MISSING_KEY` **sin** ninguna peticion; un 200 ilegible o vacio **no** lanza (devuelve las recetas
 decodificables, posiblemente vacias via `AiRecipePayload.decode`, que parsea **elemento a elemento**
 con `RecipeValidator` y restricciones **neutras** para **no** pre-filtrar por dieta/restricciones -asi
@@ -442,8 +449,11 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `Authorization: Bearer <clave>` (sin `response_format`, `stream`, `temperature` ni `max_tokens`,
   ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante**
   (`AiRecipePayload` + `RecipeValidator` con restricciones **neutras**, elemento a elemento, sin
-  lanzar). La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio) y
-  los fallos se traducen a `AiUnavailableException` tipada (modo semilla). Ningun modulo fuera de
+  lanzar). La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
+  timeouts calibrados contra la latencia real medida, connect 10 s / socket 90 s / request 120 s /
+  deadline 180 s) y clasifica el fallo de transporte por su causa (timeout de socket o de peticion ->
+  `TIMEOUT`; conexion o red -> `NETWORK`); los fallos se traducen a `AiUnavailableException` tipada
+  (modo semilla). Ningun modulo fuera de
   `data.ai` (salvo el cableado de `MainActivity`) conoce Ktor; `FakeRecipeGenerator` se mantiene para
   test/desarrollo. Ver `docs/specs/real-ai-provider.md`.
 - `FakeRecipeGenerator` (datos fijos, sin red) es la implementación por defecto en desarrollo y
@@ -478,7 +488,11 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
   ficticia): contrato de la peticion (URL, `Authorization: Bearer`, `model` y `messages`), reintentos y
   `Retry-After`, no-reintento de 4xx, deadline, cancelacion, clave ausente (0 peticiones), 200 ilegible
-  y la degradacion de los llamadores reales. Suites en `app/src/test/java/com/sazon/app/data/ai`:
+  y la degradacion de los llamadores reales. Ademas, la **holgura de la politica frente a la latencia
+  real medida** (`REAL_LATENCY_MILLIS = 28_000L`: socket >= 2x, intento >= 3x, margen para un reintento
+  lento), la **frontera del recorte** por intento y la **clasificacion del fallo de transporte**
+  (timeout de socket/peticion -> `TIMEOUT`; conexion/red -> `NETWORK`; resto -> `UNEXPECTED`), con el
+  `detail` del `AiCallEvent`. Suites en `app/src/test/java/com/sazon/app/data/ai`:
   `AiProviderPolicyTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`. La prueba
   end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
   Validation Plan).

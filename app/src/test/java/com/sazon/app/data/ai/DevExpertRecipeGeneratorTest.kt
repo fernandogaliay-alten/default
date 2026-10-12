@@ -234,6 +234,67 @@ class DevExpertRecipeGeneratorTest {
         assertEquals(2, mock.calls)
     }
 
+    // Escenario 2 de `docs/specs/ai-provider-timeouts.md`: un timeout de socket agotado se reporta como
+    // TIMEOUT (hoy NETWORK) tras exactamente 2 intentos, y el evento final lo dice en su `detail`.
+    @Test
+    fun un_timeout_de_socket_agotado_lanza_timeout_tras_dos_intentos() = runTest {
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, _ -> throw SocketTimeoutException("timeout de lectura") }
+
+        val thrown = captureUnavailable {
+            provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+                .suggestByPreferences(perfil())
+        }
+
+        assertNotNull(thrown)
+        assertEquals("Un timeout de socket no es un fallo de red", AiUnavailableReason.TIMEOUT, thrown!!.reason)
+        assertEquals(2, mock.calls)
+        assertEquals(AiCallOutcome.UNAVAILABLE, events.last().outcome)
+        assertEquals("TIMEOUT", events.last().detail)
+    }
+
+    // Escenario 3: timeout de socket en el primer intento y exito en el segundo -> 2 llamadas, recetas,
+    // evento RETRY con `detail = "TIMEOUT"` y backoff fijo de 500 ms.
+    @Test
+    fun un_timeout_de_socket_seguido_de_exito_reintenta_con_motivo_timeout() = runTest {
+        val events = mutableListOf<AiCallEvent>()
+        val mock = MockAi { _, call ->
+            if (call == 1) throw SocketTimeoutException("timeout") else okBody(recipeEnvelope(arroz()))
+        }
+        val startedAt = testScheduler.currentTime
+
+        val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onEvent = { events += it })
+            .suggestByPreferences(perfil())
+
+        assertEquals(2, mock.calls)
+        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals("TIMEOUT", events.first { it.outcome == AiCallOutcome.RETRY }.detail)
+        assertEquals("El backoff del reintento de transporte es el fijo", 500L, testScheduler.currentTime - startedAt)
+    }
+
+    // Escenario 1 de `docs/specs/ai-provider-timeouts.md`: un intento lento (~35 s, por encima del
+    // socket timeout viejo de 30 s) cabe en la politica nueva -> 1 sola llamada y recetas.
+    @Test
+    fun un_intento_lento_dentro_de_la_politica_no_degrada() = runTest {
+        val events = mutableListOf<AiCallEvent>()
+        var fakeNow = 0L
+        val mock = MockAi { _, _ ->
+            fakeNow += 35_000L
+            okBody(recipeEnvelope(arroz()))
+        }
+
+        val recipes = provider(
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = { events += it },
+            now = { fakeNow },
+        ).suggestByPreferences(perfil())
+
+        assertEquals("Un intento lento que acaba bien no reintenta", 1, mock.calls)
+        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals(AiCallOutcome.SUCCESS, events.last().outcome)
+        assertEquals(35_000L, events.last().durationMillis)
+    }
+
     // Escenario 7: con el deadline agotado no se inicia un segundo intento (1 llamada).
     @Test
     fun el_deadline_agotado_no_inicia_un_segundo_intento() = runTest {
