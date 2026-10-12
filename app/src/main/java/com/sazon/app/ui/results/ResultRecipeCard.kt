@@ -1,46 +1,37 @@
 package com.sazon.app.ui.results
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.artwork.RecipeArtwork
 import com.sazon.app.ui.home.RecipeCardFormat
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
-import com.sazon.app.ui.theme.SazonPrimaryContainer
-import com.sazon.app.ui.theme.SazonSecondaryContainer
 import com.sazon.app.ui.theme.SazonShapes
 import com.sazon.app.ui.theme.SazonSpacing
 
 /**
  * Tarjeta de una receta en la pantalla de Resultados (a ancho completo).
  *
- * Imagen placeholder de **degradado** melocoton->oliva (16:10, esquinas 24px) con glifo de plato, titulo
- * (2 lineas), descripcion (1 linea), la linea de metadatos `RecipeCardFormat.metaLine` (cifras
- * tabulares) y la pildora de coincidencia `RecipeCardFormat.matchBadge` en terracota.
+ * La imagen la pinta el componente unico `ui.artwork.RecipeArtwork` (glifo por categoria, acento por
+ * cocina): se conserva el 16:10 con esquinas 24 del `Surface`. Debajo, titulo (2 lineas), descripcion
+ * (1 linea), la linea de metadatos `RecipeCardFormat.metaLine` (cifras tabulares) y la pildora de
+ * coincidencia `RecipeCardFormat.matchBadge` en terracota.
  *
- * Reutiliza el mismo degradado/glifo que `com.sazon.app.ui.home.RecipeCard` (el repositorio no tiene
- * assets de receta ni iconos). **Sin corazon** (favoritos es de `favorites`); el click opcional abre el
- * Detalle (`recipe-detail-screen`).
+ * **Sin corazon** (favoritos es de `favorites`); el click opcional abre el Detalle
+ * (`recipe-detail-screen`).
  */
 @Composable
 fun ResultRecipeCard(
@@ -58,19 +49,13 @@ fun ResultRecipeCard(
         shadowElevation = 4.dp,
     ) {
         Column {
-            Box(
+            RecipeArtwork(
+                recipe = recipe,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(SazonComponents.recipeCardImageRatio)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(SazonPrimaryContainer, SazonSecondaryContainer),
-                        ),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                PlateGlyph(tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+                    .aspectRatio(SazonComponents.recipeCardImageRatio),
+                glyphSize = 56.dp,
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -114,23 +99,5 @@ fun ResultRecipeCard(
                 }
             }
         }
-    }
-}
-
-/** Glifo de plato (dos circulos concentricos) dibujado sin dependencias de iconos. */
-@Composable
-private fun PlateGlyph(tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.size(56.dp)) {
-        val stroke = Stroke(width = 2.dp.toPx())
-        drawCircle(
-            color = tint,
-            radius = size.minDimension / 2f - stroke.width,
-            style = stroke,
-        )
-        drawCircle(
-            color = tint,
-            radius = size.minDimension * 0.28f,
-            style = stroke,
-        )
     }
 }
