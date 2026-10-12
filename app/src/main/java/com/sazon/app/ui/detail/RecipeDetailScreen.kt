@@ -37,7 +37,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -49,11 +48,11 @@ import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeStep
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.artwork.RecipeArtwork
 import com.sazon.app.ui.preferences.ServingsStepper
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonPrimaryContainer
-import com.sazon.app.ui.theme.SazonSecondaryContainer
 import com.sazon.app.ui.theme.SazonShapes
 import com.sazon.app.ui.theme.SazonSpacing
 
@@ -65,7 +64,8 @@ private const val TABULAR_FIGURES = "tnum"
  * ([ServingScaler], [IngredientFormat], [RecipeDetailFormat], [RecipeDetailState]).
  *
  * Estructura (direccion de `docs/design/concepts/recipe-detail-screen/detalle-receta/`):
- * - **Hero** de degradado melocoton->oliva con "Atras" y el corazon/guardar flotante.
+ * - **Hero**: imagen de receta de `ui.artwork.RecipeArtwork` (240 dp, glifo 72 dp) con "Atras" y el
+ *   corazon/guardar flotante.
  * - **Tarjeta** superpuesta con titulo, descripcion y los cuatro pares de [RecipeDetailFormat].
  * - **Pestanas** Ingredientes · Pasos · Notas (activa terracota).
  * - Cuerpo por pestana: ajustador de comensales ([ServingsStepper] reutilizado **sin cambios**) con la
@@ -110,6 +110,7 @@ fun RecipeDetailScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             DetailHero(
+                recipe = recipe,
                 onBack = onBack,
                 isSaved = isSaved,
                 onToggleSave = onToggleSave,
@@ -139,28 +140,22 @@ fun RecipeDetailScreen(
     }
 }
 
-/** Hero: bloque de degradado con "Atras" y el corazon/guardar flotante (costura de `favorites`). */
+/** Hero: imagen de receta ([RecipeArtwork], alto 240) con "Atras" y el corazon/guardar flotante. */
 @Composable
 private fun DetailHero(
+    recipe: Recipe,
     onBack: () -> Unit,
     isSaved: Boolean,
     onToggleSave: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .background(
-                Brush.linearGradient(listOf(SazonPrimaryContainer, SazonSecondaryContainer)),
-            ),
-    ) {
-        Box(
+    Box(modifier = Modifier.fillMaxWidth()) {
+        RecipeArtwork(
+            recipe = recipe,
             modifier = Modifier
-                .align(Alignment.Center)
-                .size(72.dp),
-        ) {
-            PlateGlyph(tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+                .fillMaxWidth()
+                .height(240.dp),
+            glyphSize = 72.dp,
+        )
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -646,24 +641,6 @@ private fun DetailBottomBar(
                 Text(text = "Empezar a cocinar")
             }
         }
-    }
-}
-
-/** Glifo de plato (dos circulos concentricos) dibujado sin dependencias de iconos. */
-@Composable
-private fun PlateGlyph(tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.fillMaxSize()) {
-        val stroke = Stroke(width = 2.dp.toPx())
-        drawCircle(
-            color = tint,
-            radius = size.minDimension / 2f - stroke.width,
-            style = stroke,
-        )
-        drawCircle(
-            color = tint,
-            radius = size.minDimension * 0.28f,
-            style = stroke,
-        )
     }
 }
 
