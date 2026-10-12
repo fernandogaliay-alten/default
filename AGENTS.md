@@ -105,6 +105,11 @@ aceptación.
 - Herramientas requeridas: **opencode CLI** (`opencode run`) y **`gh`** autenticado.
 - **Quién publica**: solo el orquestador de `github-flow`, una vez, al `accept` (reutilizando el PR si
   ya existe). `feature-flow` termina en el commit local de la rama; nunca hace push ni PR.
+- **Formato del PR** (obligatorio al publicar, lo redacta el orquestador; también si publica a mano):
+  título **`[<feature-id>] <título de la feature>`** y, en el cuerpo, **una línea `Closes #<n>`** con la
+  issue de la feature. La palabra clave debe ir **en inglés** (`Closes`/`Fixes`/`Resolves`): GitHub **no**
+  reconoce `Cierra #<n>`, ni una mera referencia `Issue: #<n>`, así que la issue **no** se cerraría al
+  mergear (pasó con la #77 / PR #79).
 - **Integración de artefactos compartidos**: el orquestador es el único integrador. Antes de publicar,
   trae `origin/main` a la rama con un merge (`scripts/sync-worktree.sh <id>`; nunca rebase ni
   force-push) y resuelve los conflictos de estado/docs (`feature_list.json`, `PROGRESS.md`,
