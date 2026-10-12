@@ -115,6 +115,11 @@ borrador de la respuesta (todo lo enumerado debe ser un id de la taxonomía):
 `declaredAllergens` es la **autodeclaración** del modelo: sirve como pista, nunca como garantía.
 El validador la **recalcula** y compara.
 
+`id`, `source` y `matchScore` **no** forman parte del contrato: los posee la app. **El modelo no debe
+enviarlos** (si los enviara, se ignoran). El adaptador (`com.sazon.app.data.ai`) completa `id`
+(determinista por contenido, `ai-<sha256>`) y `source = ai` al decodificar la respuesta y **antes** de
+aplicar el Validador; `matchScore` lo deriva la app en memoria y no se persiste.
+
 ---
 
 ## 5. Validación post-IA (capa obligatoria)

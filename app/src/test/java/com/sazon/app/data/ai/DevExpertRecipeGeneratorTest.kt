@@ -420,6 +420,34 @@ class DevExpertRecipeGeneratorTest {
         assertTrue(events.none { it.toString().contains(KEY) })
     }
 
+    // Escenario 7 de `docs/specs/ai-recipe-decode.md` (regresion real del bug #70): un 200 con la
+    // **forma real** del contrato §4 (JSON literal, sin `id` ni `source`) se resuelve en recetas y el
+    // `GenerationService` real las acepta con `aiUnavailable == false`. Con el codigo de `main`
+    // (`RecipeValidator.validateResponse`, que decodifica con `Recipe.serializer()` y exige
+    // `id`/`source`) este mismo test daria lista y `accepted` vacios.
+    @Test
+    fun la_forma_real_del_contrato_llega_al_generation_service_como_recetas_aceptadas() = runTest {
+        val mock = MockAi { _, _ -> okBody(REAL_CONTRACT_CONTENT) }
+        val generator = provider(client = AiHttpClientFactory.create(mock.engine))
+        val ingredients = listOf(RecipeIngredient("Tomate", 1.0, MeasureUnit.UNIT, ingredientId = "tomate"))
+
+        val recipes = generator.generateFromIngredients(ingredients, constraints())
+
+        assertEquals(1, recipes.size)
+        assertEquals("Arroz salteado con verduras", recipes.single().title)
+        assertEquals(RecipeSource.AI, recipes.single().source)
+        assertTrue("El id lo completa la app", recipes.single().id.startsWith("ai-"))
+
+        val service = com.sazon.app.domain.generation.GenerationService(generator = generator, taxonomy = taxonomy)
+        val result = service.generate(ingredients, constraints())
+
+        assertEquals("Una llamada por operacion", 2, mock.calls)
+        assertFalse("Con el contrato real no se degrada", result.aiUnavailable)
+        assertEquals(1, result.accepted.size)
+        assertEquals("Arroz salteado con verduras", result.accepted.single().title)
+        assertTrue("La receta valida no se descarta", result.discarded.isEmpty())
+    }
+
     private fun provider(
         apiKey: String = KEY,
         client: HttpClient,
@@ -453,6 +481,38 @@ class DevExpertRecipeGeneratorTest {
 }
 
 private const val KEY = "test-key"
+
+/**
+ * Forma **real** del contrato §4 de `docs/domain/taxonomy.md`: JSON literal **sin** `id` ni
+ * `source` (los posee la app). Cierra el punto ciego del bug #70: los fixtures con
+ * `RecipeJson.encode` si los incluian y por eso el fallo no se detectaba.
+ */
+private val REAL_CONTRACT_CONTENT: String = """
+    {"recipes":[{
+      "title":"Arroz salteado con verduras",
+      "description":"Un arroz rapido con verduras.",
+      "categoryId":"rice",
+      "mealTypeId":"lunch",
+      "cuisineId":"asian",
+      "totalMinutes":25,
+      "prepMinutes":10,
+      "cookMinutes":15,
+      "difficultyId":"easy",
+      "servings":2,
+      "ingredients":[
+        {"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},
+        {"name":"Zanahoria","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"zanahoria"}
+      ],
+      "steps":[
+        {"order":1,"title":"Cocer el arroz","description":"Cuece el arroz.","minutes":12},
+        {"order":2,"title":"Saltear","description":"Saltea las verduras.","minutes":13}
+      ],
+      "tips":[],
+      "nutrition":null,
+      "declaredAllergens":[]
+    }]}
+""".trimIndent()
+
 
 /** Mock con contador de llamadas y captura de peticiones para inspeccionarlas en los tests. */
 private class MockAi(

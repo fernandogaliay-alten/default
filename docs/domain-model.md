@@ -57,8 +57,12 @@ derivado y **no persistido**, con la formula en `com.sazon.app.ui.results.MatchS
   cuando es ingrediente libre).
 - **RecipeStep**: `order`, `title`, `description`, `minutes`.
 - **Nutrition**: `kcal`, `protein`, `carbs`, `fat` (estimados).
-- **id**: lo aporta el paquete de recetas semilla; en las recetas `ai` lo asigna la app al persistir,
-  para que un Favorito siga resolviendo aunque el Lote de sugerencias se refresque.
+- **id**: lo aporta el paquete de recetas semilla; en las recetas `ai` lo asigna la app **al
+  decodificar la respuesta del proveedor** (en `com.sazon.app.data.ai`, al completar el wire del
+  contrato antes del Validador), con `source = ai`. El `id` es **determinista por contenido**
+  (`ai-<sha256>` de los campos de la receta): regenerar el mismo contenido conserva el `id`, de modo
+  que un Favorito sigue resolviendo aunque el Lote de sugerencias se refresque. Un duplicado exacto
+  dentro de una misma respuesta se desambigua con `-2`, `-3`, …
 - **Persistencia**: una receta `ai` en caché guarda `generatedAt` y `lastOpenedAt`. `lastOpenedAt`
   alimenta el grupo "Abiertas hace poco" del bloque "Tus recetas".
 
