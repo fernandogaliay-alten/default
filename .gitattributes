@@ -6,4 +6,7 @@
 
 *.jar binary
 *.webp binary
+*.jpg binary
+*.jpeg binary
+*.png binary
 *.ttf binary

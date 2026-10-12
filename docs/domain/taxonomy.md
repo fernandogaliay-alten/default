@@ -146,8 +146,13 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
 - **Iconos de ingredientes**: `assets/icons/ingredients/{icon}.svg`, con
   `_fallback` por categoría. Set local, offline, licencia abierta.
 - **Iconos de UI** (nav, acciones, chips): Material Symbols Rounded.
-- **Fotos de receta**: `assets/img/recipes/{categoryId}.webp` (18 categorías → 18 imágenes).
-  La IA solo devuelve `categoryId`.
+- **Fotos de receta** (real desde `recipe-photos`, issue #83): assets versionados en
+  `app/src/main/assets/img/recipes/` con la raíz `img/recipes`: foto propia por receta semilla
+  (`seed/<recipeId>.<ext>`, 12), foto por categoría (`category/cat-<categoryId>.<ext>`, 18 — una por
+  `recipeCategories`) y una genérica por defecto (`default.<ext>`, 1); `<ext>` es `webp`/`jpg`/`png`. La
+  cadena de respaldo (semilla → categoría → `default` → glifo) vive en `data.RecipePhotoAssets`. La IA
+  solo devuelve `categoryId` (no imágenes), así que las recetas `ai-*` usan la foto de su categoría. Ver
+  `docs/adr/0004-recipe-photos-as-assets.md`.
 - **Avatares**: iniciales sobre un color de `avatarColors`. Sin assets: el avatar se compone en
   tiempo de ejecución.
 - **Generación real de imagen (Imagen API)**: *feature opcional/estirar*, nunca dependencia del MVP.

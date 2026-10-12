@@ -1,11 +1,14 @@
 package com.sazon.app.ui.artwork
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -13,11 +16,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.recipe.Recipe
@@ -36,23 +41,24 @@ object RecipeArtworkDefaults {
 }
 
 /**
- * Imagen de una receta: **bloque con degradado** según su cocina y **glifo de línea** según su
- * categoría, sustituyendo el placeholder plano repetido en cuatro sitios.
+ * Imagen de una receta.
  *
- * Es el **único punto a cambiar** cuando existan imágenes generadas por IA: hoy el MVP no empaqueta
- * fotos (`assets/img/recipes/` no se distribuye), así que la imagen se resuelve de forma
- * **determinista y offline** a partir de la propia [Recipe], sin dependencias nuevas.
+ * **Primero la foto del plato**: una fotografia empaquetada como asset offline, resuelta con
+ * `RecipePhotoAssets` (foto propia de la receta semilla → foto de su categoria → foto por defecto) y
+ * leida/decodificada por `data.AssetRecipePhotoSource`, que se inyecta por [LocalRecipePhotoSource].
+ * La foto se pinta con `ContentScale.Crop`, de modo que llena el hueco del llamante (16:10 de las
+ * tarjetas, 96x96 y alto 96 de Favoritos, hero de 240 del Detalle) sin cambiar su geometria.
  *
- * - El estilo lo decide el mapeo puro [RecipeArtworkStyle] (glifo por `categoryId`, acento por
- *   `cuisineId`, fallback total a plato + degradado por defecto).
- * - El acento se resuelve con **roles de `MaterialTheme.colorScheme`** (`*Container`/`surfaceVariant`),
- *   nunca con hex propios: el modo claro y el oscuro salen gratis.
- * - El glifo se dibuja con primitivas de Compose y se tiñe con `onSurfaceVariant` (el tint del
- *   placeholder aceptado).
- * - El componente **no** fija forma ni tamaño del bloque: el `modifier` del llamante aporta el
- *   ratio/tamaño y el recorte (así se conservan el 16:10, el 96x96, el alto 96 y el hero de 240).
+ * **Ultimo recurso**: si no hay ninguna foto disponible ([LocalRecipePhotoSource] no provee, no hay
+ * asset o la decodificacion falla), se pinta el **bloque con degradado** (acento por cocina) y el
+ * **glifo de linea** (por categoria) de [RecipeArtworkStyle], dibujado con Compose y **sin assets**.
  *
- * @param glyphSize lado del cuadrado del glifo; por defecto [RecipeArtworkDefaults.GlyphSize].
+ * Es el **unico punto a cambiar** para la imagen de receta de los 5 puntos de uso, y no fija forma ni
+ * tamaño: el `modifier` del llamante aporta el ratio/tamaño y el recorte, y las esquinas las redondea
+ * el contenedor padre o el `clip` del llamante.
+ *
+ * @param glyphSize lado del cuadrado del glifo del fallback; por defecto
+ *   [RecipeArtworkDefaults.GlyphSize].
  */
 @Composable
 fun RecipeArtwork(
@@ -60,6 +66,24 @@ fun RecipeArtwork(
     modifier: Modifier = Modifier,
     glyphSize: Dp = RecipeArtworkDefaults.GlyphSize,
 ) {
+    val source = LocalRecipePhotoSource.current
+    val photo by produceState<ImageBitmap?>(initialValue = null, recipe.id, recipe.categoryId) {
+        value = source.photoFor(recipe)
+    }
+
+    val bitmap = photo
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            // Decorativa: el titulo de la receta ya se anuncia; mantener `null` conserva la semantica
+            // de accesibilidad que tenia el placeholder.
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+        )
+        return
+    }
+
     val style = RecipeArtworkStyle.of(recipe)
     val tint = MaterialTheme.colorScheme.onSurfaceVariant
     Box(
