@@ -1,10 +1,16 @@
 package com.sazon.app.data.ai
 
+import com.sazon.app.domain.recipe.MeasureUnit
+import com.sazon.app.domain.recipe.Recipe
+import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeSource
+import com.sazon.app.domain.recipe.RecipeStep
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.domain.taxonomy.TaxonomyJson
 import com.sazon.app.domain.validation.DiscardReason
 import com.sazon.app.domain.validation.RecipeConstraints
+import com.sazon.app.domain.validation.RecipeValidation
+import com.sazon.app.domain.validation.RecipeValidator
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -32,7 +38,8 @@ class AiRecipePayloadTest {
     private fun decode(
         content: String?,
         constraints: RecipeConstraints = AiProviderPolicy.NEUTRAL_CONSTRAINTS,
-    ): AiDecodeResult = AiRecipePayload.decode(content, taxonomy, constraints)
+        verbose: Boolean = false,
+    ): AiDecodeResult = AiRecipePayload.decode(content, taxonomy, constraints, verbose)
 
     // Escenario 1: forma real del contrato -> 1 receta valida, con source/id completados.
     @Test
@@ -259,6 +266,114 @@ class AiRecipePayloadTest {
         assertEquals(1, result.discardedByReason[DiscardReason.INCOHERENT])
     }
 
+    // --- Escenarios de `docs/specs/ai-verbose-diagnostics.md` (correctiva de ai-call-diagnostics) ---
+
+    // Escenario 1: el resumen distingue las dos causas de INCOHERENT (siempre activo, sin depuracion).
+    @Test
+    fun el_resumen_distingue_las_dos_causas_de_incoherent() {
+        val result = decode(
+            envelope(
+                // 4a: los pasos suman 25 min con totalMinutes 60 (deriva > 5).
+                draftJson(title = "Tiempos incoherentes", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
+                // 4b: usa leche (alergeno curado lactosa) sin declararlo, con tiempos coherentes.
+                lecheDraft(),
+            ),
+        )
+
+        assertEquals(mapOf(DiscardReason.INCOHERENT to 2), result.discardedByReason)
+        assertEquals(
+            "Las causas, en el orden del enum",
+            mapOf(AiIncoherentCause.TIME_DRIFT to 1, AiIncoherentCause.ALLERGEN_COVERAGE to 1),
+            result.incoherentByCause,
+        )
+        assertEquals(
+            listOf(AiIncoherentCause.TIME_DRIFT, AiIncoherentCause.ALLERGEN_COVERAGE),
+            result.incoherentByCause.keys.toList(),
+        )
+        assertTrue("Sin modo depuracion no se retiene detalle ni titulos", result.discards.isEmpty())
+    }
+
+    // Escenario 2: la clasificacion del decode es coherente con `RecipeValidator.validateRecipe`.
+    @Test
+    fun la_clasificacion_de_las_causas_de_incoherent_es_coherente_con_el_validador() {
+        val casos = listOf(
+            // (i) solo 4a.
+            Triple(
+                draftJson(title = "Solo deriva", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
+                recipe(totalMinutes = 60, steps = arrozSteps(), ingredients = arrozIngredients()),
+                AiIncoherentCause.TIME_DRIFT,
+            ),
+            // (ii) solo 4b.
+            Triple(
+                lecheDraft(),
+                recipe(totalMinutes = 25, steps = lecheSteps(), ingredients = lecheIngredients()),
+                AiIncoherentCause.ALLERGEN_COVERAGE,
+            ),
+            // (iii) ambas: la 4a se evalua antes que la 4b, igual que el Validador.
+            Triple(
+                draftJson(
+                    title = "Ambas",
+                    totalMinutes = 60,
+                    prepMinutes = 20,
+                    cookMinutes = 40,
+                    ingredients = LECHE_INGREDIENTS,
+                    steps = LECHE_STEPS,
+                ),
+                recipe(totalMinutes = 60, steps = lecheSteps(), ingredients = lecheIngredients()),
+                AiIncoherentCause.TIME_DRIFT,
+            ),
+        )
+
+        casos.forEach { (contenido, receta, causaEsperada) ->
+            val validation = RecipeValidator.validateRecipe(receta, taxonomy, AiProviderPolicy.NEUTRAL_CONSTRAINTS)
+            assertTrue(
+                "El Validador debe descartar por INCOHERENT",
+                validation is RecipeValidation.Discarded &&
+                    validation.reason == DiscardReason.INCOHERENT,
+            )
+            assertEquals(
+                "El decode debe coincidir con el Validador",
+                mapOf(causaEsperada to 1),
+                decode(envelope(contenido)).incoherentByCause,
+            )
+        }
+
+        // (iv) ninguna incoherencia: aceptada y sin causa.
+        assertTrue(
+            RecipeValidator.validateRecipe(
+                recipe(totalMinutes = 25, steps = arrozSteps(), ingredients = arrozIngredients()),
+                taxonomy,
+                AiProviderPolicy.NEUTRAL_CONSTRAINTS,
+            ) is RecipeValidation.Accepted,
+        )
+        assertTrue("Sin INCOHERENT no hay causa", decode(arrozDraft()).incoherentByCause.isEmpty())
+    }
+
+    // Escenario 4 (decode): con `verbose = true` se retiene el detalle por descarte.
+    @Test
+    fun en_modo_verbose_el_decode_retiene_el_detalle_de_cada_descarte() {
+        val content = envelope(
+            """{"title":"Rota"}""",
+            draftJson(title = "Tiempos incoherentes", totalMinutes = 60, prepMinutes = 20, cookMinutes = 40),
+            lecheDraft(),
+            arrozDraft(),
+        )
+
+        val verbose = AiRecipePayload.decode(content, taxonomy, verbose = true)
+        val silencioso = decode(content)
+
+        assertEquals(
+            listOf(
+                AiDiscardDetail(DiscardReason.SCHEMA, null, "Rota"),
+                AiDiscardDetail(DiscardReason.INCOHERENT, AiIncoherentCause.TIME_DRIFT, "Tiempos incoherentes"),
+                AiDiscardDetail(DiscardReason.INCOHERENT, AiIncoherentCause.ALLERGEN_COVERAGE, "Leche caliente"),
+            ),
+            verbose.discards,
+        )
+        assertTrue("Sin modo depuracion no se retiene ningun titulo", silencioso.discards.isEmpty())
+        assertEquals("El desglose no depende del modo", verbose.incoherentByCause, silencioso.incoherentByCause)
+    }
+
     private fun envelope(vararg draftJson: String): String =
         """{"recipes":[${draftJson.joinToString(",")}]}"""
 
@@ -282,8 +397,61 @@ private const val BOCADILLO_INGREDIENTS =
     """[{"name":"Pan","quantity":1,"unit":null,"isPantry":false},{"name":"Tomate","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"tomate"}]"""
 private const val BOCADILLO_STEPS =
     """[{"order":1,"title":"Montar el bocadillo","description":"Unta el tomate y aliña.","minutes":5}]"""
+// Ingrediente con alergeno **curado** (lactosa): dispara la regla 4b si no se declara.
+private const val LECHE_INGREDIENTS =
+    """[{"name":"Leche","quantity":250,"unit":"ml","isPantry":false,"ingredientId":"leche"}]"""
+private const val LECHE_STEPS =
+    """[{"order":1,"title":"Calentar la leche","description":"Calienta la leche.","minutes":25}]"""
 
 private fun arrozDraft(): String = draftJson()
+
+/** Receta coherente en tiempos que **no** declara la lactosa de su unico ingrediente: falla solo 4b. */
+private fun lecheDraft(): String = draftJson(
+    title = "Leche caliente",
+    ingredients = LECHE_INGREDIENTS,
+    steps = LECHE_STEPS,
+)
+
+private fun arrozIngredients(): List<RecipeIngredient> = listOf(
+    RecipeIngredient("Arroz", 200.0, MeasureUnit.GRAM, ingredientId = "arroz"),
+    RecipeIngredient("Zanahoria", 1.0, MeasureUnit.UNIT, ingredientId = "zanahoria"),
+)
+
+private fun lecheIngredients(): List<RecipeIngredient> =
+    listOf(RecipeIngredient("Leche", 250.0, MeasureUnit.MILLILITER, ingredientId = "leche"))
+
+private fun arrozSteps(): List<RecipeStep> = listOf(
+    RecipeStep(1, "Cocer el arroz", "Cuece el arroz.", 12),
+    RecipeStep(2, "Saltear", "Saltea las verduras.", 13),
+)
+
+private fun lecheSteps(): List<RecipeStep> =
+    listOf(RecipeStep(1, "Calentar la leche", "Calienta la leche.", 25))
+
+/** Receta de dominio equivalente a un `draftJson(...)`, para contrastar con el Validador. */
+private fun recipe(
+    totalMinutes: Int,
+    steps: List<RecipeStep>,
+    ingredients: List<RecipeIngredient>,
+    declaredAllergens: List<String> = emptyList(),
+): Recipe = Recipe(
+    id = "test-diagnostico",
+    source = RecipeSource.AI,
+    title = "Receta de prueba",
+    description = "Descripcion de prueba.",
+    categoryId = "rice",
+    mealTypeId = "lunch",
+    cuisineId = "asian",
+    totalMinutes = totalMinutes,
+    prepMinutes = 0,
+    cookMinutes = 0,
+    difficultyId = "easy",
+    servings = 2,
+    ingredients = ingredients,
+    steps = steps,
+    declaredAllergens = declaredAllergens,
+    matchScore = null,
+)
 
 private fun polloDraft(): String = draftJson(
     title = "Pollo al ajillo",

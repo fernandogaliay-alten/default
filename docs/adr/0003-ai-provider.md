@@ -37,6 +37,12 @@ modelo usar para `real-ai-provider` (antes pregunta 1 de `docs/risks-and-open-qu
   vez** sin la clave, y hay un interruptor (`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`). El rechazo a
   `json_schema`/structured outputs forzados y a pinnear `chat-pro` se **mantiene**; la decisión de fondo
   no cambia.
+- **Nota (`ai-verbose-diagnostics`)**: el *modo de diagnóstico verboso* (interruptor
+  `verboseDiagnostics` de `DevExpertRecipeGenerator`, activo solo en debug vía `BuildConfig.DEBUG`) es
+  una **ayuda de desarrollo temporal**, apagada en release: añade al evento y al log local el detalle
+  de cada descarte (con título) y el `content` crudo del modelo, troceado. No cambia la decisión de
+  proveedor, ni el contrato (§4), ni la puerta dura del `RecipeValidator`; aun en debug nunca aparecen
+  la clave ni la cabecera `Authorization`.
 - Si falta la clave o el proveedor falla o se agota la cuota, la app **degrada a modo semilla**.
 
 ## Alternativas consideradas

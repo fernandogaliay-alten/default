@@ -81,14 +81,47 @@ enum class AiOperation {
 }
 
 /**
+ * Causa de un descarte [DiscardReason.INCOHERENT]: distingue las **dos** partes de la regla 4 del
+ * Validador (`RecipeValidator`), que hoy colapsa en un unico motivo.
+ *
+ * Es un vocabulario **de diagnostico** en `data.ai`, no un valor nuevo de [DiscardReason]: la decision
+ * de aceptar/descartar sigue siendo del Validador (puerta dura).
+ */
+enum class AiIncoherentCause {
+    /** Regla 4a: `abs(steps.sumOf { it.minutes } - totalMinutes) > MAX_STEP_TOTAL_DRIFT_MINUTES`. */
+    TIME_DRIFT,
+
+    /** Regla 4b: `declaredAllergens` no cubre los alergenos curados de los ingredientes resueltos. */
+    ALLERGEN_COVERAGE,
+}
+
+/**
+ * Detalle de un descarte, **solo** en modo depuracion (ver `DevExpertRecipeGenerator`).
+ *
+ * En el camino por defecto no se retiene: [title] es texto del modelo y el evento nunca lo expone.
+ * La clave y la cabecera `Authorization` no forman parte de este detalle.
+ */
+data class AiDiscardDetail(
+    val reason: DiscardReason,
+    /** Causa del descarte; solo no nula cuando [reason] es [DiscardReason.INCOHERENT]. */
+    val cause: AiIncoherentCause? = null,
+    /** Titulo de la receta, o `null` si el elemento no llego a decodificarse. */
+    val title: String? = null,
+)
+
+/**
  * Evento de diagnostico **local** de una llamada a la IA (sin telemetria).
  *
  * Se emite por la costura aditiva `onEvent` del proveedor (por defecto no-op) y `MainActivity` lo
- * cablea a `android.util.Log`. **Nunca** contiene la clave, la cabecera `Authorization` ni los
- * cuerpos: [detail] es la categoria/motivo (p. ej. `MISSING_KEY`, `HTTP 429`, `deadline`) y los
- * campos del decode son **longitudes** ([contentChars]/[contentBytes]), recuentos
- * ([received]/[accepted]) y el **resumen de motivos** ([discardedByReason]), nunca el texto del
- * modelo ni titulos de recetas.
+ * cablea a `android.util.Log`. **Nunca** contiene la clave ni la cabecera `Authorization`. En el
+ * camino por defecto ([discards] vacio y [rawContent] `null`) tampoco contiene el texto del modelo ni
+ * titulos de recetas: [detail] es la categoria/motivo (p. ej. `MISSING_KEY`, `HTTP 429`, `deadline`),
+ * los campos del decode son **longitudes** ([contentChars]/[contentBytes]), recuentos
+ * ([received]/[accepted]) y **resumenes** ([discardedByReason]/[incoherentByCause]).
+ *
+ * **En modo depuracion** (`verboseDiagnostics`, ver `DevExpertRecipeGenerator`; activo solo en debug)
+ * el evento lleva ademas el detalle de cada descarte ([discards], con titulo) y el `content` crudo del
+ * modelo ([rawContent]); aun asi **nunca** la clave ni la cabecera `Authorization`.
  */
 data class AiCallEvent(
     val operation: AiOperation,
@@ -109,4 +142,10 @@ data class AiCallEvent(
     val discardedByReason: Map<DiscardReason, Int> = emptyMap(),
     /** Modo de `response_format` usado en el intento (nunca el texto del modelo). */
     val responseFormat: AiResponseFormat = AiResponseFormat.NONE,
+    /** Desglose de los descartes [DiscardReason.INCOHERENT] por causa; vacio si no hubo. */
+    val incoherentByCause: Map<AiIncoherentCause, Int> = emptyMap(),
+    /** Detalle de cada descarte; **solo** en modo depuracion (vacio por defecto). */
+    val discards: List<AiDiscardDetail> = emptyList(),
+    /** `content` crudo del modelo; **solo** en modo depuracion (`null` por defecto). */
+    val rawContent: String? = null,
 )

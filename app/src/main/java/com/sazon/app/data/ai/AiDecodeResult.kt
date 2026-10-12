@@ -30,6 +30,12 @@ internal enum class AiContentState {
  * - [discardedByReason] cuenta los descartes **por motivo** ([DiscardReason]), en el orden del enum
  *   y solo con los motivos presentes: es el "resumen" que explica un `EMPTY` o un lote parcial. El
  *   `detail` del descarte **no** se propaga (ni titulos ni texto libre).
+ * - [incoherentByCause] desglosa los descartes [DiscardReason.INCOHERENT] por causa del Validador
+ *   ([AiIncoherentCause.TIME_DRIFT] = regla 4a, [AiIncoherentCause.ALLERGEN_COVERAGE] = regla 4b), en
+ *   el orden de [AiIncoherentCause] y solo con las causas presentes: es un **diagnostico**, la
+ *   decision de aceptar/descartar sigue siendo del Validador.
+ * - [discards] es el detalle por descarte (motivo, causa y titulo) y **solo** se rellena en modo
+ *   depuracion (`verbose = true`); por defecto es `emptyList()` y **no se retiene ningun titulo**.
  * - [contentChars] (unidades UTF-16 de `content`) y [contentBytes] (UTF-8) son **longitudes**, nunca
  *   el contenido.
  *
@@ -40,6 +46,8 @@ internal data class AiDecodeResult(
     val accepted: List<Recipe>,
     val received: Int,
     val discardedByReason: Map<DiscardReason, Int>,
+    val incoherentByCause: Map<AiIncoherentCause, Int>,
+    val discards: List<AiDiscardDetail>,
     val contentChars: Int,
     val contentBytes: Int,
     val contentState: AiContentState,

@@ -44,7 +44,10 @@ import kotlinx.serialization.json.Json
  *
  * Un 200 ilegible o vacio **no** lanza: devuelve las recetas decodificables (posiblemente vacias).
  * La [CancellationException] se **relanza** siempre. El diagnostico local se emite por [onEvent]
- * (default no-op) y nunca incluye la clave ni las cabeceras.
+ * (default no-op) y nunca incluye la clave ni las cabeceras; el desglose de los descartes
+ * `INCOHERENT` (`incoherentByCause`) se calcula **siempre**, mientras que el detalle de cada descarte
+ * y el `content` crudo del modelo solo viajan en el evento con [verboseDiagnostics] activo
+ * (apagado por defecto: release-safe). `MainActivity` lo activa **solo en debug**.
  */
 class DevExpertRecipeGenerator(
     private val apiKey: String,
@@ -54,6 +57,12 @@ class DevExpertRecipeGenerator(
     private val responseFormatEnabled: Boolean = AiProviderPolicy.RESPONSE_FORMAT_ENABLED,
     private val onEvent: (AiCallEvent) -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
+    /**
+     * Modo de diagnostico verboso: anade al evento el detalle por descarte (con titulo) y el `content`
+     * crudo del modelo. **Apagado por defecto**; `MainActivity` lo activa solo en debug
+     * (`BuildConfig.DEBUG`). El desglose `INCOHERENT` **no** depende de este interruptor.
+     */
+    private val verboseDiagnostics: Boolean = false,
 ) : RecipeGenerator {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -131,11 +140,12 @@ class DevExpertRecipeGenerator(
 
             when (val outcome = sendAttempt(prompt, remaining, includeFormat)) {
                 is AttemptOutcome.Success -> {
-                    val result = AiRecipePayload.decode(outcome.content, taxonomy)
+                    val result = AiRecipePayload.decode(outcome.content, taxonomy, verbose = verboseDiagnostics)
                     val callOutcome = if (result.accepted.isEmpty()) AiCallOutcome.EMPTY else AiCallOutcome.SUCCESS
                     report(
                         operation, callOutcome, attempt, outcome.status, startedAt, "HTTP ${outcome.status}", result,
                         responseFormat = formatOf(includeFormat),
+                        rawContent = if (verboseDiagnostics) outcome.content else null,
                     )
                     return result.accepted
                 }
@@ -311,6 +321,7 @@ class DevExpertRecipeGenerator(
         detail: String,
         decodeResult: AiDecodeResult? = null,
         responseFormat: AiResponseFormat = AiResponseFormat.NONE,
+        rawContent: String? = null,
     ) {
         onEvent(
             AiCallEvent(
@@ -320,13 +331,17 @@ class DevExpertRecipeGenerator(
                 httpStatus = httpStatus,
                 durationMillis = (now() - startedAt).coerceAtLeast(0L),
                 detail = detail,
-                // Solo longitudes y motivos del decode; null/vacio cuando no hubo decode.
+                // Solo longitudes, recuentos y motivos del decode; null/vacio cuando no hubo decode.
                 contentBytes = decodeResult?.contentBytes,
                 contentChars = decodeResult?.contentChars,
                 received = decodeResult?.received,
                 accepted = decodeResult?.accepted?.size,
                 discardedByReason = decodeResult?.discardedByReason ?: emptyMap(),
                 responseFormat = responseFormat,
+                incoherentByCause = decodeResult?.incoherentByCause ?: emptyMap(),
+                // Vacio/null salvo en modo depuracion (lo decide `execute`, un unico sitio).
+                discards = decodeResult?.discards ?: emptyList(),
+                rawContent = rawContent,
             ),
         )
     }

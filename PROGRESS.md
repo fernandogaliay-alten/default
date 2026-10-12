@@ -85,6 +85,15 @@
   observabilidad del modo/fallback sobre `AiCallEvent` (`responseFormat` + `FALLBACK`; `format=…` en el
   log) y `@EncodeDefault(NEVER)` para **nunca** emitir `"response_format":null` pese a
   `encodeDefaults = true`. `Recipe.kt`/`RecipeValidator.kt` intactos (siguen siendo la puerta dura).
+- Quinta **correctiva** de `real-ai-provider`, `ai-verbose-diagnostics` (`area: integration`, no UI):
+  implementada y autoverificada (`passing`) en la sesión 077 y **`accepted`** en la sesión 078 (validación
+  independiente, veredicto `accept`, rama `feature/ai-verbose-diagnostics`). Desglosa `INCOHERENT` en sus
+  dos causas del Validador (regla 4a, deriva de tiempos → `TIME_DRIFT`; 4b, cobertura de alérgenos →
+  `ALLERGEN_COVERAGE`) siempre activo (`AiIncoherentCause` + `AiCallEvent.incoherentByCause`, `incoherent={…}`
+  en el log, sin tocar `DiscardReason`/`RecipeValidator`) y añade un modo de depuración ocultable
+  (`verboseDiagnostics`, activo solo en debug vía `BuildConfig.DEBUG`) con el detalle de cada descarte
+  (`discard[i/n]`) y el JSON crudo troceado (`raw[i/n]` vía `AiVerboseDiagnostics`, ≤3000 char/trozo),
+  apagado por defecto y sin exponer nunca la clave ni `Authorization`. El plan del MVP sigue **cerrado**.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
   Studio (Windows): con clave válida, generar/buscar y comprobar en logcat (`SazonAi`) el detalle
   enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`) y el modo de
@@ -1597,3 +1606,111 @@
 - Siguiente paso: **commit local** de la rama `feature/ai-response-format` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features
   del plan del MVP; el plan sigue **cerrado**.
+
+### Sesión 077
+
+- Fecha: 2026-10-12
+- Objetivo: implementar `ai-verbose-diagnostics` (correctiva de `ai-call-diagnostics`) en el worktree de
+  la rama `feature/ai-verbose-diagnostics`: (A+B) desglosar `INCOHERENT` en sus dos causas del Validador
+  y (D) modo de depuración (interruptor, detalle de descartes con título y JSON crudo troceado). Solo
+  hasta implementación y autoverificación (`passing`), sin commit/push/PR.
+- Completado:
+  - **Desglose siempre activo**: `AiIncoherentCause { TIME_DRIFT, ALLERGEN_COVERAGE }` (diagnóstico en
+    `data.ai`, **no** se toca `DiscardReason`) y `AiCallEvent.incoherentByCause`; `AiRecipePayload.decode`
+    clasifica cada descarte `INCOHERENT` recomputando **solo** la regla 4a con
+    `RecipeValidator.MAX_STEP_TOTAL_DRIFT_MINUTES` (si no es 4a es 4b: el Validador devuelve el primer
+    fallo y evalúa 4a antes que 4b).
+  - **Modo depuración**: `DevExpertRecipeGenerator` gana `verboseDiagnostics: Boolean = false`;
+    `decode(verbose)` rellena `AiDecodeResult.discards` (`AiDiscardDetail`: motivo, causa y título del
+    draft o del primitivo `title` del JSON bruto) solo en verbose; el generador añade
+    `rawContent = outcome.content` solo en verbose. `MainActivity` usa
+    `verboseDiagnostics = BuildConfig.DEBUG` y añade `incoherent={…}` (solo si hay causas) más las líneas
+    verbosas; el modo lo decide un único sitio (el generador) y el log es renderizador.
+  - **Helper puro** `AiVerboseDiagnostics`: `MAX_CHUNK_CHARS = 3_000`, `rawLines` (trocea sin cortar
+    pares suplentes; `null`/vacío → vacío) y `discardLines` (motivo/causa/título saneado; `(sin titulo)`).
+- Verificación ejecutada: tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` (BUILD SUCCESSFUL) y gate
+  estándar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`, sin procesos largos); parseo
+  propio de los XML y del informe de lint.
+- Evidencia capturada: **76 tests / 0 fallos en `data.ai`** (62 previos + 14 nuevos: `AiRecipePayloadTest`
+  14, `AiVerboseDiagnosticsTest` 7, `DevExpertRecipeGeneratorTest` 35, más los intactos `AiProviderPolicyTest`
+  12, `AiRecipeIdsTest` 6 y `OpenAiChatTest` 2); gate **60 suites / 419 tests / 0 fallos / 0 errores / 0
+  saltados** (405 previos + 14 nuevos); lint **0 errores y 13 warnings preexistentes** (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`**.
+  Scenario 1: lote con una 4a y una 4b → `discardedByReason {INCOHERENT: 2}` e `incoherentByCause
+  {TIME_DRIFT=1, ALLERGEN_COVERAGE=1}` en orden del enum, sin títulos. Scenario 2: coherencia con
+  `RecipeValidator.validateRecipe` (solo 4a → TIME_DRIFT; solo 4b → ALLERGEN_COVERAGE; ambas → TIME_DRIFT;
+  ninguna → `Accepted` con el desglose vacío). Scenario 3: por defecto `discards` vacío, `rawContent` null
+  y `toString()` sin títulos ni cuerpo. Scenario 4: con el interruptor activo y un 200 de ~14 KB,
+  `rawContent == content` del `MockEngine`, `discards` con título/causa y el render reconstruye el crudo
+  por concatenación. Scenario 5: ningún evento ni línea lleva `test-key`/`Bearer`/`Authorization` en
+  ningún modo.
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/data/ai/{AiDiagnostics,AiDecodeResult,
+  AiRecipePayload,DevExpertRecipeGenerator}.kt`, `app/src/main/java/com/sazon/app/data/ai/AiVerboseDiagnostics.kt`
+  (nuevo), `app/src/main/java/com/sazon/app/MainActivity.kt`, `app/src/test/java/com/sazon/app/data/ai/
+  {AiRecipePayloadTest,DevExpertRecipeGeneratorTest}.kt`, `app/src/test/java/com/sazon/app/data/ai/
+  AiVerboseDiagnosticsTest.kt` (nuevo), `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
+  `docs/adr/0003-ai-provider.md`, `feature_list.json` y este registro. Sin tocar `Recipe.kt`,
+  `RecipeValidator.kt` (`DiscardReason`/`RecipeValidation`/`DiscardedRecipe` intactos), `AiRecipeDraft.kt`,
+  `AiRecipeIds.kt`, `AiProviderPolicy.kt`, `AiHttpClientFactory.kt`, `OpenAiChat.kt`, `domain/**`, `ui/**`,
+  `data/generator/**`, Room, Taxonomía, `seed-recipes.json`, `app/build.gradle.kts`,
+  `gradle/libs.versions.toml`, `AndroidManifest.xml`, `init.sh`, `scripts/**`, `DESIGN.md` ni
+  `docs/design/**`; sin dependencias nuevas.
+- Hallazgos relevantes: la primera pasada de la batería de coherencia falló por un error del propio test
+  (decodificaba una receta suelta en vez del envelope `{recipes:[…]}`); corregido. El desglose **no** lleva
+  texto de recetas por sí mismo (el título solo viaja con el interruptor). `incoherentByCause` es el único
+  campo nuevo siempre presente en el evento (vacío si no hay `INCOHERENT`), así que con un lote sin
+  `INCOHERENT` la línea `SazonAi` es la actual (interpretación de «idéntico al actual» de la spec).
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (duplicación mínima de la 4a, mitigada
+  reutilizando la constante y con el test de coherencia; volumen de log en debug, ~5 líneas de ~3 KB por
+  llamada con posible rate-limit de Logcat; `rawContent` puede ser `null`/vacío en un 200 ilegible). Queda
+  la verificación **manual** de emulador de la persona (logcat con `incoherent={…}` y, en debug,
+  `discard[i/n]`/`raw[i/n]`; release → formato anterior; clave ausente → modo semilla), no automatizable
+  desde WSL. El modo verboso queda trazado como **deuda temporal** (debug-only) en
+  `docs/risks-and-open-questions.md` y con nota en `docs/adr/0003-ai-provider.md`.
+- Siguiente paso: **validación independiente** de `ai-verbose-diagnostics` con `feature-validator`;
+  después, commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por
+  `github-flow`. Se mantiene el backfill de capturas de UI (sesión 046).
+
+### Sesión 078
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-verbose-diagnostics` de forma independiente y persistir la aceptación. Ejecutada
+  por el orquestador de `feature-flow` en la rama `feature/ai-verbose-diagnostics` (worktree), solo
+  hasta-aceptación; sin push ni PR (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con la evidencia del validador independiente y se crea
+  `docs/validations/ai-verbose-diagnostics.md`. Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0; test + lint vía `scripts/gradle.sh`)
+  y, al ver la primera pasada en `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.data.ai.*" --rerun-tasks` (34/34 tareas) y `bash scripts/gradle.sh lint --rerun-tasks`
+  (30/30 tareas); parseó por su cuenta los XML de resultados y el informe de lint.
+- Evidencia capturada: gate **60 suites / 419 tests / 0 fallos / 0 errores / 0 saltados** (405 previos + 14
+  nuevos); rerun focal fresco del paquete `data.ai`: **76/76** (`AiRecipePayloadTest` 14,
+  `AiVerboseDiagnosticsTest` 7, `DevExpertRecipeGeneratorTest` 35, más `AiProviderPolicyTest` 12,
+  `AiRecipeIdsTest` 6 y `OpenAiChatTest` 2); lint **0 errores y 13 warnings preexistentes**, 0 bajo
+  `app/src`. Confirmó los Scenarios 1-6 (desglose 4a/4b y su coherencia con `RecipeValidator.validateRecipe`;
+  con el interruptor apagado sin detalle ni crudo y la línea `SazonAi` byte a byte con un lote sin
+  `INCOHERENT`; con el interruptor activo `rawContent == content` del `MockEngine` y render reconstruible;
+  no-fuga de `test-key`/`Bearer`/`Authorization` en ambos modos; regresión: los 62 tests previos de `data.ai`
+  intactos). Scenario 7 (manual en emulador) pendiente por diseño. Alcance confirmado
+  (`RecipeValidator.kt`/`DiscardReason`, `Recipe.kt`, `AiProviderPolicy.kt`, `AiHttpClientFactory.kt`,
+  `OpenAiChat.kt`, `domain/**`, `ui/**`, Room, assets, build, `init.sh`, `scripts/**`, `DESIGN.md` y
+  `docs/design/**` intactos; sin dependencias nuevas; sin capturas, no es UI).
+- Hallazgos del validador (3 Low informativos, ninguno bloqueante): la igualdad byte a byte del prefijo
+  `incoherent=` vive en `MainActivity` sin test JVM (el helper puro sí está probado);
+  `AiVerboseDiagnostics.chunks` con `maxChars == 1` podría partir un par suplente (no alcanzable en
+  producción, que usa 3000); el registro de validación aún no existía (persistido en esta sesión). Sin
+  hallazgos Critical/High/Medium.
+- Ficheros actualizados: `feature_list.json` (feature a `accepted` con la evidencia del validador),
+  `docs/validations/ai-verbose-diagnostics.md` (nuevo) y este registro. Sin cambios de código.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (duplicación mínima de la 4a mitigada
+  con la constante y el test de coherencia; volumen de log en debug, ~5 líneas de ~3 KB por llamada con
+  posible rate-limit de Logcat; `rawContent` puede ser null/vacío en un 200 ilegible). Queda la verificación
+  **manual** de emulador de la persona (logcat con `incoherent={…}` y, en debug, `discard[i/n]`/`raw[i/n]`;
+  release → formato anterior; clave ausente → modo semilla), no automatizable desde WSL. El modo verboso
+  queda trazado como deuda temporal (debug-only) en `docs/risks-and-open-questions.md` y con nota en
+  `docs/adr/0003-ai-provider.md`. Se mantiene el backfill de capturas de UI (sesión 046).
+- Siguiente paso: **commit local** de la rama `feature/ai-verbose-diagnostics` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features del
+  plan del MVP; el plan sigue **cerrado**.
