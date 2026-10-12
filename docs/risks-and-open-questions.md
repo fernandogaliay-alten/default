@@ -3,8 +3,8 @@
 ## Blocking Next Phase
 
 Ninguno. El harness (`AGENTS.md`, `init.sh`, `PROGRESS.md`, `feature_list.json`) y las features de
-dominio, persistencia y UI pueden derivarse ya. La única incógnita relevante afecta a **una** feature
-concreta (la integración real de IA), no al arranque del proyecto.
+dominio, persistencia y UI pueden derivarse ya. **No quedan preguntas de implementación abiertas**: la
+última (la 1, errores y reintentos de la IA) la resolvió `real-ai-provider`.
 
 ## Implementation-Time Questions
 
@@ -13,16 +13,26 @@ renumera y hay que actualizar las citas que existan en otros documentos del repo
 
 | # | Pregunta | Impacto | Cuándo decidir |
 |---|---|---|---|
-| 1 | ¿Errores y reintentos de la IA (timeout, cuota, JSON inválido)? | UX y coste | Antes de la integración |
+
+Nota: **no quedan preguntas de implementación abiertas**. La última —la **1** (errores y reintentos
+de la IA)— la resolvió `real-ai-provider`.
 
 Nota de renumeración: se han resuelto el proveedor de IA (antes 1), el nº de recetas por generación
-(antes 2), la caducidad del lote (antes 3), `matchScore` (antes 4) y el formato de las recetas semilla
-(antes 7); las antiguas 5 y 6 pasaron a ser 1 y 2. La que era la pregunta 2 de la tabla (licencias de
-assets) también se ha resuelto, así que la tabla queda solo con la 1. Las specs históricas conservan
-las citas con la numeración de su momento; la tabla se mantiene posicional.
+(antes 2), la caducidad del lote (antes 3), `matchScore` (antes 4), el formato de las recetas semilla
+(antes 7) y, por último, los errores y reintentos de la IA (la 1). Las antiguas 5 y 6 pasaron a ser 1
+y 2 en su momento. Las specs históricas conservan las citas con la numeración de su momento; los
+números eran **posicionales** y no se renumeran retroactivamente.
 
 ### Resueltas
 
+- **Errores y reintentos de la IA** (era la pregunta 1): resuelta en `real-ai-provider`. La política
+  es fija y vive en un **único** sitio, `com.sazon.app.data.ai.AiProviderPolicy`: connect 10 s, socket
+  30 s, timeout por intento 40 s y deadline total 60 s; máximo **1 reintento** (2 intentos) solo ante
+  timeout/`IOException`/408/429/5xx, con backoff fijo de 500 ms y `Retry-After` respetado solo si
+  ≤ 5 s; **nunca** se reintentan 400/401/403/404/422. Un 200 ilegible o vacío **no** lanza: devuelve
+  las recetas decodificables (posiblemente vacías) y la pantalla muestra su estado vacío con
+  "Reintentar". Cuota agotada (429 sostenido) y clave ausente degradan a **modo semilla** sin
+  microcopy específico de cuota. Ver `docs/specs/real-ai-provider.md`.
 - **Política de trazas** (antes pregunta 5, la de trazas): resuelta en `recipe-validator`. Se aplica
   tal cual la política conservadora de `docs/domain/taxonomy.md` §7: la Taxonomía ya marca los
   posibles trazas con el alérgeno y su keyword (p. ej. `avena` con `gluten`). El validador **no**

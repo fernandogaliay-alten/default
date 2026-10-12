@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -8,6 +10,15 @@ plugins {
 val taxonomyAssetFile = layout.projectDirectory.file("src/main/assets/taxonomy.json")
 val seedRecipesAssetFile = layout.projectDirectory.file("src/main/assets/seed-recipes.json")
 val designTokensFile = rootProject.layout.projectDirectory.file("DESIGN.md")
+
+// Clave del proveedor de IA leida en tiempo de configuracion desde local.properties (que NO se
+// versiona). Nunca se imprime su valor ni la ruta; si falta el fichero o la propiedad, queda "".
+val localProperties = Properties().apply {
+    rootProject.layout.projectDirectory.file("local.properties")
+        .asFile.takeIf { it.exists() }
+        ?.inputStream()?.use { load(it) }
+}
+val devexpertApiKey: String = localProperties.getProperty("devexpert.apiKey", "")
 
 val syncTaxonomy by tasks.registering(Copy::class) {
     description = "Copia la Taxonomia canonica al directorio de assets de la aplicacion."
@@ -31,6 +42,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Clave del proveedor de IA inyectada en BuildConfig; valor vacio si falta local.properties.
+        buildConfigField(
+            "String",
+            "DEVEXPERT_API_KEY",
+            "\"${devexpertApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
+        )
     }
 
     buildTypes {
@@ -46,11 +64,22 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
         }
+    }
+}
+
+// Ktor 3.6.0 (engine OkHttp) arrastra OkHttp 5.5.0, cuyo artefacto Android (`okhttp-android`)
+// declara `minCompileSdk=37` y rompe la verificacion del AAR con el `compileSdk` del repo
+// (API 36.1). Se fija OkHttp a 5.4.0, la ultima version cuyo artefacto Android acepta
+// `compileSdk 36`: es la minima desviacion posible y no cambia ni el engine ni el compileSdk.
+configurations.configureEach {
+    resolutionStrategy {
+        force("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
     }
 }
 
@@ -67,9 +96,14 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

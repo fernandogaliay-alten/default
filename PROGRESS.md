@@ -17,7 +17,7 @@
   `onboarding-diet-style-cuisines`,   `onboarding-ingredients-safety-kitchen`, `suggestion-batch-cache`,
   `home-offline-blocks`, `local-result-filters`, `generator-ingredients-step`, `generator-settings-step`,
   `profile-screen`, `generation-flow-with-validation`, `manual-suggestions-refresh`, `results-screen`,
-  `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` (validador independiente, veredicto `accept`). El onboarding queda **completo**
+  `recipe-detail-screen`, `favorites`, `activity-summary`, `ai-search` y `real-ai-provider` (validador independiente, veredicto `accept`). El onboarding queda **completo**
   (7 pasos) y persiste el Perfil al cerrar; el Generador ya ejecuta el corte vertical principal del MVP
   (generar -> validar -> mostrar solo aceptadas, con carga cancelable) y monta la pantalla de Resultados
   real (fórmula de `matchScore`, estados vacío/error con "Reintentar", subtítulo de búsqueda); la pestaña
@@ -26,11 +26,14 @@
   favoritas derivadas); el Detalle de receta ya muestra ingredientes con cantidades, ajusta las
   raciones (escalado con redondeo por unidad), recorre los pasos y consulta tips/nutrición opcional; la
   pestaña Favoritos es real (guardar/quitar, persistencia local de una copia de la Receta y consulta sin
-  conexión, con estados poblado/vacío).
-- Siguiente feature en orden de lista: `ai-search` quedó `accepted` en la sesión 061 (validación
-  independiente, rama `feature/ai-search`); el commit local lo hace el orquestador de `feature-flow` y
-  la publicación queda para `github-flow`. Tras ella, `real-ai-provider` (depende de `prompt-builder` y
-  `generation-flow-with-validation`, ambas `accepted`) es la siguiente candidata.
+  conexión, con estados poblado/vacío). El proveedor de IA real ya está conectado tras el puerto
+  `RecipeGenerator` (DevExpert Inference, Ktor + OkHttp aislado en `data.ai`, política de
+  timeouts/reintentos y degradación a modo semilla), con lo que el corte vertical principal del MVP queda
+  completo de punta a punta.
+- Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
+  quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
+  local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. No hay
+  features `not_started` ni `passing` pendientes: el plan de features del MVP está **cerrado**.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -50,14 +53,19 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: ninguna; `ai-search` quedó `accepted` en la sesión 061 (validación independiente,
-  veredicto `accept`, en la rama `feature/ai-search`). WIP = 0.
-- Bloqueo actual: ninguno
-- Última verificación (2026-10-12, `ai-search`, validator): veredicto **`accept`** independiente tras
-  re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`) y
-  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (32/32 tareas) con parseo propio de los XML
-  (**343 tests/0 fallos/errores/saltados** en 54 suites; 27 nuevos de `ai-search`) y del informe de
-  lint (0 errores, 13 warnings preexistentes, 0 en ficheros de la feature).
+- Feature en curso: ninguna; `real-ai-provider` quedó **`accepted`** en la sesión 067 (validación
+  independiente, veredicto `accept`, en la rama `feature/real-ai-provider`). WIP = 0.
+- Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
+  Studio (Windows): con clave válida, generar recetas reales; con la clave ausente o inválida, modo
+  semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
+- Última verificación (2026-10-12, `real-ai-provider`, validator): veredicto **`accept`** independiente
+  tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`),
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` y
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*" checkDebugAarMetadata`,
+  con parseo propio de los XML (**57 suites / 371 tests / 0 fallos/errores/saltados**; 28 nuevos de
+  `data.ai`: `AiProviderPolicyTest` 8, `AiRecipePayloadTest` 5, `DevExpertRecipeGeneratorTest` 15) y del
+  informe de lint (0 errores, 13 warnings preexistentes, 0 en ficheros de la feature). Detalle en
+  `docs/validations/real-ai-provider.md`.
 
 ## Registro de sesiones
 
@@ -889,3 +897,100 @@
 - Riesgo o incógnita abierta: el importador no borra ficheros del destino que no estén en el origen
   (solo copia); si una pantalla cambia de nombre, conviene limpiar la carpeta destino.
 - Siguiente paso: `real-ai-provider`.
+
+### Sesión 066
+
+- Fecha: 2026-10-12
+- Objetivo: implementar **`real-ai-provider`** (worktree
+  `/mnt/c/Users/fernando.galiay/Documents/Default-Project-worktrees/real-ai-provider`, rama
+  `feature/real-ai-provider`) según `docs/specs/real-ai-provider.md`: conectar el proveedor real
+  (DevExpert Inference, API compatible con OpenAI) **detrás** del puerto `RecipeGenerator`, con Ktor
+  Client (engine OkHttp) + `kotlinx.serialization`, política de timeouts/reintentos/degradación en un
+  único sitio y verificación JVM con `MockEngine`. Sin commit ni push (los hace el orquestador al
+  `accept`).
+- Completado:
+  - Build: Ktor 3.6.0 en el version catalog (5 librerías), dependencias en `app/build.gradle.kts`
+    (`implementation` ×4 + `ktor-client-mock` de test), `buildConfig = true` y
+    `buildConfigField("String", "DEVEXPERT_API_KEY", …)` leyendo `local.properties` en tiempo de
+    configuración (valor `""` si falta; nunca se imprime), y permiso `INTERNET` en el manifiesto.
+  - `com.sazon.app.data.ai`: `AiProviderPolicy` (constantes y decisiones puras), `AiDiagnostics`
+    (`AiUnavailableReason`, `AiUnavailableException`, `AiCallOutcome`, `AiOperation`, `AiCallEvent`),
+    `OpenAiChat` (DTOs del envelope), `AiRecipePayload` (decode tolerante, valla markdown, parseo
+    elemento a elemento con restricciones **neutras**), `AiHttpClientFactory` (OkHttp/Mock,
+    `ContentNegotiation` + `HttpTimeout`, `expectSuccess = false`) y `DevExpertRecipeGenerator`
+    (3 operaciones, prompt con `PromptBuilder`, deadline total, 1 reintento con backoff/`Retry-After`,
+    `CancellationException` siempre relanzada, clave ausente → `MISSING_KEY` sin petición, 200 ilegible
+    → lista vacía).
+  - `MainActivity`: se sustituye `FakeRecipeGenerator()` por `AiHttpClientFactory.create()` +
+    `DevExpertRecipeGenerator(BuildConfig.DEVEXPERT_API_KEY, taxonomy, client, onEvent = Log)`.
+  - Tests nuevos en JVM (`MockEngine`, reloj inyectado, clave ficticia `test-key`):
+    `AiProviderPolicyTest` (8), `AiRecipePayloadTest` (5) y `DevExpertRecipeGeneratorTest` (15,
+    escenarios 1–10 de la spec, incluidas la degradación con `GenerationService` y `AiSearchService`
+    reales). **28 tests nuevos.**
+- Verificación ejecutada: `bash init.sh` **exit 0**; tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` en verde. Parseo propio
+  de los XML: **371 tests/0 fallos/errores/saltados** en 57 suites (343 preexistentes + 28 nuevos) y
+  del informe de lint: **0 errores, 13 warnings preexistentes**, ninguno en ficheros de la feature.
+  `:app:checkDebugAarMetadata` en verde.
+- Hallazgo/desviación mínima registrada: Ktor 3.6.0 arrastra OkHttp **5.5.0**, cuyo artefacto Android
+  declara `minCompileSdk=37` y rompía `checkDebugAarMetadata` con el `compileSdk` del repo (API 36.1).
+  `app/build.gradle.kts` **fuerza OkHttp 5.4.0** (la última cuyo artefacto Android acepta
+  `compileSdk 36`) con `resolutionStrategy.force` y la versión en `gradle/libs.versions.toml`; no se
+  cambia el engine ni `compileSdk`. Documentado en `docs/technical-discovery.md` ("Constraints") y
+  anotado en la spec (Unknowns). Segundo hallazgo anotado en la spec: cuando lo que impide el reintento
+  es el **deadline** (y no el número de intentos), el motivo es `TIMEOUT`.
+- Ficheros cambiados: `gradle/libs.versions.toml`, `app/build.gradle.kts`,
+  `app/src/main/AndroidManifest.xml`, `app/src/main/java/com/sazon/app/MainActivity.kt`,
+  `app/src/main/java/com/sazon/app/data/ai/*` (6 ficheros nuevos),
+  `app/src/test/java/com/sazon/app/data/ai/*` (3 suites nuevas), `docs/domain-model.md`,
+  `docs/risks-and-open-questions.md` (pregunta 1 → "Resueltas"; tabla sin filas + nota),
+  `docs/technical-discovery.md` (Candidate Stack, clave, `data.ai`, Integrations, Observability,
+  Testing, Constraints), `docs/specs/real-ai-provider.md` (hallazgos) y este registro +
+  `feature_list.json`. **No** se toca `domain/**`, `data/generator/FakeRecipeGenerator.kt`, `ui/**`
+  (salvo el cableado de `MainActivity`), las bases Room, la Taxonomía, `seed-recipes.json`,
+  `DESIGN.md`, `docs/design/**` ni `init.sh`.
+- Riesgo o incógnita abierta: **verificación manual pendiente** (la persona, emulador de Android
+  Studio en Windows; el `adb` de WSL no lo ve): (1) clave válida → recetas reales que pasan el
+  Validador; (2) clave ausente/inválida → modo semilla sin fallar (cambiar `local.properties` exige
+  reconstruir). Riesgos de producto ya asumidos en `docs/risks-and-open-questions.md` (clave en el APK,
+  cuota semanal, latencia/creatividad del modelo).
+- Siguiente paso: **validación independiente** de `real-ai-provider` (validator); después, el
+  orquestador de `feature-flow`/`github-flow` hará el commit y publicará el PR.
+
+### Sesión 067
+
+- Fecha: 2026-10-12
+- Objetivo: validar `real-ai-provider` de forma independiente y persistir la aceptación, en el worktree
+  de la rama `feature/real-ai-provider` (ejecutada por el orquestador de `feature-flow`; solo
+  hasta-aceptación, **sin push ni PR**: publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`,
+  `feature-validator`); `feature_list.json` pasa a `accepted` con evidencia que nombra la validación
+  independiente; registrado el detalle en `docs/validations/real-ai-provider.md`. Sin cambios de código
+  tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`, sin procesos largos), `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` y
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*" checkDebugAarMetadata`, y
+  parseó por su cuenta los XML de resultados y el informe de lint; inspeccionó la política de
+  reintentos, el decode tolerante, la degradación por clave ausente, la disciplina de alcance (solo
+  `data.ai` importa Ktor) y la ausencia de fuga de la clave.
+- Evidencia capturada: **57 suites, 371 tests, 0 fallos/errores/saltados** (28 nuevos de `data.ai`,
+  reproducidos exactamente respecto al implementer; 343 preexistentes en verde); lint **0 errores, 13
+  warnings** preexistentes y **0 en ficheros de la feature**; `checkDebugAarMetadata` en verde con el
+  pin de OkHttp; `domain/**`, `FakeRecipeGenerator`, `ui/**` (salvo el cableado de `MainActivity`), las
+  bases Room, la Taxonomía, `seed-recipes.json`, `DESIGN.md`, `docs/design/**` e `init.sh` intactos.
+- Hallazgos del validador (3 Low/informativos, ninguno bloqueante): la ruta real del engine OkHttp no se
+  cubre en JVM (solo con `MockEngine`) y la verificación E2E es manual, por lo que el pin a OkHttp 5.4.0
+  no queda ejercitado automáticamente; `parseContent` usa `runCatching` síncrono (sin impacto práctico);
+  `AiCallEvent.detail` para fallos HTTP es solo `HTTP <status>` (cosmético). Acepta como correcta y bien
+  documentada la desviación del pin de OkHttp. Sin hallazgos Critical/High/Medium; sin acciones de
+  seguridad requeridas (el valor real de `devexpert.apiKey` no aparece en el árbol versionado, logs,
+  mensajes de error, tests ni evidencia; `local.properties` sigue ignorado).
+- Riesgo o incógnita abierta: la **verificación end-to-end real** es **manual** (la persona, emulador de
+  Android Studio en Windows; el `adb` de WSL no lo ve): (1) con `devexpert.apiKey` válida, generar
+  recetas reales que pasan el Validador; (2) con la clave ausente o inválida, modo semilla sin fallar
+  (cambiar `local.properties` exige reconstruir). Riesgos de producto ya asumidos en
+  `docs/risks-and-open-questions.md` (clave en el APK, cuota semanal, latencia/creatividad del modelo).
+  Se mantiene el backfill de capturas de UI de features anteriores (sesión 046).
+- Siguiente paso: **commit local** de la rama `feature/real-ai-provider` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR) queda para `github-flow`, que nunca hace merge. Con esta
+  feature, el plan de features del MVP queda **cerrado** (0 `not_started`, 0 `passing`).
