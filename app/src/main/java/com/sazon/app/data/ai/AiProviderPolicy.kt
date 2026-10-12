@@ -24,6 +24,16 @@ object AiProviderPolicy {
     /** Alias del modelo diario. El alias aislado, no el nombre real, puede cambiar sin romper nada. */
     const val MODEL_ALIAS = "chat"
 
+    /**
+     * Interruptor del `response_format`. `true` (por defecto) pide `{"type":"json_object"}`;
+     * `false` desactiva la feature por completo (comportamiento identico al anterior, sin la clave).
+     * Un unico sitio; la produccion lo lee y el generador lo recibe por constructor.
+     */
+    const val RESPONSE_FORMAT_ENABLED = true
+
+    /** El unico `type` de `response_format` usado hoy (ver `docs/adr/0003-ai-provider.md`). */
+    const val RESPONSE_FORMAT_JSON_OBJECT = "json_object"
+
     /** Timeout de conexion (connect). */
     const val CONNECT_TIMEOUT_MILLIS = 10_000L
 
@@ -82,6 +92,14 @@ object AiProviderPolicy {
      */
     fun isRetryableStatus(statusCode: Int): Boolean =
         statusCode == 408 || statusCode == 429 || statusCode in 500..599
+
+    /**
+     * Un `400`/`422` con el `response_format` activo dispara el **fallback** (reintentar una sola vez
+     * sin la clave); ningun otro estado. Es un camino **aparte** del reintento de transporte: estos
+     * estados siguen **sin** ser [isRetryableStatus] y no usan backoff ni `Retry-After`.
+     */
+    fun requiresResponseFormatFallback(statusCode: Int): Boolean =
+        statusCode == 400 || statusCode == 422
 
     /**
      * Backoff a esperar antes del reintento segun la cabecera `Retry-After`.

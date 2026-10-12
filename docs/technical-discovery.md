@@ -346,7 +346,16 @@ calibrados contra la **peor latencia real medida** de la misma clave y el mismo 
 (issue #72): `mimo-v2.6-pro` **115,8 s**, con el alias diario `chat` entre 28,0 y 46,6 s y
 `chat`+`json_object` / `chat-pro`+`json_schema` / `deepseek-v4-flash` en 85,3 / 97,0 / 52,6 s; el
 socket cubre el peor caso con margen y el deadline deja sitio a otro intento igualmente lento tras el
-backoff. El fallo de transporte se clasifica por su causa en
+backoff. Cada peticion envia ademas `response_format: {"type":"json_object"}` (correctiva
+`ai-response-format`, issue #74) para pedir **forma** JSON parseable, sin usar
+`json_schema`/structured outputs forzados: si el proveedor responde **400/422** con el formato activo
+se reintenta **una sola vez** sin la clave (fallback one-shot, sin backoff, consumiendo el 2.º
+intento), **solo si queda presupuesto de intentos**; el `400`/`422` del 2.º intento degrada a
+`HTTP_ERROR` sin una 3.ª petición (`MAX_ATTEMPTS = 2`), y un interruptor,
+`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`, permite apagar la feature por
+completo (entonces la peticion **omite** la clave; nunca emite `response_format: null`). La KDoc de
+`OpenAiChat` documenta el porque de `@EncodeDefault(NEVER)` sobre el campo nullable (`AiHttpClientFactory`
+usa `encodeDefaults = true`). El fallo de transporte se clasifica por su causa en
 `AiProviderPolicy.transportFailureReason`: timeout de socket (`java.net.SocketTimeoutException`),
 timeout por intento (`HttpRequestTimeoutException`) o `InterruptedIOException` -> `TIMEOUT`; el resto
 de `IOException` (DNS, conexion rechazada/reset; el `ConnectTimeoutException` de Ktor no es un timeout
@@ -447,7 +456,10 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   cambiar sin cambiar el alias. Cuota **semanal** por clave. Ver `docs/adr/0003-ai-provider.md`.
 - **Salida estructurada**: la compatibilidad con OpenAI **no** garantiza `json_schema`/structured
   outputs. El contrato del prompt pide JSON y el `RecipeValidator` parsea de forma tolerante (sin
-  lanzar), por lo que la app **no** depende de salida estructurada forzada.
+  lanzar), por lo que la app **no** depende de salida estructurada forzada. Sí se pide
+  `response_format: {"type":"json_object"}` (forma, no dominio) en el alias `chat`, con fallback
+  one-shot ante `400`/`422` e interruptor en `AiProviderPolicy` (`ai-response-format`, issue #74);
+  `json_schema` sigue **fuera** de alcance.
 - El dominio depende de la interfaz `RecipeGenerator` (tres operaciones: sugerir por preferencias,
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
@@ -455,11 +467,16 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
-  `Authorization: Bearer <clave>` (sin `response_format`, `stream`, `temperature` ni `max_tokens`,
-  ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante** con
+  `Authorization: Bearer <clave>` y, con el interruptor activo (por defecto),
+  `"response_format":{"type":"json_object"}` (forma; **no** `json_schema`; sin `stream`, `temperature`
+  ni `max_tokens`, ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante** con
   `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**), la app completa
   `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
-  `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
+  `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. El
+  **formato de la peticion** se prueba en `OpenAiChatTest` (sin formato **no** aparece
+  `response_format` ni un `null`; con `ResponseFormat.JSON_OBJECT` se emite `{"type":"json_object"}`) y
+  el **fallback one-shot** (400/422 -> 2 llamadas, la segunda sin formato; `401/403/404/429/5xx` sin
+  fallback) y el modo (`responseFormat`/`FALLBACK`) en `DevExpertRecipeGeneratorTest`. La politica de timeouts/reintentos/degradacion vive en `AiProviderPolicy` (un unico sitio;
   timeouts calibrados contra la peor latencia real medida, connect 10 s / socket 120 s / request 150 s /
   deadline 240 s) y clasifica el fallo de transporte por su causa (timeout de socket o de peticion ->
   `TIMEOUT`; conexion o red -> `NETWORK`); los fallos se traducen a `AiUnavailableException` tipada
@@ -516,7 +533,8 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   BLANK/ILLEGIBLE/RECIPES con longitudes UTF-16 vs UTF-8) y `AiRecipeIdsTest` (determinismo, unicidad y
   formato del `id`), mas la regresion end-to-end `MockEngine` 200 con forma real -> `GenerationService`
   real con `accepted` no vacio. Suites en `app/src/test/java/com/sazon/app/data/ai`:
-  `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest` y `DevExpertRecipeGeneratorTest`.
+  `AiProviderPolicyTest`, `AiRecipeIdsTest`, `AiRecipePayloadTest`, `OpenAiChatTest` y
+  `DevExpertRecipeGeneratorTest`.
   La prueba end-to-end contra el proveedor sigue siendo **manual** (emulador; ver `docs/build-brief.md` →
   Validation Plan).
 - **Prueba manual end-to-end** en emulador (ver `docs/build-brief.md` → Validation Plan).
@@ -536,15 +554,19 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   respuesta, duración, **longitudes del contenido**, **recetas recibidas vs. aceptadas** y **resumen
   del motivo de descarte del validador**.
 - El **evento local de IA** está materializado como la costura `AiCallEvent` (`com.sazon.app.data.ai`:
-  operación, desenlace `SUCCESS`/`EMPTY`/`RETRY`/`UNAVAILABLE`, intento, estado HTTP, duración y
-  `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—, más `contentChars`/`contentBytes`
+  operación, desenlace `SUCCESS`/`EMPTY`/`RETRY`/`FALLBACK`/`UNAVAILABLE`, intento, estado HTTP,
+  duración y `detail` con el motivo —`MISSING_KEY`, `HTTP 429`, `deadline`, …—, más el modo de
+  `response_format` usado (`responseFormat = JSON_OBJECT`/`NONE`, `ai-response-format`),
+  `contentChars`/`contentBytes`
   del `content` del modelo, `received`/`accepted` y `discardedByReason` con el recuento por
   `DiscardReason`), con default no-op y cableada a
-  `android.util.Log` en `MainActivity`. **Nunca** incluye la clave ni la cabecera `Authorization`, ni el
+  `android.util.Log` en `MainActivity` (`format=…` en la línea `SazonAi`). **Nunca** incluye la clave ni
+  la cabecera `Authorization`, ni el
   cuerpo del modelo ni títulos de recetas (solo longitudes, recuentos y motivos); no
   se persiste y no se muestra en la UI. Con `EMPTY`, el log distingue contenido en blanco
   (`0 c/0 b`), ilegible (longitudes > 0, `0` recibidas) y lote sin ninguna receta aceptada
-  (`received > 0`, `accepted = 0` y `discards={…}`).
+  (`received > 0`, `accepted = 0` y `discards={…}`); con `FALLBACK`, que el intento con `json_object`
+  fue rechazado con `400`/`422` y se reintenta sin formato.
 - El motivo del descarte es la señal más valiosa del producto: indica si el problema es el prompt o
   el modelo.
 

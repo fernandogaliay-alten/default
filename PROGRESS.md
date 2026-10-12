@@ -64,19 +64,60 @@
   `docs/backend-proposal.md` — backend Kotlin + Ktor (opción B) para cuenta, sincronización
   offline-first y proxy de IA, con módulo de dominio compartido. No altera el estado de ninguna feature
   ni el MVP local-first; queda para retomar en una fase posterior.
-- Feature en curso: **ninguna**. `ai-call-diagnostics` (correctiva de `real-ai-provider`, issue #72)
-  quedó **`accepted`** en la sesión 073 (validación independiente, veredicto `accept`, rama
-  `feature/ai-call-diagnostics`; la sesión 072 la había dejado `passing`). Con ella, la política de
-  timeouts queda recalibrada a la latencia real (socket 120 s, request 150 s, deadline 240 s) y el
-  `Log.d("SazonAi")` explica cada llamada (longitudes del contenido, recibidas vs aceptadas y motivo
-  del descarte). `ai-recipe-decode` (issue #70) quedó `accepted` en la sesión 071 y `ai-provider-timeouts`
-  (issue #68) en la 069. El resto del plan sigue cerrado. WIP = 0.
+- Feature en curso: **ninguna**. La cuarta **correctiva** de `real-ai-provider`, `ai-response-format`
+  (issue #74, `area: integration`, no UI), quedó **`accepted`** en la sesión 076 (validación
+  independiente, veredicto `accept`, rama `feature/ai-response-format`; la sesión 074 la dejó `passing`
+  y la 075 la reparó tras un `revise`). Envía `response_format {"type":"json_object"}` en el alias
+  `chat`, con un interruptor (`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`), un **fallback one-shot** sin
+  `response_format` solo ante 400/422 (respetando `MAX_ATTEMPTS = 2`) y observabilidad del modo/fallback
+  por `AiCallEvent`/`Log.d("SazonAi")`; `RecipeValidator` sigue intacto como puerta dura. Antes,
+  `ai-call-diagnostics` (issue #72) quedó `accepted` en la sesión 073. `ai-recipe-decode` (issue #70) en
+  la 071 y `ai-provider-timeouts` (issue #68) en la 069. El resto del plan sigue cerrado. WIP = 0.
+- Cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74): implementada y
+  autoverificada (`passing`) en la sesión 074 por el implementer, rama `feature/ai-response-format`.
+  La validación independiente devolvió **`revise`** (Finding 1 Medium: el fallback podía añadir un
+  **tercer** intento HTTP) y el implementer la **reparó** en la sesión 075 (sigue `passing`,
+  **pendiente de re-validación**). Acota un cambio en `data.ai` + el formato del `Log.d` de
+  `MainActivity`: envía `response_format {"type":"json_object"}` en el alias `chat` (no `json_schema`,
+  no `chat-pro`), con **fallback one-shot** ante `400`/`422` sin la clave **y solo si queda presupuesto
+  de intentos** (nunca supera `MAX_ATTEMPTS = 2`), interruptor
+  `AiProviderPolicy.RESPONSE_FORMAT_ENABLED` (por defecto `true`) con costura de constructor,
+  observabilidad del modo/fallback sobre `AiCallEvent` (`responseFormat` + `FALLBACK`; `format=…` en el
+  log) y `@EncodeDefault(NEVER)` para **nunca** emitir `"response_format":null` pese a
+  `encodeDefaults = true`. `Recipe.kt`/`RecipeValidator.kt` intactos (siguen siendo la puerta dura).
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
-  Studio (Windows): con clave válida, generar recetas reales y comprobar en logcat (`SazonAi`) el
-  detalle enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`); con un
-  lote sin recetas aceptadas, que el log indique el motivo; con la clave ausente o inválida, modo
-  semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
-- Última verificación (2026-10-12, `ai-call-diagnostics`, validator): veredicto **`accept`** independiente
+  Studio (Windows): con clave válida, generar/buscar y comprobar en logcat (`SazonAi`) el detalle
+  enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`) y el modo de
+  formato (`format=JSON_OBJECT`/`NONE`, y la línea `FALLBACK` si el proveedor rechaza `json_object`);
+  con un lote sin recetas aceptadas, que el log indique el motivo; con `RESPONSE_FORMAT_ENABLED=false`
+  el comportamiento es idéntico al actual (sin `response_format`); con la clave ausente o inválida,
+  modo semilla sin fallar. No es automatizable desde WSL (el `adb` de WSL no ve el emulador).
+- Última verificación (2026-10-12, `ai-response-format`, implementer, **reparación del Finding 1**):
+  **trabajo en disco, sin commit**. La rama de fallback de `DevExpertRecipeGenerator` ahora exige
+  `attempt < AiProviderPolicy.MAX_ATTEMPTS` y se quitó el `!usedFallback` redundante (`includeFormat`
+  ya lo implica): un `503`/`IOException` en el 1.er intento (reintento de transporte) seguido de
+  `400`/`422` en el 2.º ya **no** genera un 3.er intento HTTP (`calls=2`, `UNAVAILABLE/HTTP_ERROR` con
+  el formato del intento, sin evento `FALLBACK`). Test de regresión nuevo
+  `DevExpertRecipeGeneratorTest.el_fallback_no_anade_un_tercer_intento` (cubre `503→400` y
+  `IOException→422`; los tests del fallback aislado siguen intactos). Tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` en verde (**62 tests / 0
+  fallos**, +1); `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`); parseo propio de los XML:
+  **59 suites / 405 tests / 0 fallos / 0 errores / 0 saltados** (404 previos + 1 nuevo) y del informe de
+  lint (0 errores, 13 warnings preexistentes, 0 bajo `app/src`). KDoc del generador y dos docs durables
+  (`docs/risks-and-open-questions.md`, `docs/technical-discovery.md`) matizadas para ceñir el fallback
+  al presupuesto; sin cambios fuera de `DevExpertRecipeGenerator.kt`, su test y esas docs.
+- Verificación anterior (2026-10-12, `ai-response-format`, implementer, sesión 074): **trabajo en disco, sin commit**.
+  `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`); tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` en verde (61 tests / 0
+  fallos). Parseo propio de los XML del gate: **59 suites / 404 tests / 0 fallos / 0 errores / 0
+  saltados** (393 preexistentes + 11 nuevos de `data.ai`: `AiProviderPolicyTest` 12,
+  `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 11, `DevExpertRecipeGeneratorTest` 30, `OpenAiChatTest` 2)
+  y del informe de lint (0 errores, 13 warnings preexistentes, 0 bajo `app/src`, 0 nuevos por
+  `@EncodeDefault`/`@OptIn`). `git diff --stat` solo con lo previsto; `Recipe.kt`, `RecipeValidator.kt`,
+  `AiRecipePayload.kt`, `AiDecodeResult.kt`, `AiHttpClientFactory.kt`, `domain/**`, `ui/**`, Room,
+  Taxonomía, `seed-recipes.json`, build, `init.sh`, `scripts/**`, `DESIGN.md` y `docs/design/**`
+  intactos; sin dependencias nuevas; sin capturas (no es UI).
+- Verificación anterior (2026-10-12, `ai-call-diagnostics`, validator): veredicto **`accept`** independiente
   tras re-ejecutar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`), forzar
   `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
   `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), con parseo propio de los XML
@@ -1415,3 +1456,144 @@
 - Siguiente paso: **commit local** de la rama `feature/ai-call-diagnostics` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features
   del plan del MVP; si aparece un defecto visual/manual, se corrige con una feature correctiva nueva.
+
+### Sesión 074
+
+- Fecha: 2026-10-12
+- Objetivo: implementar la cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74),
+  según `docs/specs/ai-response-format.md`, en la rama `feature/ai-response-format` (worktree); solo
+  hasta implementación y autoverificación (`passing`), sin commit/push/PR (los hace el orquestador).
+  `area: integration`, **no** es UI (sin capturas).
+- Completado:
+  - `AiProviderPolicy`: `RESPONSE_FORMAT_ENABLED = true`, `RESPONSE_FORMAT_JSON_OBJECT = "json_object"` y
+    `requiresResponseFormatFallback(status) = status == 400 || status == 422`. **Sin** tocar
+    `isRetryableStatus`, timeouts (120/150/240), `MAX_ATTEMPTS`/backoff/`Retry-After`.
+  - `OpenAiChat`: `ResponseFormat` (+ `JSON_OBJECT`) y `ChatCompletionRequest.responseFormat` con
+    `@SerialName("response_format") @EncodeDefault(EncodeDefault.Mode.NEVER)` y default `null`; `@OptIn`
+    a nivel de fichero. La KDoc deja de afirmar que no se envía `response_format`.
+  - `AiDiagnostics`: `enum AiResponseFormat { JSON_OBJECT, NONE }`, `AiCallOutcome.FALLBACK` y
+    `AiCallEvent.responseFormat: AiResponseFormat = NONE` (aditivo con default).
+  - `DevExpertRecipeGenerator`: costura `responseFormatEnabled` por constructor (default de la política);
+    `sendAttempt(prompt, remaining, includeFormat)` monta `ResponseFormat.JSON_OBJECT` solo si
+    `includeFormat`; rama de fallback (400/422, **una vez** por operación, sin backoff, `attempt += 1`)
+    antes de la lógica de transporte; `formatOf(includeFormat)` en todas las llamadas a `report`.
+  - `MainActivity`: `format=${event.responseFormat}` en el `Log.d("SazonAi", …)` (único cambio fuera de
+    `data.ai`).
+  - Tests: `OpenAiChatTest` (nuevo, Scenario 3) y casos de formato/fallback/observabilidad en
+    `DevExpertRecipeGeneratorTest` (Scenarios 1, 2, 4, 5, 6 y 7; el antiguo `nunca_reintenta_un_4xx_no_reintentable`
+    se acota a 401/403/404 porque 400/422 ahora disparan el fallback) y `requiresResponseFormatFallback`/
+    interruptor por defecto en `AiProviderPolicyTest`.
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.data.ai.*"` (BUILD SUCCESSFUL) y gate estándar `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`, sin procesos largos); parseo propio de los XML y del informe de lint.
+- Evidencia capturada: **61 tests / 0 fallos en `data.ai`** (50 preexistentes + 11 nuevos); gate
+  **59 suites / 404 tests / 0 fallos / 0 errores / 0 saltados** (393 preexistentes + 11 nuevos); lint
+  **0 errores y 13 warnings preexistentes** (GradleDependency 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`** y 0 nuevos por
+  `@EncodeDefault`/`@OptIn`; `git diff --stat` solo con lo previsto y `grep response_format` restringido
+  a `data.ai` (código y tests) más la KDoc del fallback.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/{AiProviderPolicy,OpenAiChat,
+  AiDiagnostics,DevExpertRecipeGenerator}.kt` y `app/src/main/java/com/sazon/app/MainActivity.kt`
+  (modificados); `app/src/test/java/com/sazon/app/data/ai/{AiProviderPolicyTest,DevExpertRecipeGeneratorTest}.kt`
+  (modificados) y `app/src/test/java/com/sazon/app/data/ai/OpenAiChatTest.kt` (nuevo); `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`, `docs/adr/0003-ai-provider.md`, `docs/specs/real-ai-provider.md`,
+  `docs/specs/ai-call-diagnostics.md`, `feature_list.json` y este registro.
+- Hallazgos relevantes: el test `nunca_reintenta_un_4xx_no_reintentable` agrupaba 400/422 con los 4xx
+  no reintentables; con el formato activo pasan a 2 llamadas (fallback), así que se acotó a 401/403/404 y
+  el comportamiento nuevo se cubre con tests propios. La primera pasada falló una aserción ingenua
+  (`body.contains("null")`) porque el **prompt** enumera la unidad `null`: se sustituyó por el parseo
+  preciso de `response_format` (`OpenAiChatTest` cubre el negativo de `"response_format":null`).
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (latencia de `json_object` 85,3 s
+  frente a `chat` 28,0–46,6 s; un 400/422 no relacionado con el formato también dispararía el fallback,
+  coste de una petición extra con rastro `FALLBACK`; `FALLBACK` no se reintenta si el 2.º intento también
+  da 400/422). Queda la verificación **manual** de emulador de la persona (logcat `format=…`/`FALLBACK`;
+  interruptor apagado idéntico; clave ausente → modo semilla), no automatizable desde WSL. Se mantiene el
+  backfill de capturas de UI (sesión 046).
+- Siguiente paso: validación independiente de `ai-response-format` con `feature-validator`; después,
+  commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 075
+
+- Fecha: 2026-10-12
+- Objetivo: **reparar** `ai-response-format` (issue #74) tras el veredicto **`revise`** del validador
+  independiente (`docs/validations/ai-response-format.md`, Finding 1 **Medium**): el fallback de formato
+  podía añadir un **tercer** intento HTTP y romper la invariante `MAX_ATTEMPTS = 2`. Solo hasta
+  implementación y autoverificación (`passing`), sin commit/push/PR.
+- Diagnóstico: en `DevExpertRecipeGenerator.execute`, la condición del fallback
+  (`includeFormat && requiresResponseFormatFallback(status) && !usedFallback`) **no** consultaba el
+  presupuesto de intentos. Con `503 → 400` (o `IOException → 422`), el primer intento consumía el
+  reintento de transporte (`attempt = 2`) y el `400/422` del segundo disparaba igualmente el fallback
+  (`attempt` pasaba a 3) → `calls = 3`, `formats = [json_object, json_object, null]`.
+- Reparación aplicada:
+  - La rama `AttemptOutcome.HttpFailure` añade la guarda `attempt < AiProviderPolicy.MAX_ATTEMPTS` a la
+    condición del fallback y se elimina `!usedFallback` (redundante: `includeFormat` ya lo implica).
+  - Un `400/422` sin presupuesto cae en la rama actual → `UNAVAILABLE`/`HTTP_ERROR` con el formato del
+    intento (`JSON_OBJECT`), **sin** tercera petición.
+  - KDoc del generador precisada (el fallback solo consume el 2.º intento si queda presupuesto).
+  - Docs durables matizadas para que el enunciado sea coherente con la cota: `docs/risks-and-open-questions.md`
+    y `docs/technical-discovery.md` (`MAX_ATTEMPTS = 2`).
+- Test de regresión nuevo: `DevExpertRecipeGeneratorTest.el_fallback_no_anade_un_tercer_intento` —
+  `503 → 400` y `IOException → 422` ⇒ exactamente **2** llamadas, sin evento `FALLBACK`, evento `RETRY`
+  de transporte presente, `UNAVAILABLE`/`HTTP_ERROR` y evento final con `responseFormat = JSON_OBJECT`.
+  Los tests del fallback aislado (`400/422` en el 1.er intento ⇒ 2 llamadas, la 2.ª sin la clave) siguen
+  intactos y en verde.
+- Verificación ejecutada: `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"`
+  (BUILD SUCCESSFUL) y gate estándar `bash init.sh` (exit 0, test + lint vía `scripts/gradle.sh`, sin
+  procesos largos); parseo propio de los XML y del informe de lint.
+- Evidencia capturada: **62 tests / 0 fallos en `data.ai`** (61 previos + 1 nuevo;
+  `DevExpertRecipeGeneratorTest` 31); gate **59 suites / 405 tests / 0 fallos / 0 errores / 0 saltados**
+  (404 previos + 1 nuevo); lint **0 errores y 13 warnings preexistentes** (GradleDependency 7,
+  NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`**.
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/data/ai/DevExpertRecipeGenerator.kt` y
+  `app/src/test/java/com/sazon/app/data/ai/DevExpertRecipeGeneratorTest.kt`, más
+  `docs/risks-and-open-questions.md` y `docs/technical-discovery.md`; `feature_list.json` y este registro.
+  Sin tocar `isRetryableStatus`, timeouts 120/150/240, `MAX_ATTEMPTS`, backoff, `Retry-After`,
+  `Recipe.kt`/`RecipeValidator.kt`, `AiRecipePayload`/`AiDecodeResult`/`AiHttpClientFactory`, `ui/**`,
+  Room, Taxonomía, build, dependencias, `init.sh`, `scripts/**`, `DESIGN.md` ni `docs/design/**`.
+- Hallazgos relevantes: el camino mixto (reintento de transporte + `400/422`) no estaba cubierto por
+  ningún test; el nuevo caso lo fija. La interpretación elegida es la de la spec (el fallback **consume**
+  el 2.º intento, no lo añade), no la alternativa de ampliar la spec a 3 peticiones.
+- Siguiente paso: **re-validación independiente** de `ai-response-format` con `feature-validator`
+  (puede ser focal: una condición + un test); después, commit local de la rama (lo hace el orquestador de
+  `feature-flow`) y publicación por `github-flow`. Se mantiene la verificación **manual** de emulador de
+  la persona (no automatizable desde WSL) y el backfill de capturas de UI (sesión 046).
+
+### Sesión 076
+
+- Fecha: 2026-10-12
+- Objetivo: validar `ai-response-format` (correctiva de `real-ai-provider`, issue #74) de forma
+  independiente y persistir la aceptación, en el worktree de la rama `feature/ai-response-format`;
+  modo hasta-aceptación, sin push ni PR (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`,
+  `feature-validator`). La primera validación había devuelto **`revise`** (Finding 1 **Medium**: el
+  fallback podía añadir un tercer intento HTTP en secuencia mixta), se reparó en la sesión 075
+  (`attempt < AiProviderPolicy.MAX_ATTEMPTS` + test de regresión) y la re-validación confirmó el arreglo.
+  `feature_list.json` pasa a `accepted` con la evidencia del validador independiente; detalle en
+  `docs/validations/ai-response-format.md`. Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0, test + lint vía
+  `scripts/gradle.sh`, sin procesos largos) y, al ver UP-TO-DATE, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML y el informe
+  de lint, e **independientemente reprodujo el Fix** con una sonda propia en copia scratch (7/7).
+- Evidencia capturada: **59 suites / 405 tests / 0 fallos/errores/saltados** (62 en `data.ai`:
+  `AiProviderPolicyTest` 12, `AiRecipeIdsTest` 6, `AiRecipePayloadTest` 11, `DevExpertRecipeGeneratorTest`
+  31, `OpenAiChatTest` 2); lint **0 errores, 13 warnings** preexistentes, **0 bajo `app/src`**. La sonda
+  del validador: mixto `503→400` y `IOException→422` ⇒ `calls=2` sin `FALLBACK` y `HTTP_ERROR` (el bug
+  `calls=3` ya no reproduce); fallback aislado `400/422` ⇒ `calls=2` con `FALLBACK`+`SUCCESS`; persistente
+  `400` y `fallback_luego_429` ⇒ `calls=2` (sin tercera); transporte `429` persistente ⇒ `calls=2` ambas
+  con formato y `RATE_LIMITED`. Scenarios 1-8 confirmados; `Recipe.kt`, `RecipeValidator.kt`,
+  `AiRecipePayload.kt`, `AiDecodeResult.kt`, `AiHttpClientFactory.kt`, `domain/**`, `ui/**`, Room,
+  Taxonomía, `seed-recipes.json`, build, `init.sh`, `scripts/**`, `DESIGN.md` y `docs/design/**`
+  intactos; sin dependencias nuevas; sin capturas (no es UI). Sin hallazgos Critical/High/Medium
+  abiertos; 2 Low informativos no bloqueantes.
+- Ficheros actualizados: `feature_list.json` (feature a `accepted` con la evidencia del validador),
+  `docs/validations/ai-response-format.md` y este registro. Sin cambios de código.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (latencia de `json_object` 85,3 s
+  frente a `chat` 28,0–46,6 s; un 400/422 no relacionado con el formato dispara igualmente el fallback,
+  con rastro `FALLBACK`; `FALLBACK` no se reintenta si el 2.º intento también da 400/422). Queda la
+  verificación **manual** de emulador de la persona (logcat `format=…`/`FALLBACK` con recetas reales;
+  interruptor apagado → comportamiento idéntico; clave ausente o vaciada → modo semilla), no
+  automatizable desde WSL. Se mantiene el backfill de capturas de UI (sesión 046).
+- Siguiente paso: **commit local** de la rama `feature/ai-response-format` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR, sin merge) queda para `github-flow`. No hay más features
+  del plan del MVP; el plan sigue **cerrado**.

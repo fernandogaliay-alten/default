@@ -31,6 +31,12 @@ modelo usar para `real-ai-provider` (antes pregunta 1 de `docs/risks-and-open-qu
   compatibilidad con OpenAI no la garantiza. El contrato del prompt pide JSON y el `RecipeValidator`
   parsea de forma **tolerante** (elemento a elemento, sin lanzar), por lo que la app funciona con
   respuestas imperfectas.
+- **Nota (`ai-response-format`, issue #74)**: la app **sí** envía `response_format: {"type":"json_object"}`
+  en el alias `chat` (verificado HTTP 200), que solo garantiza **forma** JSON parseable (el dominio lo
+  sigue decidiendo el `RecipeValidator`, puerta dura). Es degradable: ante `400`/`422` reintenta **una
+  vez** sin la clave, y hay un interruptor (`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`). El rechazo a
+  `json_schema`/structured outputs forzados y a pinnear `chat-pro` se **mantiene**; la decisión de fondo
+  no cambia.
 - Si falta la clave o el proveedor falla o se agota la cuota, la app **degrada a modo semilla**.
 
 ## Alternativas consideradas

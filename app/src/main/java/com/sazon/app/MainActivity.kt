@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                     "SazonAi",
                     "${event.operation} ${event.outcome} attempt=${event.attempt} " +
                         "status=${event.httpStatus} ${event.durationMillis}ms " +
+                        "format=${event.responseFormat} " +
                         "content=${event.contentChars}c/${event.contentBytes}b " +
                         "received=${event.received} accepted=${event.accepted} " +
                         "discards=${event.discardedByReason} ${event.detail}",

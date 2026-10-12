@@ -54,8 +54,23 @@ enum class AiCallOutcome {
     /** Fallo reintentable: se hara un segundo intento. */
     RETRY,
 
+    /**
+     * `400`/`422` con el `response_format` activo: se hara **una** peticion de fallback sin la clave
+     * (`AiProviderPolicy.requiresResponseFormatFallback`). Camino aparte del reintento de transporte.
+     */
+    FALLBACK,
+
     /** Fallo final: se lanza [AiUnavailableException]. */
     UNAVAILABLE,
+}
+
+/** Modo de `response_format` usado en un intento, para el diagnostico local. */
+enum class AiResponseFormat {
+    /** El intento llevo `"response_format":{"type":"json_object"}`. */
+    JSON_OBJECT,
+
+    /** El intento no llevo `response_format` (interruptor apagado, fallback o sin activar). */
+    NONE,
 }
 
 /** Operacion del puerto que origino la llamada (para el diagnostico). */
@@ -92,4 +107,6 @@ data class AiCallEvent(
     val accepted: Int? = null,
     /** Resumen de descartes por motivo, en orden de [DiscardReason]; vacio si no hubo descartes. */
     val discardedByReason: Map<DiscardReason, Int> = emptyMap(),
+    /** Modo de `response_format` usado en el intento (nunca el texto del modelo). */
+    val responseFormat: AiResponseFormat = AiResponseFormat.NONE,
 )

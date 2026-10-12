@@ -46,7 +46,8 @@ ni el comportamiento observable salvo que un `EMPTY` pasa a ser diagnosticable.
 ## Non-Goals
 
 - **No** se añade `response_format` / structured outputs / `json_schema` / `json_object`: decisión
-  pendiente de la persona, fuera de alcance.
+  pendiente de la persona, fuera de alcance. (**Resuelto** por `ai-response-format`, issue #74:
+  `json_object` se envía con fallback one-shot; `json_schema` sigue fuera.)
 - **No** se cambia de proveedor ni de modelo (`chat` sigue siendo el alias diario).
 - **No** se toca el dominio aceptado: `RecipeValidator`, `Recipe`, el puerto `RecipeGenerator`, ni la
   UI, ni las bases Room, ni la Taxonomía, ni `seed-recipes.json`, ni el build/dependencias, ni

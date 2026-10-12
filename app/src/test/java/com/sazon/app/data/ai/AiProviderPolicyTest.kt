@@ -177,6 +177,27 @@ class AiProviderPolicyTest {
         assertEquals("", AiProviderPolicy.NEUTRAL_CONSTRAINTS.dietPatternId)
         assertTrue(AiProviderPolicy.NEUTRAL_CONSTRAINTS.hardRestrictionIds.isEmpty())
     }
+
+    // Feature `ai-response-format` (issue #74): el interruptor del formato y el unico type del dia.
+    @Test
+    fun el_interruptor_del_formato_esta_activo_por_defecto_y_usa_json_object() {
+        assertTrue("El formato se envia por defecto", AiProviderPolicy.RESPONSE_FORMAT_ENABLED)
+        assertEquals("json_object", AiProviderPolicy.RESPONSE_FORMAT_JSON_OBJECT)
+    }
+
+    // Solo 400/422 disparan el fallback de formato; el resto de estados no (caso negativo explicito,
+    // incluidos los reintentables de transporte 429/5xx, que siguen sin cambiar `isRetryableStatus`).
+    @Test
+    fun el_fallback_de_formato_solo_lo_disparan_400_y_422() {
+        assertTrue(AiProviderPolicy.requiresResponseFormatFallback(400))
+        assertTrue(AiProviderPolicy.requiresResponseFormatFallback(422))
+        listOf(200, 201, 302, 401, 403, 404, 408, 429, 500, 502, 503, 599).forEach { status ->
+            assertFalse(
+                "El estado $status NO debe disparar el fallback",
+                AiProviderPolicy.requiresResponseFormatFallback(status),
+            )
+        }
+    }
 }
 
 /**

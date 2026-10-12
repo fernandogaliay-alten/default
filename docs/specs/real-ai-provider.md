@@ -355,6 +355,10 @@ object AiHttpClientFactory {
   `ChatChoice(message: ChatMessage = ChatMessage())`.
 - Cuerpo enviado: `{"model":"chat","messages":[{"role":"system",...},{"role":"user",...}]}`. **No** se
   envía `response_format`/`json_schema` (ADR 0003), ni `stream`, ni `temperature`, ni `max_tokens`.
+  (**Actualización `ai-response-format`, issue #74**: con el interruptor
+  `AiProviderPolicy.RESPONSE_FORMAT_ENABLED` activo —por defecto— el cuerpo **sí** lleva
+  `"response_format":{"type":"json_object"}` y, ante `400`/`422`, se reintenta una vez sin la clave;
+  `json_schema` sigue sin enviarse. El escenario histórico de esta spec no se reescribe.)
 - Cabeceras: `Authorization: Bearer <clave>` y `Content-Type: application/json`.
 
 `com.sazon.app.data.ai.AiRecipePayload` — decode **puro** del contenido (sin HTTP, directamente
@@ -666,6 +670,8 @@ ni los cuerpos; `detail` es el motivo/categoría (p. ej. `MISSING_KEY`, `HTTP 42
   `SuggestionBatchService`).
 - **`temperature`/`max_tokens`/`response_format` no se envían**: ADR 0003 descarta structured outputs y
   no hay decisión de producto sobre creatividad/longitud; quedan como *Unknown* revisable.
+  (**Actualización `ai-response-format`, issue #74**: `response_format: json_object` **sí** se envía,
+  con fallback one-shot e interruptor; `temperature`/`max_tokens` y `json_schema` siguen sin enviarse.)
 - **Log local con costura, no sistema**: `AiCallEvent` con default no-op (convención de las costuras
   aditivas del repo) cableado a `android.util.Log` en `MainActivity`; nunca contiene la clave ni las
   cabeceras. Sin telemetría (Observability).
@@ -738,6 +744,9 @@ ni los cuerpos; `detail` es el motivo/categoría (p. ej. `MISSING_KEY`, `HTTP 42
 - [ ] `CancellationException` se relanza siempre (nunca se convierte en `AiUnavailableException`).
 - [ ] La petición lleva `Authorization: Bearer <clave>`, `model = "chat"`, `messages` con el `system` del
       `PromptBuilder` y el `user` de la operación; **no** lleva `response_format` ni `stream`.
+      (**Actualización `ai-response-format`, issue #74**: hoy con el interruptor activo sí lleva
+      `response_format: json_object`, con fallback one-shot; este checklist refleja el estado histórico
+      de la spec y no se reescribe.)
 - [ ] El valor de la clave no está en el repositorio, ni en logs, ni en mensajes de error, ni en tests
       (los tests usan una clave ficticia); `local.properties` sigue ignorado.
 - [ ] `INTERNET` está en el manifiesto junto a `ACCESS_NETWORK_STATE`.
