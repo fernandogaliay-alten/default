@@ -45,8 +45,13 @@
   `not_started`, `in_progress` ni `passing`: la tercera **correctiva** de `real-ai-provider`,
   `ai-call-diagnostics` (issue #72), quedó **`accepted`** en la sesión 073 (validación independiente,
   veredicto `accept`, rama `feature/ai-call-diagnostics`). El plan del MVP sigue **cerrado**; la
-  ampliación **`cooking-mode`** (issue #76) quedó **`accepted`** en la sesión 078 (ver abajo). No hay
-  ninguna entrada de `feature_list.json` no aceptada.
+  ampliación **`cooking-mode`** (issue #76) quedó **`accepted`** en la sesión 078 (ver abajo). Después se
+  añadió la **correctiva** de `ai-recipe-decode` **`ai-quantity-tolerance`** (tolerar `quantity` nula
+  en el wire de la IA, ingredientes "al gusto"): implementada y autoverificada (**`passing`**) en la
+  sesión 081 y **`accepted`** en la sesión 082 (validación independiente, veredicto `accept`, rama
+  `feature/ai-quantity-tolerance`). **No hay features `not_started`, `in_progress`, `passing` ni
+  `blocked`**: todas las entradas de `feature_list.json` están `accepted`. El resto del plan sigue
+  **cerrado**.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -142,7 +147,44 @@
   el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva. Con la
   misma limitación queda la **verificación manual** de `cooking-mode`: abrir una receta, pulsar
   "Empezar a cocinar" y recorrer los pasos con "Siguiente"/"Anterior"/"Terminar", con el temporizador
-  (Iniciar/Pausar/Reanudar/Reiniciar y el aviso "¡Listo!" al llegar a cero).
+  (Iniciar/Pausar/Reanudar/Reiniciar y el aviso "¡Listo!" al llegar a cero). Para `ai-quantity-tolerance`
+  queda también la **prueba manual** de emulador de la persona: con `devexpert.apiKey` válida, buscar
+  *"arroz con pollo"* y comprobar que las recetas con ingredientes "al gusto" (p. ej. *perejil fresco*)
+  ya **no** caen por `SCHEMA` en el diagnóstico (`SazonAi`) y llegan a Resultados, con "Al gusto" en el
+  Detalle; con la clave ausente o vaciada, modo semilla sin fallar (no automatizable desde WSL).
+- Última verificación (2026-10-13, `ai-quantity-tolerance`, validator, sesión 082): **veredicto `accept`
+  independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0, aunque la primera
+  pasada salió `UP-TO-DATE`) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**34/34
+  tareas**); parseó por su cuenta los XML (**64 suites / 465 tests / 0 fallos / 0 errores / 0 saltados**;
+  `data.ai` = 85) y el informe de lint (**0 errores, 13 warnings** preexistentes, 0 bajo `app/src`).
+  Verificador independiente **fuera del repo** (`/tmp`, 28/28 checks contra las clases reales de
+  `app/build`): Scenarios 1-7 (nula+`unit` null y nula+`unit` → normaliza a `0.0`/`unit null` y la `unit`
+  del wire se descarta; campo ausente idéntico; `200 g`/`1 ud` intactos; lote mixto `accepted==1
+  received==2 {SCHEMA:1}`; Validador **no** relajado: `mealTypeId` inexistente → `SCHEMA`, deriva >5 min →
+  `INCOHERENT`; `source==AI`, `id` prefijo `ai-`, `matchScore` null), la causa raíz por diferencial real,
+  `javap` sobre el bytecode (`AiIngredientDraft.getQuantity()` → `java.lang.Double` anulable vs
+  `RecipeIngredient.getQuantity()` → `double` primitivo) y la **estabilidad de ids** (recomputó a mano el
+  hash de canonicalización anterior y obtuvo el mismo `ai-<sha256>`; ningún id existente cambia).
+  Confirmó que `RecipeValidator` no lee `quantity` (la puerta dura no puede debilitarse), la disciplina de
+  alcance, la no-fuga y que el implementer no hizo commit/push/PR. Sin hallazgos Critical/High/Medium; 6
+  Low informativos no bloqueantes. Detalle en `docs/validations/ai-quantity-tolerance.md`.
+- Verificación anterior (2026-10-13, `ai-quantity-tolerance`, implementer, sesión 081): **trabajo en disco,
+  sin commit/push/PR**. `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`, sin procesos largos)
+  y, antes, tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"`
+  (BUILD SUCCESSFUL). Parseo propio de los XML del gate: **64 suites / 465 tests / 0 fallos / 0 errores /
+  0 saltados** (456 preexistentes + 9 nuevos de `data.ai`: `AiRecipePayloadTest` 22 = 14+8,
+  `AiRecipeIdsTest` 7 = 6+1; `data.ai` total 85 = 76+9) y del informe de lint: **0 errores, 13 warnings
+  preexistentes** (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), **0 bajo `app/src`**. Reproducción independiente de la causa raíz con un fichero de
+  test temporal (ya eliminado): el wire `{"name":"Perejil fresco","quantity":null,...}` decodificado con
+  el tipo de dominio `RecipeIngredient` (no anulable) lanza
+  `JsonDecodingException: Failed to parse literal 'null' as a double value at path: $.quantity`
+  (`runCatching` → `SCHEMA`, receta entera perdida), mientras con `AiIngredientDraft` (anulable) decodifica
+  y `toRecipeIngredient()` normaliza a `RecipeIngredient("Perejil fresco", 0.0, unit=null, ...)`.
+  `git diff --stat` solo con lo previsto (2 ficheros de `main` en `data.ai`, 2 tests, 3 docs, la spec y
+  `feature_list.json`); `Recipe.kt`/`RecipeValidator.kt`/`AiRecipePayload.kt`/`domain/**`/`ui/**`/build/
+  Taxonomía/`seed-recipes.json`/`init.sh` intactos; sin dependencias nuevas; sin capturas (no es UI).
+  Docs actualizadas (`docs/technical-discovery.md`, `docs/domain/taxonomy.md` §4, `docs/domain-model.md`).
 - Última verificación (2026-10-12, `recipe-artwork`, validator, sesión 078): **veredicto `accept`
   independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
   `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
@@ -2080,6 +2122,67 @@
   automatiza UI de emulador y un defecto visual se corrige con una feature correctiva.
 - Siguiente paso: **validación independiente** de `favorites-sort-controls` con `feature-validator`;
   después, commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`.
+- Nota de integración: la sesión 081 la ejecutaron en paralelo dos ramas (una por feature,
+  `favorites-sort-controls` y `ai-quantity-tolerance`); se conservan las **dos** entradas.
+- Objetivo: implementar `ai-quantity-tolerance` (correctiva de `ai-recipe-decode`): tolerar el
+  ingrediente "al gusto" del wire del modelo (`quantity` nula o ausente) en la capa anti-corrupción
+  `data.ai` y normalizarlo a `0.0` + `unit = null`, según `docs/specs/ai-quantity-tolerance.md`, en la
+  rama `feature/ai-quantity-tolerance` (worktree); solo hasta implementación y autoverificación
+  (`passing`), sin commit/push/PR (los hace el orquestador).
+- Completado:
+  - `AiIngredientDraft` (`@Serializable internal data class`) en `data.ai`: `name` obligatorio y
+    `quantity: Double? = null`, `unit: MeasureUnit? = null`, `isPantry = false`, `ingredientId = null`
+    (defaults tolerantes), con `AL_GUSTO_QUANTITY: Double = 0.0` como fuente única y
+    `AiIngredientDraft.toRecipeIngredient()` con el contrato de normalización: `quantity == null`
+    (nula **o** ausente) → "Al gusto" (`quantity = 0.0`, `unit = null`, descartando la `unit` del wire);
+    `quantity != null` → mapeo **1:1** intacto.
+  - `AiRecipeDraft.ingredients` pasa a `List<AiIngredientDraft>` y `toRecipe(id)` mapea
+    `ingredients.map { it.toRecipeIngredient() }`; KDoc actualizado (el dominio exige `quantity: Double`
+    no anulable, por eso no se reutiliza `RecipeIngredient` en el wire).
+  - `AiRecipeIds.canonical` canonicaliza el ingrediente **ya normalizado**; `PREFIX` y
+    `ALGORITHM_VERSION` sin cambios (el par cantidad/unidad de un ingrediente numérico es idéntico al de
+    antes, así que **ningún id existente cambia**; las variantes nula/ausente/`0.0`+`null` comparten id).
+  - Tests JVM nuevos (Taxonomía real, cuerpos **literales** del contrato §4, sin `RecipeJson.encode`):
+    `AiRecipePayloadTest` escenarios 1-7 (`quantity`+`unit` nulas → aceptada y "Al gusto" comprobando
+    `IngredientFormat.quantityLabel(0.0, null)`; `unit` no nula con `quantity` nula → unidad descartada;
+    campo `quantity` ausente → mismo resultado; `quantity` numérica intacta; lote mixto "al gusto" + rota
+    → `{SCHEMA:1}` y la buena aceptada; `quantity` nula con otro campo inválido → sigue descartada por
+    `SCHEMA`/`INCOHERENT`; `source`/`id`/`matchScore` de la app) + mapeo directo del DTO, y
+    `AiRecipeIdsTest.la_cantidad_nula_la_ausente_y_la_normalizada_comparten_id`; helper `draft(...)`
+    adaptado a `List<AiIngredientDraft>`.
+  - Hallazgo de spec: la spec pedía `AL_GUSTO_QUANTITY = 0.0D` (sufijo de Java, **inválido** en Kotlin:
+    `Unresolved reference 'D'`); implementado como `const val ... : Double = 0.0` y anotado en
+    `docs/specs/ai-quantity-tolerance.md`.
+- Verificación ejecutada: `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"`
+  (verde) y `bash init.sh` (exit 0, `./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin
+  procesos largos); parseo propio de los XML de resultados y del informe `lint-results-debug.xml`;
+  reproducción independiente de la causa raíz con un test temporal (eliminado después); inspección de
+  `git diff --stat` y del alcance.
+- Evidencia capturada: **64 suites / 465 tests / 0 fallos / 0 errores / 0 saltados** (456 preexistentes
+  + 9 nuevos de `data.ai`: `AiRecipePayloadTest` 22, `AiRecipeIdsTest` 7) y lint **0 errores y 13
+  warnings preexistentes**, 0 bajo `app/src`. Reproducción: el wire con `"quantity":null` por el camino
+  viejo (`RecipeIngredient` no anulable) lanza
+  `JsonDecodingException: Failed to parse literal 'null' as a double value at path: $.quantity` →
+  `SCHEMA` (receta entera perdida); con `AiIngredientDraft` decodifica y normaliza a
+  `RecipeIngredient("Perejil fresco", 0.0, unit=null, ...)`.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/AiRecipeDraft.kt` y
+  `AiRecipeIds.kt`, `app/src/test/java/com/sazon/app/data/ai/AiRecipePayloadTest.kt` y `AiRecipeIdsTest.kt`,
+  `docs/technical-discovery.md`, `docs/domain/taxonomy.md`, `docs/domain-model.md`,
+  `docs/specs/ai-quantity-tolerance.md` (nota), `feature_list.json` (`ai-quantity-tolerance` a `passing`
+  con la evidencia) y este registro. Sin cambios en el dominio aceptado (`Recipe.kt`,
+  `RecipeValidator.kt`, `RecipeJson.kt`), `AiRecipePayload.kt`, `AiDecodeResult.kt`,
+  `AiProviderPolicy.kt`, `OpenAiChat.kt`, `AiHttpClientFactory.kt`, `DevExpertRecipeGenerator.kt`,
+  `domain/**`, `ui/**`, Room, assets, build, `init.sh`, `scripts/**`, `DESIGN.md` ni `docs/design/**`;
+  sin dependencias nuevas.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (otras causas de `SCHEMA` en el
+  ingrediente fuera del contrato §4; la **deriva de tiempos** `INCOHERENT`/`TIME_DRIFT` —el curry que
+  cae por 34 vs 40 min— queda **fuera de alcance**; `name` ausente/vacío sigue siendo `SCHEMA`). Queda
+  la **prueba manual** de emulador de la persona (con clave válida, *"arroz con pollo"*: las recetas
+  "al gusto" ya no caen por `SCHEMA`, llegan a Resultados y el Detalle pinta "Al gusto"; con la clave
+  ausente, modo semilla), no automatizable desde WSL.
+- Siguiente paso: **validación independiente** de `ai-quantity-tolerance` con `feature-validator`;
+  después, commit local de la rama (lo hace el orquestador de `feature-flow`) y publicación por
+  `github-flow`.
 
 ### Sesión 082
 
@@ -2126,3 +2229,48 @@
   `feature-flow`); la publicación queda para `github-flow` (`sync-worktree.sh` + push + PR
   `[favorites-sort-controls] …` con `Closes #85`). Tras esta feature, la siguiente correctiva pendiente es
   `profile-stats-heading`.
+- Nota de integración: la sesión 082 corrió en paralelo para dos features (`favorites-sort-controls` y
+  `ai-quantity-tolerance`); se conservan las **dos** entradas de aceptación.
+- Objetivo: validar `ai-quantity-tolerance` de forma independiente y persistir la aceptación. Ejecutada
+  por el orquestador de `feature-flow` en la rama `feature/ai-quantity-tolerance` (worktree), solo
+  hasta-aceptación; **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (skill `feature-validator`, agente
+  distinto del implementer); `feature_list.json` pasa a `accepted` con evidencia que nombra la validación
+  independiente y se persiste `docs/validations/ai-quantity-tolerance.md`. Sin cambios de código tras la
+  validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0; primera pasada `UP-TO-DATE`, que
+  descartó como evidencia débil) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  (**34/34 tareas**, `BUILD SUCCESSFUL in 3m48s`); parseó por su cuenta los XML y el informe
+  `lint-results-debug.xml`, y montó un **verificador independiente fuera del repo** (`/tmp/opencode/aqt`)
+  compilado contra las clases reales de `app/build`.
+- Evidencia capturada: **64 suites / 465 tests / 0 fallos / 0 errores / 0 saltados** (`data.ai` = 85:
+  `AiProviderPolicyTest` 12, `AiRecipeIdsTest` 7, `AiRecipePayloadTest` 22, `AiVerboseDiagnosticsTest` 7,
+  `DevExpertRecipeGeneratorTest` 35, `OpenAiChatTest` 2), reproduciendo los números del implementer; lint
+  **0 errores y 13 warnings** preexistentes, 0 bajo `app/src`. Verificador externo **28/28**: Scenarios
+  1-7 (nula+`unit` → normaliza a `0.0`/`unit null` y descarta la `unit` del wire; campo ausente idéntico;
+  `200 g`/`1 ud` intactos; lote mixto `accepted==1 received==2 {SCHEMA:1}`; Validador no relajado:
+  `mealTypeId` inexistente → `SCHEMA` y deriva >5 min → `INCOHERENT`; `source==AI`, `id` `ai-`,
+  `matchScore` null), la causa raíz por diferencial real (`RecipeIngredient` lanza
+  `JsonDecodingException` con `quantity:null`; `AiIngredientDraft` decodifica y normaliza) y la
+  **estabilidad de ids** (recomputó a mano el hash de canonicalización **anterior** y obtuvo el mismo
+  `ai-<sha256>`, así que ningún id ya existente cambia). `javap` sobre el bytecode confirmó
+  `AiIngredientDraft.getQuantity(): java.lang.Double` (anulable) vs `RecipeIngredient.getQuantity():
+  double` (primitivo): el dominio está intacto. `RecipeValidator` **no lee `quantity`**, así que tolerar
+  la cantidad no puede debilitar la puerta dura.
+- Ficheros actualizados por el orquestador: `feature_list.json` (`ai-quantity-tolerance` a `accepted` con
+  la evidencia de la validación independiente), `docs/validations/ai-quantity-tolerance.md` (nuevo) y este
+  registro.
+- Hallazgos del validador (6 Low informativos, ninguno bloqueante): `Validator Checklist` de la spec sin
+  marcar (convención heredada); `AiRecipePayloadTest` importa `ui.detail.IngredientFormat` (pura y pedida
+  por la spec); colapso de representaciones del wire (`null`, `0.0`+`null`, `null`+`unit`) comparten
+  ingrediente e id, es el comportamiento especificado; sin vector dorado del hash `ai-<sha256>` (gap
+  preexistente de `ai-recipe-decode`); artefactos de validación/spec que persistió el orquestador;
+  Scenario 8 manual. Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: ninguno nuevo. Queda la **verificación manual** de la persona en el
+  emulador de Android Studio (Windows), no automatizable desde WSL: con `devexpert.apiKey` válida, buscar
+  *"arroz con pollo"* y comprobar que las recetas con ingredientes "al gusto" (p. ej. *perejil fresco*) ya
+  no caen por `SCHEMA` en el diagnóstico (`SazonAi`) y llegan a Resultados, con "Al gusto" en el Detalle;
+  con la clave ausente o vaciada, modo semilla sin fallar.
+- Siguiente paso: **commit local** de la rama `feature/ai-quantity-tolerance` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR, `Closes #<n>`, sin merge) queda para `github-flow`. Con
+  esta aceptación **no queda ninguna feature pendiente** en `feature_list.json` (todas `accepted`).

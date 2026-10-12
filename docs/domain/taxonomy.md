@@ -115,6 +115,13 @@ borrador de la respuesta (todo lo enumerado debe ser un id de la taxonomía):
 `declaredAllergens` es la **autodeclaración** del modelo: sirve como pista, nunca como garantía.
 El validador la **recalcula** y compara.
 
+Un ingrediente puede venir **"al gusto"**: `"quantity"` nula o **ausente** (y, con ella, la `unit`
+irrelevante). El dominio exige `quantity: Double` no anulable, así que el adaptador
+(`com.sazon.app.data.ai`) lo **normaliza** al mapear a `RecipeIngredient`: `quantity = 0.0` y
+`unit = null` (la `unit` del wire se **descarta**), que es lo que la app pinta como "Al gusto" y no
+escala. Un ingrediente así **no** descarta la receta entera; el Validador sigue aplicando sus reglas
+con normalidad.
+
 `id`, `source` y `matchScore` **no** forman parte del contrato: los posee la app. **El modelo no debe
 enviarlos** (si los enviara, se ignoran). El adaptador (`com.sazon.app.data.ai`) completa `id`
 (determinista por contenido, `ai-<sha256>`) y `source = ai` al decodificar la respuesta y **antes** de
