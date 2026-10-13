@@ -527,7 +527,7 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
   junto a `GenerationConstraints`, la costura minima de `generateFromIngredients`.
-- **Puerto de dominio de la imagen de plato (fase 1, sin adaptador)**: `com.sazon.app.domain.image`
+- **Puerto de dominio de la imagen de plato (fases 1-2)**: `com.sazon.app.domain.image`
   (puro: sin Android, sin Compose, sin Ktor, sin red y sin estado) fija la política con la que la app
   pedirá y cacheará la imagen generada de un plato (fase 1 de `docs/ai-dish-images-proposal.md`, ver
   `docs/adr/0005-ai-dish-images.md`). El puerto es
@@ -542,9 +542,24 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   del plato** normalizado tipográficamente (colapso de espacios, `NFD` + `\p{Mn}+`, `Locale.ROOT`,
   alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
   (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
-  **Nadie consume el puerto todavía**: el adaptador real (fase 2), la caché de disco y memoria
-  (fase 3) y la UI progresiva (fase 4) siguen pendientes, y la cadena de `recipe-photos` (assets
-  offline) sigue siendo la **única** resolución de imagen en tiempo de ejecución.
+  **Nadie consume el puerto todavía**: el adaptador real ya existe (fase 2, ver el bullet siguiente),
+  pero la caché de disco y memoria (fase 3) y la UI progresiva (fase 4) siguen pendientes, y la cadena
+  de `recipe-photos` (assets offline) sigue siendo la **única** resolución de imagen en tiempo de
+  ejecución.
+- **Adaptador real de la imagen de plato (fase 2)**: `com.sazon.app.data.ai.image` implementa el puerto
+  anterior con **Ktor Client** (la misma capa `data.ai`, única que conoce la red): `POST
+  /images/generations` sobre la base del proveedor con `Authorization: Bearer <clave>`, cuerpo
+  `{"model":"image","prompt":<request.prompt>,"size":"1024x1024"}` (512 no lo soporta el proveedor) y
+  `expectSuccess = false`. Decodifica `data[0].b64_json` de forma tolerante (`DishImagePayload`) y
+  **reduce en local** a WebP q80 de 960 px de ancho (`AndroidDishImageReducer`, único fichero con
+  `android.graphics`; nunca agranda). La política vive en `DishImagePolicy` (un único sitio): endpoint,
+  alias `image`, `1024x1024`, ancho objetivo 960, calidad 80, timeouts propios **más cortos** que los de
+  chat y **un solo intento** (`MAX_ATTEMPTS = 1`, sin reintento: no se gasta cuota dos veces). Contrato
+  de fallo: error HTTP, timeout, fallo de transporte, cuerpo ilegible, base64 inválido o imagen
+  indecodificable → **`null` sin lanzar**; la **cancelación** sí se propaga. La clave entra por
+  constructor y solo viaja en la cabecera; el adaptador **no registra nada** (sin `Log`). Sigue **sin
+  caché, sin UI y sin consumidores** (lo cablean las fases 3-4), con el formato y el tamaño fijados aquí
+  por el adaptador (ADR 0005). Ver `docs/specs/dish-image-generator.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con

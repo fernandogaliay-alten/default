@@ -57,9 +57,18 @@
   (`feature/dish-image-domain`, sin commit/push/PR) — política pura en `com.sazon.app.domain.image`
   (puerto `DishImageGenerator` + `DishImageRequest`, prompt `DishImagePrompt` y clave canónica
   `DishImageCacheKey`) con 20 tests JVM nuevos, ADR 0005 (**aceptado parcialmente**) y **sin** adaptador,
-  red, caché, UI, assets ni dependencias nuevas. Es la **única** entrada no `accepted` del plan
-  (WIP = 1 por worktree); las fases 2-7 de la propuesta **no** están dadas de alta en
-  `feature_list.json`.
+  red, caché, UI, assets ni dependencias nuevas; quedó **`accepted`** en la **sesión 086**. La **fase 2**,
+  **`dish-image-generator`** (`area: integration`, depende de `dish-image-domain`), es la **única**
+  entrada del plan con trabajo reciente (WIP = 1 por worktree): implementada y autoverificada
+  (**`passing`**) en la **sesión 089** y **`accepted`** en la **sesión 090** (validación independiente,
+  veredicto `accept`, rama `feature/dish-image-generator`, sin commit/push/PR) — el adaptador
+  real `com.sazon.app.data.ai.image.DevExpertDishImageGenerator` (Ktor, `POST /images/generations` con
+  alias `image` y `size 1024x1024`, decodificación tolerante de `data[0].b64_json` y reducción local a
+  WebP q80 de 960 px, `null` como fallo, **un solo intento** y sin `Log`) con 22 tests JVM nuevos (uno de
+  ellos Robolectric en modo gráfico nativo para el códec real); sigue **sin caché, sin UI y sin
+  consumidores**. Las fases 3-7 de la propuesta (`dish-image-cache`, `dish-image-progressive-ui`,
+  `dish-visual-descriptor`, `dish-style-reference` y `dish-image-seed`) ya están dadas de alta en
+  `feature_list.json` como `not_started`.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -2794,3 +2803,111 @@
   publicación (push + PR con `Closes #91`, sin merge) queda para `github-flow`. En orden de lista, la
   siguiente feature candidata es `dish-image-domain` (`not_started`, dependencias
   `recipe-domain-model`/`taxonomy-in-code` ya `accepted`).
+
+### Sesión 089
+
+- Fecha: 2026-10-13
+- Objetivo: implementar y autoverificar `dish-image-generator` (fase 2 de
+  `docs/ai-dish-images-proposal.md` y `docs/adr/0005-ai-dish-images.md`), la **única** feature no
+  `accepted` del plan. Ejecutada por el subagente `implementer` en la rama
+  `feature/dish-image-generator` (worktree); **sin commit, push ni PR** (los hace el orquestador).
+- Completado: el **adaptador real** del puerto `com.sazon.app.domain.image.DishImageGenerator` en el
+  paquete nuevo `com.sazon.app.data.ai.image` (6 ficheros):
+  - `DishImagePolicy` — política **pura** en un único sitio: endpoint (`/images/generations` sobre
+    `BASE_URL`), alias `image`, `size 1024x1024`, `TARGET_WIDTH_PX = 960`, `WEBP_QUALITY = 80`,
+    `MAX_ATTEMPTS = 1`, `TIMEOUTS` propios (connect 10 s / socket 30 s / request 40 s, más cortos que
+    los de chat) y `scaledSize` (solo reduce, proporcional, mínimo 1 px).
+  - `OpenAiImages` — DTOs `@Serializable` del wire (`model`, `prompt`, `size`; `data[].b64_json`).
+  - `DishImagePayload` — decodificación **tolerante** de `data[0].b64_json` a bytes
+    (`java.util.Base64`); cualquier cosa que no encaje → `null` sin lanzar.
+  - `DishImageReducer` (`fun interface`) + `AndroidDishImageReducer` — decodifica con `BitmapFactory`,
+    reduce con `scaledSize` (sin agrandar) y **re-codifica siempre** a WebP q80 con
+    `Bitmap.CompressFormat.WEBP_LOSSY` + `Bitmap.scale` de core-ktx; recicla bitmaps y devuelve `null`
+    si falla. **Único** fichero de `data.ai.image` que importa `android.graphics`.
+  - `DevExpertDishImageGenerator` — transporte Ktor: clave y `HttpClient` por constructor, timeout por
+    petición desde `TIMEOUTS`, una sola petición; clave en blanco → `null` **sin** petición; no-2xx,
+    timeout, fallo de transporte, cuerpo ilegible o `b64_json` inválido → `null` **sin lanzar**;
+    `CancellationException` **relanzada**; sin `Log`. `request.prompt` viaja tal cual y
+    `request.cacheKey` **no** interviene en la red (identidad de la fase 3).
+- Tests nuevos (4 ficheros, **22 tests JVM**): `DishImagePolicyTest` (7), `DishImagePayloadTest` (3),
+  `DevExpertDishImageGeneratorTest` (7, `MockEngine` + reductor falso en JVM puro) y
+  `AndroidDishImageReducerTest` (5, Robolectric `@GraphicsMode(NATIVE)` + `@Config(sdk = [33])`, con el
+  camino extremo a extremo `b64_json → WebP 960`).
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.data.ai.image.*"` (BUILD SUCCESSFUL, 52s) y el gate canónico **`bash init.sh` → exit 0**
+  (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, en invocaciones separadas; sin red, sin
+  procesos largos y sin tocar `init.sh`). Parseo propio de los XML y del informe de lint.
+- Evidencia capturada: gate completo **72 suites / 517 tests / 0 fallos / 0 errores / 0 saltados**
+  (delta vs HEAD = **+4 suites / +22 tests**, los ficheros nuevos; baseline en HEAD re-derivado
+  **68 suites / 495 tests** — la spec citaba 496 y las suites coinciden, desviación de 1 en el conteo de
+  tests). Lint: **0 errores, 13 warnings preexistentes, 0 bajo `app/src`** (se corrigió un `UseKtx`
+  propio con la extensión `Bitmap.scale` de core-ktx, ya presente). Inspección: `import android` solo en
+  `AndroidDishImageReducer.kt`; `Recipe|Taxonomy|DishImagePrompt|DishImageCacheKey` → **0**; `Log.` →
+  **0**; `test -d docs/design/concepts/dish-image-generator` → **no existe**. `git status` solo con los
+  6 ficheros nuevos de `main`, los 4 de test, `docs/specs/dish-image-generator.md` (del planner), los 3
+  docs actualizados, `feature_list.json` y este registro; `app/build.gradle.kts`,
+  `gradle/libs.versions.toml`, `init.sh`, `scripts/**`, `domain/**`, `ui/**`, assets, `DESIGN.md` y
+  `docs/design/**` **sin diff**; sin dependencias nuevas; sin commit/push/PR.
+- Docs actualizados: `docs/technical-discovery.md` (nuevo bullet del adaptador real `data.ai.image` de
+  la fase 2 y el bullet del puerto pasa a "fases 1-2"), `docs/risks-and-open-questions.md` (la fila de
+  cuota/latencia pasa a "el transporte ya existe desde la fase 2; se materializa al consumirse en las
+  fases 3-4") y `docs/adr/0005-ai-dish-images.md` (estado **Aceptado parcialmente (fases 1-2)**,
+  alcance de la fase 2 y consecuencias con las fases 3-7 pendientes).
+- Hallazgo relevante: el **runtime gráfico nativo de Robolectric arranca en WSL** (`@GraphicsMode(NATIVE)`
+  con `@Config(sdk = [33])`, Robolectric 4.17), así que el códec Android real (`BitmapFactory` +
+  `compress(WEBP_LOSSY)`) se ejercita de verdad en JVM con imágenes generadas dentro del test (no se
+  versiona ningún binario). No fue necesario declarar ningún bloqueo por este motivo.
+- Riesgo o incógnita abierta: la **prueba real opcional** contra el proveedor (verificación #3, ~2 % de
+  cuota) **no** se ejecutó (no es puerta de aceptación y las verificaciones #1 y #2 están en verde); la
+  primera generación real se hará al consumir el puerto en las fases 3-4. La evidencia del códec cubre
+  geometría y formato, no coincidencia píxel a píxel ni la calidad 80 (no verificable de forma fiable).
+- Siguiente paso: **validación independiente** de `dish-image-generator` (`passing`) por el subagente
+  `validator`; después, commit local de la rama (orquestador de `feature-flow`) y publicación (push + PR,
+  sin merge) por `github-flow`.
+
+### Sesión 090
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-flow` para `dish-image-generator` en modo hasta-aceptación (planner →
+  implementer → validator) en el worktree `feature/dish-image-generator`. **Sin push ni PR** (publica el
+  orquestador de `github-flow`).
+- Completado:
+  - Selección: `dish-image-generator` (`area: integration`, `depends_on: ["dish-image-domain"]` ya
+    `accepted`), sin spec previa. Rol 1: **planner** (`feature-spec`) → `docs/specs/dish-image-generator.md`
+    (nueva, 592 líneas): adaptador Ktor del puerto `domain.image`, política `DishImagePolicy` (endpoint,
+    alias `image`, `1024x1024`, 960 px WebP q80, timeouts propios 10/30/40 s, un solo intento), costura
+    `DishImageReducer`/`AndroidDishImageReducer`, 10 escenarios, no-goals (sin caché/UI/consumidores) y
+    checklist. **Sin gate de capturas** (no es `area: ui`).
+  - Rol 2: **implementer** (`feature-implementer`); dejó la feature `passing` (sesión 089).
+  - Rol 3: **validator** (`feature-validator`), independiente y con contexto limpio.
+  - **Veredicto `accept`**: 72 suites / **517 tests** / 0 fallos / 0 errores / 0 saltados (delta exacto
+    +4 suites / +22 tests sobre la baseline re-derivada en `HEAD`, 68/495), lint 0 errores / 13 warnings
+    preexistentes / 0 bajo `app/src`, escenarios 1-10 verificados (incluido el códec Android real con
+    Robolectric `@GraphicsMode(NATIVE)` en WSL) y disciplina de alcance intacta. Sin hallazgos
+    Critical/High/Medium; 4 Low informativos no bloqueantes (`MAX_ATTEMPTS` declarativa; base64 estricto
+    sin diagnóstico; `catch(Exception)` no cubre `OutOfMemoryError`; baseline 496 vs 495). Detalle en
+    `docs/validations/dish-image-generator.md`.
+  - **Persistencia de la aceptación**: `feature_list.json` (`dish-image-generator` → `accepted` con la
+    evidencia de la validación independiente) y este registro.
+- Verificación ejecutada: `bash init.sh` → **exit 0** en el arranque (antes de planificar) y re-ejecutado
+  por el implementer y el validador; el validador forzó `scripts/gradle.sh testDebugUnitTest
+  --rerun-tasks` (34/34 tareas) y `lint --rerun-tasks`. Nota de entorno: el primer `lint --rerun-tasks`
+  del validador murió con **SIGSEGV del daemon de Gradle** (Temurin 21); el reintento fue verde (no se usó
+  `--stop`).
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/ai/image/{DishImagePolicy,OpenAiImages,DishImagePayload,DishImageReducer,AndroidDishImageReducer,DevExpertDishImageGenerator}.kt`,
+  los 4 tests en `app/src/test/java/com/sazon/app/data/ai/image/`, `docs/specs/dish-image-generator.md`,
+  `docs/validations/dish-image-generator.md`, `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`, `docs/adr/0005-ai-dish-images.md`, `feature_list.json` y este
+  registro. Build/lockfile/`init.sh`/`scripts/**`/`domain/**`/`ui/**`/assets/`DESIGN.md`/`docs/design/**`
+  intactos; sin dependencias nuevas.
+- Hallazgos relevantes: el runtime gráfico nativo de Robolectric **sí** arranca en WSL, así que el códec
+  Android real se ejercita en JVM sin emulador (no hubo bloqueo). La clave solo entra por constructor y
+  viaja en `Authorization`; el adaptador no registra nada.
+- Riesgo o incógnita abierta: la **prueba real opcional** contra el proveedor (~2 % de cuota) **no** se
+  ejecutó (no es puerta de aceptación); la primera generación real se hará en la fase 4. Los hallazgos
+  Low quedan como endurecimiento para las fases 3-4.
+- Commit local de la aceptación en la rama `feature/dish-image-generator` (orquestador de `feature-flow`);
+  **sin push ni PR**.
+- Siguiente paso: **ninguna feature** en esta sesión; `github-flow` publica la rama (push + PR con
+  `Closes`, sin merge). La siguiente feature del plan es la **fase 3**, `dish-image-cache`
+  (`not_started`), y requeriría una nueva ejecución de `github-flow execute dish-image-cache`.
