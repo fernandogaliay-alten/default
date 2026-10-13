@@ -293,8 +293,8 @@ class DishImageSettingsTest {
     )
 }
 
-private const val KEY = "dish-image-v1-arroz-con-pollo-criollo"
-private const val OTHER_KEY = "dish-image-v1-tortilla-de-patatas"
+private const val KEY = "dish-image-v2-arroz-con-pollo-criollo"
+private const val OTHER_KEY = "dish-image-v2-tortilla-de-patatas"
 
 private fun request(cacheKey: String) = DishImageRequest(
     cacheKey = cacheKey,

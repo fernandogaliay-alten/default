@@ -401,6 +401,125 @@ class DishImageResolverTest {
         )
     }
 
+    // --- Escenario 10 de `dish-image-prompt-v2`: diagnostico del origen resuelto --------------------
+
+    @Test
+    fun el_origen_resuelto_reporta_seed_para_el_set_semilla_y_generado_para_el_generador() = runTest {
+        val root = cacheRoot()
+        val seed = FakeDishImageSeedSource { if (it == SEED_KEY) webpBytes(48) else null }
+        val reportados = mutableListOf<Pair<String, DishImageOrigin>>()
+        val resolver = resolver(
+            root,
+            FakeDishImageGenerator { webpBytes(24) },
+            seed = seed,
+            onResolved = { request, origin -> reportados += request.cacheKey to origin },
+        )
+
+        resolver.imageFor(request(SEED_KEY))
+        resolver.imageFor(request(OTHER_KEY))
+
+        assertEquals(
+            listOf(SEED_KEY to DishImageOrigin.SEED, OTHER_KEY to DishImageOrigin.GENERATED),
+            reportados,
+        )
+    }
+
+    @Test
+    fun un_acierto_de_memoria_sobre_bytes_semilla_sigue_reportando_seed() = runTest {
+        val seed = FakeDishImageSeedSource { webpBytes(48) }
+        val reportados = mutableListOf<DishImageOrigin>()
+        val resolver = resolver(
+            cacheRoot(),
+            FakeDishImageGenerator { webpBytes(24) },
+            seed = seed,
+            onResolved = { _, origin -> reportados += origin },
+        )
+
+        resolver.imageFor(request(SEED_KEY))
+        resolver.imageFor(request(SEED_KEY))
+
+        assertEquals(
+            "El acierto de memoria no degrada el origen a GENERATED",
+            listOf(DishImageOrigin.SEED, DishImageOrigin.SEED),
+            reportados,
+        )
+        assertEquals("El asset se lee una sola vez", 1, seed.reads)
+    }
+
+    @Test
+    fun un_acierto_de_disco_reporta_generado_sin_tocar_semilla_ni_generador() = runTest {
+        val root = cacheRoot()
+        resolver(root, FakeDishImageGenerator { webpBytes(32) }).imageFor(request(KEY))!!
+        val seed = FakeDishImageSeedSource { webpBytes(48) }
+        val offline = FakeDishImageGenerator { throw IllegalStateException("no debe generar") }
+        val reportados = mutableListOf<DishImageOrigin>()
+
+        resolver(root, offline, seed = seed, onResolved = { _, origin -> reportados += origin })
+            .imageFor(request(KEY))
+
+        assertEquals(listOf(DishImageOrigin.GENERATED), reportados)
+        assertEquals(0, seed.reads)
+    }
+
+    @Test
+    fun un_fallo_no_reporta_origen_y_la_cancelacion_se_propaga_sin_reportar() = runTest {
+        val fallos = listOf<suspend (DishImageRequest) -> ByteArray?>({ null }, { ByteArray(0) })
+        fallos.forEachIndexed { index, fallo ->
+            val reportados = mutableListOf<DishImageOrigin>()
+            val result = resolver(
+                File(cacheRoot(), "fallo-$index"),
+                FakeDishImageGenerator(fallo),
+                onResolved = { _, origin -> reportados += origin },
+            ).imageFor(request(KEY))
+
+            assertNull("El fallo #$index degrada a null", result)
+            assertTrue("El fallo #$index no reporta origen", reportados.isEmpty())
+        }
+
+        val reportadosEnCancelacion = mutableListOf<DishImageOrigin>()
+        var propagada: CancellationException? = null
+        try {
+            resolver(
+                File(cacheRoot(), "cancelado"),
+                FakeDishImageGenerator { throw CancellationException("cancelado") },
+                onResolved = { _, origin -> reportadosEnCancelacion += origin },
+            ).imageFor(request(KEY))
+        } catch (cancellation: CancellationException) {
+            propagada = cancellation
+        }
+
+        assertNotNull("La cancelacion se sigue propagando", propagada)
+        assertTrue("La cancelacion no reporta origen", reportadosEnCancelacion.isEmpty())
+    }
+
+    @Test
+    fun el_callback_por_defecto_es_no_op_y_no_cambia_bytes_ni_orden_de_llamadas() = runTest {
+        val rootPorDefecto = File(cacheRoot(), "por-defecto")
+        val rootExplicito = File(cacheRoot(), "explicito")
+        val generadorPorDefecto = FakeDishImageGenerator { webpBytes(32) }
+        val generadorExplicito = FakeDishImageGenerator { webpBytes(32) }
+        val semillaPorDefecto = FakeDishImageSeedSource { null }
+        val semillaExplicita = FakeDishImageSeedSource { null }
+
+        val porDefecto = resolver(rootPorDefecto, generadorPorDefecto, seed = semillaPorDefecto)
+            .imageFor(request(OTHER_KEY))
+        val explicito = resolver(
+            rootExplicito,
+            generadorExplicito,
+            seed = semillaExplicita,
+            onResolved = { _, _ -> },
+        ).imageFor(request(OTHER_KEY))
+
+        assertArrayEquals("Mismos bytes con y sin callback", porDefecto, explicito)
+        assertEquals("Mismo numero de generaciones", generadorPorDefecto.calls, generadorExplicito.calls)
+        assertEquals("Mismo numero de lecturas de semilla", semillaPorDefecto.reads, semillaExplicita.reads)
+        assertEquals(
+            "Mismo resultado persistido",
+            rootPorDefecto.listFiles()!!.map { it.name },
+            rootExplicito.listFiles()!!.map { it.name },
+        )
+    }
+
     private fun cacheRoot() = File(temporaryFolder.root, "dish-images")
 
     private fun resolver(
@@ -409,23 +528,25 @@ class DishImageResolverTest {
         memory: MemoryDishImageCache = MemoryDishImageCache(),
         maxBytes: Long = DishImageCachePolicy.MAX_DISK_BYTES,
         seed: DishImageSeedSource? = null,
+        onResolved: (DishImageRequest, DishImageOrigin) -> Unit = { _, _ -> },
     ) = DishImageResolver(
         disk = FileDishImageCache(root, maxBytes = maxBytes),
         memory = memory,
         generator = generator,
         ioDispatcher = Dispatchers.Unconfined,
         seed = seed,
+        onResolved = onResolved,
     )
 }
 
-private const val KEY = "dish-image-v1-arroz-con-pollo-criollo"
+private const val KEY = "dish-image-v2-arroz-con-pollo-criollo"
 // Escenarios de la fase 7 (`dish-image-seed`): la clave del plato del set semilla es el mismo vector
 // que ya usaba la fase 3.
-private const val SEED_KEY = "dish-image-v1-arroz-con-pollo-criollo"
-private const val KEY_A = "dish-image-v1-arroz-con-pollo-criollo"
-private const val KEY_B = "dish-image-v1-tortilla-de-patatas"
-private const val KEY_C = "dish-image-v1-paella-valenciana"
-private const val OTHER_KEY = "dish-image-v1-lentejas-estofadas"
+private const val SEED_KEY = "dish-image-v2-arroz-con-pollo-criollo"
+private const val KEY_A = "dish-image-v2-arroz-con-pollo-criollo"
+private const val KEY_B = "dish-image-v2-tortilla-de-patatas"
+private const val KEY_C = "dish-image-v2-paella-valenciana"
+private const val OTHER_KEY = "dish-image-v2-lentejas-estofadas"
 
 private fun request(cacheKey: String) = DishImageRequest(
     cacheKey = cacheKey,

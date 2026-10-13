@@ -7,14 +7,17 @@ package com.sazon.app.domain.image
  * Es informacion **cosmetica del modelo**, no un campo de [com.sazon.app.domain.recipe.Recipe] ni una
  * regla del Validador: **no** se persiste y **no** se valida. Su unico efecto es alimentar la
  * politica pura de imagen ([DishImageCacheKey], [DishImagePrompt]) cuando esta disponible; su
- * ausencia degrada **exactamente** al comportamiento de la fase 1 (clave y prompt por titulo/id).
+ * ausencia deja la clave por titulo/`id` y el prompt **sin** el segmento de detalle (el resto de la
+ * plantilla v2 no depende del descriptor).
  *
  * - [dishKey] es el **plato canonico** (pensado como clave de cache compartida): permite que dos
  *   variantes del mismo plato (`"arroz con pollo"` / `"arroz con pollo fácil"`) compartan imagen.
  *   Se conserva **tal cual** (mayusculas y diacriticos incluidos); quien lo canonicaliza es
  *   [DishImageCacheKey.normalize].
- * - [imagePrompt] es la **descripcion visual del plato terminado**; sustituye solo la clausula del
- *   plato en [DishImagePrompt], conservando prefijo, cocina y coletilla de estilo.
+ * - [imagePrompt] es la **descripcion visual del plato terminado**; se usa como **detalle** de
+ *   [DishImagePrompt] (v2): el titulo de la receta sigue siendo **siempre** la identidad del prompt y
+ *   el `imagePrompt` se anade despues, con los ingredientes clave, la composicion y los negativos.
+ *   Nunca sustituye al titulo (cambio deliberado respecto a la fase 5).
  *
  * [of] es puro (sin Android, sin red, sin estado ni reloj): colapsa espacios, recorta y descarta a
  * `null` los campos inutiles. Nunca lanza por datos de entrada arbitrarios (el wire los puede traer

@@ -542,20 +542,38 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `DishImageGenerator.suspend fun generate(request): ByteArray?` con **`null` = imagen no disponible**
   (no excepción; la cancelación sí se propaga) y el adaptador no conoce ni la `Recipe` ni la Taxonomía,
   porque `DishImageRequest.of(taxonomy, recipe, descriptor)` es el **único punto de composición** de
-  `prompt`, `cacheKey` y `recipeId`. `DishImagePrompt` (objeto puro) construye la plantilla fija
-  `Fotografía gastronómica de <plato>[, <cocina>], cerámica artesanal, luz natural suave, estilo
-  editorial gastronómico, sin texto ni manos`, con degradación `imagePrompt → título → etiqueta de
-  categoría real → plato casero` y omisión de la cláusula de cocina cuando el `id` no existe o está vacío.
-  `DishImageCacheKey` (objeto puro) deriva la clave **versionada** `dish-image-v1-<slug>` del **nombre
+  `prompt`, `cacheKey` y `recipeId`. `DishImagePrompt` (objeto puro) construye la plantilla v2
+
+  ```
+  Fotografía gastronómica de <identidad>[, <cocina>][, <detalle>][, <ingredientes clave>], <COMPOSITION>, <STYLE_SUFFIX>, <NEGATIVES>
+  ```
+
+  con `<identidad>` = **título** de la receta (degradación `título → etiqueta de categoría real → plato
+  casero`), `<detalle>` = `imagePrompt` del descriptor (v2: **ya no sustituye** al título, es el detalle
+  visual del plato terminado, ver el párrafo siguiente), `<ingredientes clave>` = hasta
+  `MAX_KEY_INGREDIENTS = 5` nombres de ingredientes **no despensa**, distintos y en el orden de la
+  receta, `COMPOSITION = "una ración completa del plato en primer plano, sobre fondo neutro"`,
+  `STYLE_SUFFIX = "cerámica artesanal, luz natural suave, estilo editorial gastronómico"` y
+  `NEGATIVES = "sin texto, sin manos, sin personas, sin cubiertos ni marcas de agua, sin collage ni
+  varios platos, sin fondo recargado"` (en v1 los negativos viajaban dentro de `STYLE_SUFFIX`), con
+  omisión de la cláusula de cocina cuando el `id` no existe o está vacío. Los segmentos no vacíos se unen
+  con `", "` y se colapsan las rachas de comas (nunca `,,` ni espacios dobles).
+  `DishImageCacheKey` (objeto puro) deriva la clave **versionada** `dish-image-v2-<slug>` del **nombre
   del plato** normalizado tipográficamente (colapso de espacios, `NFD` + `\p{Mn}+`, `Locale.ROOT`,
-  alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
-  (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
+  alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v2-plato-<slug-id>`) y respaldo por defecto
+  (`dish-image-v2-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación, y
+  `dish-image-prompt-v2` la sube a `dish-image-v2` al cambiar la plantilla (ADR 0005): las claves v1
+  quedan huérfanas hasta que la LRU las evicta y los 6 assets del set semilla se **renombran** (mismos
+  bytes, sin cuota).
   Desde la **fase 5** (`dish-visual-descriptor`) los tres ganchos aceptan un **descriptor visual
   opcional** (`DishVisualDescriptor`: `dishKey`/`imagePrompt`, valor puro con `of`/`isEmpty`/`NONE`): con
   `dishKey` utilizable la clave es la del **plato canónico** (misma normalización; `"arroz con pollo"` y
-  `"arroz con pollo fácil"` **comparten** imagen) y con `imagePrompt` el prompt **solo** cambia la
-  cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos); sin descriptor el resultado es
-  **exactamente** el de la fase 1 y `VERSION` **no** sube (no cambia ni la normalización ni la plantilla).
+  `"arroz con pollo fácil"` **comparten** imagen) y con `imagePrompt` el prompt gana un **segmento de
+  detalle** (v2; en la fase 5 sustituía la cláusula del plato, cambio deliberado de `dish-image-prompt-v2`:
+  el **título es siempre la identidad**); sin descriptor la clave es la del título/`id` y el prompt
+  simplemente no añade el detalle (el resto de la plantilla v2 es independiente del descriptor). La fase 5
+  **no** subió `VERSION` (ni su normalización ni su plantilla cambiaron); el bump a `dish-image-v2` llega
+  con `dish-image-prompt-v2` (cambio de plantilla).
   Desde `dish-visual-descriptor-wiring` (2026-10-13) el descriptor **sí se entrega en runtime**: el
   adaptador lo expone por `onDescriptors` y `MainActivity` compone con `descriptorFor(recipe.id)`
   (ver el bullet del adaptador de chat), así que un `dishKey` compartido se materializa en una sola
@@ -621,7 +639,7 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   **preparados de antemano** y **versionados** en
   `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (extension probada en orden `webp -> jpg ->
   png`, reutilizando `RecipePhotoAssets.EXTENSIONS`) y se resuelven por la **clave canonica del plato**
-  (`DishImageCacheKey`, p. ej. `dish-image-v1-arroz-con-pollo-criollo`), no por `recipeId`/`categoryId`.
+  (`DishImageCacheKey`, p. ej. `dish-image-v2-arroz-con-pollo-criollo`), no por `recipeId`/`categoryId`.
   `DishImageResolver` recibe un parametro **nuevo al final con default** (`seed: DishImageSeedSource? =
   null`) y amplia su orden a **memoria -> disco -> semilla -> generador -> persistir**: un acierto de
   semilla se guarda en **memoria** y se devuelve **sin escribir en disco** (los bytes ya viajan en el
@@ -636,10 +654,16 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `com.sazon.app.data.AssetDishImageSeedSource` (`Dispatchers.IO`; `null` **sin lanzar** si el asset
   falta, es ilegible o esta vacio) y el seam funcional `DishImageSeedSource` permite una fuente falsa
   en JVM. La semilla queda **detras del mismo gate** del interruptor de la fase 4 (apagado = solo la
-  foto local) y `DishImageCacheKey.VERSION` **no** sube. La preparacion es una **herramienta de una sola
+  foto local) y la fase 7 **no** subio `DishImageCacheKey.VERSION` (solo anadio un origen de bytes); el
+  bump a `dish-image-v2` de `dish-image-prompt-v2` (cambio de plantilla) obliga a **renombrar** los 6
+  assets del set a `dish-image-v2-*.webp` (bytes identicos, sin cuota; no se regenera nada). La
+  preparacion es una **herramienta de una sola
   vez** (`scripts/prepare-dish-image-seed.sh`, **fuera** de `init.sh` y **sin** ninguna referencia en
-  `app/src`), idempotente, con la lista exacta de claves ordenadas, el prompt **espejo** de
-  `DishImagePrompt` (etiqueta de cocina leida de `docs/domain/taxonomy.json`), modo proveedor
+  `app/src`), idempotente, con la lista exacta de claves ordenadas, el prompt **espejo acotado** de
+  `DishImagePrompt` v2 (título + cocina + `COMPOSITION` + `STYLE_SUFFIX` + `NEGATIVES`; no puede
+  reproducir las cláusulas de `imagePrompt` ni de ingredientes, que necesitan receta/descriptor —
+  deriva cosmética anotada en el propio script—, etiqueta de cocina leida de
+  `docs/domain/taxonomy.json`), modo proveedor
   (`/images/edits` con la referencia neutra `img/recipes/default.<ext>` y respaldo **acotado por
   estado** a `/images/generations`) o modo `--source <dir>` **sin gastar cuota**, conversion a WebP
   q80 <=960 px cuando hay herramienta (`cwebp`/`magick`/`convert`; sin ninguna de ellas el JPEG del
@@ -654,6 +678,24 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   **0** llamadas y **0** ficheros, la segunda resolucion no relee el asset, el disco gana a la semilla,
   `seed = null` mantiene la fase 3 y `null`/vacio/excepcion degradan con la cancelacion relanzada). Sin
   dependencias nuevas y sin UI. Ver `docs/specs/dish-image-seed.md`.
+- **Diagnostico del origen de la imagen de plato (solo debug, `dish-image-prompt-v2`)**: responde a "de
+  donde salio esta imagen" sin cambiar el pintado. `data.image.DishImageOrigin` es el vocabulario puro
+  (`GENERATED` / `SEED` / `CATEGORY` / `GLYPH`; `CATEGORY` agrupa la cadena local —propia, categoria o
+  por defecto— porque `RecipePhotoSource` no expone cual gano) y `data.image.DishImageOriginSink` es un
+  sumidero **de sesion** (JDK puro, `ConcurrentHashMap`, sin persistencia; ignora ids en blanco y gana
+  el ultimo). `DishImageResolver` gana un parametro **nuevo al final con default** no-op
+  (`onResolved: (DishImageRequest, DishImageOrigin) -> Unit`) que reporta `SEED` al servir el set semilla
+  y `GENERATED` en memoria/disco/generador (recuerda por clave el origen con el que pobló la memoria, así
+  que un acierto de memoria sobre bytes semilla sigue reportando `SEED`); **no** cambia los bytes, el
+  orden de la cadena, la `Mutex` ni la propagación de la cancelación, y un fallo **no** reporta.
+  `RecipeArtworkImagePrecedence.originOf(local, generated, resolvedOrigin)` clasifica la capa que gana
+  (`generated != null` → `SEED` si el resolutor registró `SEED`, `GENERATED` en otro caso; sin generada y
+  con foto local → `CATEGORY`; sin ninguna → `GLYPH`) y `RecipeArtwork` lo notifica por la costura
+  `ui.artwork.DishImageOriginDiagnostics` (`NoDishImageOriginDiagnostics` no-op /
+  `LocalDishImageOriginDiagnostics`) como **llamada lateral** (ninguna rama de pintado depende de ella).
+  `MainActivity` cablea el sumidero, el `onResolved` y el proveedor **solo** con `BuildConfig.DEBUG`,
+  emitiendo `Log.d("SazonDishImage", "origin=… id=… title=…")`; en release queda el no-op y no se emite
+  ninguna linea. Sin claves, URLs ni bytes en el log.
 - **Imagen de plato en la UI y carga progresiva (fase 4)**: `com.sazon.app.ui.artwork` inserta el nivel
   generado **por delante** de la cadena local sin cambiar pantalla, firma ni geometría. `RecipeArtwork`
   (misma firma `(recipe, modifier, glyphSize)`) lee **dos** seams independientes —`LocalRecipePhotoSource`
@@ -749,20 +791,22 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   bajo `app/src/main/assets/img/recipes/` (propiedad `recipe.photos.assets.dir` publicada por
   `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios (el glifo es el último
   recurso).
-- **Tests JVM de la política de imagen de plato (fase 1 y 5, `domain.image`)**: `DishImagePromptTest`
-  (determinismo con dos `Taxonomy` parseadas aparte, título + etiqueta real de cocina + coletilla de
-  estilo exactamente una vez, colapso de espacios, degradación por categoría real y al plato por
-  defecto —receta vacía, categoría desconocida y Taxonomía vacía, sin lanzar—, cocina vacía o
-  desconocida sin marcador, la plantilla literal y la pureza de los tres fuentes por lectura; desde la
-  fase 5, el `imagePrompt` del descriptor como cláusula del plato conservando prefijo/cocina/coletilla y
-  la degradación idéntica a la fase 1 con descriptor `null`/`NONE`/solo `dishKey`),
+- **Tests JVM de la política de imagen de plato (fases 1, 5 y v2, `domain.image`)**: `DishImagePromptTest`
+  (determinismo con dos `Taxonomy` parseadas aparte, prefijo + identidad (título) + cocina real +
+  ingredientes clave + `COMPOSITION` + `STYLE_SUFFIX` exactamente una vez + `NEGATIVES`, colapso de
+  espacios, degradación por categoría real y al plato por defecto —receta vacía, categoría desconocida y
+  Taxonomía vacía, sin lanzar—, cocina vacía o desconocida sin marcador, tope/orden/distintos/sin-despensa
+  y omisión de la cláusula de ingredientes sin dejar comas sueltas, la plantilla literal y la pureza de los
+  tres fuentes por lectura; con descriptor, el **título sigue siendo la identidad** y el `imagePrompt`
+  entra como **detalle**, y sin `imagePrompt` el prompt no gana segmento),
   `DishImageCacheKeyTest` (las cuatro variantes del mismo nombre comparten clave, slug sin diacríticos,
   alfabeto `[a-z0-9-]` sin guiones sobrantes, estabilidad entre llamadas, discriminación por nombre,
-  respaldo por `id` sin colisión, respaldo por defecto, frontera tipográfica no semántica y clave
-  independiente del `locale` del dispositivo; desde la fase 5, el `dishKey` gana al título y une
-  variantes —`dish-image-v1-arroz-con-pollo`— y el respaldo es idéntico a la fase 1 con descriptor
-  inutilizable), `DishVisualDescriptorTest` (colapso de espacios, `dishKey` conservado tal cual y
-  descartado si no deja `[a-z0-9]`, `imagePrompt` vacío descartado, `isEmpty`/`NONE` y pureza) y
+  respaldo por `id` sin colisión, respaldo por defecto, frontera tipográfica no semántica, clave
+  independiente del `locale` del dispositivo y `VERSION == "dish-image-v2"` con la clave v2 distinta de la
+  v1; desde la fase 5, el `dishKey` gana al título y une variantes —`dish-image-v2-arroz-con-pollo`— y el
+  respaldo es idéntico con descriptor inutilizable), `DishVisualDescriptorTest` (colapso de espacios,
+  `dishKey` conservado tal cual y descartado si no deja `[a-z0-9]`, `imagePrompt` vacío descartado,
+  `isEmpty`/`NONE` y pureza) y
   `DishImageRequestTest` (composición desde la Taxonomía y
   la receta, igualdad estructural, `recipeId = null` con `id` vacío o en blanco, no dependencia de la
   clasificación ni del origen, composición con descriptor y que el `data class` **no** gana campos). Corren
@@ -789,7 +833,10 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   clave no genera, memoria fría → disco, sin red se sirve del disco y sin copia `null` sin escribir,
   títulos equivalentes comparten un fichero, el fichero es la clave + `.webp` con los bytes del
   generador, dos peticiones **concurrentes** de la misma clave pagan una sola generación, `null`/array
-  vacío/excepción del generador degradan a `null` sin persistir, y `CancellationException` se relanza).
+  vacío/excepción del generador degradan a `null` sin persistir, y `CancellationException` se relanza;
+  desde `dish-image-prompt-v2`, `onResolved` reporta `SEED` para el set semilla —también en un acierto de
+  memoria posterior— y `GENERATED` para disco/generador, un fallo/cancelación no reporta y el default
+  no-op no cambia bytes ni orden de llamadas).
   `AndroidDishImageCacheTest` (Robolectric `@Config(sdk = [33])`) cubre la costura Android:
   `root(context) == File(context.cacheDir, "dish-images")` y la resolución real escribe bajo `cacheDir`,
   no bajo `filesDir`. Todo corre en JVM sin red, sin clave, sin cuota y sin emulador.
@@ -806,14 +853,19 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   null` reproduce la fase 3, y `null`/vacío/excepción degradan con la cancelación relanzada).
 - **Tests JVM de la carga progresiva de imagen (fase 4, `ui.artwork`)**: `RecipeArtworkImagePrecedenceTest`
   (precedencia pura con `String`: generada → `GENERATED`, local → `LOCAL`, ninguna → `FALLBACK`, y
-  `crossfadeTarget` `1f`/`0f`) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
+  `crossfadeTarget` `1f`/`0f`; desde `dish-image-prompt-v2`, `originOf` cubre las cuatro capas del
+  diagnóstico —`SEED` solo cuando el resolutor lo registró, `GENERATED` en el resto de casos con
+  generada, `CATEGORY` con foto local y `GLYPH` sin ninguna—) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
   misma clave canónica resuelta y decodificada una sola vez, `null`/array vacío/códec roto → `null`
   **sin cachear**, máximo de **2** resoluciones en vuelo con tres peticiones simultáneas, LRU acotado que
   descarta la menos usada y `CancellationException` propagada), más `GeneratedRecipeArtworkSourceTest`
   (el default no produce imagen) y `AndroidRecipeImageDecoderTest` (Robolectric `@GraphicsMode(NATIVE)`:
   WebP real → `ImageBitmap` no nulo; bytes vacíos/basura → `null`). Sin Compose en `testImplementation`:
   la lógica testeable se extrae de `@Composable`, así que corre en JVM.
-- **Tests JVM del ajuste de imagen de plato (fase 4, `dish-image-settings-toggle`)**: `DishImageGenerationBudgetTest` (contador atómico del tope con tope **inyectado**: `used`/`remaining`/`exhausted`
+- **Tests JVM del ajuste de imagen de plato (fase 4, `dish-image-settings-toggle`)**: `DishImageOriginSinkTest`
+  (`data.image`: último origen gana por `recipeId`, ids `null`/en blanco ignorados sin crear entrada,
+  `null` para id desconocido y sin estado compartido entre instancias —diagnóstico de
+  `dish-image-prompt-v2`—), `DishImageGenerationBudgetTest` (contador atómico del tope con tope **inyectado**: `used`/`remaining`/`exhausted`
   y `remaining >= 0` con tope 0, N reservas **concurrentes** nunca rebasan `k < N`, y cada reserva
   consume una unidad), `DishImageSettingsTest` (interruptor apagado = `generatedIfEnabled` devuelve
   `null` con **0** invocaciones del productor y sin consumo; encendido = 1; apagado no reserva tope;

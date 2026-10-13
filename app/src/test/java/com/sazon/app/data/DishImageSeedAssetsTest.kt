@@ -18,6 +18,9 @@ import org.junit.Test
  * `app/src/main/assets/img/dishes/seed/`, cuyo directorio publica `dish.image.seed.assets.dir` desde
  * `app/build.gradle.kts` (mismo patron que `RecipePhotoAssetsTest`). Todo en JVM: sin Android, sin red
  * y sin cuota.
+ *
+ * Desde `dish-image-prompt-v2` las claves son `dish-image-v2-<slug>`: el renombrado de los 6 assets
+ * (bytes identicos, sin cuota) es lo que hace que este test siga resolviendolos por la clave canonica.
  */
 class DishImageSeedAssetsTest {
 
@@ -28,7 +31,7 @@ class DishImageSeedAssetsTest {
     fun cada_plato_del_set_resuelve_su_asset_por_la_clave_canonica() {
         assertEquals(
             "El vector de la spec no cambia",
-            "dish-image-v1-arroz-con-pollo-criollo",
+            "dish-image-v2-arroz-con-pollo-criollo",
             DishImageCacheKey.of("Arroz con pollo criollo"),
         )
 
@@ -37,12 +40,16 @@ class DishImageSeedAssetsTest {
             val resolved = DishImageSeedAssets.resolve(cacheKey, realExists)
 
             assertNotNull("El plato '$title' deberia resolver su asset semilla", resolved)
+            assertTrue(
+                "El asset de '$title' lleva el nombre de la clave v2",
+                resolved!!.substringAfterLast('/').startsWith("dish-image-v2-"),
+            )
             assertEquals(
                 "El asset de '$title' debe ser la clave canonica bajo la raiz del set",
                 "${DishImageSeedAssets.ROOT}/$cacheKey",
-                resolved!!.substringBeforeLast('.'),
+                resolved.substringBeforeLast('.'),
             )
-            val file = seedFile(resolved!!)
+            val file = seedFile(resolved)
             assertTrue("'$resolved' deberia existir", file.isFile)
             assertTrue("'$resolved' no deberia estar vacio", file.length() > 0)
         }
@@ -51,7 +58,7 @@ class DishImageSeedAssetsTest {
     // Escenario 2 (mapa): se prueba webp -> jpg -> png en ese orden y null si no existe ninguna.
     @Test
     fun las_extensiones_se_prueban_en_orden_webp_jpg_png() {
-        val key = "dish-image-v1-plato-de-prueba"
+        val key = "dish-image-v2-plato-de-prueba"
 
         assertEquals(
             "Con solo webp y jpg gana webp",
@@ -78,7 +85,7 @@ class DishImageSeedAssetsTest {
     // Escenario 8 (determinismo del mapa): misma entrada -> misma salida, sin estado.
     @Test
     fun el_mapa_es_determinista() {
-        val key = "dish-image-v1-paella-valenciana"
+        val key = "dish-image-v2-paella-valenciana"
         val exists: (String) -> Boolean = { it == "${DishImageSeedAssets.ROOT}/$key.webp" }
 
         val first = DishImageSeedAssets.resolve(key, exists)
@@ -88,7 +95,7 @@ class DishImageSeedAssetsTest {
         assertEquals("${DishImageSeedAssets.ROOT}/$key.webp", first)
         assertNull(
             "Otra clave con el mismo predicado no resuelve nada",
-            DishImageSeedAssets.resolve("dish-image-v1-otro-plato", exists),
+            DishImageSeedAssets.resolve("dish-image-v2-otro-plato", exists),
         )
 
         val altRoot = "img/dishes/seed-alt"
@@ -125,7 +132,7 @@ class DishImageSeedAssetsTest {
             )
         }
 
-        assertTrue(DishImageSeedAssets.isSafeKey("dish-image-v1-arroz-con-pollo-criollo"))
+        assertTrue(DishImageSeedAssets.isSafeKey("dish-image-v2-arroz-con-pollo-criollo"))
     }
 
     // Escenario 5: una clave ajena al set no resuelve nada (el set no es un comodin).
@@ -147,6 +154,10 @@ class DishImageSeedAssetsTest {
             "Las claves de los assets son las claves canonicas esperadas",
             expectedKeys.sorted(),
             files.map { it.name.substringBeforeLast('.') }.sorted(),
+        )
+        assertTrue(
+            "Todos los assets del set estan renombrados a la clave v2",
+            files.all { it.name.startsWith("dish-image-v2-") },
         )
 
         var total = 0L

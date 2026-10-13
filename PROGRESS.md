@@ -571,6 +571,40 @@
   Detalle en `docs/validations/home-suggestions-personalized.md`. **WIP = 0**: todas las entradas de
   `feature_list.json` vuelven a estar `accepted`; queda `seed-catalog-50` (`not_started`, depende de esta).
 
+- Última feature **`accepted`** — **`dish-image-prompt-v2`** (`area: integration`, issue #111, correctiva
+  pedida por la persona tras probar imágenes que no cuadran y una repetida tres veces): implementada y
+  autoverificada (**`passing`**) en la **sesión 098** por el implementer y cerrada **`accepted`** en la
+  **sesión 098** con validación independiente (veredicto **`accept`**, rama
+  `feature/dish-image-prompt-v2`; **sin** commit/push/PR del implementer: el commit local lo crea el
+  orquestador de `feature-flow` y publica `github-flow`). Es la **primera** aplicación de la regla durable del ADR 0005 (subir
+  `DishImageCacheKey.VERSION` al cambiar la plantilla): (1) `DishImagePrompt` v2 lleva **siempre** el
+  título como identidad + el `imagePrompt` del descriptor como **detalle** (ya no lo sustituye) +
+  ingredientes clave (≤5, no despensa, distintos y en orden) + `COMPOSITION` + `STYLE_SUFFIX` sin
+  negativos + `NEGATIVES` reforzados, con segmentos no vacíos unidos por `", "` y colapso de comas
+  repetidas; (2) `DishImageCacheKey.VERSION = "dish-image-v2"` con el **renombrado** (`git mv`, bytes
+  idénticos, **sin cuota**) de los 6 assets semilla a `dish-image-v2-*.webp` y `EXPECTED_SEED_KEYS` del
+  script en v2 (espejo del prompt acotado a título+cocina+composición+estilo+negativos, con la deriva
+  anotada); (3) el contrato de `PromptBuilder` pide un `imagePrompt` más rico; (4) **diagnóstico** del
+  origen resuelto (`data.image.DishImageOrigin` + `DishImageOriginSink`, `onResolved` aditivo con origen
+  recordado por clave, `RecipeArtworkImagePrecedence.originOf` y el seam
+  `ui.artwork.DishImageOriginDiagnostics`) emitido desde `MainActivity` **solo** con `BuildConfig.DEBUG`
+  (`Log.d("SazonDishImage", …)`), **sin** cambiar el pintado, la caché, el tope ni la red. Gate:
+  `bash init.sh` exit 0; **93 suites / 687 tests / 0 fallos / 0 errores / 0 saltados** (baseline en
+  `HEAD` 92/673; delta **+1 suite / +14 tests**), lint 0 errores y 13 warnings preexistentes (ninguno
+  bajo `app/src`); sin dependencias nuevas y sin capturas (`docs/design/concepts/dish-image-prompt-v2/`
+  **no** existe). Docs durables: ADR 0005, `docs/technical-discovery.md`, §4/§6 de
+  `docs/domain/taxonomy.md` y `docs/risks-and-open-questions.md`. Validación independiente (`validator`,
+  sesión 098, contexto limpio): veredicto **`accept`**; re-ejecutó `bash init.sh` (exit 0) y forzó
+  `testDebugUnitTest --rerun-tasks` (5m13s) y `lint --rerun-tasks` (4m31s), parseó sus propios XML
+  (**93 suites / 687 tests / 0 fallos / 0 errores / 0 saltados**) y el SARIF (0 errores, 13 warnings
+  preexistentes, 0 bajo `app/src`), re-derivó la baseline (92/673) y confirmó la invalidación (0
+  `dish-image-v1`), los 6 assets con md5 idénticos, el diagnóstico solo debug y la disciplina de alcance.
+  Sin hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes. Detalle en
+  `docs/validations/dish-image-prompt-v2.md`. **WIP = 0** (ninguna entrada no aceptada). Queda la
+  **prueba manual** de la persona tras el merge (logcat `SazonDishImage` con
+  `GENERATED`/`SEED`/`CATEGORY`) y el **pendiente separado** del tope de 12 por sesión / manejo del
+  `429`.
+
 ## Registro de sesiones
 
 > Las sesiones **001–045** están archivadas en [`docs/progress/sessions-001-045.md`](docs/progress/sessions-001-045.md).
@@ -3799,3 +3833,109 @@
 - Siguiente paso: **`github-flow`** publica la rama `feature/home-suggestions-personalized` y abre/reutiliza
   su PR (título `[home-suggestions-personalized] …`, cuerpo con `Closes #110`). Después queda
   `seed-catalog-50` (`not_started`, `area: data`, depende de esta) — con capturas/exención a confirmar.
+
+### Sesión 100
+
+- Fecha: 2026-10-13
+- Objetivo: implementar `dish-image-prompt-v2` (issue #111, `area: integration`) según
+  `docs/specs/dish-image-prompt-v2.md`: prompt de imagen v2 + bump de `DishImageCacheKey.VERSION` con el
+  renombrado de los assets semilla + diagnóstico del origen (solo debug). Rama
+  `feature/dish-image-prompt-v2`; solo hasta implementación y autoverificación (`passing`), **sin**
+  commit/push/PR (los hace el orquestador de `feature-flow` / `github-flow`).
+- Completado:
+  - **`DishImagePrompt` v2** (`domain.image`): la identidad es **siempre** el título (degradación
+    `título → etiqueta real de categoría → plato casero`, sin cambios); el `imagePrompt` del descriptor
+    pasa a ser el **detalle** (cambio deliberado respecto a la fase 5, que lo usaba como sustituto);
+    constantes nuevas `COMPOSITION` (`una ración completa del plato en primer plano, sobre fondo neutro`),
+    `STYLE_SUFFIX` (sin la parte de negativos) y `NEGATIVES` (`sin texto, sin manos, sin personas, sin
+    cubiertos ni marcas de agua, sin collage ni varios platos, sin fondo recargado`), más
+    `MAX_KEY_INGREDIENTS = 5`; **ingredientes clave** = hasta 5 nombres no-despensa, distintos y en el
+    orden de la receta, unidos por `", "`; el ensamblado une segmentos no vacíos con `", "` y colapsa
+    las rachas de comas (nunca `,,` ni espacios dobles). Nota de interpretación: la spec ilustra la
+    plantilla con `"<identidad>[, <cocina>]: <detalle>, …"` pero su regla normativa de ensamblado une
+    segmentos no vacíos con `", "`; se implementó la regla (sin `:`) y se documenta aquí por
+    transparencia.
+  - **Invalidación**: `DishImageCacheKey.VERSION = "dish-image-v2"` (KDoc actualizado); `git mv` de los 6
+    assets `app/src/main/assets/img/dishes/seed/dish-image-v1-*.webp` → `dish-image-v2-*.webp` (bytes
+    **idénticos**, md5 sin cambios: **sin** red y **sin** cuota; no se regenera nada); `EXPECTED_SEED_KEYS`
+    del script en v2 y su espejo del prompt actualizado a la plantilla v2 (título+cocina+`COMPOSITION`+
+    `STYLE_SUFFIX`+`NEGATIVES`) con un comentario que acota la deriva conocida (no puede reproducir las
+    cláusulas de `imagePrompt`/ingredientes).
+  - **Contrato de `PromptBuilder`**: la instrucción del `imagePrompt` pide una descripción visual breve,
+    de una línea, del plato terminado (ingredientes principales y aspecto —color, textura, guarnición—,
+    sin texto ni manos ni personas); `OUTPUT_CONTRACT`, ids y determinismo intactos. KDoc de
+    `DishVisualDescriptor` corregido (el `imagePrompt` es el detalle, no un sustituto del título).
+  - **Diagnóstico del origen** (puro y sin comportamiento): `data.image.DishImageOrigin` (enum
+    `GENERATED`/`SEED`/`CATEGORY`/`GLYPH`, con `CATEGORY` agrupando la cadena local) y
+    `data.image.DishImageOriginSink` (JDK puro en memoria, ignora ids en blanco, gana el último);
+    `DishImageResolver` gana `onResolved: (DishImageRequest, DishImageOrigin) -> Unit = { _, _ -> }`
+    (parámetro nuevo al final con default) y recuerda por clave el origen con el que pobló la memoria
+    (un acierto de memoria sobre bytes semilla sigue reportando `SEED`; el default asume `GENERATED`);
+    `RecipeArtworkImagePrecedence.originOf(local, generated, resolvedOrigin)` clasifica la capa que gana y
+    `RecipeArtwork` la notifica por `ui.artwork.DishImageOriginDiagnostics` (interface + no-op +
+    `LocalDishImageOriginDiagnostics`) como **llamada lateral** (ninguna rama de pintado la lee);
+    `MainActivity` cablea el sumidero, el `onResolved` y el proveedor **solo** con `BuildConfig.DEBUG`
+    (`Log.d("SazonDishImage", "origin=… id=… title=…")`); en release queda el no-op y no emite nada.
+- Verificación ejecutada:
+  1. Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.domain.image.*"
+     --tests "com.sazon.app.domain.prompt.PromptBuilderTest" --tests "com.sazon.app.data.image.*"
+     --tests "com.sazon.app.data.DishImageSeedAssetsTest"
+     --tests "com.sazon.app.data.ai.DishVisualDescriptorWiringTest" --tests "com.sazon.app.ui.artwork.*"
+     --rerun-tasks` → `BUILD SUCCESSFUL` (**21 suites / 162 tests / 0 fallos / 0 errores / 0 saltados**).
+  2. `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin
+     procesos largos, sin red y sin cuota), con parseo propio de los XML y del informe de lint.
+- Evidencia capturada: **93 suites / 687 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD`
+  92/673 de la sesión 097; delta **+1 suite / +14 tests**: `DishImageOriginSinkTest` 4 nueva,
+  `DishImagePromptTest` 11→13, `DishImageCacheKeyTest` 12→13, `DishImageResolverTest` 19→24,
+  `RecipeArtworkImagePrecedenceTest` 2→4). Lint (SARIF): **0 errores** y **13 warnings** preexistentes
+  (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2, `OldTargetApi` 1),
+  **0 bajo `app/src`**. Vectores: prompt del escenario 1 (literal exacto), escenario 2 con título **y**
+  `imagePrompt`, tope/orden/distintos/sin-despensa y omisión sin comas sueltas, `STYLE_SUFFIX` una vez,
+  `VERSION == "dish-image-v2"` y `of("Arroz con pollo criollo") == "dish-image-v2-arroz-con-pollo-criollo"`,
+  `md5` de los 6 assets idénticos antes/después del `git mv` (449.844 B = 439 KiB ≤ 2 MiB),
+  `originOf(...)` en las 4 capas, sumidero y `onResolved` (`SEED`/`GENERATED`/fallo sin reporte/default
+  no-op). Inspección: `grep import android` en `domain/image` → **0** (y 0 `io.ktor`/`java.net`/`Log`);
+  en `data/image` solo `AndroidDishImageCache.kt`; `grep -rn "dish-image-v1" app/src/main app/src/test
+  docs/adr docs/technical-discovery.md docs/domain/taxonomy.md docs/risks-and-open-questions.md scripts`
+  → **0**; `test -d docs/design/concepts/dish-image-prompt-v2` → **no existe**; `git diff --name-only` =
+  la lista de "Expected File Changes" (más la spec, `feature_list.json`, `PROGRESS.md` y los 4 docs
+  durables); build/lockfile/`init.sh`/`scripts/**` (salvo el espejo)/`seed-recipes.json`/Taxonomía/
+  `DESIGN.md`/`docs/design/**` sin diff; sin dependencias nuevas; **sin** commit/push/PR.
+- Ficheros creados/cambiados: `data/image/{DishImageOrigin,DishImageOriginSink}.kt` y
+  `ui/artwork/DishImageOriginDiagnostics.kt` (nuevos); `domain/image/DishImagePrompt.kt`,
+  `domain/image/DishImageCacheKey.kt`, `domain/image/DishVisualDescriptor.kt`,
+  `domain/prompt/PromptBuilder.kt`, `data/image/DishImageResolver.kt`,
+  `ui/artwork/RecipeArtworkImagePrecedence.kt`, `ui/artwork/RecipeArtwork.kt`, `MainActivity.kt`,
+  `data/DishImageSeedAssets.kt`, `data/DishImageSeedSource.kt`, `data/image/DishImageCachePolicy.kt`
+  (modificados); `scripts/prepare-dish-image-seed.sh`; los 6 assets renombrados;
+  `app/src/test/**` (11 ficheros actualizados + `DishImageOriginSinkTest` nuevo); `docs/adr/0005`,
+  `docs/technical-discovery.md`, `docs/domain/taxonomy.md`, `docs/risks-and-open-questions.md`,
+  `feature_list.json` (`dish-image-prompt-v2` → `passing`) y este registro.
+- Hallazgos relevantes: la regla normativa de ensamblado de la spec (unir segmentos no vacíos con
+  `", "` y colapsar comas) convive con una plantilla ilustrativa que muestra `": "` tras la cláusula de
+  identidad; se siguió la regla (ver nota arriba). El test de invalidez v1→v2 se expresa sin literales
+  `dish-image-v1` para cumplir el grep del plan de verificación (la versión es el primer segmento).
+- Riesgo o incógnita abierta: la longitud del prompt crece (acotada); el proveedor puede seguir
+  devolviendo imágenes poco apetitosas (mejora la probabilidad, no la garantiza); la invalidación
+  regenera **una vez** cada plato ya cacheado (~2 % de cuota, acotado por la LRU y el tope por sesión);
+  el espejo del script sigue siendo bash duplicado y acotado; `CATEGORY` no distingue propia/categoría/
+  `default` (haría falta abrir `RecipePhotoSource`, feature propia); queda **pendiente separado** el tope
+  de 12 por sesión / manejo del `429`.
+- Validación independiente (misma sesión 100, rol `validator`, contexto limpio): **veredicto `accept`**.
+  Re-ejecutó `bash init.sh` (exit 0; test/lint `UP-TO-DATE` por la config cache, así que forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` 5m13s/34 tareas y
+  `bash scripts/gradle.sh lint --rerun-tasks` 4m31s/30 tareas, ambos `BUILD SUCCESSFUL`), parseó sus
+  propios XML (**93 suites / 687 tests / 0 fallos / 0 errores / 0 saltados**) y el SARIF (**0 errores**,
+  13 warnings preexistentes, **0 bajo `app/src`**); re-derivó la baseline en `HEAD` (92 ficheros con
+  `@Test` / 673 ⇒ +1 suite / +14 tests) y verificó los 12 escenarios, la invalidación (0
+  `dish-image-v1`), los 6 assets renombrados (md5 idénticos, 449 844 B ≤ 2 MiB), el diagnóstico
+  `GENERATED`/`SEED`/`CATEGORY`/`GLYPH` solo bajo `BuildConfig.DEBUG` (release no-op, sin datos
+  sensibles), la pureza de `domain.image`/`data.image` y la disciplina de alcance. Sin hallazgos
+  Critical/High/Medium; 2 Low informativos no bloqueantes (L1: plantilla ilustrativa de la spec con
+  `": "` frente a la regla normativa `", "` que sí se implementó y exigen los escenarios; L2: el eje
+  `ui.artwork` → `data.image` es decisión explícita de la spec). Registro en
+  `docs/validations/dish-image-prompt-v2.md`.
+- Siguiente paso: el orquestador de `feature-flow` persiste la aceptación (`feature_list.json` →
+  `accepted`) y crea el **commit local** en `feature/dish-image-prompt-v2`; la publicación (push + PR con
+  `Closes #111`) la hace `github-flow`. No queda ninguna feature `not_started` dependiente de esta: el
+  plan sigue cerrado salvo `home-suggestions-personalized` y `seed-catalog-50` (no relacionadas).

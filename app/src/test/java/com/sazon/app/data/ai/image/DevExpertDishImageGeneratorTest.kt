@@ -192,7 +192,7 @@ class DevExpertDishImageGeneratorTest {
 
         generator(client = AiHttpClientFactory.create(mock.engine)).generate(
             DishImageRequest(
-                cacheKey = "dish-image-v1-paella-valenciana",
+                cacheKey = "dish-image-v2-paella-valenciana",
                 prompt = "Fotografía gastronómica de paella valenciana",
                 recipeId = "test-paella",
             ),
@@ -204,7 +204,7 @@ class DevExpertDishImageGeneratorTest {
             "Fotografía gastronómica de paella valenciana",
             Json.parseToJsonElement(body).jsonObject["prompt"]!!.jsonPrimitive.content,
         )
-        assertFalse("La cacheKey no viaja en el cuerpo", body.contains("dish-image-v1"))
+        assertFalse("La cacheKey no viaja en el cuerpo", body.contains("dish-image-v2"))
         assertFalse("El recipeId no viaja en el cuerpo", body.contains("test-paella"))
     }
 
@@ -273,7 +273,7 @@ class DevExpertDishImageGeneratorTest {
             4,
             Regex("Content-Disposition: form-data; name=").findAll(text).count(),
         )
-        assertFalse("La cacheKey no viaja en el multipart", text.contains("dish-image-v1"))
+        assertFalse("La cacheKey no viaja en el multipart", text.contains("dish-image-v2"))
         assertFalse("El recipeId no viaja en el multipart", text.contains("test-paella"))
     }
 
@@ -601,7 +601,7 @@ private fun passThrough(): DishImageReducer = DishImageReducer { it }
 
 private fun request(
     prompt: String = "Fotografía gastronómica de un plato casero",
-) = DishImageRequest(cacheKey = "dish-image-v1-plato", prompt = prompt)
+) = DishImageRequest(cacheKey = "dish-image-v2-plato", prompt = prompt)
 
 /** Referencia de estilo de prueba: bytes, media type y filename conocidos. */
 private fun styleReference(

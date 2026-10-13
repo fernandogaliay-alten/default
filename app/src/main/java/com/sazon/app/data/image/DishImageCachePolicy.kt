@@ -8,7 +8,7 @@ package com.sazon.app.data.image
  * `data.ai.image.DishImagePolicy` y que la logica pura de las fotos de plato).
  *
  * La clave canonica de la fase 1 **es** el nombre de fichero: su alfabeto
- * (`[a-z0-9-]`, versionado `dish-image-v1-...`) ya es apto, de modo que dos titulos equivalentes
+ * (`[a-z0-9-]`, versionado `dish-image-v2-...`) ya es apto, de modo que dos titulos equivalentes
  * comparten fichero por construccion y no hace falta rehash ni indice.
  */
 object DishImageCachePolicy {

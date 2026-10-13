@@ -36,7 +36,7 @@ class AndroidDishImageCacheTest {
     @Test
     fun la_resolucion_escribe_bajo_cache_dir_y_no_bajo_files_dir() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val cacheKey = "dish-image-v1-arroz-con-pollo-criollo"
+        val cacheKey = "dish-image-v2-arroz-con-pollo-criollo"
         val bytes = webpBytes(16)
         val resolver = DishImageResolver(
             disk = FileDishImageCache(AndroidDishImageCache.root(context)),

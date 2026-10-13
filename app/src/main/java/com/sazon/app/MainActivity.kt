@@ -22,6 +22,8 @@ import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
+import com.sazon.app.data.image.DishImageOrigin
+import com.sazon.app.data.image.DishImageOriginSink
 import com.sazon.app.data.image.DishImageResolver
 import com.sazon.app.data.image.DishImageSettings
 import com.sazon.app.data.image.DishVisualDescriptorStore
@@ -36,14 +38,18 @@ import com.sazon.app.domain.activity.ActivitySummaryService
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.image.DishImageRequest
+import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
 import com.sazon.app.ui.artwork.AndroidRecipeImageDecoder
 import com.sazon.app.ui.artwork.DishImageArtworkLoader
+import com.sazon.app.ui.artwork.DishImageOriginDiagnostics
 import com.sazon.app.ui.artwork.GeneratedRecipeArtworkSource
+import com.sazon.app.ui.artwork.LocalDishImageOriginDiagnostics
 import com.sazon.app.ui.artwork.LocalGeneratedRecipeArtworkSource
 import com.sazon.app.ui.artwork.LocalRecipePhotoSource
+import com.sazon.app.ui.artwork.NoDishImageOriginDiagnostics
 import com.sazon.app.ui.artwork.RecipePhotoSource
 import com.sazon.app.ui.theme.SazonTheme
 
@@ -149,6 +155,10 @@ class MainActivity : ComponentActivity() {
         // (asset ausente o ilegible) deja la app exactamente en el comportamiento de la fase 2 (una
         // peticion por texto por imagen), sin error ni UI.
         val dishImageStyleReference = AssetDishImageStyleReference(applicationContext).load()
+        // Sumidero de sesion del **origen resuelto** de la imagen (solo diagnostico): el resolutor lo
+        // alimenta al servir cada imagen y el diagnostico de `ui.artwork` lo consulta al pintar. En
+        // memoria, efimero por sesion y sin persistencia.
+        val dishImageOrigins = DishImageOriginSink()
         // Set semilla (fase 7): los platos frecuentes del demo viajan preparados en el APK y se
         // resuelven por la clave canonica del plato; ganan al generador (0 cuota, 0 red, 0 espera) y
         // quedan detras del mismo gate del interruptor. Best-effort: un asset ausente degrada a la
@@ -165,6 +175,10 @@ class MainActivity : ComponentActivity() {
                 settings = dishImageSettings,
             ),
             seed = AssetDishImageSeedSource(applicationContext),
+            // Costura aditiva de diagnostico: registra el origen (SEED/GENERATED) que resolvio cada
+            // receta, para que el log de debug pueda distinguir una generacion real de un acierto del
+            // set semilla. No cambia bytes ni la cadena.
+            onResolved = { request, origin -> dishImageOrigins.record(request.recipeId, origin) },
         )
         val dishImageLoader = DishImageArtworkLoader(
             // Con descriptor registrado, la clave/prompt salen del `dishKey`/`imagePrompt` del modelo
@@ -176,6 +190,21 @@ class MainActivity : ComponentActivity() {
             resolve = dishImageResolver::imageFor,
             decode = AndroidRecipeImageDecoder::decode,
         )
+        // Diagnostico del origen de la imagen: **solo** en depuracion. En release queda el default
+        // no-op y no se emite ninguna linea. No interviene en el pintado, la cache, el tope ni la red.
+        val dishImageDiagnostics: DishImageOriginDiagnostics =
+            if (BuildConfig.DEBUG) {
+                object : DishImageOriginDiagnostics {
+                    override fun resolvedOriginFor(recipe: Recipe): DishImageOrigin? =
+                        dishImageOrigins.originFor(recipe.id)
+
+                    override fun onPainted(recipe: Recipe, origin: DishImageOrigin) {
+                        Log.d("SazonDishImage", "origin=$origin id=${recipe.id} title=${recipe.title}")
+                    }
+                }
+            } else {
+                NoDishImageOriginDiagnostics
+            }
 
         setContent {
             SazonTheme {
@@ -188,6 +217,8 @@ class MainActivity : ComponentActivity() {
                         // local. El tope lo impone el decorador en el borde de generacion.
                         dishImageSettings.generatedIfEnabled { dishImageLoader.imageFor(recipe) }
                     },
+                    // Solo con `BuildConfig.DEBUG` hay diagnostico real; en release, no-op.
+                    LocalDishImageOriginDiagnostics provides dishImageDiagnostics,
                 ) {
                     SazonApp(
                         profileRepository = profileRepository,

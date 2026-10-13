@@ -3,7 +3,7 @@ package com.sazon.app.data
 /**
  * Seam de los **bytes empaquetados** del set semilla de imagenes de plato (fase 7 de
  * `docs/ai-dish-images-proposal.md`): dada la **clave canonica** de un plato
- * (`DishImageCacheKey.of(titulo)`, p. ej. `dish-image-v1-arroz-con-pollo-criollo`), devuelve la imagen
+ * (`DishImageCacheKey.of(titulo)`, p. ej. `dish-image-v2-arroz-con-pollo-criollo`), devuelve la imagen
  * preparada que viaja en el APK.
  *
  * Contrato de fallo identico al puerto de generacion (ADR 0005): `null` = no hay asset disponible,

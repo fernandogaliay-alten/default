@@ -15,8 +15,8 @@ class DishImageCachePolicyTest {
     @Test
     fun el_nombre_de_fichero_es_la_clave_canonica_mas_webp() {
         assertEquals(
-            "dish-image-v1-arroz-con-pollo-criollo.webp",
-            DishImageCachePolicy.fileNameFor("dish-image-v1-arroz-con-pollo-criollo"),
+            "dish-image-v2-arroz-con-pollo-criollo.webp",
+            DishImageCachePolicy.fileNameFor("dish-image-v2-arroz-con-pollo-criollo"),
         )
     }
 

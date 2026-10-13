@@ -55,10 +55,14 @@ class DishVisualDescriptorWiringTest {
         val request = DishImageRequest.of(taxonomy, recipe, store.descriptorFor(recipe.id))
 
         assertEquals(DishImageCacheKey.of(recipe, descriptor), request.cacheKey)
-        assertEquals("dish-image-v1-arroz-con-pollo-criollo", request.cacheKey)
+        assertEquals("dish-image-v2-arroz-con-pollo-criollo", request.cacheKey)
         assertEquals(DishImagePrompt.build(taxonomy, recipe, descriptor), request.prompt)
         assertTrue(
-            "El prompt usa el imagePrompt del modelo como clausula del plato",
+            "El titulo sigue siendo la identidad del prompt",
+            request.prompt.contains("Arroz con pollo criollo"),
+        )
+        assertTrue(
+            "El prompt usa el imagePrompt del modelo como detalle del plato",
             request.prompt.contains("arroz amarillo con pollo desmenuzado y aceitunas"),
         )
         assertEquals("El recipeId no cambia", recipe.id, request.recipeId)
@@ -82,11 +86,11 @@ class DishVisualDescriptorWiringTest {
         val claveUno = DishImageRequest.of(taxonomy, uno, store.descriptorFor(uno.id)).cacheKey
         val claveDos = DishImageRequest.of(taxonomy, dos, store.descriptorFor(dos.id)).cacheKey
 
-        assertEquals("dish-image-v1-arroz-con-pollo", claveUno)
+        assertEquals("dish-image-v2-arroz-con-pollo", claveUno)
         assertEquals("Dos variantes del mismo plato comparten una sola clave", claveUno, claveDos)
 
         // La segunda variante pagaria una imagen distinta sin descriptor; por eso el cableado importa.
-        assertEquals("dish-image-v1-arroz-con-pollo-facil", DishImageCacheKey.of(dos))
+        assertEquals("dish-image-v2-arroz-con-pollo-facil", DishImageCacheKey.of(dos))
         assertNotEquals(DishImageCacheKey.of(dos), claveDos)
     }
 
@@ -106,7 +110,7 @@ class DishVisualDescriptorWiringTest {
         val dos = result.accepted[1]
         val claveCompartida = DishImageRequest.of(taxonomy, uno, store.descriptorFor(uno.id)).cacheKey
 
-        assertEquals("dish-image-v1-arroz-con-pollo", claveCompartida)
+        assertEquals("dish-image-v2-arroz-con-pollo", claveCompartida)
         assertEquals(
             "La clave canonica no sale del titulo",
             claveCompartida,
@@ -162,7 +166,7 @@ class DishVisualDescriptorWiringTest {
 
         val request = DishImageRequest.of(taxonomy, recipe, store.descriptorFor(recipe.id))
         assertEquals("La clave sigue saliendo del titulo", DishImageCacheKey.of(recipe), request.cacheKey)
-        assertEquals("dish-image-v1-arroz-con-pollo-criollo", request.cacheKey)
+        assertEquals("dish-image-v2-arroz-con-pollo-criollo", request.cacheKey)
         assertEquals("El prompt sigue saliendo del titulo", DishImagePrompt.build(taxonomy, recipe), request.prompt)
     }
 
