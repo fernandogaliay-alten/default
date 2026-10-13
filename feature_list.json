@@ -991,18 +991,33 @@
   },
   {
     "id": "dish-image-progressive-ui",
-    "area": "ui",
+    "area": "integration",
     "title": "Carga progresiva de la imagen de plato",
-    "user_visible_behavior": "Las tarjetas y el hero muestran al instante su foto local y la sustituyen por la imagen generada del plato cuando llega, sin esperas ni saltos; nunca aparece un error por imagen y el usuario puede apagar la generación.",
+    "user_visible_behavior": "Las tarjetas y el hero piden la imagen del plato generada y la sustituyen por la foto local con un crossfade al llegar; si falla, tarda o no hay red, se conserva la foto local, sin errores ni huecos.",
     "depends_on": ["dish-image-cache"],
     "status": "not_started",
     "verification": [
-      "'./gradlew test' cubre la lógica y el estado en JVM: qué se pinta antes y después, cancelación al salir de pantalla o hacer scroll, tope de generaciones por sesión e interruptor apagado que desactiva la generación",
-      "Capturas de referencia obligatorias en docs/design/concepts/dish-image-progressive-ui/ antes de implementar; se respetan la firma y la geometría de RecipeArtwork (16:10, 96x96, alto 96, hero 240)",
-      "Prueba manual en emulador: la foto local se ve al instante y se sustituye por la generada; con el interruptor apagado no se genera nada"
+      "'./gradlew test' cubre la costura en JVM: RecipeArtwork resuelve primero la imagen generada (resolver) y cae a la foto local si devuelve null; cancelación al salir de pantalla o hacer scroll; tope de generaciones por sesión respetado; sin consumidores nuevos fuera de ui/artwork",
+      "Revisión visual de la persona tras el merge (manda DESIGN.md); desviación de capturas autorizada: el swap reusa pantallas ya aceptadas (results-screen, recipe-detail-screen), no introduce layout, geometría ni microcopy nuevos y se limita a cambiar de dónde sale la imagen",
+      "Prueba manual en emulador: la foto local aparece al instante y se sustituye por la generada con un crossfade, sin saltos ni huecos de imagen"
     ],
     "evidence": [],
-    "notes": "Fase 4 de docs/ai-dish-images-proposal.md (area: ui, exige capturas de referencia). RecipeArtwork gana un nivel por delante de la cadena de recipe-photos. Solo lo visible, concurrencia limitada (2), timeout propio más corto que el de chat, fallo silencioso y transición suave. Guardarraíles de la persona (2026-10-13): interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy)."
+    "notes": "Fase 4, mitad de integración (split acordado por la persona 2026-10-13). RecipeArtwork gana un nivel por delante de la cadena de recipe-photos: pide la imagen al resolver (memoria→disco→generador, fase 3) y la sustituye con un crossfade estándar; degrada a la foto local si no hay imagen. Sin UI nueva (mismo composable, misma firma y geometría, 5 usos sin cambios) y sin interruptor (va en dish-image-settings-toggle). Solo lo visible, concurrencia limitada (2) y timeout propio. Reclasificada a integration: el efecto es un cambio de fuente, no de diseño, y la revisión puramente visual la hace la persona tras el merge (desviación de capturas autorizada, registrada en DESIGN.md)."
+  },
+  {
+    "id": "dish-image-settings-toggle",
+    "area": "ui",
+    "title": "Ajuste de imagen de plato (interruptor y tope por sesión)",
+    "user_visible_behavior": "El usuario puede activar o desactivar la generación de imágenes de plato y ver el tope por sesión desde los ajustes; con la generación apagada, la app usa solo la foto local.",
+    "depends_on": ["dish-image-progressive-ui"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el estado en JVM: el interruptor apagado desactiva la generación (no se pide ninguna imagen), encendido la permite, y el tope por sesión se respeta (patrón AiProviderPolicy)",
+      "Captura de referencia de la sección de ajustes en docs/design/concepts/dish-image-settings-toggle/ajustes-imagenes/ antes de implementar, o desviación autorizada registrada en DESIGN.md si reutiliza el estilo de ajustes ya existente",
+      "Prueba manual en emulador: apagar el interruptor deja de generar imágenes nuevas; encenderlo las reanuda"
+    ],
+    "evidence": [],
+    "notes": "Fase 4, mitad de UI (split acordado por la persona 2026-10-13). Interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy). Es lo único con UI nueva de la fase 4; el swap y la progresión van en dish-image-progressive-ui (integration). Decisión de la persona (2026-10-13): interruptor visible + tope por sesión."
   },
   {
     "id": "dish-visual-descriptor",
