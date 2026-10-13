@@ -1013,11 +1013,11 @@
     "status": "not_started",
     "verification": [
       "'./gradlew test' cubre el estado en JVM: el interruptor apagado desactiva la generación (no se pide ninguna imagen), encendido la permite, y el tope por sesión se respeta (patrón AiProviderPolicy)",
-      "Captura de referencia de la sección de ajustes en docs/design/concepts/dish-image-settings-toggle/ajustes-imagenes/ antes de implementar, o desviación autorizada registrada en DESIGN.md si reutiliza el estilo de ajustes ya existente",
+      "Desviación de capturas autorizada por la persona (2026-10-13): reutiliza el estilo de ajustes ya existente, sin pantalla nueva, y se registra en DESIGN.md (mismo patrón que #77/#86/#91); la revisión visual la hace la persona tras el merge",
       "Prueba manual en emulador: apagar el interruptor deja de generar imágenes nuevas; encenderlo las reanuda"
     ],
     "evidence": [],
-    "notes": "Fase 4, mitad de UI (split acordado por la persona 2026-10-13). Interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy). Es lo único con UI nueva de la fase 4; el swap y la progresión van en dish-image-progressive-ui (integration). Decisión de la persona (2026-10-13): interruptor visible + tope por sesión."
+    "notes": "Fase 4, mitad de UI (split acordado por la persona 2026-10-13). Interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy). Es lo único con UI nueva de la fase 4; el swap y la progresión van en dish-image-progressive-ui (integration). Decisiones de la persona (2026-10-13): interruptor visible + tope por sesión; desviación de capturas autorizada (reutiliza el estilo de ajustes existente, registrado en DESIGN.md)."
   },
   {
     "id": "dish-visual-descriptor",
