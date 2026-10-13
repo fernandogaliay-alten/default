@@ -1,5 +1,6 @@
 package com.sazon.app.data.image
 
+import com.sazon.app.data.DishImageSeedSource
 import com.sazon.app.domain.image.DishImageCacheKey
 import com.sazon.app.domain.image.DishImageGenerator
 import com.sazon.app.domain.image.DishImageRequest
@@ -23,10 +24,11 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 /**
- * Escenarios 1-5, 8-11 de `docs/specs/dish-image-cache.md`: el resolutor orquesta memoria -> disco ->
- * generador -> persistir con un **generador falso** (cuenta llamadas, sin red, sin clave y sin cuota)
- * y un directorio temporal. Todo en JVM puro; el almacen es real (ficheros en disco), de modo que las
- * aserciones de persistencia no pasan en vacio.
+ * Escenarios 1-5, 8-11 de `docs/specs/dish-image-cache.md` (memoria -> disco -> generador ->
+ * persistir) y escenarios 2-7 de `docs/specs/dish-image-seed.md` (el nivel semilla entre el disco y el
+ * generador: **memoria -> disco -> semilla -> generador**). El generador y la fuente semilla son
+ * **falsos** (cuentan llamadas y lecturas: sin red, sin clave y sin cuota) y el almacen es un
+ * directorio temporal real, de modo que las aserciones de persistencia no pasan en vacio. Todo en JVM.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DishImageResolverTest {
@@ -262,6 +264,143 @@ class DishImageResolverTest {
         assertEquals(0, root.listFiles()?.size ?: 0)
     }
 
+    // --- Fase 7 (`dish-image-seed`): el nivel semilla entre el disco y el generador ------------------
+
+    // Escenario 2: la semilla gana al generador: 0 llamadas, 0 ficheros en la cache, 0 red.
+    @Test
+    fun la_semilla_gana_al_generador_sin_generar_y_sin_escribir_en_disco() = runTest {
+        val root = cacheRoot()
+        val seedBytes = webpBytes(48)
+        val seed = FakeDishImageSeedSource { if (it == SEED_KEY) seedBytes else null }
+        val generator = FakeDishImageGenerator { throw IllegalStateException("el generador no debe invocarse") }
+
+        val result = resolver(root, generator, seed = seed).imageFor(request(SEED_KEY))
+
+        assertArrayEquals("Sirve los bytes del asset semilla", seedBytes, result)
+        assertEquals("El generador se invoca 0 veces", 0, generator.calls)
+        assertEquals("El asset no se duplica en la cache", 0, root.listFiles()?.size ?: 0)
+    }
+
+    // Escenario 3: la segunda resolucion sale de la memoria del resolutor y no relee el asset.
+    @Test
+    fun la_segunda_resolucion_no_vuelve_a_leer_el_asset() = runTest {
+        val seed = FakeDishImageSeedSource { webpBytes(32) }
+        val generator = FakeDishImageGenerator { webpBytes(999) }
+        val resolver = resolver(cacheRoot(), generator, seed = seed)
+
+        val first = resolver.imageFor(request(SEED_KEY))
+        val second = resolver.imageFor(request(SEED_KEY))
+
+        assertNotNull(first)
+        assertArrayEquals("Los dos aciertos son identicos", first, second)
+        assertEquals("El asset se lee una sola vez", 1, seed.reads)
+        assertEquals("El generador sigue en 0 llamadas", 0, generator.calls)
+    }
+
+    // Escenario 4: precedencia memoria -> disco -> semilla (el disco gana a la semilla).
+    @Test
+    fun el_disco_gana_a_la_semilla_y_la_semilla_no_se_escribe() = runTest {
+        val root = cacheRoot()
+        val onDisk = resolver(root, FakeDishImageGenerator { webpBytes(32) }).imageFor(request(SEED_KEY))!!
+        val seedBytes = webpBytes(48)
+        val seed = FakeDishImageSeedSource { seedBytes }
+        val generator = FakeDishImageGenerator { webpBytes(999) }
+
+        val fromDisk = resolver(root, generator, seed = seed).imageFor(request(SEED_KEY))
+        assertArrayEquals("El plato con copia se sirve del disco", onDisk, fromDisk)
+        assertEquals("No toca la fuente semilla", 0, seed.reads)
+        assertEquals("No genera", 0, generator.calls)
+
+        val fromSeed = resolver(root, generator, seed = seed).imageFor(request(OTHER_KEY))
+        assertArrayEquals("El plato sin copia se sirve del asset semilla", seedBytes, fromSeed)
+        assertEquals("Consulta la semilla una vez", 1, seed.reads)
+        assertEquals("No genera", 0, generator.calls)
+        assertEquals(
+            "El asset semilla no se escribe en la cache",
+            listOf("$SEED_KEY.webp"),
+            root.listFiles()!!.map { it.name },
+        )
+    }
+
+    // Escenario 5: una clave fuera del set no cambia nada (el set semilla no es un comodin).
+    @Test
+    fun una_clave_fuera_del_set_mantiene_la_cadena_de_la_fase_3() = runTest {
+        val root = cacheRoot()
+        val seed = FakeDishImageSeedSource { if (it == SEED_KEY) webpBytes(48) else null }
+        val generated = webpBytes(24)
+
+        val fromGenerator = resolver(root, FakeDishImageGenerator { generated }, seed = seed)
+            .imageFor(request(OTHER_KEY))
+        assertArrayEquals("Sin asset se genera como en la fase 3", generated, fromGenerator)
+        assertTrue("El generado si se persiste", File(root, "$OTHER_KEY.webp").isFile)
+
+        val offline = FakeDishImageGenerator { null }
+        val missing = resolver(root, offline, seed = seed)
+            .imageFor(request(DishImageCacheKey.of("Plato que no existe")))
+
+        assertNull("Sin copia, sin asset y sin generador, null", missing)
+        assertEquals("El generador se consulta (la semilla no resuelve esa clave)", 1, offline.calls)
+    }
+
+    // Escenario 6: null, array vacio o excepcion de la fuente semilla degradan sin romper la cadena.
+    @Test
+    fun el_fallo_de_la_fuente_semilla_degrada_en_silencio() = runTest {
+        val failures = listOf<suspend (String) -> ByteArray?>(
+            { null },
+            { ByteArray(0) },
+            { throw IllegalStateException("fallo del asset") },
+        )
+
+        failures.forEachIndexed { index, failure ->
+            val root = File(cacheRoot(), "intento-$index")
+            val seed = FakeDishImageSeedSource(failure)
+            val generator = FakeDishImageGenerator { webpBytes(32) }
+            val memory = MemoryDishImageCache()
+
+            val result = resolver(root, generator, memory = memory, seed = seed).imageFor(request(SEED_KEY))
+
+            assertArrayEquals("El fallo #$index no rompe la cadena", webpBytes(32), result)
+            assertEquals("El fallo #$index consulta la semilla", 1, seed.reads)
+            assertEquals("El fallo #$index cae al generador", 1, generator.calls)
+            assertTrue("El fallo #$index genera y persiste", File(root, "$SEED_KEY.webp").isFile)
+        }
+    }
+
+    // Escenario 6 (cancelacion): CancellationException de la fuente semilla se relanza.
+    @Test
+    fun la_cancelacion_de_la_fuente_semilla_se_propaga() = runTest {
+        val seed = FakeDishImageSeedSource { throw CancellationException("cancelado") }
+        val generator = FakeDishImageGenerator { webpBytes(32) }
+        var propagated: CancellationException? = null
+
+        try {
+            resolver(cacheRoot(), generator, seed = seed).imageFor(request(SEED_KEY))
+        } catch (cancellation: CancellationException) {
+            propagated = cancellation
+        }
+
+        assertNotNull("El resolutor debe relanzar la cancelacion", propagated)
+        assertEquals(1, seed.reads)
+        assertEquals("La cadena no llega al generador", 0, generator.calls)
+    }
+
+    // Escenario 7: sin fuente semilla (parametro por defecto) el resolutor es el de la fase 3.
+    @Test
+    fun sin_fuente_semilla_el_comportamiento_es_el_de_la_fase_3() = runTest {
+        val root = cacheRoot()
+        val generator = FakeDishImageGenerator { webpBytes(32) }
+
+        val result = resolver(root, generator).imageFor(request(SEED_KEY))
+
+        assertArrayEquals(webpBytes(32), result)
+        assertEquals("Sin semilla se genera (y se paga) como en la fase 3", 1, generator.calls)
+        assertEquals(
+            "Sin semilla se persiste como en la fase 3",
+            listOf("$SEED_KEY.webp"),
+            root.listFiles()!!.map { it.name },
+        )
+    }
+
     private fun cacheRoot() = File(temporaryFolder.root, "dish-images")
 
     private fun resolver(
@@ -269,15 +408,20 @@ class DishImageResolverTest {
         generator: DishImageGenerator,
         memory: MemoryDishImageCache = MemoryDishImageCache(),
         maxBytes: Long = DishImageCachePolicy.MAX_DISK_BYTES,
+        seed: DishImageSeedSource? = null,
     ) = DishImageResolver(
         disk = FileDishImageCache(root, maxBytes = maxBytes),
         memory = memory,
         generator = generator,
         ioDispatcher = Dispatchers.Unconfined,
+        seed = seed,
     )
 }
 
 private const val KEY = "dish-image-v1-arroz-con-pollo-criollo"
+// Escenarios de la fase 7 (`dish-image-seed`): la clave del plato del set semilla es el mismo vector
+// que ya usaba la fase 3.
+private const val SEED_KEY = "dish-image-v1-arroz-con-pollo-criollo"
 private const val KEY_A = "dish-image-v1-arroz-con-pollo-criollo"
 private const val KEY_B = "dish-image-v1-tortilla-de-patatas"
 private const val KEY_C = "dish-image-v1-paella-valenciana"
@@ -299,6 +443,24 @@ private class FakeDishImageGenerator(
     override suspend fun generate(request: DishImageRequest): ByteArray? {
         calls += 1
         return block(request)
+    }
+}
+
+/**
+ * Fuente semilla falsa (fase 7): cuenta **lecturas** y delega en [block] (que puede suspender o
+ * fallar), de modo que los escenarios comprueban que el asset se lee una sola vez y que la semilla
+ * gana al generador sin red.
+ */
+private class FakeDishImageSeedSource(
+    private val block: suspend (String) -> ByteArray?,
+) : DishImageSeedSource {
+
+    var reads = 0
+        private set
+
+    override suspend fun bytesFor(cacheKey: String): ByteArray? {
+        reads += 1
+        return block(cacheKey)
     }
 }
 

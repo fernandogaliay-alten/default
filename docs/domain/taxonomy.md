@@ -181,13 +181,18 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   tiempo de ejecución.
 - **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4)**: la app pide al
   proveedor la imagen del plato (`data.ai.image`), la resuelve por `data.image` (memoria → disco →
-  generador real, con la clave canónica del nombre del plato —o del `dishKey` del modelo cuando existe,
-  descriptor de la fase 5—) y `ui.artwork.RecipeArtwork` la pinta
+  **assets semilla** → generador real, con la clave canónica del nombre del plato —o del `dishKey` del
+  modelo cuando existe, descriptor de la fase 5—) y `ui.artwork.RecipeArtwork` la pinta
   **por delante** de la cadena de assets con un crossfade, sin cambiar la firma, la geometría ni los 5
-  puntos de uso. Si no está disponible (sin red, fallo, timeout o cancelación) se **conserva la foto
+  puntos de uso. Los **platos frecuentes del demo** tienen desde la fase 7 (`dish-image-seed`) su foto
+  **preparada de antemano y versionada** (`app/src/main/assets/img/dishes/seed/<clave canónica>.<ext>`,
+  `data.DishImageSeedAssets` + `data.AssetDishImageSeedSource`), de modo que se resuelven **sin red y
+  sin gastar cuota** (ni la primera vez) y **sin** duplicar bytes en `cacheDir`; ese nivel va entre el
+  disco y el generador y queda detrás del mismo interruptor. Si no está disponible (sin red, fallo,
+  timeout o cancelación) se **conserva la foto
   local** (o el glifo de último recurso), así que **nunca** hay error de UI ni hueco y la app sigue
   funcionando offline: la generación **no** es dependencia del MVP. Ver
-  `docs/adr/0005-ai-dish-images.md`.
+  `docs/adr/0005-ai-dish-images.md` y `docs/specs/dish-image-seed.md`.
 
 ---
 

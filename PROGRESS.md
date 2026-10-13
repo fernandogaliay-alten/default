@@ -491,6 +491,40 @@
   (`dish-image-seed`, `not_started`) y, como seguimiento no bloqueante previo,
   `dish-visual-descriptor-wiring` (`not_started`). Queda la **prueba real opcional** (~2 % de cuota,
   comparar con la variante A) y la revisión visual de la persona, no automatizables desde WSL.
+- Última feature **`accepted`** — **`dish-image-seed`** (fase 7, la **última** de
+  `docs/ai-dish-images-proposal.md` §5, `area: data`, depende de `dish-image-domain`): cerrada en la
+  **sesión 096** con validación independiente (veredicto **`accept`**, rama `feature/dish-image-seed`; la
+  sesión 096 la dejó `passing` tras el implementer y el validator la aceptó; el commit lo crea el
+  orquestador de `feature-flow` y publica `github-flow`, **sin** commit/push/PR del implementer). Los
+  **6 platos frecuentes del demo**
+  viajan **preparados una vez** y versionados como fotos WebP de 960 px en
+  `app/src/main/assets/img/dishes/seed/<clave canónica>.webp` (6 × ~73 KiB = 439 KiB ≤ 2 MiB) y se
+  resuelven por la **clave canónica del plato** (`DishImageCacheKey`, p. ej.
+  `dish-image-v1-arroz-con-pollo-criollo`) en un nivel **nuevo** de `DishImageResolver` **entre el disco
+  y el generador** (memoria → disco → semilla → generador → persistir): el acierto de semilla se cachea
+  en **memoria** y se devuelve **sin** escribir en `cacheDir` y **sin** invocar al generador (0 cuota,
+  0 red, 0 espera: **ni la primera vez**), detrás del mismo gate del interruptor de la fase 4 y **sin**
+  consumir el tope por sesión. Mapa puro `data.DishImageSeedAssets` (ROOT `img/dishes/seed`, orden
+  `webp → jpg → png`, saneado `[a-z0-9-]+`, `exists` inyectado) + seam `data.DishImageSeedSource` +
+  costura Android `data.AssetDishImageSeedSource` (único fichero nuevo con `android.*`; `null` sin
+  lanzar) y **una línea** en `MainActivity`; `app/build.gradle.kts` publica
+  `dish.image.seed.assets.dir` a los tests. `scripts/prepare-dish-image-seed.sh` es la herramienta de
+  **una sola vez** (fuera de `init.sh` y de runtime; modo proveedor `/images/edits` con respaldo
+  acotado **por estado** a `/images/generations`, o `--source <dir>` **sin cuota**; idempotente,
+  *magic bytes*, WebP q80 ≤960 px, inventario, ≤2 MiB y `exit ≠ 0` ante cualquier desvío).
+  `DishImageCacheKey.VERSION` sigue `dish-image-v1`; dominio, `data.ai.image`, la caché, `ui/**`, la
+  cadena de `recipe-photos`, la Taxonomía, `seed-recipes.json` e `init.sh` **sin cambios**; sin
+  dependencias nuevas y **sin** `docs/design/concepts/dish-image-seed/` (no es UI). Gate: `bash init.sh`
+  exit 0, **90 suites / 660 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD` 88/643;
+  delta **+2 suites / +17 tests**), lint 0 errores y 13 warnings preexistentes (ninguno bajo `app/src`),
+  APK de debug con los 6 assets. Detalle en `docs/validations/dish-image-seed.md`. **WIP = 0.** Con esto
+  la **lista de fases de la propuesta queda completa** (1-7); como seguimiento no bloqueante queda
+  `dish-visual-descriptor-wiring` y la corrección de redacción del **Low** de la validación en
+  `docs/technical-discovery.md`.
+- Coste documentado (preparación, **una sola vez**): el modo proveedor gastó **6 generaciones** (~2 %
+  de cuota cada una, ~12 % de la cuota semanal) al empaquetar el set; en runtime esos platos **no**
+  gastan cuota ni esperan red. El mismo script acepta `--source <dir>` para prepararlo sin gastar
+  cuota.
 
 ## Registro de sesiones
 
@@ -3388,3 +3422,123 @@
 - Siguiente paso: en el plan queda la fase 7 (`dish-image-seed`) y, como seguimiento no bloqueante
   previo, `dish-visual-descriptor-wiring`. La publicación del PR de `dish-style-reference` la hace el
   orquestador de `github-flow`.
+
+### Sesión 096
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-implementer` para `dish-image-seed` (fase **7**, la **última** de
+  `docs/ai-dish-images-proposal.md` §5: set semilla de imágenes de platos frecuentes) en el worktree
+  `feature/dish-image-seed`. **Sin commit, push ni PR** (el commit lo hace el orquestador de
+  `feature-flow`; publica `github-flow`). `area: data`; **gate de capturas no aplica** (**no** se crea
+  `docs/design/concepts/dish-image-seed/`). Modo del script de preparación: **proveedor** (el indicado
+  por la spec por defecto).
+- Completado (rol **implementer**): la feature queda **`passing`** (validación independiente pendiente).
+  `DishImageResolver` gana un parámetro **nuevo al final con default** (`seed: DishImageSeedSource? =
+  null`) y un nivel nuevo entre el disco y el generador (**memoria → disco → semilla → generador →
+  persistir**): el acierto de semilla se guarda en **memoria** y se devuelve **sin** escribir en disco y
+  **sin** invocar al generador; el **disco gana a la semilla**; `null`/array vacío/excepción de la fuente
+  degradan a `null` y `CancellationException` se relanza; con `seed = null` el comportamiento es el de la
+  fase 3. Nuevos: `data.DishImageSeedAssets` (mapa **puro** clave→asset: `ROOT = "img/dishes/seed"`,
+  `EXTENSIONS` de `RecipePhotoAssets`, `SAFE_KEY = [a-z0-9-]+`, `isSafeKey`, `path`, `resolve(cacheKey,
+  exists, root = ROOT)` con `exists` inyectado), `data.DishImageSeedSource` (seam `fun interface`,
+  `suspend bytesFor`) y `data.AssetDishImageSeedSource` (costura Android: `Dispatchers.IO`, `null` sin
+  lanzar; **único** fichero nuevo con `android.*`). `MainActivity` gana una línea
+  (`seed = AssetDishImageSeedSource(applicationContext)`) y `app/build.gradle.kts` publica
+  `dish.image.seed.assets.dir` a los tests JVM (mismo patrón que `recipe.photos.assets.dir`).
+  `scripts/prepare-dish-image-seed.sh` (**nuevo**, herramienta de una sola vez, **fuera** de `init.sh` y
+  de runtime): lista autoritativa ordenada de 6 claves canónicas con plato y cocina, prompt **espejo** de
+  `DishImagePrompt` con la etiqueta de cocina leída de `docs/domain/taxonomy.json`, modo proveedor
+  (`POST /images/edits` multipart con `model=image-edit`, la referencia neutra
+  `img/recipes/default.<ext>`, `size=1024x1024`; respaldo **acotado por estado** a
+  `/images/generations` solo ante `400/404/405/413/415/422` o `2xx` inutilizable; transporte/timeout y
+  `401/403/429/5xx` fallan el plato **sin** respaldo), modo `--source <dir>` (**sin cuota**), *magic
+  bytes*, conversión a WebP q80 ≤960 px cuando hay herramienta, inventario y presupuesto **≤ 2 MiB** con
+  `exit ≠ 0` ante cualquier desvío.
+- Ficheros creados: `app/src/main/java/com/sazon/app/data/{DishImageSeedAssets,DishImageSeedSource,
+  AssetDishImageSeedSource}.kt`, `scripts/prepare-dish-image-seed.sh`,
+  `app/src/main/assets/img/dishes/seed/*.webp` (6), `app/src/test/java/com/sazon/app/data/
+  {DishImageSeedAssetsTest,AssetDishImageSeedSourceTest}.kt` y este registro de sesión.
+- Ficheros modificados: `data/image/DishImageResolver.kt`, `MainActivity.kt` (una línea + import),
+  `app/build.gradle.kts` (directorio + `systemProperty`), `DishImageResolverTest.kt` (12 → 19 tests) y los
+  4 docs durables (`docs/adr/0005-ai-dish-images.md` — fases 1-7, lista de fases **completa** —,
+  `docs/technical-discovery.md` — fila nueva en Data and Storage + bullet de la fase 7 + bullet de tests
+  —, `docs/domain/taxonomy.md` §6 y `docs/risks-and-open-questions.md`).
+- Preparación ejecutada **una sola vez** (modo proveedor, con la clave de `local.properties` que nunca se
+  imprime): 6 peticiones OK a `/images/edits` (sin respaldos), conversión con `cwebp` a WebP q80 960×960.
+  **Coste: ~12 % de la cuota semanal** (6 × ~2 %), gastado una vez; en runtime esos platos no gastan cuota
+  ni esperan red.
+- Verificación ejecutada: `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`; sin procesos largos, sin red, sin cuota, sin tocar `init.sh`). Tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.DishImageSeedAssetsTest" --tests
+  "com.sazon.app.data.AssetDishImageSeedSourceTest" --tests "com.sazon.app.data.image.*"` →
+  `BUILD SUCCESSFUL` (**9 suites / 74 tests / 0 fallos**). Parseo propio de los XML frescos
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **90 suites / 660 tests / 0 fallos / 0 errores
+  / 0 saltados**. Baseline re-derivada en este `HEAD` antes de tocar tests (**88 suites / 643 tests** =
+  88 ficheros con `@Test` / 643 anotaciones, la misma última baseline aceptada); delta **+2 suites / +17
+  tests** (`DishImageSeedAssetsTest` 6 nueva, `AssetDishImageSeedSourceTest` 4 nueva,
+  `DishImageResolverTest` 12 → 19). Lint (SARIF `app/build/reports/lint-results-debug.sarif`):
+  **0 errores** y **13 warnings** preexistentes (`GradleDependency` 7, `NewerVersionAvailable` 3,
+  `AndroidGradlePluginVersion` 2, `OldTargetApi` 1), **0 bajo `app/src`**.
+- Assets e inventario: 6 ficheros `assets/img/dishes/seed/<clave canónica>.webp` (WebP, 960×960,
+  `webpinfo`), total **449.844 B (439 KiB ≤ 2 MiB)**, ninguno vacío, **no** ignorados por git
+  (`git check-ignore` → no) y presentes en el APK de debug (`bash scripts/gradle.sh assembleDebug` +
+  `unzip -l`: 6 entradas `assets/img/dishes/seed/*.webp`). Revisión visual de las 6 fotos: cada una
+  representa su plato con la dirección ya aceptada (cerámica, luz natural, estilo editorial).
+- Vectores concretos comprobados (JVM): `DishImageCacheKey.of("Arroz con pollo criollo") ==
+  "dish-image-v1-arroz-con-pollo-criollo"` resuelve `img/dishes/seed/<clave>.<ext>` existente y no vacío;
+  orden `webp → jpg → png`; claves inseguras (`""`, `"   "`, mayúsculas, `../etc/passwd`, `dish/images`,
+  NUL…) → `path`/`resolve` `null` (nunca una ruta fuera de `ROOT`); clave ajena al set → `null`; semilla
+  → **0** llamadas al generador y **0** ficheros en la raíz de la caché; la segunda resolución lee el
+  asset **1** sola vez; el disco gana a la semilla; `seed = null` reproduce la fase 3; `null`/vacío/
+  excepción degradan y `CancellationException` se relanza; Robolectric (`@Config(sdk = [33])`): asset real
+  con cabecera de imagen, clave desconocida/insegura y `root` inexistente → `null` sin lanzar.
+- Script (escenario 11): segunda pasada **sin** `--force` → omite los 6 (`= <clave> (ya empaquetado, se
+  omite)`, exit 0, sin red ni cuota); `--source` con un directorio **incompleto** → `exit 1` **sin
+  escribir nada** (md5 de los 6 assets intactos); `--source` con el set completo → `exit 0` y bytes
+  idénticos; un asset **ajeno** a la lista → `exit 1`; `grep "prepare-dish-image-seed" init.sh` → **0**.
+- Inspección de alcance y pureza: `git status`/`git diff` solo con los ficheros previstos (3 nuevos en
+  `data/`, `DishImageResolver.kt`, `MainActivity.kt`, `app/build.gradle.kts`, 2 tests nuevos + 1
+  ampliado, 4 docs, `feature_list.json`, `PROGRESS.md`, la spec, el script y los assets);
+  `domain/image/**`, `data/ai/image/**`, la caché de la fase 3, `ui/**`, `data/RecipePhotoAssets.kt`,
+  `data/AssetRecipePhotoSource.kt`, `init.sh`, `scripts/fetch-recipe-photos.sh`, `gradle/libs.versions.toml`,
+  `AndroidManifest.xml`, `docs/domain/taxonomy.json`, `seed-recipes.json`, `DESIGN.md` y `docs/design/**`
+  **sin diff**; `import android` en `data` solo en las costuras ya existentes + `AssetDishImageSeedSource`
+  (en `data/image` sigue **solo** `AndroidDishImageCache.kt`); `test -d docs/design/concepts/dish-image-seed`
+  → **no existe**; `DishImageCacheKey.VERSION` sigue `dish-image-v1`; **sin** dependencias nuevas.
+- Hallazgo (no bloqueante, transparencia): el grep del plan `"prepare-dish-image-seed en app/src" → 0` da
+  **1** coincidencia, que es la **mención del script en el KDoc** de `DishImageSeedAssets` (mismo patrón ya
+  aceptado en `RecipePhotoAssets.kt`, que cita `fetch-recipe-photos.sh`); **no** hay ninguna invocación en
+  runtime.
+- Riesgos/incógnitas registrados (no bloqueantes): la **lista concreta** de platos frecuentes (hoy 6) y su
+  calidad visual se revisan en la prueba manual de la persona (se corrige con `--force` o una feature
+  correctiva); el **espejo en bash** del prompt y del wire (deriva cosmética, acotada por la regla de
+  `VERSION`: subirla cambia las claves y obliga a **volver a preparar el set**); un plato del set cuya
+  clave ya tuviera copia generada en disco se sirve del disco (decisión 2, cubierta por test); con el
+  interruptor apagado **no** se ven las semilla (semántica aceptada de la fase 4).
+- Completado (rol **validator**, contexto limpio): **veredicto `accept`** (sesión 096). Re-ejecutó
+  `bash init.sh` (exit 0; al salir `testDebugUnitTest`/`lint` `UP-TO-DATE` forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` — 3m52s, 34 tareas — y
+  `bash scripts/gradle.sh lint --rerun-tasks` — 3m01s, 30 tareas —, ambos `BUILD SUCCESSFUL`) y parseó
+  por su cuenta los XML frescos (**90 suites / 660 tests / 0 fallos / 0 errores / 0 saltados**) y el
+  SARIF (**0 errores, 13 warnings** preexistentes, **0 bajo `app/src`**); re-derivó la baseline
+  (`git grep -c '@Test' HEAD` = 88 ficheros / 643) ⇒ **+2 suites / +17 tests**. Confirmó los 12
+  escenarios, los 6 assets WebP reales (960×960, 449.844 B, md5 del APK == md5 del árbol, no ignorados,
+  sin duplicar una foto existente), el nivel semilla (0 llamadas/0 ficheros en disco, acierto de memoria,
+  disco gana a semilla, `seed = null` = fase 3, `CancellationException` relanzada) **detrás del mismo
+  gate** (no consume tope) y la disciplina de alcance/pureza (`domain/**`, `data/ai/image/**`, la caché
+  de la fase 3, `ui/**`, la cadena de `recipe-photos`, `init.sh`, el version catalog, el manifest, la
+  Taxonomía, `seed-recipes.json`, `DESIGN.md` y `docs/design/**` sin diff; sin dependencias nuevas;
+  `docs/design/concepts/dish-image-seed/` **no existe**; `VERSION` sigue `dish-image-v1`; único fichero
+  nuevo con `android.*` = `AssetDishImageSeedSource.kt`). **Sin** hallazgos Critical/High/Medium; **1 Low
+  informativo no bloqueante** (una frase de `docs/technical-discovery.md` dice que el script falla "sin
+  empaquetar nada" cuando escribe incrementalmente y falla después en la validación; el contrato de la
+  spec se cumple — exit ≠ 0 y **nunca** parcial silencioso —; anotado para corregir la redacción).
+  Detalle en `docs/validations/dish-image-seed.md`. El orquestador de `feature-flow` **persiste la
+  aceptación** (`feature_list.json` → `accepted` con la evidencia del validador y este registro) y crea
+  el **commit local**; **sin** push ni PR (publica `github-flow`).
+- Siguiente paso: el orquestador de `github-flow` publica la feature (`Closes #<n>`, **sin** merge). La
+  fase 7 cierra el plan de `docs/ai-dish-images-proposal.md` (fases 1-7 **completas**). Seguimientos no
+  bloqueantes: (a) corregir la frase del hallazgo Low en `docs/technical-discovery.md`; (b) la prueba
+  manual de la persona en emulador (abrir un plato del set sin red y comprobar su foto propia, y que con
+  "Imágenes del plato" apagado se ve la foto local); (c) `dish-visual-descriptor-wiring` (entrega en
+  runtime del descriptor de la fase 5).

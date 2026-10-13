@@ -39,6 +39,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | **Fotos de plato empaquetadas** como assets versionados en `app/src/main/assets/img/recipes/` (12 `seed/`, 18 `category/cat-`, 1 `default`), resueltas por `data.RecipePhotoAssets` y decodificadas por `data.AssetRecipePhotoSource`; el placeholder dibujado `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) queda como **último recurso** | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
+| Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
@@ -605,6 +606,43 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   (Robolectric solo para la costura de `cacheDir`). Desde la fase 4 tiene **consumidor y cableado** en
   `MainActivity` (a través del loader de `ui.artwork`); ver el bullet de la fase 4. Ver
   `docs/specs/dish-image-cache.md`.
+- **Set semilla de imagenes de plato (fase 7)**: los **platos frecuentes del demo** viajan
+  **preparados de antemano** y **versionados** en
+  `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (extension probada en orden `webp -> jpg ->
+  png`, reutilizando `RecipePhotoAssets.EXTENSIONS`) y se resuelven por la **clave canonica del plato**
+  (`DishImageCacheKey`, p. ej. `dish-image-v1-arroz-con-pollo-criollo`), no por `recipeId`/`categoryId`.
+  `DishImageResolver` recibe un parametro **nuevo al final con default** (`seed: DishImageSeedSource? =
+  null`) y amplia su orden a **memoria -> disco -> semilla -> generador -> persistir**: un acierto de
+  semilla se guarda en **memoria** y se devuelve **sin escribir en disco** (los bytes ya viajan en el
+  APK; duplicarlos consumiria el tope de 80 MiB y podrian perderse por eviccion o por un borrado de
+  `cacheDir`), **sin** invocar al generador (0 cuota, 0 red y 0 espera: ni la primera vez) y **sin**
+  gastar el tope por sesion (solo lo consume el borde de generacion). El **disco gana a la semilla**
+  (solo decide el caso degenerado de una copia generada antes de existir el asset). El mapa clave->ruta
+  es **logico y puro** (`com.sazon.app.data.DishImageSeedAssets`: `ROOT`, `EXTENSIONS`, `SAFE_KEY =
+  [a-z0-9-]+`, `isSafeKey`, `path`, `resolve(cacheKey, exists[, root])`, con el predicado `exists`
+  **inyectado** y saneado de la clave —defensa en profundidad: una clave fabricada con `..`/`/` no
+  produce ruta fuera de la raiz—), la lectura real de los assets es la costura Android
+  `com.sazon.app.data.AssetDishImageSeedSource` (`Dispatchers.IO`; `null` **sin lanzar** si el asset
+  falta, es ilegible o esta vacio) y el seam funcional `DishImageSeedSource` permite una fuente falsa
+  en JVM. La semilla queda **detras del mismo gate** del interruptor de la fase 4 (apagado = solo la
+  foto local) y `DishImageCacheKey.VERSION` **no** sube. La preparacion es una **herramienta de una sola
+  vez** (`scripts/prepare-dish-image-seed.sh`, **fuera** de `init.sh` y **sin** ninguna referencia en
+  `app/src`), idempotente, con la lista exacta de claves ordenadas, el prompt **espejo** de
+  `DishImagePrompt` (etiqueta de cocina leida de `docs/domain/taxonomy.json`), modo proveedor
+  (`/images/edits` con la referencia neutra `img/recipes/default.<ext>` y respaldo **acotado por
+  estado** a `/images/generations`) o modo `--source <dir>` **sin gastar cuota**, conversion a WebP
+  q80 <=960 px cuando hay herramienta (`cwebp`/`magick`/`convert`; sin ninguna de ellas el JPEG del
+  proveedor ronda los ~700 KB por plato y el presupuesto de **2 MiB** no se cumple, de modo que el
+  script sale `!= 0` **sin** empaquetar nada en vez de dejar un set parcial), inventario y presupuesto
+  **<= 2 MiB** con `exit != 0` ante
+  cualquier desvio. Tests JVM: `DishImageSeedAssetsTest` (clave canonica -> asset real existente y no
+  vacio para cada plato de la lista, orden `webp -> jpg -> png`, clave insegura/ajena al set -> `null`,
+  determinismo, una clave por plato y presupuesto), `AssetDishImageSeedSourceTest` (Robolectric
+  `@Config(sdk = [33])`: asset real con cabecera WebP, clave desconocida y raiz inexistente -> `null`
+  sin lanzar) y los escenarios de semilla de `DishImageResolverTest` (la semilla gana al generador con
+  **0** llamadas y **0** ficheros, la segunda resolucion no relee el asset, el disco gana a la semilla,
+  `seed = null` mantiene la fase 3 y `null`/vacio/excepcion degradan con la cancelacion relanzada). Sin
+  dependencias nuevas y sin UI. Ver `docs/specs/dish-image-seed.md`.
 - **Imagen de plato en la UI y carga progresiva (fase 4)**: `com.sazon.app.ui.artwork` inserta el nivel
   generado **por delante** de la cadena local sin cambiar pantalla, firma ni geometría. `RecipeArtwork`
   (misma firma `(recipe, modifier, glyphSize)`) lee **dos** seams independientes —`LocalRecipePhotoSource`
@@ -733,6 +771,17 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   `AndroidDishImageCacheTest` (Robolectric `@Config(sdk = [33])`) cubre la costura Android:
   `root(context) == File(context.cacheDir, "dish-images")` y la resolución real escribe bajo `cacheDir`,
   no bajo `filesDir`. Todo corre en JVM sin red, sin clave, sin cuota y sin emulador.
+- **Tests JVM del set semilla de imagen de plato (fase 7, `data` y `data.image`)**:
+  `DishImageSeedAssetsTest` (mapa puro clave canónica → asset: `DishImageCacheKey.of(título)` resuelve
+  un fichero real, existente y no vacío para **cada** plato de la lista —directorio publicado por
+  `dish.image.seed.assets.dir`—, orden de extensiones `webp → jpg → png`, raíz inyectable, clave
+  insegura (`""`, en blanco, mayúsculas, `..`, `/`, `.`, NUL) o ajena al set → `null` **nunca** una ruta
+  fuera de `ROOT`, determinismo, un asset por plato y total ≤ 2 MiB), `AssetDishImageSeedSourceTest`
+  (Robolectric `@Config(sdk = [33])`: el asset real de un plato del set devuelve bytes no vacíos con
+  cabecera real; clave desconocida, clave insegura y raíz inexistente → `null` sin lanzar) y, dentro de
+  `DishImageResolverTest`, los escenarios de la semilla (gana al generador con **0** llamadas y **0**
+  ficheros en la caché, la segunda resolución no relee el asset, el disco gana a la semilla, `seed =
+  null` reproduce la fase 3, y `null`/vacío/excepción degradan con la cancelación relanzada).
 - **Tests JVM de la carga progresiva de imagen (fase 4, `ui.artwork`)**: `RecipeArtworkImagePrecedenceTest`
   (precedencia pura con `String`: generada → `GENERATED`, local → `LOCAL`, ninguna → `FALLBACK`, y
   `crossfadeTarget` `1f`/`0f`) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
