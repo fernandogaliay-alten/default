@@ -162,7 +162,14 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   `docs/adr/0004-recipe-photos-as-assets.md`.
 - **Avatares**: iniciales sobre un color de `avatarColors`. Sin assets: el avatar se compone en
   tiempo de ejecución.
-- **Generación real de imagen (Imagen API)**: *feature opcional/estirar*, nunca dependencia del MVP.
+- **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4)**: la app pide al
+  proveedor la imagen del plato (`data.ai.image`), la resuelve por `data.image` (memoria → disco →
+  generador real, con la clave canónica del nombre del plato) y `ui.artwork.RecipeArtwork` la pinta
+  **por delante** de la cadena de assets con un crossfade, sin cambiar la firma, la geometría ni los 5
+  puntos de uso. Si no está disponible (sin red, fallo, timeout o cancelación) se **conserva la foto
+  local** (o el glifo de último recurso), así que **nunca** hay error de UI ni hueco y la app sigue
+  funcionando offline: la generación **no** es dependencia del MVP. Ver
+  `docs/adr/0005-ai-dish-images.md`.
 
 ---
 

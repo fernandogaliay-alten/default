@@ -2,14 +2,17 @@
 
 ## Estado
 
-**Aceptado parcialmente (fases 1-3)** — features `dish-image-domain` (fase 1), `dish-image-generator`
-(fase 2) y `dish-image-cache` (fase 3), 2026-10-13. Fija la decisión de arquitectura y de política
-(puerto, prompt determinista y clave canónica), implementa el **adaptador real** de transporte + códec
-y la **caché** de disco + memoria, y deja **pendientes**, de forma explícita, las fases 4–7 de
-`docs/ai-dish-images-proposal.md` (UI progresiva, descriptor del modelo, referencia de estilo y set
-semilla). Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue
-siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada cuando la fase 4 la
-conecte; su afirmación "sin red en tiempo de ejecución" se mantiene para la cadena local.
+**Aceptado parcialmente (fases 1-4)** — features `dish-image-domain` (fase 1), `dish-image-generator`
+(fase 2), `dish-image-cache` (fase 3) y `dish-image-progressive-ui` (fase 4, mitad de integración),
+2026-10-13. Fija la decisión de arquitectura y de política (puerto, prompt determinista y clave
+canónica), implementa el **adaptador real** de transporte + códec y la **caché** de disco + memoria, y
+**conecta** el nivel generado por delante de la cadena local con una progresión con crossfade. Deja
+**pendientes**, de forma explícita, el **interruptor de usuario y el tope de generaciones por sesión**
+(la otra mitad de la fase 4, feature `dish-image-settings-toggle`) y las fases 5–7 de
+`docs/ai-dish-images-proposal.md` (descriptor del modelo, referencia de estilo y set semilla). Ajusta
+**parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y
+offline, pero pasa a ser el **respaldo** de la imagen generada, ya conectada en runtime; su afirmación
+"sin red en tiempo de ejecución" se mantiene para la cadena local.
 
 ## Contexto
 
@@ -96,6 +99,23 @@ de víctimas; `AndroidDishImageCache.root(context)` es la **única** costura And
 ni UI, ni cableado, ni set semilla, ni cambios en el dominio ni dependencias nuevas. Ver
 `docs/specs/dish-image-cache.md`.
 
+Alcance de la **fase 4** (mitad de integración, feature `dish-image-progressive-ui`): la **costura en
+`ui.artwork`** que conecta el nivel generado por delante de la cadena local, sin UI nueva. `RecipeArtwork`
+conserva su firma (`recipe`, `modifier`, `glyphSize`) y la geometría aceptada de los 5 puntos de uso, lee
+un **segundo seam** con default seguro (`LocalGeneratedRecipeArtworkSource`) y pinta **siempre** una
+**capa base** (foto local o degradado + glifo) sobre la que **superpone** la imagen generada con un
+**crossfade estándar** de 250 ms. `DishImageArtworkLoader` resuelve por `DishImageResolver` (memoria →
+disco → generador de la fase 3), **decodifica** a `ImageBitmap` (`AndroidRecipeImageDecoder`, único
+fichero de `ui.artwork` con `android.graphics`) y mantiene una **LRU de 16** imágenes decodificadas con
+un límite de **2** resoluciones en vuelo (`DishImageArtworkPolicy`); `MainActivity` cablea la cadena
+reutilizando el `aiClient` compartido y la caché de la fase 3. Contrato intacto: **fallo/lentitud/`null`/
+códec roto = se conserva la foto local** (degradación silenciosa, nunca excepción ni error de UI) y la
+**cancelación se propaga** (salir de pantalla o reciclar la tarjeta cancela la petición). **No** hay
+interruptor de usuario ni tope de generaciones por sesión (la otra mitad de la fase 4, feature
+`dish-image-settings-toggle`, con su punto de inyección en el proveedor del seam en `MainActivity`);
+tampoco dependencias nuevas ni `Log`. la cadena de `recipe-photos` pasa formalmente a **respaldo**. Ver
+`docs/specs/dish-image-progressive-ui.md`.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -132,27 +152,31 @@ ni UI, ni cableado, ni set semilla, ni cambios en el dominio ni dependencias nue
 
 - **Invalidación**: cualquier cambio de `STYLE_SUFFIX`, del orden de las cláusulas del prompt o de la
   normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión).
-- **Riesgo de cuota/latencia**: el **transporte** (fase 2) y la **caché** (fase 3) ya existen, pero sin
-  consumidores, así que el riesgo (~2 % de la cuota semanal y ~4 s por imagen) se materializa cuando los
-  consuma la fase 4; queda registrado en `docs/risks-and-open-questions.md` con la mitigación ya
-  implementada (clave compartida por nombre de plato + caché persistente con evicción LRU y tope de
-  80 MiB + LRU de bytes en memoria) y la pendiente (tope por sesión, interruptor y set semilla).
+- **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3) y la **costura de UI**
+  (fase 4) ya existen, así que el riesgo (~2 % de la cuota semanal y ~4 s por imagen) **se materializa**
+  al navegar. Está registrado en `docs/risks-and-open-questions.md` con la mitigación implementada (clave
+  compartida por nombre de plato + caché persistente con evicción LRU y tope de 80 MiB + LRU de bytes en
+  memoria + **concurrencia limitada a 2** y **cancelación al salir de pantalla/hacer scroll**) y la
+  pendiente (tope por sesión, interruptor de usuario y set semilla).
 - **Crecimiento de almacenamiento acotado**: el tope de 80 MiB con evicción LRU deja de ser hipotético en
   la fase 3; el espacio lo ocupa `cacheDir/dish-images`, que es **descartable** por el sistema (si el
   sistema lo vacía, un acierto falla y solo se regenera, volviendo a gastar cuota: comportamiento
   esperado). Subir `DishImageCacheKey.VERSION` deja huérfanos los `dish-image-v1-*.webp` hasta que la
   LRU los evicte (acotado por el tope; una feature posterior puede borrar por prefijo de versión).
-- **La cadena de `recipe-photos` no cambia** y sigue siendo la única resolución en runtime; el
-  offline-first no se rompe porque la generación se inserta *delante* y degrada en silencio.
-- **Adaptador real y caché, sin consumidores**: las fases 2 y 3 implementan el puerto y su caché, pero
-  ninguna ruta de runtime los llama todavía (fase 4), así que la app no gasta cuota ni cambia
-  visualmente.
+- **La cadena de `recipe-photos` pasa a respaldo**: la imagen generada se inserta *delante* y degrada en
+  silencio (fallo, lentitud, cancelación o sin red), así que el offline-first no se rompe: sin red se ve
+  exactamente lo de hoy (foto local o degradado + glifo).
+- **Adaptador real, caché y costura de UI, con consumidor**: la fase 4 conecta el puerto y su caché en
+  `MainActivity`/`ui.artwork`, de modo que la app **sí** puede gastar cuota y sustituir la imagen
+  visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Pendiente (fases 4–7)**: UI progresiva con capturas obligatorias y guardarraíles (interruptor de
-  usuario, tope de generaciones por sesión, concurrencia limitada, cancelación al hacer scroll),
-  `dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de estilo y set semilla de platos
-  frecuentes. De las preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda
-  **resuelta** en la fase 3 (ficheros en `cacheDir`); siguen abiertas el tamaño objetivo y el tope de
-  disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste), el set semilla, el
-  interruptor de usuario y la entrada de la variante C.
+- **Pendiente**: la otra mitad de la fase 4 (**interruptor de usuario y tope de generaciones por
+  sesión**, feature `dish-image-settings-toggle`, con su punto de inyección en el proveedor del seam en
+  `MainActivity`) y las fases 5–7 (`dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de
+  estilo y set semilla de platos frecuentes). La UI progresiva (swap) se entrega con capturas de
+  referencia **omitidas por desviación autorizada** registrada en `DESIGN.md` (issue #98); la revisión
+  puramente visual la hace la persona tras el merge. De las preguntas abiertas de la propuesta §11, la
+  decisión Room vs ficheros queda **resuelta** en la fase 3 (ficheros en `cacheDir`); siguen abiertas el
+  tamaño objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste),
+  el set semilla, el interruptor de usuario y la entrada de la variante C.
