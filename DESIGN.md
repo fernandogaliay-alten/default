@@ -187,6 +187,23 @@ pendiente** de `profile-screen` (`perfil`, `perfil-editar`; ver
 `docs/design/concepts/profile-screen/README.md`), contra las que se revisa el acabado en el emulador
 tras el merge.
 
+**Excepción de capturas (desviación documentada, issue #110):** `home-suggestions-personalized` **no**
+genera capturas nuevas ni carpeta `docs/design/concepts/home-suggestions-personalized/`. Es una
+**correctiva de `home-offline-blocks`** que **no** cambia el diseño: no introduce pantalla, layout,
+geometría, token, microcopy ni estado visual nuevos — reutiliza el carrusel ya existente ("Sugeridas
+para ti" + "basado en tus gustos" y las tarjetas `RecipeCard` con imagen 16:10) y solo cambia **qué**
+recetas entran y **en qué orden**. Comportamiento vigente del carrusel: muestra **como máximo 6**
+sugerencias **seguras** (descarta con el `RecipeValidator` las que incumplen una Restricción dura o el
+Patrón de dieta, semilla y `ai` por igual) **ordenadas por relevancia con el Perfil** (`MatchScore`:
+ingredientes preferidos, cocinas favoritas, franja de tiempo y dificultad, penalizando —nunca
+descartando— los ingredientes que el usuario evita), **sin** materializar el score, así que **no**
+aparece la píldora de coincidencia (`matchScore` sigue `null`); el respaldo de semilla offline (Lote
+nulo) pasa por el mismo camino (filtro → orden → tope) y un Lote resuelto vacío sigue vacío. La
+dirección visual aplicable es el **backfill pendiente** de `home-offline-blocks` (`home`,
+`home-sin-conexion`; ver `docs/design/concepts/home-offline-blocks/README.md`) más la sección **Core
+Screens** (Home, arriba) y `Components`, contra las que se revisa el acabado en el emulador tras el
+merge.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -341,7 +358,10 @@ nada lo es.
    habituales).
 2. **Home** con cinco bloques: cabecera (saludo y avatar de iniciales), **buscador con IA** —el único
    bloque que necesita red y que debe degradar con aviso—, tarjeta-héroe "¿Qué tienes en la nevera?"
-   que abre el Generador, carrusel "Sugeridas para ti", y el bloque **"Tus recetas"**, que **solo lista
+   que abre el Generador, carrusel "Sugeridas para ti" (**como máximo 6** sugerencias seguras
+   —filtrando restricciones duras y patrón de dieta— ordenadas por relevancia con el Perfil; **sin**
+   píldora de coincidencia, ver la excepción de capturas de `home-suggestions-personalized` más arriba),
+   y el bloque **"Tus recetas"**, que **solo lista
    los grupos con contenido** (hoy, "Guardadas", alimentado por los Favoritos) tras sus filtros locales
    (categoría + "Rápido"/"Vegetariano"), con el estado vacío "Cuando guardes una receta aparecerá aquí."
    y la línea "No hay recetas con este filtro." cuando el filtro deja el grupo sin recetas.

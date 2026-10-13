@@ -143,10 +143,14 @@ fun MainShell(
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
-    val suggestions = HomeSuggestions.visible(
-        batchRecipes = batch?.recipes,
-        seedRecipes = seedRecipes,
-    )
+    val suggestions = remember(batch?.recipes, seedRecipes, profile.preferences, taxonomy) {
+        HomeSuggestions.visible(
+            batchRecipes = batch?.recipes,
+            seedRecipes = seedRecipes,
+            preferences = profile.preferences,
+            taxonomy = taxonomy,
+        )
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
