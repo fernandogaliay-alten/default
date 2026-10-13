@@ -416,6 +416,19 @@
   `data.ai`: `AiProviderPolicyTest` 8, `AiRecipePayloadTest` 5, `DevExpertRecipeGeneratorTest` 15) y del
   informe de lint (0 errores, 13 warnings preexistentes, 0 en ficheros de la feature). Detalle en
   `docs/validations/real-ai-provider.md`.
+- Última feature **`accepted`** — **`dish-image-cache`** (`area: data`, fase 3 de `docs/ai-dish-images-proposal.md`):
+  cerrada en la **sesión 091** con validación independiente (veredicto **`accept`**, rama
+  `feature/dish-image-cache`; la sesión 091 la dejó `passing` tras el implementer). Es la
+  caché de la imagen de plato en `com.sazon.app.data.image`: ficheros WebP en `cacheDir/dish-images` con
+  nombre = clave canónica (`<cacheKey>.webp`), tope de **80 MiB con evicción LRU**, LRU de bytes en
+  memoria (16), escritura atómica y un `DishImageResolver` que orquesta memoria → disco → generador →
+  persistir con `Mutex` por clave. Gate: `bash init.sh` exit 0, **77 suites / 551 tests /
+  0 fallos / 0 errores / 0 saltados** (baseline 72/517; delta +5 suites / +34 tests), lint 0 errores y 13
+  warnings preexistentes (ninguno bajo `app/src`). Sin Room (decisión de la persona: ficheros), sin UI,
+  sin cableado y sin consumidores: la cadena de `recipe-photos` sigue siendo la única resolución en runtime
+  hasta la fase 4. Detalle en `docs/validations/dish-image-cache.md`. WIP = 0. La **fase 4**
+  (`dish-image-progressive-ui`, `area: ui`) es la siguiente del plan y exige capturas de referencia antes
+  de implementar.
 
 ## Registro de sesiones
 
@@ -2911,3 +2924,78 @@
 - Siguiente paso: **ninguna feature** en esta sesión; `github-flow` publica la rama (push + PR con
   `Closes`, sin merge). La siguiente feature del plan es la **fase 3**, `dish-image-cache`
   (`not_started`), y requeriría una nueva ejecución de `github-flow execute dish-image-cache`.
+
+### Sesión 091
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-flow` para `dish-image-cache` (fase 3 de `docs/ai-dish-images-proposal.md`)
+  en modo hasta-aceptación (planner → implementer → validator) en el worktree
+  `feature/dish-image-cache`. **Sin push ni PR** (publica el orquestador de `github-flow`). `area: data`;
+  **sin gate de capturas** (no es UI).
+- Completado (rol 1, **planner**): spec `docs/specs/dish-image-cache.md` (620 líneas) con 13 escenarios,
+  no-goals (sin UI/cableado, sin Room, sin códec, sin consumidores, sin dependencias), plan de
+  verificación (JVM + Robolectric solo para `cacheDir`) y checklist del validador. Fija las decisiones de
+  la persona (2026-10-13): **ficheros en `cacheDir/dish-images`, no Room**; clave canónica = nombre de
+  fichero; tope de disco 80 MiB con evicción LRU; LRU de memoria de **bytes** (no de bitmaps).
+- Completado (rol 2, **implementer**): la feature queda **`passing`**. Cinco ficheros nuevos en
+  `com.sazon.app.data.image` — `DishImageCachePolicy` (constantes, `fileNameFor` y `evictionVictims`
+  pura, con desempate por nombre), `FileDishImageCache` (raíz `File` y `now` inyectables, escritura
+  atómica temporal+`renameTo`, toque de recencia al leer, evicción LRU con tope inyectable, **nunca
+  lanza** por I/O), `MemoryDishImageCache` (LRU de bytes, `accessOrder = true`, tope 16, `synchronized`),
+  `DishImageResolver` (memoria → disco → generador → persistir, `Mutex` por clave, `CancellationException`
+  relanzada, persistencia *best-effort*) y `AndroidDishImageCache.root(context)` (único fichero con
+  `android.*`) — más 5 tests JVM (Robolectric `@Config(sdk = [33])` solo en la costura de `cacheDir`).
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.data.image.*"` → BUILD SUCCESSFUL (5 suites / 34 tests) y **`bash init.sh` exit 0**
+  (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin procesos largos, sin red, sin cuota y
+  sin tocar `init.sh`). Parseo propio de los XML: **77 suites / 551 tests / 0 fallos / 0 errores /
+  0 saltados** (baseline en `HEAD` 72/517 re-derivada; delta +5 suites / +34 tests: `DishImageCachePolicyTest`
+  7, `FileDishImageCacheTest` 8, `MemoryDishImageCacheTest` 5, `DishImageResolverTest` 12,
+  `AndroidDishImageCacheTest` 2). Lint: **0 errores y 12 warnings** preexistentes, todos en el
+  build/version catalog, **0 bajo `app/src`** (la spec citaba 13; los avisos de "versión nueva disponible"
+  dependen de la metadata del momento — desviación anotada, no bloqueante).
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/data/image/{DishImageCachePolicy,FileDishImageCache,MemoryDishImageCache,DishImageResolver,AndroidDishImageCache}.kt`,
+  los 5 tests en `app/src/test/java/com/sazon/app/data/image/`, `docs/specs/dish-image-cache.md` (del
+  planner), `docs/technical-discovery.md`, `docs/adr/0005-ai-dish-images.md`,
+  `docs/risks-and-open-questions.md`, `feature_list.json` y este registro. `app/build.gradle.kts`,
+  `gradle/libs.versions.toml`, `init.sh`, `scripts/**`, `domain/**` (incluido `domain/image`),
+  `data/ai/image/**`, `data/RecipePhotoAssets.kt`, `data/AssetRecipePhotoSource.kt`, `ui/**`,
+  `assets/**`, `DESIGN.md` y `docs/design/**` intactos; sin dependencias nuevas y **nada** en
+  `docs/design/concepts/`.
+- Hallazgos relevantes: (a) la **escritura atómica** deja el fichero servible solo cuando está completo
+  (temporal en la misma raíz + `renameTo` + limpieza del temporal); (b) la evicción es una **LRU real**
+  porque `read` toca `lastModified` (si el sistema de ficheros no lo soportara, degrada a FIFO, aceptado);
+  (c) la **deduplicación por clave** (`Mutex` por `cacheKey`) evita pagar dos veces la misma imagen en
+  peticiones simultáneas (p. ej. tarjeta y hero); (d) la LRU de memoria guarda **bytes**, no bitmaps:
+  mantiene `data.image` sin `android.graphics` y deja la decodificación a la fase 4.
+- Riesgo o incógnita abierta (registrados, no bloqueantes): un cambio de `DishImageCacheKey.VERSION` deja
+  huérfanos los `dish-image-v1-*.webp` hasta que la LRU los evicte (acotado por el tope); `cacheDir` puede
+  vaciarlo el sistema (la caché es *best-effort*); un fichero corrupto se sirve tal cual (la caché no
+  decodifica, lo degrada la fase 4); la primera imagen de cada plato sigue costando red y cuota (lo ataca
+  el set semilla, fase 7).
+- Completado (rol 3, **validator**, contexto limpio): veredicto **`accept`** independiente. Re-ejecutó
+  `bash init.sh` (exit 0; forzó la pasada que salió `UP-TO-DATE`), `bash scripts/gradle.sh
+  testDebugUnitTest --rerun-tasks` (parseo propio de los XML: **77 suites / 551 tests / 0 fallos /
+  0 errores / 0 saltados**; focal 5 suites / 34 tests) y `bash scripts/gradle.sh lint --rerun-tasks`
+  (0 errores, 13 warnings preexistentes, **0 bajo `app/src`**); re-derivó la baseline en `HEAD` con
+  `git grep -c '@Test'` (72 ficheros / 517 tests → delta exacto +5 suites / +34 tests) y confirmó los
+  escenarios 1-13 (tests no vacuos; evicción con tope inyectado y confinada a su raíz/extensión; LRU de
+  memoria; fallos → `null` sin persistir ni dejar temporales; `CancellationException` relanzada;
+  *single-flight* por clave; Robolectric bajo `cacheDir` y `filesDir` intacto), la pureza (`import android`
+  solo en `AndroidDishImageCache.kt`; 0 `androidx.`/`Recipe`/`Taxonomy`/`DishImageCacheKey`/`Log.`/
+  `filesDir`/`getDatabasePath`/`graphics`), los non-goals (sin UI/cableado/Room/códec/`android.graphics`/
+  `dishKey`/set semilla/dependencias nuevas) y el alcance del diff. Sin hallazgos Critical/High/Medium;
+  5 Low informativos no bloqueantes (Mutex por clave sin poda; `.tmp` huérfano de *crash* no medido ni
+  evictado; invariante de alfabeto de `cacheKey` a validar al cablear en fase 4; evicción solo en
+  `write`; el rerun de lint da 13 warnings —la spec citaba 13, el implementer 12—, sin cambio material).
+  Detalle en `docs/validations/dish-image-cache.md`.
+- Verificación de la aceptación: la feature pasa a **`accepted`** en `feature_list.json` con la evidencia
+  del validator. Commit local de la aceptación por el orquestador de `feature-flow` en la rama
+  `feature/dish-image-cache`; **sin push ni PR**.
+- Ficheros creados/cambiados (cierre): `docs/validations/dish-image-cache.md` (nuevo), `feature_list.json`
+  (estado `accepted` + evidencia del validator), este registro y el commit local.
+- Siguiente paso: **ninguna feature** en esta sesión; `github-flow` publica la rama (push + PR con
+  `Closes`, sin merge). La siguiente feature del plan es la **fase 4**, `dish-image-progressive-ui`
+  (`area: ui`), que **requiere capturas de referencia** en
+  `docs/design/concepts/dish-image-progressive-ui/` antes de implementar y se reanudaría con
+  `github-flow execute dish-image-progressive-ui`.

@@ -38,6 +38,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | **Fotos de plato empaquetadas** como assets versionados en `app/src/main/assets/img/recipes/` (12 `seed/`, 18 `category/cat-`, 1 `default`), resueltas por `data.RecipePhotoAssets` y decodificadas por `data.AssetRecipePhotoSource`; el placeholder dibujado `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) queda como **último recurso** | Determinista, offline, sin red en runtime, sin dependencias nuevas |
+| Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
@@ -542,10 +543,10 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   del plato** normalizado tipográficamente (colapso de espacios, `NFD` + `\p{Mn}+`, `Locale.ROOT`,
   alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
   (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
-  **Nadie consume el puerto todavía**: el adaptador real ya existe (fase 2, ver el bullet siguiente),
-  pero la caché de disco y memoria (fase 3) y la UI progresiva (fase 4) siguen pendientes, y la cadena
-  de `recipe-photos` (assets offline) sigue siendo la **única** resolución de imagen en tiempo de
-  ejecución.
+  La **caché** de la fase 3 ya existe (`data.image`, ver el bullet de más abajo) y el adaptador real de
+  la fase 2 también, pero **nadie consume el puerto todavía**: la UI progresiva (fase 4) sigue
+  pendiente y la cadena de `recipe-photos` (assets offline) sigue siendo la **única** resolución de
+  imagen en tiempo de ejecución.
 - **Adaptador real de la imagen de plato (fase 2)**: `com.sazon.app.data.ai.image` implementa el puerto
   anterior con **Ktor Client** (la misma capa `data.ai`, única que conoce la red): `POST
   /images/generations` sobre la base del proveedor con `Authorization: Bearer <clave>`, cuerpo
@@ -557,9 +558,25 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   chat y **un solo intento** (`MAX_ATTEMPTS = 1`, sin reintento: no se gasta cuota dos veces). Contrato
   de fallo: error HTTP, timeout, fallo de transporte, cuerpo ilegible, base64 inválido o imagen
   indecodificable → **`null` sin lanzar**; la **cancelación** sí se propaga. La clave entra por
-  constructor y solo viaja en la cabecera; el adaptador **no registra nada** (sin `Log`). Sigue **sin
-  caché, sin UI y sin consumidores** (lo cablean las fases 3-4), con el formato y el tamaño fijados aquí
-  por el adaptador (ADR 0005). Ver `docs/specs/dish-image-generator.md`.
+  constructor y solo viaja en la cabecera; el adaptador **no registra nada** (sin `Log`). Sigue **sin UI
+  y sin consumidores** (lo cablea la fase 4), con el formato y el tamaño fijados aquí por el adaptador
+  (ADR 0005). Ver `docs/specs/dish-image-generator.md`.
+- **Caché de la imagen de plato (fase 3)**: `com.sazon.app.data.image` es la capa de datos que evita
+  volver a pagar cuota y esperar por la misma imagen: `DishImageResolver.imageFor(request)` orquesta
+  **memoria → disco → generador → persistir** con una `Mutex` **por clave** (dos peticiones simultáneas
+  del mismo plato no pagan dos veces), `FileDishImageCache` guarda los bytes **tal cual** (sin códec:
+  no importa `android.graphics`) como `<clave>.webp` bajo una raíz **inyectada** con **escritura
+  atómica** (temporal + `renameTo`), tope de **80 MiB** y **evicción LRU** por `lastModified` (con toque
+  de recencia al leer), y `MemoryDishImageCache` mantiene una **LRU de bytes** (16 entradas) por clave.
+  `DishImageCachePolicy` reúne constantes y la selección pura de víctimas en un único sitio, y
+  `AndroidDishImageCache.root(context) = File(context.cacheDir, "dish-images")` es el **único** fichero
+  con `android.*` (**nunca** `filesDir`: la caché es descartable). Contrato de fallo coherente con el
+  ADR 0005: `null` = no disponible (**nunca** excepción), la cancelación se propaga y la persistencia es
+  *best-effort* (si el disco falla, se devuelven igualmente los bytes generados). La caché es
+  JVM-testable con un generador falso y un directorio temporal, sin red, sin cuota y sin emulador
+  (Robolectric solo para la costura de `cacheDir`). **Sin consumidores ni cableado**: la cadena de
+  `recipe-photos` sigue siendo la única resolución en runtime; la inserción real es la fase 4. Ver
+  `docs/specs/dish-image-cache.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
@@ -628,7 +645,22 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   independiente del `locale` del dispositivo) y `DishImageRequestTest` (composición desde la Taxonomía y
   la receta, igualdad estructural, `recipeId = null` con `id` vacío o en blanco y no dependencia de la
   clasificación ni del origen). Corren en JVM con la Taxonomía real (`taxonomy.asset.path`) y **sin**
-  dependencias nuevas: no hay adaptador, ni red, ni caché, ni UI que probar.
+  dependencias nuevas: la fase 1 es política pura, sin red ni UI que probar.
+- **Tests JVM de la caché de imagen de plato (fase 3, `data.image`)**: `DishImageCachePolicyTest`
+  (nombre de fichero `<clave>.webp`, constantes del tope, y selección pura de víctimas: orden por
+  recencia con desempate por nombre —con un caso negativo que falla si el desempate se invierte—,
+  lista vacía, ya por debajo del tope y candidato mayor que el tope), `FileDishImageCacheTest`
+  (ida y vuelta, recencia al leer, escritura atómica sin temporales, evicción con un tope inyectado que
+  no sale de su raíz ni toca otra extensión, y raíz/destino no utilizables sin excepción),
+  `MemoryDishImageCacheTest` (LRU por acceso con tope de entradas, reemplazo y `clear`) y
+  `DishImageResolverTest` (con un generador falso que cuenta llamadas: la segunda petición con la misma
+  clave no genera, memoria fría → disco, sin red se sirve del disco y sin copia `null` sin escribir,
+  títulos equivalentes comparten un fichero, el fichero es la clave + `.webp` con los bytes del
+  generador, dos peticiones **concurrentes** de la misma clave pagan una sola generación, `null`/array
+  vacío/excepción del generador degradan a `null` sin persistir, y `CancellationException` se relanza).
+  `AndroidDishImageCacheTest` (Robolectric `@Config(sdk = [33])`) cubre la costura Android:
+  `root(context) == File(context.cacheDir, "dish-images")` y la resolución real escribe bajo `cacheDir`,
+  no bajo `filesDir`. Todo corre en JVM sin red, sin clave, sin cuota y sin emulador.
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
