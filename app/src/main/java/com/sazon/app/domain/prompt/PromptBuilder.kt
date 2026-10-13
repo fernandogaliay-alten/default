@@ -106,7 +106,7 @@ object PromptBuilder {
         appendLine("En \"unit\" usa solo uno de estos valores: g, ml, ud, cda, cdta, o null para \"al gusto\".")
         appendLine("La despensa básica se asume disponible y no hace falta declararla: sal, aceite, pimienta y agua.")
         appendLine()
-        appendLine("Campos opcionales de cada receta: \"dishKey\" (nombre breve y específico del plato terminado; nunca un ingrediente ni la categoría) e \"imagePrompt\" (descripción visual breve del plato terminado). Si no los envías, la app usará el título y la taxonomía.")
+        appendLine("Campos opcionales de cada receta: \"dishKey\" (nombre breve y específico del plato terminado; nunca un ingrediente ni la categoría) e \"imagePrompt\" (descripción visual breve, de una línea, del plato terminado ya cocinado y emplatado: sus ingredientes principales y su aspecto —color, textura y guarnición—, sin texto ni manos ni personas). Si no los envías, la app usará el título y la taxonomía.")
         appendLine()
         appendLine("Respeta SIEMPRE el patrón de dieta y las restricciones duras que se indican más abajo;")
         appendLine("si una receta incumple una restricción dura, descártala y propón otra.")

@@ -103,7 +103,7 @@ class DishImageRequestTest {
         assertEquals(DishImageCacheKey.of(recipe, descriptor), request.cacheKey)
         assertEquals(DishImagePrompt.build(taxonomy, recipe, descriptor), request.prompt)
         assertEquals("El recipeId no cambia con el descriptor", "seed-arroz-pollo", request.recipeId)
-        assertEquals("dish-image-v1-arroz-con-pollo", request.cacheKey)
+        assertEquals("dish-image-v2-arroz-con-pollo", request.cacheKey)
         val camposDelValor = DishImageRequest::class.java.declaredFields
             .map { it.name }
             // El companion es estatico y el compilador de Compose sintetiza `$stable`: ninguno es un

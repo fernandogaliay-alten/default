@@ -6,7 +6,8 @@
 (fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración),
 `dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5),
 `dish-style-reference` (fase 6) y `dish-image-seed` (fase 7), más el seguimiento de integración
-`dish-visual-descriptor-wiring` (entrega en runtime de la fase 5), 2026-10-13. Fija la decisión de
+`dish-visual-descriptor-wiring` (entrega en runtime de la fase 5) y la correctiva `dish-image-prompt-v2`
+(prompt de imagen v2 + diagnóstico del origen), 2026-10-13. Fija la decisión de
 arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
 real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
 delante de la cadena local con una progresión con crossfade, añade el **control de gasto** (interruptor
@@ -54,22 +55,30 @@ modo que las fases siguientes solo aporten transporte, persistencia y pintado.
    scroll. No se modela el formato ni los codecs en el dominio: WebP reducido y su extensión los
    deciden el adaptador (fase 2) y la caché (fase 3).
 3. **Prompt puro y determinista** (`DishImagePrompt`, patrón `PromptBuilder`): una sola plantilla,
-   `<prefijo> <plato>[, <cocina>], <coletilla de estilo>`, con
-   `Fotografía gastronómica de`, `plato casero` como último recurso y la coletilla de estilo
-   (`cerámica artesanal, luz natural suave, estilo editorial gastronómico, sin texto ni manos`) en un
-   único lugar. El plato degrada `título → etiqueta de categoría real → plato casero`; la cláusula de
-   cocina se **omite** si el id no existe o está vacío (nunca un marcador de "desconocida"). Conserva
+   `<prefijo> <identidad>[, <cocina>][, <detalle>][, <ingredientes clave>], <COMPOSITION>,
+   <STYLE_SUFFIX>, <NEGATIVES>`, con `Fotografía gastronómica de`, `plato casero` como último recurso,
+   `COMPOSITION` (`una ración completa del plato en primer plano, sobre fondo neutro`), `STYLE_SUFFIX`
+   (`cerámica artesanal, luz natural suave, estilo editorial gastronómico`) y `NEGATIVES` (`sin texto,
+   sin manos, sin personas, sin cubiertos ni marcas de agua, sin collage ni varios platos, sin fondo
+   recargado`) en un único lugar. La **identidad** es **siempre** el título de la receta y degrada
+   `título → etiqueta de categoría real → plato casero`; el `imagePrompt` del descriptor es el
+   **detalle**, no un sustituto del título (desde `dish-image-prompt-v2`); los **ingredientes clave**
+   (hasta `MAX_KEY_INGREDIENTS = 5`, no despensa, distintos y en el orden de la receta) y la
+   cláusula de cocina se **omiten** cuando no aportan (nunca un marcador de "desconocida"). Los
+   segmentos no vacíos se unen con `", "` y se colapsan las rachas de comas. Conserva
    mayúsculas y diacríticos: es texto para un modelo de imagen.
 4. **Clave canónica versionada del *nombre del plato*** (`DishImageCacheKey`), no del `recipe.id` ni de
    la clasificación: dos recetas del mismo plato (búsquedas distintas, regeneraciones) **comparten
    imagen** y no repiten cuota. Normalización **tipográfica** (recorte y colapso de espacios, `NFD` y
    eliminación de `\p{Mn}+`, `lowercase(Locale.ROOT)` explícito, todo fuera de `[a-z0-9]` → `-`,
-   colapso y recorte de guiones), con formato `dish-image-v1-<slug>`, apto como nombre de fichero y
+   colapso y recorte de guiones), con formato `dish-image-v2-<slug>`, apto como nombre de fichero y
    como columna de Room. `recipe.id` entra **solo como respaldo** cuando no hay título
-   (`dish-image-v1-plato-<slug-id>`) para que dos recetas sin nombre no compartan imagen, y si tampoco
-   hay `id` la clave cae a `dish-image-v1-plato`. **Subir `VERSION` es el único mecanismo de
+   (`dish-image-v2-plato-<slug-id>`) para que dos recetas sin nombre no compartan imagen, y si tampoco
+   hay `id` la clave cae a `dish-image-v2-plato`. **Subir `VERSION` es el único mecanismo de
    invalidación** cuando cambien la normalización o la plantilla del prompt: la caché se indexa por
-   clave, no por prompt. Misma disciplina que `AiRecipeIds.ALGORITHM_VERSION`.
+   clave, no por prompt. Misma disciplina que `AiRecipeIds.ALGORITHM_VERSION`. `VERSION` pasó a
+   `dish-image-v2` con `dish-image-prompt-v2` (cambio de plantilla); es la **primera** vez que la regla
+   se aplica.
 5. **La cadena local pasa a respaldo, no se retira.** La imagen generada (memoria → disco) se insertará
    **delante** de la cadena de `recipe-photos` en la fase 4. Sin red, fallo o timeout, la app sigue
    pintando exactamente lo de hoy. Sin dependencias nuevas en ninguna fase de esta política.
@@ -157,7 +166,9 @@ ganchos de la política pasan a aceptar el descriptor como **parámetro opcional
 (`DishImageCacheKey.of(recipe, descriptor)`, `DishImagePrompt.build(taxonomy, recipe, descriptor)` y
 `DishImageRequest.of(taxonomy, recipe, descriptor)`): con `dishKey` utilizable la clave es la del plato
 canónico (misma normalización; `"arroz con pollo"` y `"arroz con pollo fácil"` **comparten** imagen) y con
-`imagePrompt` el prompt cambia **solo** la cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos).
+`imagePrompt` el prompt cambiaba **solo** la cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos).
+*(Desde `dish-image-prompt-v2` el `imagePrompt` es el **detalle** y **no** sustituye al título: ver su
+alcance más abajo.)*
 `AiDecodeResult` expone los descriptores por `id` generado (`descriptors`) solo de recetas **aceptadas**
 y, desde la feature de seguimiento `dish-visual-descriptor-wiring` (2026-10-13), **sí se entregan en
 runtime**: el adaptador los expone por la costura aditiva `onDescriptors` (una vez por decode exitoso,
@@ -238,6 +249,22 @@ inventario y presupuesto **≤ 2 MiB** con `exit ≠ 0` ante cualquier desvío (
 parcial silencioso). Sin dependencias nuevas y sin capturas (`area: data`; el set es **contenido**, no
 dirección visual). Ver `docs/specs/dish-image-seed.md`.
 
+Alcance de la correctiva **`dish-image-prompt-v2`** (2026-10-13, `area: integration`): (1) la
+**plantilla v2** del prompt (identidad **siempre** = título, detalle del descriptor, ingredientes clave,
+`COMPOSITION` y `NEGATIVES` reforzados) y la instrucción más rica del `imagePrompt` en el
+`OUTPUT_CONTRACT` de `PromptBuilder` (sigue opcional, se pide descripción visual del plato terminado con
+sus ingredientes principales y su aspecto); (2) el **bump obligatorio** de `DishImageCacheKey.VERSION` a
+`dish-image-v2` y el **renombrado** (`git mv`, bytes idénticos, sin cuota) de los 6 assets semilla a
+`dish-image-v2-*.webp`, con `EXPECTED_SEED_KEYS` del script en v2 y su espejo del prompt acotado
+(título+cocina+composición+estilo+negativos; no puede reproducir las cláusulas de `imagePrompt` ni de
+ingredientes) anotado como deriva conocida; (3) el **diagnóstico de debug del origen** de la imagen
+(`data.image.DishImageOrigin` + `DishImageOriginSink`, `DishImageResolver.onResolved` aditivo con origen
+recordado por clave, `RecipeArtworkImagePrecedence.originOf`, seam `ui.artwork.DishImageOriginDiagnostics`
+y `Log.d("SazonDishImage", …)` en `MainActivity` **solo** con `BuildConfig.DEBUG`), **sin** cambiar el
+pintado, la caché, el tope ni la red. **No** se toca el puerto, el transporte, la caché, la cadena local,
+el descriptor ni la UI más allá de la llamada lateral de diagnóstico; sin dependencias nuevas y sin
+capturas (`area: integration`). Ver `docs/specs/dish-image-prompt-v2.md`.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -292,10 +319,11 @@ dirección visual). Ver `docs/specs/dish-image-seed.md`.
   no la normalización ni la forma de la plantilla. La fase 6 **tampoco**: el ajuste con referencia no
   cambia el prompt (la referencia **añade** un ancla visual, no sustituye el `STYLE_SUFFIX`), así que la
   plantilla —uno de los dos disparadores de invalidación— queda intacta. La fase 7 **tampoco** (el set
-  semilla solo añade un origen de bytes), pero subir `VERSION` cambia **todas** las claves y, con ellas,
-  los **nombres** de los assets semilla: la consecuencia documentada es **volver a preparar el set**
-  (`scripts/prepare-dish-image-seed.sh --force`) y que los `dish-image-v1-*` queden huérfanos hasta que
-  se limpien.
+  semilla solo añade un origen de bytes). La **primera** aplicación de la regla es `dish-image-prompt-v2`
+  (plantilla v2), que sube `VERSION` a `dish-image-v2`: los `.webp` de disco de la versión anterior quedan
+  **huérfanos** hasta que la LRU los evicta (acotado por el tope de 80 MiB) y los 6 **assets semilla** se
+  **renombran** (mismos bytes: no se vuelve a pagar cuota; regenerarlos con
+  `scripts/prepare-dish-image-seed.sh --force` es una decisión aparte de la persona).
 - **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3), la **costura de UI**
   (fase 4) y el **control de gasto** (fase 4, ajuste de usuario) ya existen, así que el riesgo (~2 % de
   la cuota semanal y ~4 s por imagen) **se materializa** al navegar. Está registrado en
@@ -309,7 +337,7 @@ dirección visual). Ver `docs/specs/dish-image-seed.md`.
 - **Crecimiento de almacenamiento acotado**: el tope de 80 MiB con evicción LRU deja de ser hipotético en
   la fase 3; el espacio lo ocupa `cacheDir/dish-images`, que es **descartable** por el sistema (si el
   sistema lo vacía, un acierto falla y solo se regenera, volviendo a gastar cuota: comportamiento
-  esperado). Subir `DishImageCacheKey.VERSION` deja huérfanos los `dish-image-v1-*.webp` hasta que la
+  esperado). Subir `DishImageCacheKey.VERSION` deja huérfanos los `.webp` de la versión anterior hasta que la
   LRU los evicte (acotado por el tope; una feature posterior puede borrar por prefijo de versión).
 - **La cadena de `recipe-photos` pasa a respaldo**: la imagen generada se inserta *delante* y degrada en
   silencio (fallo, lentitud, cancelación o sin red), así que el offline-first no se rompe: sin red se ve
@@ -319,11 +347,12 @@ dirección visual). Ver `docs/specs/dish-image-seed.md`.
   visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Estilo mixto transitorio por la fase 6**: como `DishImageCacheKey.VERSION` **no** sube, las imágenes
-  ya cacheadas (fases 2-5) mantienen su aspecto anterior hasta que la LRU las evicte, así que durante un
-  tiempo conviven imágenes "de texto" y "ajustadas" (sin error y sin gasto extra). Subir a
-  `dish-image-v2` las uniformaría de golpe pero **repagaría cuota** por cada plato ya cacheado; queda
-  como decisión de seguimiento (una línea con su propia evidencia) si se prefiere uniformidad a gasto.
+- **Estilo mixto transitorio por la fase 6**: como `DishImageCacheKey.VERSION` **no** subió en las fases
+  5-6, las imágenes ya cacheadas (fases 2-5) mantenían su aspecto anterior hasta que la LRU las evicta,
+  así que durante un tiempo convivían imágenes "de texto" y "ajustadas" (sin error y sin gasto extra). La
+  dicotomía queda **resuelta de facto** por `dish-image-prompt-v2`: el bump a `dish-image-v2` invalida
+  todas las claves y uniforma lo nuevo con el prompt v2 (la generada anterior se repaga **una vez** por
+  plato, acotada por la LRU y el tope por sesión), que es el coste explícito de aplicar la plantilla.
 - **Entregado y ya sin pendientes de la fase 5**: la **entrega en runtime** del descriptor la cerró
   `dish-visual-descriptor-wiring` (2026-10-13): `onDescriptors` en el adaptador + almacén de sesión en
   `data.image` + `requestFor` con `descriptorFor(recipe.id)`. La limitación viva es que el descriptor es

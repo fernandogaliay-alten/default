@@ -25,7 +25,7 @@ class FileDishImageCacheTest {
     // identico al escrito.
     @Test
     fun ida_y_vuelta_con_la_clave_canonica_como_nombre_de_fichero() {
-        val key = "dish-image-v1-arroz-con-pollo-criollo"
+        val key = "dish-image-v2-arroz-con-pollo-criollo"
         val cache = FileDishImageCache(cacheRoot())
         val bytes = webpBytes(64)
 
@@ -43,7 +43,7 @@ class FileDishImageCacheTest {
     fun read_devuelve_null_sin_crear_nada_cuando_no_hay_fichero() {
         val cache = FileDishImageCache(cacheRoot())
 
-        assertNull(cache.read("dish-image-v1-no-existe"))
+        assertNull(cache.read("dish-image-v2-no-existe"))
         assertEquals(0L, cache.totalBytes())
         assertTrue(cache.entries().isEmpty())
     }

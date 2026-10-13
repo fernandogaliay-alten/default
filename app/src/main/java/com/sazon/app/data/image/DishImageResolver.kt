@@ -38,6 +38,13 @@ import kotlinx.coroutines.withContext
  * `DishImageRequest.of(taxonomy, recipe)` (fase 1) y usa `request.cacheKey`/`request.prompt` tal cual.
  * Con `seed = null` (parametro nuevo al final, por defecto) el comportamiento es **exactamente** el de
  * la fase 3.
+ *
+ * [onResolved] es una costura **aditiva** de diagnostico (parametro nuevo al final con default no-op):
+ * se invoca con el [DishImageOrigin] resuelto ([DishImageOrigin.SEED] cuando sirven los bytes del set
+ * semilla y [DishImageOrigin.GENERATED] en memoria/disco/generador). **No** cambia los bytes devueltos,
+ * el orden de la cadena, la `Mutex` por clave ni la propagacion de la cancelacion; un fallo **no** la
+ * invoca. Para que un acierto de **memoria** sobre bytes semilla siga reportando `SEED`, el resolutor
+ * recuerda por clave el origen con el que poblo esa memoria (default `GENERATED`).
  */
 class DishImageResolver(
     private val disk: FileDishImageCache,
@@ -45,28 +52,42 @@ class DishImageResolver(
     private val generator: DishImageGenerator,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val seed: DishImageSeedSource? = null,
+    private val onResolved: (DishImageRequest, DishImageOrigin) -> Unit = { _, _ -> },
 ) {
 
     private val locks = ConcurrentHashMap<String, Mutex>()
 
+    /** Origen con el que se poblo la memoria por clave; `null` = desconocido (se asume generado). */
+    private val memoryOrigins = ConcurrentHashMap<String, DishImageOrigin>()
+
     /** Imagen de [request]: memoria, disco, semilla, generacion; `null` si no hay ninguna disponible. */
     suspend fun imageFor(request: DishImageRequest): ByteArray? {
         val cacheKey = request.cacheKey
-        memory.get(cacheKey)?.let { return it }
+        memory.get(cacheKey)?.let { bytes ->
+            onResolved(request, originOf(cacheKey))
+            return bytes
+        }
 
         val mutex = locks.computeIfAbsent(cacheKey) { Mutex() }
         return mutex.withLock {
-            memory.get(cacheKey)?.let { return@withLock it }
+            memory.get(cacheKey)?.let { bytes ->
+                onResolved(request, originOf(cacheKey))
+                return@withLock bytes
+            }
 
             val fromDisk = withContext(ioDispatcher) { disk.read(cacheKey) }
             if (fromDisk != null) {
+                remember(cacheKey, DishImageOrigin.GENERATED)
                 memory.put(cacheKey, fromDisk)
+                onResolved(request, DishImageOrigin.GENERATED)
                 return@withLock fromDisk
             }
 
             val seeded = seedOrNull(cacheKey)
             if (seeded != null) {
+                remember(cacheKey, DishImageOrigin.SEED)
                 memory.put(cacheKey, seeded)
+                onResolved(request, DishImageOrigin.SEED)
                 return@withLock seeded
             }
 
@@ -74,9 +95,19 @@ class DishImageResolver(
             if (generated == null || generated.isEmpty()) return@withLock null
 
             withContext(ioDispatcher) { disk.write(cacheKey, generated) }
+            remember(cacheKey, DishImageOrigin.GENERATED)
             memory.put(cacheKey, generated)
+            onResolved(request, DishImageOrigin.GENERATED)
             generated
         }
+    }
+
+    /** Origen recordado para [cacheKey] al poblar la memoria; `GENERATED` si no consta. */
+    private fun originOf(cacheKey: String): DishImageOrigin =
+        memoryOrigins[cacheKey] ?: DishImageOrigin.GENERATED
+
+    private fun remember(cacheKey: String, origin: DishImageOrigin) {
+        memoryOrigins[cacheKey] = origin
     }
 
     /**

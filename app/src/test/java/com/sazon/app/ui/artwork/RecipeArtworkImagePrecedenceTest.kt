@@ -1,5 +1,6 @@
 package com.sazon.app.ui.artwork
 
+import com.sazon.app.data.image.DishImageOrigin
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -48,5 +49,50 @@ class RecipeArtworkImagePrecedenceTest {
             RecipeArtworkImagePrecedence.crossfadeTarget<String>(null),
             0f,
         )
+    }
+
+    // --- Escenario 8 de `docs/specs/dish-image-prompt-v2.md` (diagnostico del origen) ---
+
+    @Test
+    fun escenario_8_el_origen_resuelto_cubre_las_cuatro_capas() {
+        assertEquals(
+            "Con generada y sin origen semilla, es generada",
+            DishImageOrigin.GENERATED,
+            RecipeArtworkImagePrecedence.originOf<String>(null, "generada", null),
+        )
+        assertEquals(
+            "Con generada y origen SEED, la imagen salio del set semilla",
+            DishImageOrigin.SEED,
+            RecipeArtworkImagePrecedence.originOf("local", "generada", DishImageOrigin.SEED),
+        )
+        assertEquals(
+            "Con generada y cualquier otro origen, la generada manda",
+            DishImageOrigin.GENERATED,
+            RecipeArtworkImagePrecedence.originOf("local", "generada", DishImageOrigin.GENERATED),
+        )
+        assertEquals(
+            "Con generada y origen CATEGORY (dato incoherente) la generada manda",
+            DishImageOrigin.GENERATED,
+            RecipeArtworkImagePrecedence.originOf(null, "generada", DishImageOrigin.CATEGORY),
+        )
+        assertEquals(
+            "Sin generada pero con foto local, es la cadena local",
+            DishImageOrigin.CATEGORY,
+            RecipeArtworkImagePrecedence.originOf("local", null, null),
+        )
+        assertEquals(
+            "Sin generada ni foto local, es el glifo",
+            DishImageOrigin.GLYPH,
+            RecipeArtworkImagePrecedence.originOf<String>(null, null, null),
+        )
+    }
+
+    @Test
+    fun escenario_8b_la_clasificacion_del_origen_es_pura_y_determinista() {
+        val primera = RecipeArtworkImagePrecedence.originOf("local", null, DishImageOrigin.SEED)
+        val segunda = RecipeArtworkImagePrecedence.originOf("local", null, DishImageOrigin.SEED)
+
+        assertEquals("Misma entrada, mismo origen", primera, segunda)
+        assertEquals(DishImageOrigin.CATEGORY, primera)
     }
 }

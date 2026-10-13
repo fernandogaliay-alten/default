@@ -216,6 +216,17 @@ class PromptBuilderTest {
             system.contains("descripción visual"),
         )
         assertTrue(
+            "El imagePrompt pide los ingredientes principales y el aspecto del plato terminado",
+            system.contains("ingredientes principales") &&
+                system.contains("aspecto") &&
+                system.contains("color") &&
+                system.contains("textura"),
+        )
+        assertTrue(
+            "El imagePrompt sigue siendo breve, de una línea y sin texto ni manos",
+            system.contains("una línea") && system.contains("sin texto ni manos"),
+        )
+        assertTrue(
             "Indica que sin descriptor la app usa título y taxonomía",
             system.contains("usará el título y la taxonomía"),
         )

@@ -3,7 +3,7 @@
 # Prepara y empaqueta el **set semilla** de imagenes de plato (fase 7 de
 # `docs/ai-dish-images-proposal.md` §5): los platos frecuentes del demo se generan **una sola vez** y se
 # versionan como assets en `app/src/main/assets/img/dishes/seed/`, con el nombre = clave canonica del
-# plato (`DishImageCacheKey.of(titulo)`, p. ej. `dish-image-v1-arroz-con-pollo-criollo`).
+# plato (`DishImageCacheKey.of(titulo)`, p. ej. `dish-image-v2-arroz-con-pollo-criollo`).
 #
 # En runtime `DishImageResolver` resuelve esos bytes por la clave canonica **entre el disco y el
 # generador**, asi que esos platos muestran su foto propia sin red y sin gastar cuota (ni la primera
@@ -25,12 +25,18 @@
 #     gastar cuota: ejecutar una vez los platos de la demo con la app y copiar `cacheDir/dish-images/`
 #     (cuyos nombres **ya son** las claves canonicas).
 #
-# El prompt se compone **espejando** `domain.image.DishImagePrompt`:
-#   `<PROMPT_PREFIX> <plato>[, <etiqueta de cocina>], <STYLE_SUFFIX>`
-# con la etiqueta de cocina leida de `docs/domain/taxonomy.json` (la misma fuente que la app) y la
-# coletilla de estilo identica; el wire espeja `data.ai.image.DishImagePolicy`. Una deriva es cosmetica
-# y queda acotada por la regla durable de `DishImageCacheKey.VERSION`: cambiar la plantilla obliga a
-# subir la version y, con ella, los **nombres** de los assets, es decir, a volver a preparar el set.
+# El prompt se compone **espejando** `domain.image.DishImagePrompt` (plantilla v2):
+#   `<PROMPT_PREFIX> <plato>[, <etiqueta de cocina>], <COMPOSITION>, <STYLE_SUFFIX>, <NEGATIVES>`
+# con la etiqueta de cocina leida de `docs/domain/taxonomy.json` (la misma fuente que la app) y las
+# coletillas identicas; el wire espeja `data.ai.image.DishImagePolicy`.
+#
+# Deriva conocida y acotada: este espejo **solo** compone titulo + cocina (el script no tiene receta ni
+# descriptor), asi que **no** puede reproducir las clausulas de `imagePrompt` ni de ingredientes clave
+# que la plantilla v2 anade cuando existen. Ademas, la coletilla se acota a titulo+cocina: los bytes del
+# set se preparan **una vez** y su contenido ya es la foto correcta del plato, de modo que la deriva es
+# cosmetica. Queda ademas acotada por la regla durable de `DishImageCacheKey.VERSION`: cambiar la
+# plantilla obliga a subir la version y, con ella, los **nombres** de los assets (el renombrado o la
+# regeneracion son decision de la persona).
 #
 # Requisitos: `curl`, `jq` y `base64` (y `devexpert.apiKey` en `local.properties`) para el modo
 # proveedor. Si hay `cwebp` o `magick`/`convert`, convierte a WebP q80 y redimensiona a 960 px de ancho
@@ -66,7 +72,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -h|--help)
-            sed -n '2,46p' "${BASH_SOURCE[0]}"
+            sed -n '2,53p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
         *)
@@ -92,12 +98,12 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 # nombre del asset y la clave real hace **fallar** el test.
 # Las 12 recetas semilla quedan **excluidas** por regla (ya resuelven su foto propia por `id`).
 EXPECTED_SEED_KEYS=(
-    dish-image-v1-arroz-con-pollo-criollo
-    dish-image-v1-paella-valenciana
-    dish-image-v1-pizza-margarita
-    dish-image-v1-hamburguesa-casera
-    dish-image-v1-tarta-de-chocolate
-    dish-image-v1-ensalada-cesar
+    dish-image-v2-arroz-con-pollo-criollo
+    dish-image-v2-paella-valenciana
+    dish-image-v2-pizza-margarita
+    dish-image-v2-hamburguesa-casera
+    dish-image-v2-tarta-de-chocolate
+    dish-image-v2-ensalada-cesar
 )
 DISH_TITLES=(
     "Arroz con pollo criollo"
@@ -118,7 +124,9 @@ DISH_CUISINES=(
 
 # --- Contrato espejado de `DishImagePrompt`/`DishImagePolicy` (un solo sitio en el repo: el codigo) ---
 PROMPT_PREFIX="Fotografía gastronómica de"
-STYLE_SUFFIX="cerámica artesanal, luz natural suave, estilo editorial gastronómico, sin texto ni manos"
+COMPOSITION="una ración completa del plato en primer plano, sobre fondo neutro"
+STYLE_SUFFIX="cerámica artesanal, luz natural suave, estilo editorial gastronómico"
+NEGATIVES="sin texto, sin manos, sin personas, sin cubiertos ni marcas de agua, sin collage ni varios platos, sin fondo recargado"
 BASE_URL="https://inference.devexpert.io/v1"
 IMAGES_EDITS_URL="$BASE_URL/images/edits"
 IMAGES_GENERATIONS_URL="$BASE_URL/images/generations"
@@ -172,15 +180,15 @@ cuisine_label() {
     jq -r --arg id "$1" '.cuisines.items[] | select(.id == $id) | .label' "$TAXONOMY_FILE" 2>/dev/null | head -1
 }
 
-# Prompt del plato $1 (indice en la lista): espejo de `DishImagePrompt.build`.
+# Prompt del plato $1 (indice en la lista): espejo (acotado) de `DishImagePrompt.build` v2.
 seed_prompt() {
     local index="$1"
     local label
     label="$(cuisine_label "${DISH_CUISINES[$index]}")"
     if [ -n "$label" ]; then
-        echo "$PROMPT_PREFIX ${DISH_TITLES[$index]}, $label, $STYLE_SUFFIX"
+        echo "$PROMPT_PREFIX ${DISH_TITLES[$index]}, $label, $COMPOSITION, $STYLE_SUFFIX, $NEGATIVES"
     else
-        echo "$PROMPT_PREFIX ${DISH_TITLES[$index]}, $STYLE_SUFFIX"
+        echo "$PROMPT_PREFIX ${DISH_TITLES[$index]}, $COMPOSITION, $STYLE_SUFFIX, $NEGATIVES"
     fi
 }
 

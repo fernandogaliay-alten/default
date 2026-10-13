@@ -23,13 +23,13 @@ class DishImageCacheKeyTest {
         val claves = nombres.map { DishImageCacheKey.of(it) }
 
         assertEquals("Las cuatro variantes deben compartir clave", 1, claves.toSet().size)
-        assertEquals("dish-image-v1-arroz-con-pollo-criollo", claves.first())
+        assertEquals("dish-image-v2-arroz-con-pollo-criollo", claves.first())
     }
 
     @Test
     fun escenario_5b_la_clave_es_un_slug_sin_diacriticos_ni_guiones_sobrantes() {
         assertEquals(
-            "dish-image-v1-salmon-a-la-plancha",
+            "dish-image-v2-salmon-a-la-plancha",
             DishImageCacheKey.of("Salmón a la plancha"),
         )
         assertEquals("salmon-a-la-plancha", DishImageCacheKey.normalize("Salmón a la plancha"))
@@ -44,7 +44,7 @@ class DishImageCacheKeyTest {
         claves.forEach { clave ->
             assertTrue(
                 "La clave '$clave' debe ser version + slug [a-z0-9-]",
-                clave.matches(Regex("^dish-image-v1-[a-z0-9]+(-[a-z0-9]+)*$")),
+                clave.matches(Regex("^dish-image-v2-[a-z0-9]+(-[a-z0-9]+)*$")),
             )
         }
     }
@@ -87,8 +87,8 @@ class DishImageCacheKeyTest {
         val conId = DishImageCacheKey.of(sinTituloConId)
         val porDefecto = DishImageCacheKey.of(sinTituloYsinId)
 
-        assertEquals("dish-image-v1-plato-seed-tortilla-patatas", conId)
-        assertEquals("dish-image-v1-plato", porDefecto)
+        assertEquals("dish-image-v2-plato-seed-tortilla-patatas", conId)
+        assertEquals("dish-image-v2-plato", porDefecto)
         assertNotEquals(
             "Dos recetas sin nombre no deben compartir imagen",
             conId,
@@ -125,8 +125,8 @@ class DishImageCacheKeyTest {
         assertEquals("plato", DishImageCacheKey.normalize(DishImageCacheKey.FALLBACK_KEY))
 
         // Un nombre sin caracteres utiles cae al respaldo por defecto, nunca a cadena vacia.
-        assertEquals("dish-image-v1-plato", DishImageCacheKey.of("🍲"))
-        assertEquals("dish-image-v1-plato", DishImageCacheKey.of(""))
+        assertEquals("dish-image-v2-plato", DishImageCacheKey.of("🍲"))
+        assertEquals("dish-image-v2-plato", DishImageCacheKey.of(""))
     }
 
     @Test
@@ -138,7 +138,7 @@ class DishImageCacheKeyTest {
             // a dispositivo; `Locale.ROOT` lo impide.
             assertEquals("i", DishImageCacheKey.normalize("I"))
             assertEquals("istanbul", DishImageCacheKey.normalize("İSTANBUL"))
-            assertEquals("dish-image-v1-istanbul", DishImageCacheKey.of("Istanbul"))
+            assertEquals("dish-image-v2-istanbul", DishImageCacheKey.of("Istanbul"))
         } finally {
             Locale.setDefault(anterior)
         }
@@ -146,10 +146,26 @@ class DishImageCacheKeyTest {
 
     @Test
     fun la_version_es_el_primer_segmento_y_la_clave_por_defecto_la_incluye() {
-        assertEquals("dish-image-v1", DishImageCacheKey.VERSION)
+        assertEquals("dish-image-v2", DishImageCacheKey.VERSION)
         assertEquals("plato", DishImageCacheKey.FALLBACK_KEY)
         assertTrue(DishImageCacheKey.of("Arroz con pollo").startsWith("${DishImageCacheKey.VERSION}-"))
         assertEquals("${DishImageCacheKey.VERSION}-${DishImageCacheKey.FALLBACK_KEY}", DishImageCacheKey.of(""))
+    }
+
+    @Test
+    fun escenario_5_la_clave_lleva_la_version_v2_y_el_alfabeto_canonico() {
+        // La cache se indexa por clave, no por prompt: al subir `VERSION` (ADR 0005) **toda** clave
+        // cambia de prefijo, de modo que lo cacheado con la version anterior queda invalidado.
+        val clave = DishImageCacheKey.of("Arroz con pollo criollo")
+
+        assertEquals("dish-image-v2", DishImageCacheKey.VERSION)
+        assertEquals("dish-image-v2-arroz-con-pollo-criollo", clave)
+        assertEquals("dish-image-v2-plato", DishImageCacheKey.of(""))
+        assertTrue(
+            "La version es el primer segmento de la clave",
+            clave.startsWith("${DishImageCacheKey.VERSION}-"),
+        )
+        assertTrue("La clave conserva el alfabeto [a-z0-9-]", clave.matches(Regex("^dish-image-v2-[a-z0-9-]+$")))
     }
 
     // --- Escenarios 5-6 de `docs/specs/dish-visual-descriptor.md` (fase 5) ---
@@ -160,7 +176,7 @@ class DishImageCacheKeyTest {
         val criollo = receta(id = "seed-criollo", title = "Arroz con Pollo Criollo!!!")
         val descriptor = DishVisualDescriptor(dishKey = "arroz-con-pollo")
 
-        assertEquals("dish-image-v1-arroz-con-pollo", DishImageCacheKey.of(facil, descriptor))
+        assertEquals("dish-image-v2-arroz-con-pollo", DishImageCacheKey.of(facil, descriptor))
         assertEquals(
             "Dos titulos distintos con el mismo dishKey comparten clave",
             DishImageCacheKey.of(facil, descriptor),
@@ -183,7 +199,7 @@ class DishImageCacheKeyTest {
             DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "arroz-con-pollo")),
         )
         assertEquals(
-            "dish-image-v1-arroz-con-pollo",
+            "dish-image-v2-arroz-con-pollo",
             DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "¡Arroz, con pollo!")),
         )
     }
@@ -220,9 +236,9 @@ class DishImageCacheKeyTest {
             )
         }
 
-        assertEquals("dish-image-v1-arroz-con-pollo", DishImageCacheKey.of(conTitulo))
-        assertEquals("dish-image-v1-plato-seed-tortilla-patatas", DishImageCacheKey.of(sinTituloConId))
-        assertEquals("dish-image-v1-plato", DishImageCacheKey.of(sinTituloNiId))
+        assertEquals("dish-image-v2-arroz-con-pollo", DishImageCacheKey.of(conTitulo))
+        assertEquals("dish-image-v2-plato-seed-tortilla-patatas", DishImageCacheKey.of(sinTituloConId))
+        assertEquals("dish-image-v2-plato", DishImageCacheKey.of(sinTituloNiId))
     }
 
     @Test
@@ -230,8 +246,8 @@ class DishImageCacheKeyTest {
         val recipe = receta(title = "Da igual")
         val clave = DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "Salmón a la Plancha"))
 
-        assertEquals("dish-image-v1-salmon-a-la-plancha", clave)
-        assertTrue(clave.matches(Regex("^dish-image-v1-[a-z0-9]+(-[a-z0-9]+)*$")))
+        assertEquals("dish-image-v2-salmon-a-la-plancha", clave)
+        assertTrue(clave.matches(Regex("^dish-image-v2-[a-z0-9]+(-[a-z0-9]+)*$")))
 
         val anterior = Locale.getDefault()
         try {

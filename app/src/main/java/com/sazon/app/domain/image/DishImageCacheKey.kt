@@ -23,10 +23,16 @@ import java.util.Locale
  */
 object DishImageCacheKey {
 
-    /** Version del algoritmo de normalizacion/clave; subirla invalida la cache de imagenes. */
-    const val VERSION = "dish-image-v1"
+    /**
+     * Version del algoritmo de normalizacion/clave; subirla invalida la cache de imagenes.
+     *
+     * `dish-image-v2`: la plantilla de [DishImagePrompt] cambio (identidad siempre + detalle del
+     * descriptor + ingredientes clave + composicion + negativos reforzados), asi que **todo** clave
+     * cambia y la cache v1 queda huerfana hasta que la LRU la evicta (regla durable del ADR 0005).
+     */
+    const val VERSION = "dish-image-v2"
 
-    /** Respaldo final cuando no hay ni titulo ni `id` utilizables (`dish-image-v1-plato`). */
+    /** Respaldo final cuando no hay ni titulo ni `id` utilizables (`dish-image-v2-plato`). */
     const val FALLBACK_KEY = "plato"
 
     private val DIACRITICS = Regex("\\p{Mn}+")
@@ -68,8 +74,8 @@ object DishImageCacheKey {
     }
 
     /**
-     * Clave de una [recipe]: titulo -> respaldo por `id` (`dish-image-v1-plato-<slug-id>`) ->
-     * respaldo por defecto (`dish-image-v1-plato`).
+     * Clave de una [recipe]: titulo -> respaldo por `id` (`dish-image-v2-plato-<slug-id>`) ->
+     * respaldo por defecto (`dish-image-v2-plato`).
      *
      * `categoryId`, `cuisineId`, `source` y `id` **no** influyen cuando hay titulo util.
      *

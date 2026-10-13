@@ -135,8 +135,12 @@ aplicar el Validador; `matchScore` lo deriva la app en memoria y no se persiste.
   normalización tipográfica que el título): dos variantes del mismo plato (`"arroz con pollo"` y
   `"arroz con pollo fácil"`) comparten imagen. Un `dishKey` demasiado grueso (`"pollo"`) hace que platos
   distintos compartan imagen, así que la especificidad importa.
-- `imagePrompt`: una **descripción visual breve** del plato terminado, que la app usa como texto del
-  prompt de imagen.
+- `imagePrompt`: una **descripción visual breve y de una línea** del plato terminado —ingredientes
+  principales y aspecto (color, textura, guarnición)—, **sin texto ni manos ni personas**. La app lo usa
+  como **detalle** del prompt de imagen: el **título de la receta es siempre la identidad** del prompt y
+  este campo se añade después, junto a los ingredientes clave, la composición y los negativos. **No**
+  sustituye al título (cambio de `dish-image-prompt-v2` respecto a la fase 5), de modo que el prompt
+  sigue siendo reconocible aunque el modelo describa el plato con otras palabras.
 
 La app **normaliza** estos campos (colapsa espacios y descarta los inútiles) y **no los valida**: son
 información **cosmética del modelo**, **no** forman parte de `Recipe`, **no** se persisten y **no**
@@ -181,12 +185,15 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   tiempo de ejecución.
 - **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4)**: la app pide al
   proveedor la imagen del plato (`data.ai.image`), la resuelve por `data.image` (memoria → disco →
-  **assets semilla** → generador real, con la clave canónica del nombre del plato —o del `dishKey` del
-  modelo cuando existe, descriptor de la fase 5—) y `ui.artwork.RecipeArtwork` la pinta
+  **assets semilla** → generador real, con la clave canónica `dish-image-v2-…` del nombre del plato —o
+  del `dishKey` del modelo cuando existe, descriptor de la fase 5— y el prompt v2 de
+  `domain.image.DishImagePrompt`: título como identidad + detalle del descriptor + ingredientes clave +
+  composición + negativos) y `ui.artwork.RecipeArtwork` la pinta
   **por delante** de la cadena de assets con un crossfade, sin cambiar la firma, la geometría ni los 5
-  puntos de uso. Los **platos frecuentes del demo** tienen desde la fase 7 (`dish-image-seed`) su foto
+  puntos de uso. En depuración, el **origen resuelto** (`GENERATED`/`SEED`/`CATEGORY`/`GLYPH`) es
+  observable en logcat (`SazonDishImage`) sin alterar el pintado; en release no se emite nada. Los **platos frecuentes del demo** tienen desde la fase 7 (`dish-image-seed`) su foto
   **preparada de antemano y versionada** (`app/src/main/assets/img/dishes/seed/<clave canónica>.<ext>`,
-  `data.DishImageSeedAssets` + `data.AssetDishImageSeedSource`), de modo que se resuelven **sin red y
+  ya `dish-image-v2-…`, `data.DishImageSeedAssets` + `data.AssetDishImageSeedSource`), de modo que se resuelven **sin red y
   sin gastar cuota** (ni la primera vez) y **sin** duplicar bytes en `cacheDir`; ese nivel va entre el
   disco y el generador y queda detrás del mismo interruptor. Si no está disponible (sin red, fallo,
   timeout o cancelación) se **conserva la foto

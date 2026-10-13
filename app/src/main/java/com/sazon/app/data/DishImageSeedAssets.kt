@@ -61,8 +61,8 @@ object DishImageSeedAssets {
      * (`webp` -> `jpg` -> `png`). Devuelve `null` si la clave no es segura o si no existe ninguna
      * extension: nunca lanza ni devuelve una ruta vacia.
      *
-     * `resolve("dish-image-v1-arroz-con-pollo-criollo", exists)` devuelve
-     * `"img/dishes/seed/dish-image-v1-arroz-con-pollo-criollo.<ext>"` con la primera extension
+     * `resolve("dish-image-v2-arroz-con-pollo-criollo", exists)` devuelve
+     * `"img/dishes/seed/dish-image-v2-arroz-con-pollo-criollo.<ext>"` con la primera extension
      * existente. [root] por defecto es [ROOT] (misma raiz que usa la app en runtime).
      */
     fun resolve(

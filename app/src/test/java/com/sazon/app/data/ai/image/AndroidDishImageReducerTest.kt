@@ -106,7 +106,7 @@ class AndroidDishImageReducerTest {
         )
 
         val webp = generator.generate(
-            DishImageRequest(cacheKey = "dish-image-v1-plato", prompt = "Fotografía gastronómica de un plato"),
+            DishImageRequest(cacheKey = "dish-image-v2-plato", prompt = "Fotografía gastronómica de un plato"),
         )
 
         assertNotNull("El adaptador real debe devolver la imagen reducida", webp)
