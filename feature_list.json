@@ -882,5 +882,19 @@
       "Verificación manual de emulador (Scenario 1-3) pendiente de la persona conforme a AGENTS.md (no se automatiza UI de emulador): titular 'Estadísticas' y tarjetas sin navegación, en claro y oscuro y con contadores poblados y 0/0, contra la captura aceptada docs/design/concepts/activity-summary/perfil-resumen/."
     ],
     "notes": "Feature correctiva de activity-summary, pedida por la persona (2026-10-13). Motivo: tras guardar dos recetas generadas por IA, el Perfil mostraba '2 favoritas' bajo el titular 'Resumen', que no dejaba claro que esas tarjetas son solo estadística (no navegables); la persona pidió un titular que lo explicite. Cambio: el literal 'Resumen' de ActivitySummarySection pasa a 'Estadísticas' (solo microcopy; el Non-Goal 'no se añade navegación' de docs/specs/activity-summary.md sigue intacto). Desviación de capturas autorizada por la persona: no se crea docs/design/concepts/profile-stats-heading/; la dirección visual es la captura aceptada docs/design/concepts/activity-summary/perfil-resumen/ y el nuevo titular se registra en DESIGN.md. Estado accepted: validado de forma independiente con veredicto accept (sesión 084; ver PROGRESS.md). Ver docs/specs/profile-stats-heading.md."
+  },
+  {
+    "id": "dish-image-domain",
+    "area": "domain",
+    "title": "Puerto y prompt determinista de imagen de plato",
+    "user_visible_behavior": "Dada una Receta, la app dispone de un prompt de imagen y de una clave canónica deterministas; la generación real, su caché y su representación en pantalla llegan en fases posteriores.",
+    "depends_on": ["recipe-domain-model", "taxonomy-in-code"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' comprueba que el prompt de imagen es determinista y no vacío a partir de una Receta, y que la clave canónica normaliza el nombre del plato y es estable",
+      "Un test negativo comprueba que una receta incompleta (sin título ni categoría) no lanza y degrada a un prompt por defecto"
+    ],
+    "evidence": [],
+    "notes": "Fase 1 de docs/ai-dish-images-proposal.md. Lógica pura en com.sazon.app.domain.image (puerto DishImageGenerator, DishImagePrompt y DishImageCacheKey) sin Android ni red, testeada en JVM. Sin UI, sin adaptador real, sin caché, sin persistencia y sin dependencias nuevas (no-goals). Ver docs/ai-dish-images-proposal.md."
   }
 ]
