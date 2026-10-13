@@ -175,6 +175,16 @@
   `clickable`/`onClick`. La desviación de capturas está autorizada (issue #86, misma clase que
   `recipe-artwork` #77) y registrada en `DESIGN.md`; **no** se crea
   `docs/design/concepts/profile-stats-heading/`. WIP = 0.
+- Última feature **`accepted`** — **`home-recently-opened-group`** (issue #91, `area: ui`, correctiva de
+  `home-offline-blocks`, pedida por la persona): implementada y autoverificada (**`passing`**) en la
+  sesión 085 y **`accepted`** en la sesión 086 (validación independiente, veredicto `accept`, rama
+  `feature/home-recently-opened-group`; ver `docs/validations/home-recently-opened-group.md`). El
+  bloque "Tus recetas" de la Home **solo pinta los grupos con contenido** (hoy, "Guardadas") y su
+  `HomeRecipesGroup` ya no pinta ni título ni carrusel sin recetas; la costura muerta
+  `HomeRecipes.recentlyOpened` (sin productor: `MainShell` la rellenaba con `emptyList()`) se **retira**
+  y `HomeRecipesTest` queda en 7 casos (net −1). `DESIGN.md` registra la estructura vigente y la
+  desviación de capturas (issue #91, misma clase que #77/#85/#86); no se crea
+  `docs/design/concepts/home-recently-opened-group/`. Sin dependencias nuevas. WIP = 0.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
   Studio (Windows): con clave válida, generar/buscar y comprobar en logcat (`SazonAi`) el detalle
   enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`) y el modo de
@@ -2625,7 +2635,7 @@
   semilla, interruptor, entrada de la variante C) siguen abiertas y **no** se deciden aquí.
 - Siguiente paso: validación independiente de `dish-image-domain` (`passing`); después, **commit local** de
   la rama (orquestador de `feature-flow`) y publicación (push + PR contra `main`, sin merge) por
-  `github-flow`.
+  github-flow.
 
 ### Sesión 086
 
@@ -2669,3 +2679,118 @@
 - Siguiente paso: publicar la rama `feature/dish-image-domain` (push + PR `[dish-image-domain] …` con
   `Closes #90`), que lo hace el orquestador de `github-flow`; no hay siguiente feature (`feature_list.json`
   queda **entero** `accepted`, el plan sigue cerrado).
+
+### Sesión 087
+
+- Fecha: 2026-10-13
+- Objetivo: implementar y autoverificar `home-recently-opened-group` (issue #91, correctiva de
+  `home-offline-blocks`) según `docs/specs/home-recently-opened-group.md`. Ejecutada por el subagente
+  **implementer** en la rama `feature/home-recently-opened-group` (worktree); **sin commit, push ni PR**
+  (el commit lo hace el orquestador de `feature-flow`; la publicación es de `github-flow`).
+- Completado:
+  - **Costura pura** (`ui/home/HomeRecipes.kt`): se retira `recentlyOpened` (muerta: `MainShell` la
+    alimentaba con `emptyList()` literal y ninguna feature registra `lastOpenedAt`); `isEmpty =
+    saved.isEmpty()` y `filteredBy` acota solo `saved`; KDoc actualizado.
+  - **Capa Compose** (`ui/home/HomeScreen.kt`): `RecipesSection` usa `allRecipes = recipes.saved`, ya
+    **no** invoca el grupo "Abiertas hace poco" e invoca "Guardadas" sin condicionar su no-vacuidad en
+    el call site (el guard vive en el componente); `HomeRecipesGroup` arranca con `if (recipes.isEmpty())
+    return` y KDoc "nunca un grupo sin contenido" (ese era el defecto: el título se pintaba siempre).
+  - **Integración** (`ui/MainShell.kt`): `HomeRecipes(saved = favorites.map { it.recipe })`, sin el
+    literal `recentlyOpened = emptyList()`.
+  - **Tests** (`app/src/test/.../HomeRecipesTest.kt`): se elimina
+    `con_una_receta_abierta_hace_poco_el_bloque_no_esta_vacio` y se adaptan los **7** restantes al modelo
+    de un grupo (`sin_guardadas_el_bloque_esta_vacio`, `con_una_receta_guardada_el_bloque_no_esta_vacio`,
+    `filtered_by_categoria_filtra_las_guardadas`, frontera 30 de "Rápido", "Todas" conserva, sin
+    coincidencias → `isEmpty`, `filteredBy` no muta el original). Net −1 test; ninguno pasa en vacío.
+  - **Docs**: `DESIGN.md` (Core Screen 2 = "Tus recetas" solo lista grupos con contenido + párrafo de
+    excepción de capturas de `home-recently-opened-group`, **issue #91**) y `docs/technical-discovery.md`
+    (una frase de coherencia: `HomeRecipes` conserva un único grupo `saved` y la Home solo pinta grupos
+    con contenido).
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.ui.home.*"` (BUILD SUCCESSFUL, 2m22s) y el gate completo **`bash init.sh` → exit 0**
+  (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin procesos largos). Parseo propio de
+  los XML (`app/build/test-results/testDebugUnitTest/TEST-*.xml`) y del informe de lint.
+- Evidencia capturada: **65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados**; `HomeRecipesTest`
+  **7** tests (8 → 7: cabecera HEAD del fichero con 8 `@Test`, ahora 7 → **net −1**; el resto de ficheros
+  de test no cambia, así que la cabecera de este worktree era 476 tests). Lint: **0 errores, 13 warnings
+  preexistentes** (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+  OldTargetApi 1), **0 localizados bajo `app/src`**. Greps de inspección: `grep -rn "recentlyOpened"
+  app/src` → **0**; `grep -rn "Abiertas hace poco" app/src` → **0**; `MainShell.HomeRecipes` ya solo lleva
+  `saved`; `test -d docs/design/concepts/home-recently-opened-group` → **no existe**. `git diff --stat`
+  solo con los 6 ficheros previstos (3 de `ui/home`+`MainShell`, el test, `DESIGN.md` y
+  `docs/technical-discovery.md`); `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`,
+  `scripts/**`, `ui.theme`, `ui.filters`, `domain/**`, `data/**` y las specs aceptadas
+  (`home-offline-blocks`, `local-result-filters`, `favorites`) **sin diff**; ficheros tocados en UTF-8
+  **sin BOM**; sin dependencias ni infra de tests nueva; sin commit/push/PR.
+- Honestidad de cobertura: el no-pintado del grupo vacío vive en `HomeRecipesGroup` (Compose) y **no** es
+  testeable en JVM; la infra de Compose UI del repo es **instrumentada** (`androidTest`, fuera de
+  `init.sh` y no ejecutable desde WSL) y esta feature **no** la toca. Queda cubierto por inspección + la
+  prueba manual exigida en el emulador (Scenarios 1-3 y 6, claro/oscuro), que revisa la persona.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/home/HomeRecipes.kt`,
+  `app/src/main/java/com/sazon/app/ui/home/HomeScreen.kt`,
+  `app/src/main/java/com/sazon/app/ui/MainShell.kt`,
+  `app/src/test/java/com/sazon/app/ui/home/HomeRecipesTest.kt`, `DESIGN.md`,
+  `docs/technical-discovery.md`, `feature_list.json` (`home-recently-opened-group` a `passing`) y este
+  registro. Nada nuevo (la spec es del planner).
+- Hallazgos relevantes: la referencia de conteo que citaba la spec (sesión 084: 64 suites / 456 tests →
+  ≈455) era de **otro estado del repositorio** (el checkout base en esa fecha); en **este worktree** el
+  gate observado es 65 suites / **475** tests (476 en HEAD tras retirar el caso). La spec ya lo anticipaba
+  ("la evidencia histórica muestra conteos distintos por worktree; el implementer registra el
+  observado"). El número de issue (#91) sí estaba disponible vía `gh`, así que el párrafo de `DESIGN.md`
+  lo cita como los vecinos. Nota de tensión ya documentada: `docs/design/stitch/prompt` y las capturas
+  pendientes de la Home **sí** describen "Abiertas hace poco"; no se editan (fuera de alcance) y la
+  diferencia queda cubierta por el registro en `DESIGN.md`.
+- Riesgo o incógnita abierta: la **verificación manual** de la persona en el emulador de Windows con al
+  menos una receta guardada ("Tus recetas" muestra "Guardadas" y **no** "Abiertas hace poco"), sin
+  recetas (solo título + "Cuando guardes una receta aparecerá aquí.") y con un filtro sin coincidencias
+  ("No hay recetas con este filtro." y ningún grupo vacío), en claro y oscuro; no es automatizable desde
+  WSL. Un defecto visual se corrige con una feature correctiva. El grupo "Abiertas hace poco" volverá
+  cuando exista una feature que registre `lastOpenedAt` (reintroducirá la costura y su microcopy).
+- Siguiente paso: validación independiente de `home-recently-opened-group` (`passing`); después, **commit
+  local** de la rama (orquestador de `feature-flow`) y publicación (push + PR, sin merge) por
+  github-flow.
+
+### Sesión 088
+
+- Fecha: 2026-10-13
+- Objetivo: validar de forma independiente `home-recently-opened-group` y persistir la aceptación.
+  Ejecutada por el orquestador de `feature-flow` en la rama `feature/home-recently-opened-group`
+  (worktree); solo hasta-aceptación, **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio (rol `validator`,
+  `feature-validator`); `feature_list.json` pasa a `accepted` con evidencia que nombra la validación
+  independiente; registrado el detalle en `docs/validations/home-recently-opened-group.md`. Sin cambios
+  de código tras la validación (solo estado/evidencia y este registro).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0; al verlo `UP-TO-DATE` no lo
+  tomó como evidencia) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**34/34 tareas**,
+  BUILD SUCCESSFUL) y `bash scripts/gradle.sh lint --rerun-tasks` (**30/30 tareas**); parseó por su cuenta
+  los XML y el informe de lint, e inspeccionó el código real.
+- Evidencia capturada: **65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados**; `HomeRecipesTest`
+  **7** tests verdes (ninguno vacío), reproduciendo el número del implementer; lint **0 errores, 13
+  warnings** preexistentes (0 bajo `app/src`). Conformidad confirmada por inspección: `HomeRecipesGroup`
+  arranca con `if (recipes.isEmpty()) return`; `RecipesSection` usa `allRecipes = recipes.saved`, ya no
+  invoca "Abiertas hace poco" y llama a "Guardadas" sin condicionar su no-vacuidad en el call site;
+  `HomeRecipes` con un único grupo `saved`; `MainShell` sin `recentlyOpened`; greps `recentlyOpened` y
+  "Abiertas hace poco" en `app/src` → **0**; `test -d docs/design/concepts/home-recently-opened-group` →
+  **no existe** (exención autorizada #91); `DESIGN.md` registra la estructura vigente y el párrafo de
+  excepción (#91, tras #86). Disciplina de alcance intacta (sin diff en build/lockfile/`init.sh`/
+  `scripts/**`/`ui.theme`/`ui.filters`/dominio/`data/**`/specs aceptadas; sin dependencias nuevas; UTF-8
+  sin BOM). Confirmó que el implementer no hizo commit/push/PR (HEAD == `origin/main`, sin upstream ni
+  PR).
+- Hallazgos del validador (Low/informativos, ninguno bloqueante): el guard de no-pintado vive en Compose y
+  **no** es testeable en JVM (declarado con honestidad en spec y evidencia; la infra Compose UI del repo
+  es `androidTest`, fuera de `init.sh`); quedan referencias históricas a "Abiertas hace poco" en
+  `CONTEXT.md`, `docs/domain-model.md`, `docs/design/stitch*/**`, las capturas pendientes de la Home,
+  `docs/backend-proposal.md` y specs aceptadas (vocabulario/intención histórica, non-goal declarado;
+  manda `DESIGN.md`); la verificación manual de emulador queda pendiente de la persona. Seguridad: sin
+  hallazgos (diff solo UI Compose local). Sin hallazgos Critical/High/Medium.
+- Riesgo o incógnita abierta: la **verificación manual** de la persona en el emulador de Windows con al
+  menos una receta guardada ("Tus recetas" muestra "Guardadas" y **no** "Abiertas hace poco"), sin recetas
+  (solo título + "Cuando guardes una receta aparecerá aquí.") y con un filtro sin coincidencias ("No hay
+  recetas con este filtro." y ningún grupo vacío), en claro y oscuro; no es automatizable desde WSL. Un
+  defecto visual se corrige con una feature correctiva. El grupo "Abiertas hace poco" volverá cuando exista
+  una feature que registre `lastOpenedAt`.
+- Siguiente paso: **commit local** de la rama `feature/home-recently-opened-group` (lo hace el orquestador
+  de `feature-flow`, incluyendo la spec y `docs/validations/home-recently-opened-group.md`); la
+  publicación (push + PR con `Closes #91`, sin merge) queda para `github-flow`. En orden de lista, la
+  siguiente feature candidata es `dish-image-domain` (`not_started`, dependencias
+  `recipe-domain-model`/`taxonomy-in-code` ya `accepted`).

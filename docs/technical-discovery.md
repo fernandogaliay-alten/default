@@ -148,11 +148,12 @@ por keywords**, asi que un ingrediente libre no se excluye. `ResultFilterRow` es
 (`FilterChip` de Material 3, sin dependencias nuevas) con "Todas" primero, una chip por categoria
 **presente** en las recetas (orden de `taxonomy.recipeCategories`), y "Rápido"/"Vegetariano" agrupados
 al final y con el acento oliva (`secondary`) cuando estan seleccionados, para distinguirlos de las
-categorias (terracota/`primary`). Se aplica al bloque "Tus recetas": `HomeRecipes.filteredBy(filter,
-taxonomy)` acota cada grupo de forma independiente y `HomeScreen` guarda la seleccion con
-`rememberSaveable` + `Saver` (clave/`fromKey`), pinta la fila y el estado "sin resultados para este
-filtro"; si el bloque llega **vacio** solo pinta la linea de usuario nuevo (sin chips). La logica es
-**reutilizable** por `favorites`. Ver `docs/specs/local-result-filters.md`.
+categorias (terracota/`primary`). Se aplica al bloque "Tus recetas": `HomeRecipes` conserva un unico
+grupo (`saved`, alimentado por los Favoritos) y `HomeRecipes.filteredBy(filter, taxonomy)` lo acota;
+`HomeScreen` guarda la seleccion con `rememberSaveable` + `Saver` (clave/`fromKey`), pinta la fila y el
+estado "sin resultados para este filtro", y **solo pinta los grupos con contenido** (un grupo sin
+recetas no pinta ni titulo ni carrusel); si el bloque llega **vacio** solo pinta la linea de usuario
+nuevo (sin chips). La logica es **reutilizable** por `favorites`. Ver `docs/specs/local-result-filters.md`.
 
 El **paso de ingredientes del Generador** vive en `com.sazon.app.ui.generator`. La logica/estado es
 **pura** y testeable en JVM: `GeneratorIngredient` (ingrediente anadido: de la Taxonomia si
