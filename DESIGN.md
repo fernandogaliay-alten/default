@@ -176,6 +176,17 @@ de `home-offline-blocks`, backfill pendiente) y se limita a **cambiar de dónde 
 más la sección **Imagen de receta** de `Components` (más abajo), contra las que se revisa el acabado en
 el emulador tras el merge.
 
+**Excepción de capturas (desviación documentada, issue #101):** `dish-image-settings-toggle` **no**
+genera capturas nuevas ni carpeta `docs/design/concepts/dish-image-settings-toggle/`. Es la **mitad de
+ajuste** de la fase 4 de `docs/ai-dish-images-proposal.md`: **no** introduce pantalla, navegación,
+layout, geometría ni estilo nuevos — **reutiliza el estilo de ajustes ya existente** de la pantalla
+Perfil (título `titleMedium`, fila label + resumen, tokens del tema) y solo añade un `Switch` de
+`material3` y una línea de microcopy con el **tope por sesión**. La dirección visual aplicable es este
+documento más las capturas aceptadas del Perfil (`activity-summary: perfil-resumen`) y el **backfill
+pendiente** de `profile-screen` (`perfil`, `perfil-editar`; ver
+`docs/design/concepts/profile-screen/README.md`), contra las que se revisa el acabado en el emulador
+tras el merge.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -286,8 +297,22 @@ nada lo es.
     decodificadas) → `data.image.DishImageResolver` → `FileDishImageCache` (80 MiB en
     `cacheDir/dish-images`) / `MemoryDishImageCache` / `data.ai.image.DevExpertDishImageGenerator`; en
     paralelo, la cadena local `LocalRecipePhotoSource` → `data.AssetRecipePhotoSource` como **respaldo**
-    (y el degradado + glifo como **último recurso**). Ver `docs/adr/0005-ai-dish-images.md` y
+    (y el degradado + glifo como **último recurso**). El proveedor del seam (en `MainActivity`) **gatea
+    el interruptor** (`DishImageSettings.generatedIfEnabled`: apagado = `null` sin leer caché ni
+    generar) y el generador real va envuelto por `GatedDishImageGenerator`, que impone el **tope por
+    sesión** (`DishImageSettingsPolicy.MAX_GENERATIONS_PER_SESSION`) en el borde de generación:
+    agotado = `null` sin invocar al delegado. Ver `docs/adr/0005-ai-dish-images.md` y
     `docs/technical-discovery.md`.
+- **Ajuste de imagen de plato** (`ui.profile.DishImageSettingsSection`, feature
+  `dish-image-settings-toggle`): sección al **final** del Perfil con el estilo de sección ya existente
+  (título `titleMedium`; fila label `bodyLarge` + resumen `bodyMedium`/`onSurfaceVariant` + helper
+  `labelSmall`; `SazonSpacing.md`; ≥48dp). Interruptor **"Generar imágenes del plato"** (`Switch` de
+  `material3`) en una fila `toggleable` con `role = Role.Switch`, de modo que la fila entera es el
+  control y el `Switch` solo refleja el estado (no depende solo del color). El resumen del **tope por
+  sesión** sale de un objeto puro (`DishImageSettingsCopy`): "Quedan N de 12 imágenes en esta sesión.",
+  "Queda 1 de 12 imágenes en esta sesión." (singular), "Tope de esta sesión alcanzado (12 de 12). Se
+  reanudará al reiniciar la app." y "Desactivado: se usa solo la foto local."; helper "Las imágenes
+  nuevas se generan con IA y consumen cuota; las que ya existen se reutilizan.".
 - **FilterChip**: fila desplazable; seleccionado relleno de terracota. En Favoritos el chip de orden
   por defecto se lee **"Recientes"** (microcopy corto, sin recorte; feature `favorites-sort-controls`).
 - **Toggle lista/rejilla de Favoritos** (`ViewModeToggle`, feature `favorites-sort-controls`): píldora
@@ -332,7 +357,10 @@ nada lo es.
    (alimentación, estilo, cocinas, ingredientes que me gustan e ingredientes que evito), comensales
    habituales, tarjeta ámbar de alérgenos, bloque de cifras titulado **"Estadísticas"** (recetas
    generadas y favoritas, informativas y **no navegables**), acción "Actualizar sugerencias" con la
-   fecha del último refresco, y ajustes.
+   fecha del último refresco, y al final la sección **"Imágenes del plato"**: interruptor **"Generar
+   imágenes del plato"** con el tope **por sesión** visible ("Quedan N de 12 imágenes en esta sesión.")
+   y el helper de cuota. No es una preferencia culinaria: es un ajuste de app, colocado al final para
+   no reordenar las secciones aceptadas.
 
 ## Responsive Baseline
 

@@ -429,6 +429,25 @@
   hasta la fase 4. Detalle en `docs/validations/dish-image-cache.md`. WIP = 0. La **fase 4**
   (`dish-image-progressive-ui`, `area: ui`) es la siguiente del plan y exige capturas de referencia antes
   de implementar.
+- Última feature **`accepted`** — **`dish-image-progressive-ui`** (fase 4, **mitad de integración** de
+  `docs/ai-dish-images-proposal.md`, issue #98, `area: integration`): cerrada en la **sesión 092** con
+  validación independiente (veredicto `accept`, rama `feature/dish-image-progressive-ui`; la sesión 092
+  la dejó `passing`).
+- Última feature **`accepted`**: **`dish-image-settings-toggle`** (fase 4, **mitad de UI** de
+  `docs/ai-dish-images-proposal.md`, issue #101, `area: ui`), cerrada en la **sesión 093** con
+  validación independiente (veredicto `accept`, rama `feature/dish-image-settings-toggle`; la sesión 093
+  la dejó `passing`). Aporta el **interruptor** de generación en Perfil ("Imágenes del plato"), el **tope
+  por sesión** (12) impuesto por un decorador del puerto y el microcopy puro del tope; en memoria
+  (sesión = proceso, sin persistencia), **sin pantalla nueva**, sin dependencias y con **desviación de
+  capturas autorizada** registrada en `DESIGN.md` (issue #101, misma clase que #77/#85/#86/#91/#98; **no**
+  se crea `docs/design/concepts/dish-image-settings-toggle/`). Gate: `bash init.sh` exit 0, **84 suites /
+  593 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD` 81/562; delta +3 suites / +31 tests),
+  lint 0 errores y 13 warnings preexistentes (ninguno bajo `app/src`). Con esto, la **fase 4** de la
+  propuesta de imágenes de plato queda **completa** (integración + ajuste de usuario). WIP = 0. Detalle en
+  `docs/validations/dish-image-settings-toggle.md`. Queda pendiente la **prueba manual en emulador** de la
+  persona tras el merge (apagar el interruptor deja de generar imágenes nuevas, encender las reanuda, el
+  tope baja al generar y vuelve a 12 al reiniciar la app), no automatizable desde WSL. Las fases 5-7
+  (`dish-visual-descriptor`, `dish-style-reference`, `dish-image-seed`) siguen `not_started`.
 
 ## Registro de sesiones
 
@@ -3059,3 +3078,85 @@
   orquestador). Después, la **fase 4, mitad de UI** (`dish-image-settings-toggle`, `area: ui`) es la
   siguiente feature del plan (interruptor + tope por sesión) y **sí** requiere capturas o desviación
   autorizada registrada en `DESIGN.md`. `github-flow` publica la rama (push + PR con `Closes`, sin merge).
+
+### Sesión 093
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-implementer` para `dish-image-settings-toggle` (fase 4, **mitad de UI** de
+  `docs/ai-dish-images-proposal.md`: **interruptor** de generación + **tope por sesión**) en el worktree
+  `feature/dish-image-settings-toggle`. **Sin commit, push ni PR** (el commit lo hace el orquestador de
+  `feature-flow`; publica `github-flow`). `area: ui`; **desviación de capturas autorizada** por la persona
+  (2026-10-13, misma clase que #77/#85/#86/#91/#98): **no** se crea
+  `docs/design/concepts/dish-image-settings-toggle/` ni su `README.md`.
+- Completado (rol **implementer**): la feature queda **`passing`** (validación independiente pendiente).
+  El ajuste se gobierna en **dos puntos** (decisión cerrada del spec): (a) el proveedor del seam en
+  `MainActivity` gatea el **interruptor** (`DishImageSettings.generatedIfEnabled`: apagado = `null` sin
+  leer caché ni generar, solo foto local) y (b) el generador real va envuelto por
+  `GatedDishImageGenerator` (decorador del puerto), que **reserva** una unidad **antes** de invocar al
+  delegado y devuelve `null` **sin invocarlo** si el interruptor está apagado o el tope agotado.
+- Ficheros creados: `data/image/DishImageGenerationBudget.kt` (contador atómico con reserva estricta,
+  tope inyectable) y `data/image/DishImageSettings.kt` (`DishImageSettingsPolicy` con
+  `DEFAULT_ENABLED = true` y `MAX_GENERATIONS_PER_SESSION = 12` en un único sitio, patrón
+  `AiProviderPolicy`; `DishImageSettingsState` con `remaining`/`exhausted` derivados; `DishImageSettings`
+  con **interruptor** + `state: StateFlow` + `generatedIfEnabled` genérico; y `GatedDishImageGenerator`);
+  `ui/profile/DishImageSettingsCopy.kt` (microcopy puro y determinista: singular/plural, tope alcanzado y
+  apagado) y `ui/profile/DishImageSettingsSection.kt` (Compose delgada: título `titleMedium` + fila
+  `toggleable(role = Role.Switch)` con label `bodyLarge`, resumen `bodyMedium`/`onSurfaceVariant`, helper
+  `labelSmall`, `SazonSpacing.md`, ≥48dp y `Switch(onCheckedChange = null)`; sin iconos ni hex).
+  Tests: `DishImageGenerationBudgetTest` 7, `DishImageSettingsTest` 16, `DishImageSettingsCopyTest` 8.
+- Ficheros modificados: `MainActivity.kt` (crea `DishImageSettings` por proceso, envuelve el generador
+  real y gatea el proveedor del seam), `ui/SazonApp.kt` y `ui/MainShell.kt` (reparto por parámetro;
+  `MainShell` observa `state.collectAsState()` y pasa estado + callback a `ProfileScreen`),
+  `ui/profile/ProfileScreen.kt` (2 parámetros nuevos + el `item` de la sección **al final** del
+  `LazyColumn`, para no reordenar ninguna sección aceptada) y los 4 docs durables.
+- Verificación ejecutada: `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`; sin procesos largos, sin red, sin cuota, sin tocar `init.sh`). Parseo propio de los
+  XML (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **84 suites / 593 tests / 0 fallos /
+  0 errores / 0 saltados**. Baseline en `HEAD` (`c0cb069`) **re-derivada** por grep propio: 81 suites /
+  562 tests → delta **+3 suites / +31 tests** (`DishImageGenerationBudgetTest` 7,
+  `DishImageSettingsTest` 16, `DishImageSettingsCopyTest` 8). Tiradas focales: `--tests
+  "com.sazon.app.data.image.*"` → **7 suites / 57 tests** (las 5 aceptadas de la fase 3 + las 2 nuevas) y
+  `--tests "com.sazon.app.ui.profile.*"` → **3 suites / 28 tests** (`DishImageSettingsCopyTest` 8 +
+  `ProfileEditStateTest` 9 + `SuggestionsRefreshFormatTest` 11), ambas `BUILD SUCCESSFUL`. Lint (SARIF
+  `app/build/reports/lint-results-debug.sarif`): **0 errores** y **13 warnings** preexistentes
+  (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2, `OldTargetApi` 1),
+  **0 bajo `app/src`**.
+- Inspección de pureza y alcance: los 2 ficheros nuevos de `data.image` **no** importan `android.*` /
+  `androidx.*` (solo `AtomicInteger` y `kotlinx.coroutines.flow` + `domain.image`); `ui/artwork/**` **sin
+  diff** y `RecipeArtwork` conserva la firma `(recipe, modifier, glyphSize)` con los **5 puntos de uso**
+  intactos; sin cambios en `data/image` aceptado, `data/ai/image/**`, `domain/**`, `ui/theme/**`,
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**`, `AndroidManifest.xml`,
+  `assets/**` ni `seed-recipes.json`; sin dependencias nuevas; `Switch`/`toggleable` solo en la sección
+  nueva y **0 hex** sueltos; `docs/design/concepts/dish-image-settings-toggle/` **no existe**.
+- Hallazgos relevantes: (a) el tope **no** se consume con los aciertos de memoria/disco (el decorador
+  está en el borde de generación, por debajo del resolutor de la fase 3); (b) **apagar/encender no
+  reinicia** el tope y el interruptor apagado **no** reserva; (c) la reserva precede a la llamada, así
+  que un **fallo** del proveedor y una generación **cancelada** consumen la unidad (semántica
+  conservadora, documentada en el ADR 0005 y en riesgos) y la `CancellationException` **se propaga**;
+  (d) el decorador recibe el `DishImageSettings` completo para que el estado observable y el tope
+  aplicado sean la **misma** fuente.
+- Riesgo o incógnita abierta (registrados, no bloqueantes): el valor del tope (**12**) es una primera
+  estimación y se cambia en `DishImageSettingsPolicy` (un único sitio); una sesión sin red puede agotar
+  el tope con fallos rápidos hasta reiniciar (guardarraíl conservador; reembolsar fallos sería una
+  correctiva); el microcopy exacto y el acabado del `Switch` los revisa la persona en el emulador
+  (defecto visual → feature correctiva, sin bloquear el flujo autónomo).
+- Rol 3 (**validator**): **`accept`** independiente (agente con contexto limpio). Re-ejecutó `bash init.sh`
+  (exit 0, `UP-TO-DATE`) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML
+  (**84 suites / 593 tests / 0 fallos / 0 errores / 0 saltados**) y el SARIF (**0 errores, 13 warnings**
+  preexistentes, 0 bajo `app/src`), re-derivó la baseline en `HEAD` `c0cb069` (81 suites / 562 tests ⇒
+  +3 suites / +31 tests) y verificó por greps propios la pureza de los nuevos `data.image`, la constante
+  única `MAX_GENERATIONS_PER_SESSION`, el alcance (`ui/artwork/**` sin diff, firma y 5 puntos de uso
+  intactos, sin dependencias), las capturas (carpeta inexistente; `DESIGN.md` con el párrafo #101) y la no
+  publicación (0 commits sobre `origin/main`, sin rama remota ni PR; issue #101 `OPEN`). Sin hallazgos
+  Critical/High/Medium; 5 Low informativos no bloqueantes. Detalle en
+  `docs/validations/dish-image-settings-toggle.md`.
+- Persistencia del `accept` (orquestador, mismo worktree): `feature_list.json` pasa a **`accepted`** con la
+  evidencia del validator y `PROGRESS.md` actualizado; commit local en `feature/dish-image-settings-toggle`
+  (**sin push ni PR**; publica `github-flow`).
+- Siguiente paso: queda la **prueba manual en emulador** de la persona tras el merge y, en el plan, las
+  fases 5-7 (`dish-visual-descriptor`, `dish-style-reference`, `dish-image-seed`, `not_started`). Nota de
+  entorno: durante esta sesión un `--rerun-tasks` hizo **crashear el daemon de Gradle** (JVM, 25.º build
+  del mismo daemon) y dejó un `hs_err_pid*.log` en la raíz (retirado); era del daemon (heap/uptime), no del
+  código, porque el `bash init.sh` y las tiradas focales ya habían pasado en verde. No se usó
+  `./gradlew --stop` (AGENTS.md, Notas de entorno).

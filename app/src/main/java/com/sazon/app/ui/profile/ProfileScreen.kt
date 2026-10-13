@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.sazon.app.data.image.DishImageSettingsState
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.onboarding.OnboardingPreferencesDraft
@@ -38,7 +39,9 @@ import com.sazon.app.ui.theme.SazonSpacing
  * ([ActivitySummarySection], que recibe el contador persistido de recetas generadas y el numero de
  * Favoritas derivado) y despues la seccion **"Sugerencias"** ([ProfileSuggestionsSection]), que muestra
  * la antiguedad del Lote observado y ofrece un refresco manual; el async y el estado "en vuelo" los
- * aporta `MainShell`, no esta pantalla. Los ajustes y "Borrar mis datos" quedan fuera de alcance
+ * aporta `MainShell`, no esta pantalla. Al **final** de la lista se anade el ajuste de app
+ * **"Imágenes del plato"** ([DishImageSettingsSection]): interruptor + tope por sesion visible. Los
+ * demas ajustes (Notificaciones, Idioma, "Sobre la app") y "Borrar mis datos" quedan fuera de alcance
  * (features propias); el estado de color de avatar corrupto se degrada al primer `avatarColors` en
  * [ProfileEditState.from].
  */
@@ -52,6 +55,8 @@ fun ProfileScreen(
     onRefreshSuggestions: () -> Unit,
     recipesGeneratedCount: Int,
     favoritesCount: Int,
+    imageGeneration: DishImageSettingsState,
+    onImageGenerationChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var state by rememberSaveable(stateSaver = ProfileEditStateSaver) {
@@ -190,6 +195,15 @@ fun ProfileScreen(
                 label = "Comensales habituales",
                 summary = servingsSummary(state.preferencesDraft),
                 onClick = { openSection(ProfileSection.SERVINGS) },
+            )
+        }
+
+        // Ajuste de app (gasto de cuota), al final a proposito: no es una preferencia culinaria y asi
+        // no se reordena ninguna seccion aceptada del Perfil.
+        item {
+            DishImageSettingsSection(
+                state = imageGeneration,
+                onToggle = onImageGenerationChange,
             )
         }
     }

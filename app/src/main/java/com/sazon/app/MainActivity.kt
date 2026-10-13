@@ -21,7 +21,9 @@ import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
 import com.sazon.app.data.image.DishImageResolver
+import com.sazon.app.data.image.DishImageSettings
 import com.sazon.app.data.image.FileDishImageCache
+import com.sazon.app.data.image.GatedDishImageGenerator
 import com.sazon.app.data.image.MemoryDishImageCache
 import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
@@ -125,12 +127,20 @@ class MainActivity : ComponentActivity() {
         // imagen se aplican por peticion, ADR 0005; no se crea un segundo motor HTTP) y la cache de la
         // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como un nivel por delante de la
         // cadena local; sin red ni I/O en el arranque (la cache solo se toca al resolver).
+        // El ajuste de sesion (interruptor + tope por sesion) se gobierna en DOS puntos: el decorador
+        // impone el tope en el borde de generacion (donde se gasta cuota) y el proveedor del seam
+        // gatea el interruptor (apagado = no se pide nada: ni cache ni generacion). Uno por proceso =
+        // una sesion; no se persiste.
+        val dishImageSettings = DishImageSettings()
         val dishImageResolver = DishImageResolver(
             disk = FileDishImageCache(AndroidDishImageCache.root(applicationContext)),
             memory = MemoryDishImageCache(),
-            generator = DevExpertDishImageGenerator(
-                apiKey = BuildConfig.DEVEXPERT_API_KEY,
-                client = aiClient,
+            generator = GatedDishImageGenerator(
+                delegate = DevExpertDishImageGenerator(
+                    apiKey = BuildConfig.DEVEXPERT_API_KEY,
+                    client = aiClient,
+                ),
+                settings = dishImageSettings,
             ),
         )
         val dishImageLoader = DishImageArtworkLoader(
@@ -146,7 +156,9 @@ class MainActivity : ComponentActivity() {
                         recipePhotoSource.bitmapFor(recipe)?.asImageBitmap()
                     },
                     LocalGeneratedRecipeArtworkSource provides GeneratedRecipeArtworkSource { recipe ->
-                        dishImageLoader.imageFor(recipe)
+                        // Interruptor apagado = no se pide nada (ni cache ni generacion): solo la foto
+                        // local. El tope lo impone el decorador en el borde de generacion.
+                        dishImageSettings.generatedIfEnabled { dishImageLoader.imageFor(recipe) }
                     },
                 ) {
                     SazonApp(
@@ -160,6 +172,7 @@ class MainActivity : ComponentActivity() {
                         activitySummaryRepository = activitySummaryRepository,
                         aiSearchService = aiSearchService,
                         networkStatusSource = networkStatusSource,
+                        dishImageSettings = dishImageSettings,
                         seedRecipes = seedRecipes,
                     )
                 }

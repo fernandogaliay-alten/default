@@ -3,16 +3,18 @@
 ## Estado
 
 **Aceptado parcialmente (fases 1-4)** — features `dish-image-domain` (fase 1), `dish-image-generator`
-(fase 2), `dish-image-cache` (fase 3) y `dish-image-progressive-ui` (fase 4, mitad de integración),
-2026-10-13. Fija la decisión de arquitectura y de política (puerto, prompt determinista y clave
-canónica), implementa el **adaptador real** de transporte + códec y la **caché** de disco + memoria, y
-**conecta** el nivel generado por delante de la cadena local con una progresión con crossfade. Deja
-**pendientes**, de forma explícita, el **interruptor de usuario y el tope de generaciones por sesión**
-(la otra mitad de la fase 4, feature `dish-image-settings-toggle`) y las fases 5–7 de
-`docs/ai-dish-images-proposal.md` (descriptor del modelo, referencia de estilo y set semilla). Ajusta
-**parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y
-offline, pero pasa a ser el **respaldo** de la imagen generada, ya conectada en runtime; su afirmación
-"sin red en tiempo de ejecución" se mantiene para la cadena local.
+(fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración) y
+`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), 2026-10-13. Fija la decisión de
+arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
+real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
+delante de la cadena local con una progresión con crossfade y añade el **control de gasto**: el
+interruptor de usuario (apagado = solo foto local) y el **tope de generaciones por sesión** (una unidad
+por petición al proveedor, impuesta por un decorador del puerto). Con eso la **fase 4 queda completa**;
+deja **pendientes**, de forma explícita, las fases 5–7 de `docs/ai-dish-images-proposal.md` (descriptor
+del modelo, referencia de estilo y set semilla). Ajusta **parcialmente**
+`docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y offline, pero
+pasa a ser el **respaldo** de la imagen generada, ya conectada en runtime; su afirmación "sin red en
+tiempo de ejecución" se mantiene para la cadena local.
 
 ## Contexto
 
@@ -116,6 +118,25 @@ interruptor de usuario ni tope de generaciones por sesión (la otra mitad de la 
 tampoco dependencias nuevas ni `Log`. la cadena de `recipe-photos` pasa formalmente a **respaldo**. Ver
 `docs/specs/dish-image-progressive-ui.md`.
 
+Alcance de la **fase 4** (mitad de ajuste de usuario, feature `dish-image-settings-toggle`): el
+**control del gasto** en `data.image` + `ui.profile`, **sin pantalla nueva**. `DishImageSettings` reúne
+el **interruptor** y el **tope por sesión** (en memoria; sesión = vida del proceso, **sin**
+persistencia: no toca `UserProfile` ni Room) y expone un `StateFlow`
+(`enabled`/`used`/`max`/`remaining`/`exhausted`) que alimenta la sección "Imágenes del plato" del
+Perfil (`DishImageSettingsSection`, microcopy puro en `DishImageSettingsCopy`). Se gobierna en **dos
+puntos**: el proveedor de `LocalGeneratedRecipeArtworkSource` en `MainActivity` gatea el interruptor
+(`generatedIfEnabled`: apagado = `null` **sin** leer caché ni generar) y `GatedDishImageGenerator`
+(**decorador** del puerto; el adaptador real y el puerto no se editan) impone el **tope** en el borde de
+generación (una unidad por petición al proveedor; `null` **sin invocar** al delegado cuando está
+agotado; los aciertos de memoria/disco **no** lo consumen). `DishImageGenerationBudget` es un contador
+atómico de reserva estricta (la concurrencia es 2) y `DishImageSettingsPolicy` deja las constantes en un
+único sitio (`DEFAULT_ENABLED = true`, `MAX_GENERATIONS_PER_SESSION = 12`, patrón
+`AiProviderPolicy.RESPONSE_FORMAT_ENABLED`). Semántica **conservadora**: un **fallo** del proveedor
+consume la unidad (es donde se paga) y una generación **cancelada** también (la reserva precede a la
+llamada); apagar/encender **no** reinicia el tope. Degradación silenciosa intacta: apagado, agotado o
+fallo → foto local, nunca error de UI; la `CancellationException` se propaga. Sin dependencias nuevas,
+sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -152,12 +173,14 @@ tampoco dependencias nuevas ni `Log`. la cadena de `recipe-photos` pasa formalme
 
 - **Invalidación**: cualquier cambio de `STYLE_SUFFIX`, del orden de las cláusulas del prompt o de la
   normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión).
-- **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3) y la **costura de UI**
-  (fase 4) ya existen, así que el riesgo (~2 % de la cuota semanal y ~4 s por imagen) **se materializa**
-  al navegar. Está registrado en `docs/risks-and-open-questions.md` con la mitigación implementada (clave
-  compartida por nombre de plato + caché persistente con evicción LRU y tope de 80 MiB + LRU de bytes en
-  memoria + **concurrencia limitada a 2** y **cancelación al salir de pantalla/hacer scroll**) y la
-  pendiente (tope por sesión, interruptor de usuario y set semilla).
+- **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3), la **costura de UI**
+  (fase 4) y el **control de gasto** (fase 4, ajuste de usuario) ya existen, así que el riesgo (~2 % de
+  la cuota semanal y ~4 s por imagen) **se materializa** al navegar. Está registrado en
+  `docs/risks-and-open-questions.md` con la mitigación implementada (clave compartida por nombre de
+  plato + caché persistente con evicción LRU y tope de 80 MiB + LRU de bytes en memoria +
+  **concurrencia limitada a 2** + **cancelación al salir de pantalla/hacer scroll** +
+  **tope de generaciones por sesión** + **interruptor de usuario**) y la pendiente (**set semilla de
+  platos frecuentes**, fase 7).
 - **Crecimiento de almacenamiento acotado**: el tope de 80 MiB con evicción LRU deja de ser hipotético en
   la fase 3; el espacio lo ocupa `cacheDir/dish-images`, que es **descartable** por el sistema (si el
   sistema lo vacía, un acierto falla y solo se regenera, volviendo a gastar cuota: comportamiento
@@ -171,12 +194,12 @@ tampoco dependencias nuevas ni `Log`. la cadena de `recipe-photos` pasa formalme
   visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Pendiente**: la otra mitad de la fase 4 (**interruptor de usuario y tope de generaciones por
-  sesión**, feature `dish-image-settings-toggle`, con su punto de inyección en el proveedor del seam en
-  `MainActivity`) y las fases 5–7 (`dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de
-  estilo y set semilla de platos frecuentes). La UI progresiva (swap) se entrega con capturas de
-  referencia **omitidas por desviación autorizada** registrada en `DESIGN.md` (issue #98); la revisión
-  puramente visual la hace la persona tras el merge. De las preguntas abiertas de la propuesta §11, la
-  decisión Room vs ficheros queda **resuelta** en la fase 3 (ficheros en `cacheDir`); siguen abiertas el
-  tamaño objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste),
-  el set semilla, el interruptor de usuario y la entrada de la variante C.
+- **Pendiente**: las fases 5–7 (`dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de
+  estilo y set semilla de platos frecuentes). La fase 4 se entrega **completa** (integración + ajuste de
+  usuario), ambas mitades con capturas **omitidas por desviación autorizada** registrada en `DESIGN.md`
+  (issues #98 y #101); la revisión puramente visual la hace la persona tras el merge. De las preguntas
+  abiertas de la propuesta §11, la decisión Room vs ficheros queda **resuelta** en la fase 3 (ficheros
+  en `cacheDir`) y el **interruptor de usuario y el tope por sesión quedan resueltos** en la fase 4
+  (constantes en `DishImageSettingsPolicy`); siguen abiertas el tamaño objetivo y el tope de disco
+  (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste), el set semilla y la entrada de la
+  variante C.
