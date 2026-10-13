@@ -1,5 +1,6 @@
 package com.sazon.app.data.ai
 
+import com.sazon.app.domain.image.DishVisualDescriptor
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.validation.DiscardReason
 
@@ -38,6 +39,10 @@ internal enum class AiContentState {
  *   depuracion (`verbose = true`); por defecto es `emptyList()` y **no se retiene ningun titulo**.
  * - [contentChars] (unidades UTF-16 de `content`) y [contentBytes] (UTF-8) son **longitudes**, nunca
  *   el contenido.
+ * - [descriptors] es el **transportador** del descriptor visual opcional del modelo (fase 5) por
+ *   `id` **generado** de cada receta **aceptada**: solo aparece con descriptor utilizable y hoy
+ *   **nadie** lo consume en runtime (el punto de composicion de `DishImageRequest` sigue pasando
+ *   `descriptor = null`).
  *
  * Es `internal` como el resto del decode ([AiRecipePayload]): no forma parte de la API publica del
  * modulo. Los tests JVM del propio modulo lo usan por los *friend paths*.
@@ -51,4 +56,5 @@ internal data class AiDecodeResult(
     val contentChars: Int,
     val contentBytes: Int,
     val contentState: AiContentState,
+    val descriptors: Map<String, DishVisualDescriptor> = emptyMap(),
 )

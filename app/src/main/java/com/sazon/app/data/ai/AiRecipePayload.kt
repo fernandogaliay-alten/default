@@ -1,5 +1,6 @@
 package com.sazon.app.data.ai
 
+import com.sazon.app.domain.image.DishVisualDescriptor
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.domain.validation.DiscardReason
@@ -41,6 +42,9 @@ import kotlinx.serialization.json.contentOrNull
  *    proposito: solo se cuenta el **motivo**, nunca texto libre ni titulos). Un
  *    [DiscardReason.INCOHERENT] se clasifica ademas por su causa ([AiIncoherentCause]: regla 4a
  *    deriva de tiempos o 4b alergenos declarados) y se suma a [AiDecodeResult.incoherentByCause].
+ *    Una receta **aceptada** con descriptor visual utilizable ([AiRecipeDraft.descriptor], fase 5)
+ *    lo deja en [AiDecodeResult.descriptors] bajo su `id` generado; un descarte **no** aporta
+ *    descriptor.
  * 7. Con [decode] `verbose = true` se rellena [AiDecodeResult.discards] con el detalle por descarte
  *    (motivo, causa y **titulo**); con `verbose = false` queda vacio y **no se retiene ningun titulo**.
  *
@@ -106,6 +110,7 @@ object AiRecipePayload {
         val discardedCounts = mutableMapOf<DiscardReason, Int>()
         val incoherentCounts = mutableMapOf<AiIncoherentCause, Int>()
         val discards = mutableListOf<AiDiscardDetail>()
+        val descriptors = mutableMapOf<String, DishVisualDescriptor>()
 
         elements.forEach { element ->
             val draft = runCatching {
@@ -123,7 +128,12 @@ object AiRecipePayload {
 
             val recipe = draft.toRecipe(id = AiRecipeIds.idFor(draft, usedIds))
             when (val result = RecipeValidator.validateRecipe(recipe, taxonomy, constraints)) {
-                is RecipeValidation.Accepted -> accepted += result.recipe
+                is RecipeValidation.Accepted -> {
+                    accepted += result.recipe
+                    // Descriptor opcional (fase 5): solo de recetas aceptadas y solo si es utilizable
+                    // (un descarte no aporta descriptor). La clave es el `id` **generado**.
+                    draft.descriptor()?.let { descriptors[result.recipe.id] = it }
+                }
                 is RecipeValidation.Discarded -> {
                     discardedCounts.increment(result.reason)
                     // Solo los INCOHERENT tienen causa (4a/4b); el resto queda con cause = null.
@@ -145,6 +155,7 @@ object AiRecipePayload {
             contentChars = contentChars,
             contentBytes = contentBytes,
             contentState = AiContentState.RECIPES,
+            descriptors = descriptors.toMap(),
         )
     }
 

@@ -195,6 +195,43 @@ class PromptBuilderTest {
         assertEquals("El bloque user debe ser idéntico", primera.user, segunda.user)
     }
 
+    // --- Escenario 1 de `docs/specs/dish-visual-descriptor.md` (fase 5) ---
+
+    @Test
+    fun descriptor_escenario_1_el_contrato_pide_los_campos_opcionales_del_plato() {
+        val system = PromptBuilder.build(taxonomy, PromptRequest(perfilDeReferencia())).system
+
+        assertTrue("El esqueleto del contrato incluye \"dishKey\"", system.contains("\"dishKey\""))
+        assertTrue("El esqueleto del contrato incluye \"imagePrompt\"", system.contains("\"imagePrompt\""))
+        assertTrue(
+            "Los describe como opcionales y especifica que pasa si faltan",
+            system.contains("opcionales") && system.contains("Si no los envías"),
+        )
+        assertTrue(
+            "Exige que el dishKey sea del plato terminado, no de un ingrediente ni la categoría",
+            system.contains("plato terminado") && system.contains("nunca un ingrediente ni la categoría"),
+        )
+        assertTrue(
+            "El imagePrompt se describe como descripción visual",
+            system.contains("descripción visual"),
+        )
+        assertTrue(
+            "Indica que sin descriptor la app usa título y taxonomía",
+            system.contains("usará el título y la taxonomía"),
+        )
+    }
+
+    @Test
+    fun descriptor_escenario_1b_el_prompt_sigue_siendo_determinista_con_los_campos_nuevos() {
+        val request = PromptRequest(preferences = perfilDeReferencia())
+
+        val primera = PromptBuilder.build(taxonomy, request)
+        val segunda = PromptBuilder.build(taxonomy, request)
+
+        assertEquals(primera.system, segunda.system)
+        assertEquals(primera.user, segunda.user)
+    }
+
     @Test
     fun el_paquete_domain_prompt_no_importa_android_ni_hace_red() {
         val fichero = File(
@@ -227,6 +264,8 @@ private val CLAVES_DEL_CONTRATO = listOf(
     "tips",
     "nutrition",
     "declaredAllergens",
+    "dishKey",
+    "imagePrompt",
 )
 
 private fun taxonomyReal(): Taxonomy {
