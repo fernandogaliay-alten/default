@@ -541,8 +541,35 @@
   `RecipeValidator` ni `AiRecipeIds`; `DishImageCacheKey.VERSION` sigue `dish-image-v1`. Gate: `bash
   init.sh` exit 0, **92 suites / 673 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD`
   90/660; delta +2 suites / +13 tests), lint 0 errores y 13 warnings preexistentes (ninguno bajo
-  `app/src`). `WIP = 0` (ninguna entrada no aceptada). Detalle de la validación en
+  `app/src`). Detalle de la validación en
   `docs/validations/dish-visual-descriptor-wiring.md`.
+- Última feature **`accepted`** — **`home-suggestions-personalized`** (issue #110, `area: ui`, correctiva
+  de `home-offline-blocks` pedida por la persona): implementada y autoverificada (**`passing`**) en la
+  sesión 098 y **`accepted`** en la sesión 099 (validación independiente, veredicto `accept`, rama
+  `feature/home-suggestions-personalized`; el commit local lo crea el orquestador de `feature-flow` y la
+  publicación queda para `github-flow`, **sin** commit/push/PR del implementer). El carrusel "Sugeridas
+  para ti" ya **no** consume el Lote tal cual: `com.sazon.app.ui.home.HomeSuggestions.visible(batchRecipes,
+  seedRecipes, preferences, taxonomy)` (puro, `MAX_VISIBLE = 6`) hace `batchRecipes ?: seedRecipes` →
+  **filtro de seguridad** `RecipeValidator.validateRecipe(...) is Accepted` (patrón de dieta +
+  restricciones duras, aplicado a semilla y a `ai`) → **ranking** por `MatchScore.of(...)`
+  (`sortedByDescending`, estable en empates, score calculado una sola vez) → `take(6)`; **sin**
+  `copy(matchScore = …)`, así que las tarjetas conservan su `matchScore` original (hoy `null`) y la
+  píldora de `RecipeCard` **no** se pinta (**sin cambio visual**: mismo título "Sugeridas para ti" +
+  microcopy "basado en tus gustos", mismas tarjetas e imágenes). El **respaldo de semilla offline**
+  (`null`) pasa por el **mismo camino** (filtro → orden → tope) y un Lote resuelto **vacío**
+  (`emptyList()`) sigue vacío (no cae a semilla). Cableado en `ui/MainShell.kt` con
+  `remember(batch?.recipes, seedRecipes, profile.preferences, taxonomy)`. Exención de capturas autorizada
+  (issue #110, misma clase que #77/#85/#86/#91/#98): **no** se crea
+  `docs/design/concepts/home-suggestions-personalized/`; `DESIGN.md` registra la excepción y el
+  comportamiento vigente. Deuda de seguridad registrada (no se arregla aquí): el modo degradado de
+  Resultados (`ResultsStatus.Unavailable`) sigue puntuando/ordenando **sin** filtrar; los fixtures
+  incoherentes de `ResultsStatusTest` impiden filtrar sin vaciarlo → correctiva recomendada
+  `results-seed-safety-filter` en `docs/risks-and-open-questions.md`. Gate: `bash init.sh` exit 0, **92
+  suites / 683 tests / 0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD` 92/673; delta
+  real **+10 tests / 0 suites**; `HomeSuggestionsTest` 3 → 13), lint 0 errores y 13 warnings preexistentes
+  (ninguno bajo `app/src`). Sin dependencias nuevas, sin tocar build/dominio/persistencia/`ui/results`.
+  Detalle en `docs/validations/home-suggestions-personalized.md`. **WIP = 0**: todas las entradas de
+  `feature_list.json` vuelven a estar `accepted`; queda `seed-catalog-50` (`not_started`, depende de esta).
 
 ## Registro de sesiones
 
@@ -3656,3 +3683,119 @@
   local**; **sin** push ni PR (publica `github-flow`). Prueba manual opcional de la persona (no es
   puerta, no automatizable desde WSL): en el emulador, generar dos variantes del mismo plato y comprobar
   que la segunda no vuelve a llamar a `/images/generations` (misma clave).
+
+### Sesión 098
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-implementer` para **`home-suggestions-personalized`** (`area: ui`,
+  `depends_on: home-offline-blocks`, `suggestion-batch-cache` y `results-screen`, las tres `accepted`),
+  la **correctiva** del carrusel "Sugeridas para ti", en el worktree
+  `feature/home-suggestions-personalized`. **Sin commit, push ni PR** (el commit lo hace el orquestador
+  de `feature-flow`; publica `github-flow`). **Gate de capturas exento por autorización de la persona**
+  (mismo diseño visual; precedentes #77/#85/#86/#91/#98): **no** se crea
+  `docs/design/concepts/home-suggestions-personalized/`.
+- Completado (rol **implementer**): la feature queda **`passing`** (validación independiente pendiente).
+  El carrusel pinta **como máximo 6** recetas **seguras** y **ordenadas por relevancia con el Perfil**.
+  - `ui/home/HomeSuggestions.visible(batchRecipes, seedRecipes, preferences, taxonomy)` (logica **pura**,
+    sin Compose/Android) con `MAX_VISIBLE = 6`: `batchRecipes ?: seedRecipes` → `RecipeConstraints`
+    inline (`dietPatternId` + `hardRestrictionIds.toSet()`, mismo mapeo de 2 lineas que
+    `SuggestionBatchService`) → **filtro** `RecipeValidator.validateRecipe(...) is Accepted` (semilla y
+    `ai`; se conserva la receta original, no la normalizada) → **ranking** decorado por `MatchScore.of`
+    (`sortedByDescending`, estable en empates, score calculado una sola vez) → `take(MAX_VISIBLE)`.
+    **Sin** `copy(matchScore = ...)`: se devuelven las mismas instancias, asi que `RecipeCard` no pinta
+    su pildora y el aspecto no cambia. Un Lote resuelto **vacio** sigue vacio (no cae a semilla). KDoc
+    actualizado.
+  - Cableado en `ui/MainShell.kt`: `remember(batch?.recipes, seedRecipes, profile.preferences, taxonomy)`
+    envolviendo la llamada (`import androidx.compose.runtime.remember`, ya presente); `HomeScreen` y su
+    firma no cambian.
+- Ficheros modificados: `app/src/main/java/com/sazon/app/ui/home/HomeSuggestions.kt`,
+  `app/src/main/java/com/sazon/app/ui/MainShell.kt`,
+  `app/src/test/java/com/sazon/app/ui/home/HomeSuggestionsTest.kt`, `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`, `DESIGN.md`, `feature_list.json` y este `PROGRESS.md`.
+- Verificación ejecutada: `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`; sin procesos largos, sin tocar `init.sh`). Parseo propio de los XML frescos
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **92 suites / 683 tests / 0 fallos /
+  0 errores / 0 saltados**. Baseline re-derivada en este `HEAD`
+  (`git grep -c "@Test" HEAD -- 'app/src/test/**'` = **92 ficheros / 673 anotaciones**) ⇒ delta
+  **+10 tests** (mismo numero de suites; `HomeSuggestionsTest` 3 → 13). Lint (SARIF): **0 errores** y
+  **13 warnings** preexistentes (`GradleDependency` 7, `NewerVersionAvailable` 3,
+  `AndroidGradlePluginVersion` 2, `OldTargetApi` 1), **0 bajo `app/src`**.
+- Escenarios cubiertos por test (`HomeSuggestionsTest`, 13): (1) tope — 8 seguras → 6 conservando el
+  orden de origen, 4 → 4 sin recorte; (2) orden por `MatchScore` descendente con el input en orden
+  inverso y **empates estables** (los tres puntuan igual); (3) **caso negativo obligatorio** — con
+  `dietPatternId = "vegetarian"` se descartan la **semilla** y la **`ai`** con `pollo` mientras la
+  segura sigue, y con `hardRestrictionIds = ["gluten"]` se descarta el "Pan" libre (`ingredientId =
+  null`); en ambos el **control positivo** con perfil `omnivore` sin restricciones **sí** muestra las
+  descartadas (no pasa en vacío); (4) Lote `emptyList()` → vacío; (5) respaldo `null` con el catálogo
+  semilla real → 6, y con `gluten` → ≤ 6 sin `seed-pasta-tomate` ni ninguna de `SEMILLAS_CON_GLUTEN`;
+  (6) `dislikedIngredientIds` **penaliza y no descarta** (ambas aparecen, la penalizada despues); (7)
+  **sin materialización** — la receta devuelta es la **misma instancia** (`assertSame`) con
+  `matchScore == null`.
+- Inspección de pureza y alcance: `ui.home.HomeSuggestions` **0** imports de Compose/Android y **usa**
+  `MatchScore` y `RecipeValidator` (grep); `git diff --stat` solo con los ficheros previstos (código +
+  3 docs durables + harness); `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`,
+  `scripts/**`, `domain/**`, `data/**`, `ui/results/**`, `ui/home/HomeScreen.kt`, `RecipeCard.kt`, la
+  Taxonomía, `seed-recipes.json` y `docs/design/**` **sin diff**;
+  `test -d docs/design/concepts/home-suggestions-personalized` → **no existe**; **sin** dependencias
+  nuevas.
+- Docs durables actualizadas: `docs/technical-discovery.md` (el carrusel ya **no** "consume el Lote tal
+  cual": filtro por `RecipeValidator` + orden por `MatchScore` sin materializar + tope 6, tambien en el
+  respaldo de semilla), `docs/risks-and-open-questions.md` (**deuda de seguridad** del modo degradado de
+  Resultados: `ResultsStatus.Unavailable` sigue puntuando/ordenando **sin filtrar**; los fixtures
+  incoherentes de `ResultsStatusTest` impiden filtrar sin vaciarlo → correctiva recomendada p. ej.
+  `results-seed-safety-filter`) y `DESIGN.md` (excepcion de capturas de la feature + comportamiento
+  vigente del carrusel ≤ 6 sin pildora, y nota en "Core Screens").
+- Incógnitas resueltas: (1) el filtro de seguridad se aplica **solo en la Home** (no se toca
+  `ResultsStatus.Unavailable`; deuda registrada); (2) el respaldo de semilla offline (`null`) pasa por el
+  **mismo camino** (filtro → orden → tope) y un Lote resuelto vacío **no** cae a semilla.
+- Riesgos/incógnitas registrados (no bloqueantes): nº de seguras < 6 con perfiles restrictivos (p. ej.
+  vegano + gluten) → carrusel de 4-5 tarjetas (comportamiento correcto "como máximo 6"; `seed-catalog-50`
+  dará variedad); coste del re-validado en recomposición mitigado con `remember`; heurística/pesos de
+  `MatchScore` y empates revisables con correctiva sin cambiar el contrato.
+- Pendiente para la persona (no automatizable, AGENTS.md no automatiza UI): prueba manual en emulador —
+  con Lote resuelto y con respaldo de semilla offline, el carrusel muestra ≤ 6 tarjetas acordes al Perfil
+  (sin alérgenos ni patrón de dieta incumplidos) y las mejor puntuadas primero, sin cambio de aspecto
+  (título "Sugeridas para ti" + "basado en tus gustos", tarjetas e imágenes iguales, sin píldora), en
+  claro y oscuro.
+- Siguiente paso: validación independiente (`feature-validator`) sobre el worktree; después el
+  orquestador de `feature-flow` persiste la aceptación y crea el commit local (**sin** push ni PR;
+  publica `github-flow`).
+
+### Sesión 099
+
+- Fecha: 2026-10-13
+- Objetivo: **orquestación `feature-flow`** de `home-suggestions-personalized` (issue #110, `area: ui`):
+  implementación → validación independiente → **aceptación** → **commit local** (sin push ni PR; publica
+  `github-flow`).
+- Completado:
+  - El **implementer** (sesión 098, subagente con contexto limpio) dejó la feature **`passing`**:
+    `HomeSuggestions.visible(...)` puro con `MAX_VISIBLE = 6` (filtro por `RecipeValidator` → ranking por
+    `MatchScore` sin materializar → `take`), cableado en `MainShell` con `remember`, `HomeSuggestionsTest`
+    de 3 a 13 casos, y docs durables (`docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
+    `DESIGN.md`). Sin commit/push/PR.
+  - El **validator** (sesión 099, subagente con contexto limpio) re-ejecutó el gate y devolvió **`accept`**:
+    `bash init.sh` → exit 0 en la segunda pasada (la primera falló por un **flake de DrvFs**, no por un
+    test) con `testDebugUnitTest --rerun-tasks` (34/34 tareas) y `lint --rerun-tasks` (30/30 tareas);
+    parseo propio de los XML = **92 suites / 683 tests / 0 fallos / 0 errores / 0 saltados**
+    (`HomeSuggestionsTest` 13) y del SARIF = **0 errores, 13 warnings preexistentes**, 0 bajo `app/src`.
+    Resolvió la discrepancia de baseline a favor del implementer (`HEAD` = 92 ficheros / 673 anotaciones
+    `@Test` → delta **+10 tests / 0 suites**; el "90/660" de la spec era previo a
+    `dish-visual-descriptor-wiring`) y verificó los 7 escenarios (negativos no vacíos, `emptyList() !=
+    null`, re-derivación del set real de semillas con gluten, pureza, alcance, exención de capturas y la
+    deuda de Resultados **sin** arreglarse fuera de alcance). Sin hallazgos Critical/High/Medium; 3 Low
+    informativos no bloqueantes.
+  - **Aceptación persistida** por el orquestador: `feature_list.json` → `accepted` (+ evidencia de la
+    validación independiente) y registro en `docs/validations/home-suggestions-personalized.md`.
+  - **L1 (Low)** del validador corregido aquí: el resumen "Estado verificado actual" ya refleja la
+    feature `accepted` con 92/683 y su prueba manual pendiente.
+- Verificación ejecutada: la del validador independiente (arriba); el orquestador **no** re-implementó ni
+  re-validó (regla de `feature-flow`) y solo persiste la aceptación y crea el commit local.
+- Ficheros: código de la feature (sesión 098) + `docs/validations/home-suggestions-personalized.md`
+  (nuevo) + `feature_list.json` y `PROGRESS.md` (aceptación).
+- Pendiente para la persona (no automatizable, AGENTS.md no automatiza UI): prueba manual en emulador —
+  con Lote resuelto y con respaldo de semilla offline, el carrusel muestra ≤ 6 tarjetas acordes al Perfil
+  (sin alérgenos ni patrón de dieta incumplidos) y las mejor puntuadas primero, sin cambio de aspecto, en
+  claro y oscuro.
+- Siguiente paso: **`github-flow`** publica la rama `feature/home-suggestions-personalized` y abre/reutiliza
+  su PR (título `[home-suggestions-personalized] …`, cuerpo con `Closes #110`). Después queda
+  `seed-catalog-50` (`not_started`, `area: data`, depende de esta) — con capturas/exención a confirmar.

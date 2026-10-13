@@ -114,13 +114,19 @@ estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com
 libreria: el `Saver` de `rememberSaveable` vive en la capa Compose). `MainActivity` compone a mano
 (sin DI) `SuggestionBatchDatabase` + `RoomSuggestionBatchRepository` + `SuggestionBatchService`
 (`FakeRecipeGenerator`, sin red) + la Taxonomia y el catalogo semilla; `SazonApp` observa el
-`UserProfile` completo y monta `MainShell`. `MainShell` **consume el Lote tal cual**:
-`SuggestionBatchRepository.observe()` alimenta el carrusel y `SuggestionBatchService.ensureBatch` se
-llama una vez al entrar (politica cache-first ya aceptada); el usuario tambien puede **forzarlo** desde
-la seccion "Sugerencias" del Perfil (`ensureBatch(..., force = true)`), que reusa el mismo Lote
-observado. Mientras el Lote no se resuelve, la Home pinta las recetas semilla empaquetadas
-(`HomeSuggestions.visible`) y nunca muestra una pantalla de carga. La Home es **offline**: solo la futura Búsqueda con IA necesita red. Ver
-`docs/specs/home-offline-blocks.md`.
+`UserProfile` completo y monta `MainShell`. `SuggestionBatchRepository.observe()` alimenta el carrusel
+y `SuggestionBatchService.ensureBatch` se llama una vez al entrar (politica cache-first ya aceptada);
+el usuario tambien puede **forzarlo** desde la seccion "Sugerencias" del Perfil
+(`ensureBatch(..., force = true)`), que reusa el mismo Lote observado. El carrusel "Sugeridas para ti"
+**ya no consume el Lote tal cual**: `ui.home.HomeSuggestions.visible(...)` (logica **pura**, memorizada
+con `remember` en `MainShell`) aplica el **mismo camino** a la fuente (Lote, o las recetas semilla
+empaquetadas cuando el Lote es `null`): (1) **filtro de seguridad** con `RecipeValidator` (descarta las
+recetas que incumplen el patron de dieta o una restriccion dura, tanto semilla como `ai`), (2) **orden**
+por `MatchScore` descendente —estable en empates— **sin materializar** el score en la receta (asi
+`RecipeCard` no pinta su pildora de coincidencia) y (3) **tope** `MAX_VISIBLE = 6`. Un Lote resuelto
+**vacio** sigue siendo vacio (no cae a semilla). Nunca se muestra una pantalla de carga. La Home es
+**offline**: solo la futura Búsqueda con IA necesita red. Ver
+`docs/specs/home-suggestions-personalized.md` y `docs/specs/home-offline-blocks.md`.
 
 Los **Favoritos** viven en `com.sazon.app.domain.favorites` (logica pura: `Favorite`, que persiste una
 **copia** de la `Recipe` mas su `savedAt`, el puerto `FavoriteRepository` y `FavoriteService.toggle`,
