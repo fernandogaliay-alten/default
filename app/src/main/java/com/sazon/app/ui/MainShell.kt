@@ -172,7 +172,6 @@ fun MainShell(
                             suggestions = suggestions,
                             recipes = HomeRecipes(
                                 saved = favorites.map { it.recipe },
-                                recentlyOpened = emptyList(),
                             ),
                             isOnline = isOnline,
                             searchQuery = searchQuery,

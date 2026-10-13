@@ -157,6 +157,15 @@ Perfil pasa a ser **"Estadísticas"** para explicitar que las dos tarjetas ("rec
 "favoritas") son estadística informativa y **no navegable**. El resto de la sección (layout, tokens,
 orden de secciones y tarjetas `Surface`) no cambia.
 
+**Excepción de capturas (desviación documentada, issue #91):** `home-recently-opened-group` **no** genera
+capturas nuevas ni carpeta `docs/design/concepts/home-recently-opened-group/`. Es una correctiva que
+**elimina** un grupo vacío del bloque "Tus recetas" (no introduce pantalla, layout, token ni estado
+nuevo): el bloque **solo lista los grupos con contenido** (hoy, "Guardadas") y conserva la fila de
+filtros locales, la línea "No hay recetas con este filtro." y el estado vacío "Cuando guardes una receta
+aparecerá aquí.". La dirección visual aplicable es el **backfill pendiente** de `home-offline-blocks`
+(`home`, `home-sin-conexion`, ver `docs/design/concepts/home-offline-blocks/README.md`) más la sección
+**Core Screens** (Home, arriba) y `Components`, contra las que se revisa el acabado en el emulador.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -282,8 +291,10 @@ nada lo es.
    habituales).
 2. **Home** con cinco bloques: cabecera (saludo y avatar de iniciales), **buscador con IA** —el único
    bloque que necesita red y que debe degradar con aviso—, tarjeta-héroe "¿Qué tienes en la nevera?"
-   que abre el Generador, carrusel "Sugeridas para ti", y el bloque **"Tus recetas"** con filtros
-   locales (categoría + "Rápido"/"Vegetariano") y dos grupos: "Guardadas" y "Abiertas hace poco".
+   que abre el Generador, carrusel "Sugeridas para ti", y el bloque **"Tus recetas"**, que **solo lista
+   los grupos con contenido** (hoy, "Guardadas", alimentado por los Favoritos) tras sus filtros locales
+   (categoría + "Rápido"/"Vegetariano"), con el estado vacío "Cuando guardes una receta aparecerá aquí."
+   y la línea "No hay recetas con este filtro." cuando el filtro deja el grupo sin recetas.
 3. **Generador**: paso 1 ingredientes (chips + input), paso 2 ajustes agrupados en tarjetas, estado
    de generación con animación cálida.
 4. **Resultados**: chips de orden + lista de RecipeCard; estados vacío, error y **modo semilla** (sin

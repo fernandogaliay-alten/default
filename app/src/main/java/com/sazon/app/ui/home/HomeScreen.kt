@@ -222,7 +222,7 @@ private fun RecipesSection(
     onSelect: (LocalResultFilter) -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
 ) {
-    val allRecipes = recipes.saved + recipes.recentlyOpened
+    val allRecipes = recipes.saved
     val categories = LocalResultFilters.categoriesIn(allRecipes, taxonomy)
     val filtered = recipes.filteredBy(filter, taxonomy)
 
@@ -248,24 +248,17 @@ private fun RecipesSection(
                 selected = filter,
                 onSelect = onSelect,
             )
+            HomeRecipesGroup(
+                title = "Guardadas",
+                recipes = filtered.saved,
+                taxonomy = taxonomy,
+                onOpenRecipe = onOpenRecipe,
+            )
             if (filtered.isEmpty) {
                 Text(
                     text = "No hay recetas con este filtro.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                HomeRecipesGroup(
-                    title = "Guardadas",
-                    recipes = filtered.saved,
-                    taxonomy = taxonomy,
-                    onOpenRecipe = onOpenRecipe,
-                )
-                HomeRecipesGroup(
-                    title = "Abiertas hace poco",
-                    recipes = filtered.recentlyOpened,
-                    taxonomy = taxonomy,
-                    onOpenRecipe = onOpenRecipe,
                 )
             }
         }
@@ -273,8 +266,9 @@ private fun RecipesSection(
 }
 
 /**
- * Grupo del bloque "Tus recetas": muestra su titulo siempre y, si trae recetas, su carrusel
- * horizontal. El estado vacio global lo cubre la linea del bloque ([RecipesSection]).
+ * Grupo del bloque "Tus recetas": con recetas pinta su titulo y su carrusel horizontal; sin recetas
+ * **no pinta nada** (nunca un grupo sin contenido, ni un titulo sin carrusel). El estado vacio global
+ * lo cubre la linea del bloque ([RecipesSection]).
  */
 @Composable
 private fun HomeRecipesGroup(
@@ -283,6 +277,8 @@ private fun HomeRecipesGroup(
     taxonomy: Taxonomy,
     onOpenRecipe: (Recipe) -> Unit,
 ) {
+    if (recipes.isEmpty()) return
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(SazonSpacing.sm),
@@ -292,18 +288,16 @@ private fun HomeRecipesGroup(
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        if (recipes.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
-                contentPadding = PaddingValues(vertical = 4.dp),
-            ) {
-                items(recipes) { recipe ->
-                    RecipeCard(
-                        recipe = recipe,
-                        taxonomy = taxonomy,
-                        onClick = { onOpenRecipe(recipe) },
-                    )
-                }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
+            contentPadding = PaddingValues(vertical = 4.dp),
+        ) {
+            items(recipes) { recipe ->
+                RecipeCard(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    onClick = { onOpenRecipe(recipe) },
+                )
             }
         }
     }

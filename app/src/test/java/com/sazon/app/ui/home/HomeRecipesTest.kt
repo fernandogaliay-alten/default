@@ -12,88 +12,66 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Escenario 5 de `docs/specs/home-offline-blocks.md` (estado vacio del bloque "Tus recetas") y
- * `HomeRecipes.filteredBy` de `docs/specs/local-result-filters.md`: el filtro se aplica a cada grupo
- * de forma independiente. Logica pura.
+ * Estado vacio del bloque "Tus recetas" (bloque 5 de la Home) y `HomeRecipes.filteredBy`: el filtro
+ * local se aplica al unico grupo (`saved`, alimentado por los Favoritos). Logica pura.
  */
 class HomeRecipesTest {
 
     private val taxonomy: Taxonomy = taxonomiaReal()
 
     @Test
-    fun sin_guardadas_ni_abiertas_el_bloque_esta_vacio() {
+    fun sin_guardadas_el_bloque_esta_vacio() {
         assertTrue(HomeRecipes().isEmpty)
-        assertTrue(HomeRecipes(saved = emptyList(), recentlyOpened = emptyList()).isEmpty)
+        assertTrue(HomeRecipes(saved = emptyList()).isEmpty)
     }
 
     @Test
     fun con_una_receta_guardada_el_bloque_no_esta_vacio() {
-        val bloque = HomeRecipes(saved = listOf(receta("seed-1")), recentlyOpened = emptyList())
+        val bloque = HomeRecipes(saved = listOf(receta("seed-1")))
 
         assertFalse(bloque.isEmpty)
     }
 
     @Test
-    fun con_una_receta_abierta_hace_poco_el_bloque_no_esta_vacio() {
-        val bloque = HomeRecipes(saved = emptyList(), recentlyOpened = listOf(receta("ai-1")))
-
-        assertFalse(bloque.isEmpty)
-    }
-
-    @Test
-    fun filtered_by_categoria_filtra_cada_grupo_de_forma_independiente() {
+    fun filtered_by_categoria_filtra_las_guardadas() {
         val bloque = HomeRecipes(
             saved = listOf(
                 receta("s-pasta", categoryId = "pasta"),
                 receta("s-arroz", categoryId = "rice"),
             ),
-            recentlyOpened = listOf(receta("r-pasta", categoryId = "pasta")),
         )
 
         val filtrado = bloque.filteredBy(LocalResultFilter.Category("pasta"), taxonomy)
 
         assertEquals(listOf("s-pasta"), filtrado.saved.map { it.id })
-        assertEquals(listOf("r-pasta"), filtrado.recentlyOpened.map { it.id })
     }
 
     @Test
-    fun filtered_by_rapido_respeta_la_frontera_30_en_cada_grupo() {
+    fun filtered_by_rapido_respeta_la_frontera_30_en_las_guardadas() {
         val bloque = HomeRecipes(
             saved = listOf(
                 receta("s30", totalMinutes = 30),
                 receta("s31", totalMinutes = 31),
-            ),
-            recentlyOpened = listOf(
-                receta("r10", totalMinutes = 10),
-                receta("r45", totalMinutes = 45),
             ),
         )
 
         val filtrado = bloque.filteredBy(LocalResultFilter.Fast, taxonomy)
 
         assertEquals(listOf("s30"), filtrado.saved.map { it.id })
-        assertEquals(listOf("r10"), filtrado.recentlyOpened.map { it.id })
     }
 
     @Test
-    fun filtered_by_all_conserva_los_grupos_sin_tocarlos() {
-        val bloque = HomeRecipes(
-            saved = listOf(receta("s1"), receta("s2")),
-            recentlyOpened = listOf(receta("r1")),
-        )
+    fun filtered_by_all_conserva_las_guardadas_sin_tocarlas() {
+        val bloque = HomeRecipes(saved = listOf(receta("s1"), receta("s2")))
 
         val filtrado = bloque.filteredBy(LocalResultFilter.All, taxonomy)
 
         assertEquals(bloque.saved, filtrado.saved)
-        assertEquals(bloque.recentlyOpened, filtrado.recentlyOpened)
     }
 
     @Test
-    fun filtered_by_sin_coincidencias_deja_los_dos_grupos_vacios() {
-        val bloque = HomeRecipes(
-            saved = listOf(receta("s-pasta", categoryId = "pasta")),
-            recentlyOpened = listOf(receta("r-pasta", categoryId = "pasta")),
-        )
+    fun filtered_by_sin_coincidencias_deja_el_grupo_vacio() {
+        val bloque = HomeRecipes(saved = listOf(receta("s-pasta", categoryId = "pasta")))
 
         val filtrado = bloque.filteredBy(LocalResultFilter.Category("rice"), taxonomy)
 
@@ -102,10 +80,7 @@ class HomeRecipesTest {
 
     @Test
     fun filtered_by_no_altera_el_bloque_original() {
-        val bloque = HomeRecipes(
-            saved = listOf(receta("s-pasta", categoryId = "pasta")),
-            recentlyOpened = emptyList(),
-        )
+        val bloque = HomeRecipes(saved = listOf(receta("s-pasta", categoryId = "pasta")))
 
         bloque.filteredBy(LocalResultFilter.Category("rice"), taxonomy)
 
