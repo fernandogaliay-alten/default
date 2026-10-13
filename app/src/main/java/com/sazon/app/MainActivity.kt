@@ -16,8 +16,13 @@ import com.sazon.app.data.activity.RoomActivitySummaryRepository
 import com.sazon.app.data.ai.AiHttpClientFactory
 import com.sazon.app.data.ai.AiVerboseDiagnostics
 import com.sazon.app.data.ai.DevExpertRecipeGenerator
+import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
+import com.sazon.app.data.image.AndroidDishImageCache
+import com.sazon.app.data.image.DishImageResolver
+import com.sazon.app.data.image.FileDishImageCache
+import com.sazon.app.data.image.MemoryDishImageCache
 import com.sazon.app.data.profile.ProfileDatabase
 import com.sazon.app.data.profile.RoomProfileRepository
 import com.sazon.app.data.suggestions.RoomSuggestionBatchRepository
@@ -25,9 +30,14 @@ import com.sazon.app.data.suggestions.SuggestionBatchDatabase
 import com.sazon.app.domain.activity.ActivitySummaryService
 import com.sazon.app.domain.favorites.FavoriteService
 import com.sazon.app.domain.generation.GenerationService
+import com.sazon.app.domain.image.DishImageRequest
 import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
+import com.sazon.app.ui.artwork.AndroidRecipeImageDecoder
+import com.sazon.app.ui.artwork.DishImageArtworkLoader
+import com.sazon.app.ui.artwork.GeneratedRecipeArtworkSource
+import com.sazon.app.ui.artwork.LocalGeneratedRecipeArtworkSource
 import com.sazon.app.ui.artwork.LocalRecipePhotoSource
 import com.sazon.app.ui.artwork.RecipePhotoSource
 import com.sazon.app.ui.theme.SazonTheme
@@ -111,12 +121,32 @@ class MainActivity : ComponentActivity() {
         // Fotos de plato empaquetadas como assets offline; se inyectan en el arbol de composicion por
         // el seam `LocalRecipePhotoSource` (composicion explicita, sin DI, como el resto).
         val recipePhotoSource = AssetRecipePhotoSource(applicationContext)
+        // Imagen de plato generada (fases 2-4): reutiliza el `aiClient` compartido (los timeouts de
+        // imagen se aplican por peticion, ADR 0005; no se crea un segundo motor HTTP) y la cache de la
+        // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como un nivel por delante de la
+        // cadena local; sin red ni I/O en el arranque (la cache solo se toca al resolver).
+        val dishImageResolver = DishImageResolver(
+            disk = FileDishImageCache(AndroidDishImageCache.root(applicationContext)),
+            memory = MemoryDishImageCache(),
+            generator = DevExpertDishImageGenerator(
+                apiKey = BuildConfig.DEVEXPERT_API_KEY,
+                client = aiClient,
+            ),
+        )
+        val dishImageLoader = DishImageArtworkLoader(
+            requestFor = { recipe -> DishImageRequest.of(taxonomy, recipe) },
+            resolve = dishImageResolver::imageFor,
+            decode = AndroidRecipeImageDecoder::decode,
+        )
 
         setContent {
             SazonTheme {
                 CompositionLocalProvider(
                     LocalRecipePhotoSource provides RecipePhotoSource { recipe ->
                         recipePhotoSource.bitmapFor(recipe)?.asImageBitmap()
+                    },
+                    LocalGeneratedRecipeArtworkSource provides GeneratedRecipeArtworkSource { recipe ->
+                        dishImageLoader.imageFor(recipe)
                     },
                 ) {
                     SazonApp(

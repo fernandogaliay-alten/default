@@ -544,9 +544,9 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
   (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
   La **caché** de la fase 3 ya existe (`data.image`, ver el bullet de más abajo) y el adaptador real de
-  la fase 2 también, pero **nadie consume el puerto todavía**: la UI progresiva (fase 4) sigue
-  pendiente y la cadena de `recipe-photos` (assets offline) sigue siendo la **única** resolución de
-  imagen en tiempo de ejecución.
+  la fase 2 también; desde la fase 4 (`dish-image-progressive-ui`) el puerto **sí tiene consumidor**: el
+  nivel generado entra por delante de la cadena de `recipe-photos` (assets offline), que pasa a ser el
+  **respaldo** (ver el bullet de la fase 4).
 - **Adaptador real de la imagen de plato (fase 2)**: `com.sazon.app.data.ai.image` implementa el puerto
   anterior con **Ktor Client** (la misma capa `data.ai`, única que conoce la red): `POST
   /images/generations` sobre la base del proveedor con `Authorization: Bearer <clave>`, cuerpo
@@ -574,9 +574,27 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   ADR 0005: `null` = no disponible (**nunca** excepción), la cancelación se propaga y la persistencia es
   *best-effort* (si el disco falla, se devuelven igualmente los bytes generados). La caché es
   JVM-testable con un generador falso y un directorio temporal, sin red, sin cuota y sin emulador
-  (Robolectric solo para la costura de `cacheDir`). **Sin consumidores ni cableado**: la cadena de
-  `recipe-photos` sigue siendo la única resolución en runtime; la inserción real es la fase 4. Ver
+  (Robolectric solo para la costura de `cacheDir`). Desde la fase 4 tiene **consumidor y cableado** en
+  `MainActivity` (a través del loader de `ui.artwork`); ver el bullet de la fase 4. Ver
   `docs/specs/dish-image-cache.md`.
+- **Imagen de plato en la UI y carga progresiva (fase 4)**: `com.sazon.app.ui.artwork` inserta el nivel
+  generado **por delante** de la cadena local sin cambiar pantalla, firma ni geometría. `RecipeArtwork`
+  (misma firma `(recipe, modifier, glyphSize)`) lee **dos** seams independientes —`LocalRecipePhotoSource`
+  (foto local, instantánea) y `LocalGeneratedRecipeArtworkSource` (imagen generada, default no-op)— con
+  sendos `produceState`, pinta **siempre** una **capa base** (foto local con `ContentScale.Crop` o, si no
+  hay, el degradado + glifo de `RecipeArtworkStyle`) y **superpone** la generada con un alfa animado
+  (`animateFloatAsState`, crossfade de **250 ms**): nunca hay hueco ni frame en blanco. La precedencia y
+  el objetivo del crossfade son puros (`RecipeArtworkImagePrecedence`: `GENERATED`/`LOCAL`/`FALLBACK`),
+  la política vive en un único sitio (`DishImageArtworkPolicy`: concurrencia **2**, crossfade **250 ms**,
+  LRU de decodificadas **16**) y `DishImageArtworkLoader<T>` resuelve vía `DishImageResolver`
+  (memoria → disco → generador), **decodifica** (`RecipeImageDecoder`; en la app
+  `AndroidRecipeImageDecoder`, único fichero de `ui.artwork` con `android.graphics`) y mantiene una **LRU
+  de `ImageBitmap`** por clave canónica. Contrato coherente con el ADR 0005: `null`/array vacío/códec
+  roto degradan a la cadena local **sin cachear**, la **cancelación** se propaga (salir de pantalla o
+  reciclar la tarjeta cancela la petición) y no hay `Log`. `MainActivity` compone la cadena reutilizando
+  el `aiClient` compartido (los timeouts de imagen se aplican por petición) y la caché de la fase 3. La
+  cadena en runtime queda `ui.artwork` → `data.image` → `data.ai.image`, con la cadena local
+  (`RecipePhotoSource`/`AssetRecipePhotoSource`) como respaldo. Ver `docs/specs/dish-image-progressive-ui.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
@@ -661,6 +679,15 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   `AndroidDishImageCacheTest` (Robolectric `@Config(sdk = [33])`) cubre la costura Android:
   `root(context) == File(context.cacheDir, "dish-images")` y la resolución real escribe bajo `cacheDir`,
   no bajo `filesDir`. Todo corre en JVM sin red, sin clave, sin cuota y sin emulador.
+- **Tests JVM de la carga progresiva de imagen (fase 4, `ui.artwork`)**: `RecipeArtworkImagePrecedenceTest`
+  (precedencia pura con `String`: generada → `GENERATED`, local → `LOCAL`, ninguna → `FALLBACK`, y
+  `crossfadeTarget` `1f`/`0f`) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
+  misma clave canónica resuelta y decodificada una sola vez, `null`/array vacío/códec roto → `null`
+  **sin cachear**, máximo de **2** resoluciones en vuelo con tres peticiones simultáneas, LRU acotado que
+  descarta la menos usada y `CancellationException` propagada), más `GeneratedRecipeArtworkSourceTest`
+  (el default no produce imagen) y `AndroidRecipeImageDecoderTest` (Robolectric `@GraphicsMode(NATIVE)`:
+  WebP real → `ImageBitmap` no nulo; bytes vacíos/basura → `null`). Sin Compose en `testImplementation`:
+  la lógica testeable se extrae de `@Composable`, así que corre en JVM.
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es

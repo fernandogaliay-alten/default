@@ -141,7 +141,7 @@ Evolutivos aceptados, a planificar después del MVP:
 | El Perfil duplica pantallas del onboarding y divergen | Media | Alto | Regla "un editor, dos entradas": reutilizar los mismos componentes |
 | La sincronización de la Taxonomía escribe en el árbol de fuentes y se engancha por nombre de tarea (`merge*Assets`) | Baja | Bajo | `syncTaxonomy` corre en cada build y el asset está ignorado en git; es deuda técnica anotada por el validador, no un fallo |
 | Las 31 fotos de receta engordan el APK o se decodifican de forma cara al hacer scroll | Media | Medio | Presupuesto **≤8 MB** para `assets/img/recipes/` (hoy ~5,9 MiB), formato WebP a ≤960 px cuando hay herramienta, decodificación en `Dispatchers.IO` y caché LRU de 16 bitmaps; si molesta al desplazar, la salida es una feature correctiva (p. ej. Coil, con su ADR) |
-| Generar la imagen de cada plato gasta cuota de IA (**~2 % por imagen**), añade latencia (**~4,2 s**) y hace crecer el almacenamiento | Media | Medio | El **transporte** (fase 2, `dish-image-generator`) y la **caché** (fase 3, `dish-image-cache`) ya existen (ADR 0005): adaptador `data.ai.image` con `POST /images/generations` a `1024x1024`, reducción local a WebP 960 q80 y **un solo intento** (sin reintento), y caché `data.image` de ficheros en `cacheDir/dish-images` con la clave canónica por **nombre de plato** (una imagen se paga una vez), **tope de disco de 80 MiB con evicción LRU** y LRU de bytes en memoria. El crecimiento de almacenamiento queda por tanto **acotado** (mitigación implementada); en cambio el **gasto de cuota sigue sin materializarse** porque **nadie consume** el puerto todavía: se materializa al consumirse en la fase 4, con la mitigación pendiente (tope de generaciones por sesión, interruptor de usuario y set semilla de platos frecuentes) |
+| Generar la imagen de cada plato gasta cuota de IA (**~2 % por imagen**), añade latencia (**~4,2 s**) y hace crecer el almacenamiento | Media | Medio | El **transporte** (fase 2, `dish-image-generator`) y la **caché** (fase 3, `dish-image-cache`) ya existen (ADR 0005): adaptador `data.ai.image` con `POST /images/generations` a `1024x1024`, reducción local a WebP 960 q80 y **un solo intento** (sin reintento), y caché `data.image` de ficheros en `cacheDir/dish-images` con la clave canónica por **nombre de plato** (una imagen se paga una vez), **tope de disco de 80 MiB con evicción LRU** y LRU de bytes en memoria. El crecimiento de almacenamiento queda por tanto **acotado** (mitigación implementada); el **gasto de cuota se materializa ya** con la fase 4 (`dish-image-progressive-ui`, 2026-10-13), al haber **consumidor** en runtime: mitigaciones implementadas (clave compartida por nombre de plato, caché persistente con evicción LRU y tope de 80 MiB, LRU de bytes en memoria, **límite de 2 generaciones concurrentes** y **cancelación al salir de pantalla o hacer scroll**) y pendientes (**tope de generaciones por sesión** e **interruptor de usuario** → feature `dish-image-settings-toggle`; **set semilla de platos frecuentes** → fase 7) |
 
 ## Research Tasks
 
@@ -167,9 +167,10 @@ Evolutivos aceptados, a planificar después del MVP:
 - `docs/adr/0005-ai-dish-images.md` — las imágenes de plato generadas por IA se piden por un puerto de
   dominio (`DishImageGenerator`) con prompt determinista y clave canónica versionada del nombre del
   plato; ajusta parcialmente el 0004 (la cadena de assets pasa a respaldo). Estado: **aceptado
-  parcialmente (fases 1-3)**; el adaptador real (fase 2) y la caché de disco + memoria (fase 3) ya
-  existen, pero **nadie los consume** todavía: la UI progresiva y los guardarraíles (fase 4) y las
-  fases 5-7 siguen pendientes.
+  parcialmente (fases 1-4)**; el adaptador real (fase 2), la caché de disco + memoria (fase 3) y la
+  costura de UI con crossfade (fase 4, mitad de integración) ya existen y **tienen consumidor** en
+  runtime. Siguen pendientes el interruptor de usuario y el tope por sesión (la otra mitad de la fase 4,
+  `dish-image-settings-toggle`) y las fases 5-7.
 
 `RecipeGenerator` como interfaz con implementación falsa **no se elevó a ADR**: introducir esa
 abstracción más tarde sería un refactor de una sola capa y el patrón es estándar. Queda documentado

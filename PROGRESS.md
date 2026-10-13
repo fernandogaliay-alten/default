@@ -2999,3 +2999,63 @@
   (`area: ui`), que **requiere capturas de referencia** en
   `docs/design/concepts/dish-image-progressive-ui/` antes de implementar y se reanudaría con
   `github-flow execute dish-image-progressive-ui`.
+
+### Sesión 092
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-flow` para `dish-image-progressive-ui` (fase 4, **mitad de integración** de
+  `docs/ai-dish-images-proposal.md`) en modo hasta-aceptación (planner → implementer → validator) en el
+  worktree `feature/dish-image-progressive-ui`. **Sin push ni PR** (publica el orquestador de
+  `github-flow`). `area: integration`; **desviación de capturas autorizada** por el orquestador (misma
+  clase que #77/#85/#86/#91), por lo que **no** se crea `docs/design/concepts/dish-image-progressive-ui/`.
+- Completado (rol 1, **planner**): spec `docs/specs/dish-image-progressive-ui.md` (639 líneas) con 8
+  escenarios, no-goals (sin UI nueva, sin interruptor/tope, sin tocar `data/**`/`domain/**`, sin
+  dependencias) y checklist del validador. Reconciliación del harness (orquestador, pre-implementación):
+  el `verification` de la entrada citaba "tope de generaciones por sesión respetado" (atribuido al
+  hermano `dish-image-settings-toggle`); se sustituye por "límite de concurrencia (2) respetado".
+- Completado (rol 2, **implementer**): la feature queda **`passing`**. Seis ficheros nuevos en
+  `com.sazon.app.ui.artwork` — `GeneratedRecipeArtworkSource` (seam `fun interface` +
+  `NoGeneratedRecipeArtworkSource` + `LocalGeneratedRecipeArtworkSource`, default no-op),
+  `RecipeArtworkImagePrecedence` (precedencia `GENERATED`/`LOCAL`/`FALLBACK` y objetivo del crossfade,
+  puros y genéricos), `DishImageArtworkPolicy` (concurrencia **2**, crossfade **250 ms**, LRU de
+  decodificadas **16**), `DishImageArtworkLoader<T>` (LRU por clave canónica + `Semaphore(2)` +
+  degradación `null` sin cachear + `CancellationException` propagada), `RecipeImageDecoder` y
+  `AndroidRecipeImageDecoder` (`BitmapFactory`, **único** `android.graphics` de `ui.artwork`) — más
+  `RecipeArtwork` reescrito por **capas** (capa base siempre + capa generada con alfa animado; firma
+  `(recipe, modifier, glyphSize)` y geometría intactas) y el cableado de `MainActivity` (generador real
+  + resolutor de la fase 3 + loader + decodificador, reutilizando el `aiClient` compartido).
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.ui.artwork.*"` → BUILD SUCCESSFUL (5 suites / 19 tests) y **`bash init.sh` exit 0**
+  (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin procesos largos, sin red, sin cuota y
+  sin tocar `init.sh`). Parseo propio de los XML: **81 suites / 562 tests / 0 fallos / 0 errores /
+  0 saltados** (baseline en `HEAD` 77/551 re-derivada; delta **+4 suites / +11 tests**:
+  `RecipeArtworkImagePrecedenceTest` 2, `DishImageArtworkLoaderTest` 6, `GeneratedRecipeArtworkSourceTest`
+  1, `AndroidRecipeImageDecoderTest` 2). Lint (SARIF): **0 errores y 13 warnings** preexistentes, todos en
+  el build/version catalog, **0 bajo `app/src`**.
+- Ficheros creados/cambiados: los 6 ficheros nuevos de `ui/artwork`, los 4 tests nuevos en
+  `app/src/test/java/com/sazon/app/ui/artwork/`, `RecipeArtwork.kt`, `MainActivity.kt`,
+  `docs/specs/dish-image-progressive-ui.md` (del planner), `DESIGN.md`, `docs/technical-discovery.md`,
+  `docs/adr/0005-ai-dish-images.md`, `docs/domain/taxonomy.md`, `docs/risks-and-open-questions.md`,
+  `feature_list.json` y este registro. Los **5 puntos de uso**, `RecipePhotoSource.kt`, `data/**`,
+  `domain/**`, `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**`,
+  `app/src/androidTest/**`, `AndroidManifest.xml`, `assets/**`, `seed-recipes.json` y las specs aceptadas
+  **intactos**; sin dependencias nuevas y **nada** en `docs/design/concepts/`.
+- Hallazgos relevantes: (a) la **capa base** (foto local o degradado + glifo) se pinta siempre y la
+  generada se **superpone** con alfa animado: no hay hueco ni frame en blanco, ni siquiera con la caché
+  fría; (b) en la **primera composición** `animateFloatAsState` arranca en el objetivo, así que un acierto
+  de caché se pinta directamente; (c) el **LRU por clave canónica** (`DishImageCacheKey`, nombre de plato)
+  evita volver a resolver/decodificar en el scroll de ida y vuelta, y el `Semaphore(2)` acota las
+  resoluciones en vuelo; (d) el `null`/array vacío/códec roto **no se cachean** (se reintenta) y la
+  cancelación se propaga.
+- Riesgo o incógnita abierta (registrados, no bloqueantes): sin el hermano `dish-image-settings-toggle`
+  **no hay tope por sesión ni interruptor**, así que el gasto de cuota queda acotado solo por la
+  concurrencia (2), la clave compartida y la caché persistente; la cadena literal genera también para las
+  12 recetas semilla (candidato a un refinamiento barato, no aplicado para no desviarse del plan); una
+  cancelación a mitad de petición puede "perder" una generación ya enviada (cuota gastada sin disco);
+  `cacheDir` puede vaciarlo el sistema (se regenera y vuelve a gastar cuota).
+- Rol 3 (**validator**): **pendiente** en esta sesión al cierre del implementer (el validador
+  independiente es la siguiente puerta; la feature queda `passing`, no `accepted`).
+- Siguiente paso: validación independiente de `dish-image-progressive-ui` (o el ciclo que decida el
+  orquestador). Después, la **fase 4, mitad de UI** (`dish-image-settings-toggle`, `area: ui`) es la
+  siguiente feature del plan (interruptor + tope por sesión) y **sí** requiere capturas o desviación
+  autorizada registrada en `DESIGN.md`. `github-flow` publica la rama (push + PR con `Closes`, sin merge).

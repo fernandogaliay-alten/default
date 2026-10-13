@@ -166,6 +166,16 @@ aparecerá aquí.". La dirección visual aplicable es el **backfill pendiente** 
 (`home`, `home-sin-conexion`, ver `docs/design/concepts/home-offline-blocks/README.md`) más la sección
 **Core Screens** (Home, arriba) y `Components`, contra las que se revisa el acabado en el emulador.
 
+**Excepción de capturas (desviación documentada, issue #98):** `dish-image-progressive-ui` **no** genera
+capturas nuevas ni carpeta `docs/design/concepts/dish-image-progressive-ui/`. Es la **mitad de
+integración** de la fase 4 de `docs/ai-dish-images-proposal.md`: **no** introduce pantalla, layout,
+geometría, token, microcopy ni estado visual nuevos — reutiliza las pantallas ya aceptadas
+(`results-screen: resultados`, `recipe-detail-screen: detalle-receta`, `favorites: favoritos` y la Home
+de `home-offline-blocks`, backfill pendiente) y se limita a **cambiar de dónde sale la imagen**
+(local → generada) con un crossfade estándar. La dirección visual aplicable son esas capturas aceptadas
+más la sección **Imagen de receta** de `Components` (más abajo), contra las que se revisa el acabado en
+el emulador tras el merge.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
@@ -263,6 +273,21 @@ nada lo es.
   - Es el **único punto a cambiar** para la imagen de receta: la fuente de la foto se inyecta por
     `LocalRecipePhotoSource`, así que los 5 puntos de uso no conocen ni el asset ni Android. Ver
     `docs/adr/0004-recipe-photos-as-assets.md` y `docs/technical-discovery.md`.
+  - **Imagen generada (nivel por delante) y crossfade estándar** (feature `dish-image-progressive-ui`,
+    fase 4): `RecipeArtwork` lee un **segundo seam** (`LocalGeneratedRecipeArtworkSource`; por defecto
+    no produce imagen) y pide en paralelo la imagen del plato; cuando llega, **la superpone a la foto
+    local con un crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, en un único sitio).
+    La foto local (o el degradado + glifo) es la **capa base**, que se pinta **siempre**: nunca hay
+    hueco ni frame en blanco. Si la generación falla, tarda, se cancela o no hay red, se **conserva la
+    foto local** (degradación silenciosa, contrato `null` del ADR 0005). No hay microcopy, token ni
+    estado visual nuevos y la firma, la geometría y los 5 puntos de uso no cambian.
+  - **Cadena de imagen en runtime**: `ui.artwork.RecipeArtwork` → `LocalGeneratedRecipeArtworkSource` →
+    `DishImageArtworkLoader` (límite de **2** resoluciones en vuelo y LRU de **16** imágenes
+    decodificadas) → `data.image.DishImageResolver` → `FileDishImageCache` (80 MiB en
+    `cacheDir/dish-images`) / `MemoryDishImageCache` / `data.ai.image.DevExpertDishImageGenerator`; en
+    paralelo, la cadena local `LocalRecipePhotoSource` → `data.AssetRecipePhotoSource` como **respaldo**
+    (y el degradado + glifo como **último recurso**). Ver `docs/adr/0005-ai-dish-images.md` y
+    `docs/technical-discovery.md`.
 - **FilterChip**: fila desplazable; seleccionado relleno de terracota. En Favoritos el chip de orden
   por defecto se lee **"Recientes"** (microcopy corto, sin recorte; feature `favorites-sort-controls`).
 - **Toggle lista/rejilla de Favoritos** (`ViewModeToggle`, feature `favorites-sort-controls`): píldora
