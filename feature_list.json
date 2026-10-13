@@ -922,5 +922,95 @@
     ],
     "evidence": [],
     "notes": "Feature correctiva de home-offline-blocks, pedida por la persona (2026-10-13). Motivo: el bloque 5 'Tus recetas' pinta SIEMPRE el subtítulo 'Abiertas hace poco' (HomeRecipesGroup muestra el título aunque la lista venga vacía, HomeScreen.kt) y MainShell alimenta HomeRecipes.recentlyOpened con emptyList() hardcodeado, sin repositorio ni persistencia: el usuario ve un título sin nada debajo (visible en cuanto hay al menos una guardada, porque si no gana el estado vacío global). Alcance previsto: dejar de pintar un grupo sin recetas y, si la costura 'recentlyOpened' queda muerta, retirarla de HomeRecipes (ajustando HomeRecipesTest) en vez de conservar código sin uso; sin tocar 'Guardadas', el filtro local, el estado vacío global ni el resto de la Home. Desviación de capturas autorizada por la persona (misma clase que recipe-artwork #77 y profile-stats-heading #86): no se crea docs/design/concepts/home-recently-opened-group/; DESIGN.md registra el microcopy/estructura vigente. Sin dependencias nuevas."
+  },
+  {
+    "id": "dish-image-generator",
+    "area": "integration",
+    "title": "Generador real de imagen de plato (proveedor de IA)",
+    "user_visible_behavior": "Dada una petición de imagen del dominio, la app obtiene del proveedor una imagen real del plato y la devuelve ya reducida; si el proveedor falla o tarda, no se lanza y se devuelve null (la app conserva su foto local).",
+    "depends_on": ["dish-image-domain"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el adaptador con un motor HTTP falso: petición correcta a /images/generations (modelo 'image', prompt y size 1024x1024), decodificación de data[0].b64_json y reducción a WebP q80 de 960 px de ancho; una respuesta de error o timeout devuelve null sin lanzar",
+      "El adaptador es la única capa que usa Ktor y la clave de API sale de local.properties sin registrarse en logs",
+      "Prueba real opcional y guardada (gasta ~2 % de cuota semanal por imagen): una generación 1024x1024 devuelve una imagen válida y se adjunta a la evidencia"
+    ],
+    "evidence": [],
+    "notes": "Fase 2 de docs/ai-dish-images-proposal.md y docs/adr/0005-ai-dish-images.md. Adaptador com.sazon.app.data.ai.image.DevExpertDishImageGenerator (Ktor, única capa con red) que implementa DishImageGenerator: POST /images/generations con modelo 'image', decodifica b64_json y reduce localmente a WebP q80 de 960 px de ancho. Sin caché, sin UI y sin consumidores del puerto (los añaden las fases 3-4). Decisiones de la persona (2026-10-13): se genera a 1024 y se reduce a 960 px WebP q80; 512 no lo soporta el proveedor."
+  },
+  {
+    "id": "dish-image-cache",
+    "area": "data",
+    "title": "Caché de imágenes de plato (disco + memoria)",
+    "user_visible_behavior": "Una imagen de plato generada una vez se reutiliza en usos posteriores con la misma clave canónica sin volver a llamar al proveedor (incluso sin red), y el almacenamiento queda acotado por un tope.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre la caché con un generador falso: la segunda petición con la misma clave canónica no llama al generador; dos títulos equivalentes comparten fichero; sin red se sirve del disco",
+      "La evicción LRU respeta el tope de 80 MB borrando los ficheros más antiguos; el formato guardado es WebP",
+      "La caché escribe bajo cacheDir, no toca el almacenamiento de recetas y no añade dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Fase 3 de docs/ai-dish-images-proposal.md. com.sazon.app.data.image: ficheros en cacheDir indexados por DishImageCacheKey (nombre de fichero = clave canónica) más una caché LRU en memoria, con tope de 80 MB y evicción. Se inserta delante de la cadena de recipe-photos (que pasa a respaldo). Sin UI (fase 4). Decisión de la persona (2026-10-13): ficheros en cacheDir, no Room."
+  },
+  {
+    "id": "dish-image-progressive-ui",
+    "area": "ui",
+    "title": "Carga progresiva de la imagen de plato",
+    "user_visible_behavior": "Las tarjetas y el hero muestran al instante su foto local y la sustituyen por la imagen generada del plato cuando llega, sin esperas ni saltos; nunca aparece un error por imagen y el usuario puede apagar la generación.",
+    "depends_on": ["dish-image-cache"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre la lógica y el estado en JVM: qué se pinta antes y después, cancelación al salir de pantalla o hacer scroll, tope de generaciones por sesión e interruptor apagado que desactiva la generación",
+      "Capturas de referencia obligatorias en docs/design/concepts/dish-image-progressive-ui/ antes de implementar; se respetan la firma y la geometría de RecipeArtwork (16:10, 96x96, alto 96, hero 240)",
+      "Prueba manual en emulador: la foto local se ve al instante y se sustituye por la generada; con el interruptor apagado no se genera nada"
+    ],
+    "evidence": [],
+    "notes": "Fase 4 de docs/ai-dish-images-proposal.md (area: ui, exige capturas de referencia). RecipeArtwork gana un nivel por delante de la cadena de recipe-photos. Solo lo visible, concurrencia limitada (2), timeout propio más corto que el de chat, fallo silencioso y transición suave. Guardarraíles de la persona (2026-10-13): interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy)."
+  },
+  {
+    "id": "dish-visual-descriptor",
+    "area": "integration",
+    "title": "Descriptor visual del plato en el contrato de la IA",
+    "user_visible_behavior": "El modelo puede indicar el plato canónico y una descripción visual en la misma llamada que genera la receta; si no los envía, la app usa el título y la Taxonomía como hasta ahora.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el campo opcional dishKey/imagePrompt en el parseo de la respuesta: presente, ausente (degradación) y formato inválido; RecipeValidator no cambia",
+      "La clave canónica usa dishKey cuando existe y mantiene el respaldo por título/id cuando falta; el prompt de imagen usa imagePrompt cuando existe",
+      "El contrato §4 de docs/domain/taxonomy.md documenta el campo opcional"
+    ],
+    "evidence": [],
+    "notes": "Fase 5, variante B de docs/ai-dish-images-proposal.md §4.1. Campo opcional en el wire (dishKey + imagePrompt), ignorado por RecipeValidator. Coherencia del mismo plato (p. ej. 'arroz con pollo' frente a 'arroz con pollo fácil') que la fase 1 deja como frontera tipográfica. Sin llamada extra."
+  },
+  {
+    "id": "dish-style-reference",
+    "area": "integration",
+    "title": "Estilo homogéneo con referencia (image-edit)",
+    "user_visible_behavior": "Las imágenes generadas comparten el estilo visual de la casa, anclado en una foto aceptada como referencia; si el ajuste falla, se cae a la generación por texto sin romper nada.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el adaptador /images/edits con motor falso: envía la imagen de referencia, decodifica la respuesta y degrada a /images/generations si el ajuste falla",
+      "La referencia de estilo es un asset versionado, no una imagen subida por el usuario",
+      "Prueba real opcional y guardada (~2 % de cuota) comparando el resultado con la variante A"
+    ],
+    "evidence": [],
+    "notes": "Fase 6, variante C de docs/ai-dish-images-proposal.md §4.2. POST /images/edits (modelo 'image-edit') con una foto aceptada como referencia de estilo, con fallback a texto→imagen. Depende del adaptador de la fase 2."
+  },
+  {
+    "id": "dish-image-seed",
+    "area": "data",
+    "title": "Set semilla de imágenes de platos frecuentes",
+    "user_visible_behavior": "Los platos más buscados del demo muestran su imagen sin gastar cuota ni esperar red, porque viajan preparadas en la app.",
+    "depends_on": ["dish-image-domain"],
+    "status": "not_started",
+    "verification": [
+      "Los assets semilla están versionados y se resuelven por la clave canónica (dish-image-v1-…); un test comprueba el mapeo clave→asset",
+      "'./gradlew test' sigue en verde y sin dependencias nuevas; el script de preparación es idempotente y no corre en runtime",
+      "Sin red, un plato del set semilla muestra su imagen propia y no la genérica de categoría"
+    ],
+    "evidence": [],
+    "notes": "Fase 7 de docs/ai-dish-images-proposal.md §5. Preparar una vez los platos frecuentes del demo (patrón scripts/fetch-recipe-photos.sh) y versionarlos en assets; resolución por clave canónica delante de la cadena de categoría."
   }
 ]
