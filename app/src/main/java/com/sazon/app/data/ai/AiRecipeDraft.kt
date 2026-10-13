@@ -1,5 +1,6 @@
 package com.sazon.app.data.ai
 
+import com.sazon.app.domain.image.DishVisualDescriptor
 import com.sazon.app.domain.recipe.MeasureUnit
 import com.sazon.app.domain.recipe.Nutrition
 import com.sazon.app.domain.recipe.Recipe
@@ -7,6 +8,8 @@ import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeSource
 import com.sazon.app.domain.recipe.RecipeStep
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Cantidad normalizada del ingrediente "al gusto" del wire (`quantity` nula o ausente).
@@ -80,6 +83,10 @@ internal fun AiIngredientDraft.toRecipeIngredient(): RecipeIngredient =
  * [toRecipe] (`toRecipeIngredient`): el dominio exige `quantity: Double` no anulable y el wire
  * legitimamente trae "al gusto". [RecipeStep] y [Nutrition] se reutilizan de `domain.recipe`: son
  * esquema del contrato sin campos de app, por lo que no hace falta duplicarlos.
+ *
+ * `dishKey` e `imagePrompt` (fase 5) son un **descriptor visual opcional** del plato que se extrae
+ * aparte con [descriptor] y **no** entra en la [Recipe] ni en el `id` ([AiRecipeIds]): un tipo JSON
+ * equivocado o un valor inutil no descarta la receta.
  */
 @Serializable
 internal data class AiRecipeDraft(
@@ -98,6 +105,11 @@ internal data class AiRecipeDraft(
     val tips: List<String> = emptyList(),
     val nutrition: Nutrition? = null,
     val declaredAllergens: List<String> = emptyList(),
+    // Descriptor visual opcional (fase 5): se declaran como `JsonElement?` **a proposito** para que
+    // un tipo JSON equivocado (numero, objeto, array) no haga fallar el decode del elemento y cuente
+    // la receta entera como SCHEMA. Mismo espiritu tolerante que `AiIngredientDraft`.
+    val dishKey: JsonElement? = null,
+    val imagePrompt: JsonElement? = null,
 ) {
 
     /**
@@ -126,4 +138,21 @@ internal data class AiRecipeDraft(
         declaredAllergens = declaredAllergens,
         matchScore = null,
     )
+
+    /**
+     * Descriptor visual **opcional** del modelo (fase 5), o `null` si no aporta nada utilizable.
+     *
+     * Solo se aceptan `JsonPrimitive` **de tipo string** ([JsonPrimitive.isString]): un numero,
+     * objeto, array o `null` del wire se **ignora** sin descartar la receta (es informacion
+     * cosmetica). La limpieza (colapso de espacios y descarte de campos inutiles) la hace
+     * [DishVisualDescriptor.of], unica fuente de la politica.
+     */
+    fun descriptor(): DishVisualDescriptor? =
+        DishVisualDescriptor.of(
+            dishKey = stringOrNull(dishKey),
+            imagePrompt = stringOrNull(imagePrompt),
+        ).takeIf { it.isNotEmpty }
+
+    private fun stringOrNull(element: JsonElement?): String? =
+        (element as? JsonPrimitive)?.takeIf { it.isString }?.content
 }

@@ -528,21 +528,27 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
   junto a `GenerationConstraints`, la costura minima de `generateFromIngredients`.
-- **Puerto de dominio de la imagen de plato (fases 1-2)**: `com.sazon.app.domain.image`
+- **Puerto de dominio de la imagen de plato (fases 1-2 y 5)**: `com.sazon.app.domain.image`
   (puro: sin Android, sin Compose, sin Ktor, sin red y sin estado) fija la política con la que la app
   pedirá y cacheará la imagen generada de un plato (fase 1 de `docs/ai-dish-images-proposal.md`, ver
   `docs/adr/0005-ai-dish-images.md`). El puerto es
   `DishImageGenerator.suspend fun generate(request): ByteArray?` con **`null` = imagen no disponible**
   (no excepción; la cancelación sí se propaga) y el adaptador no conoce ni la `Recipe` ni la Taxonomía,
-  porque `DishImageRequest.of(taxonomy, recipe)` es el **único punto de composición** de `prompt`,
-  `cacheKey` y `recipeId`. `DishImagePrompt` (objeto puro) construye la plantilla fija
+  porque `DishImageRequest.of(taxonomy, recipe, descriptor)` es el **único punto de composición** de
+  `prompt`, `cacheKey` y `recipeId`. `DishImagePrompt` (objeto puro) construye la plantilla fija
   `Fotografía gastronómica de <plato>[, <cocina>], cerámica artesanal, luz natural suave, estilo
-  editorial gastronómico, sin texto ni manos`, con degradación `título → etiqueta de categoría real →
-  plato casero` y omisión de la cláusula de cocina cuando el `id` no existe o está vacío.
+  editorial gastronómico, sin texto ni manos`, con degradación `imagePrompt → título → etiqueta de
+  categoría real → plato casero` y omisión de la cláusula de cocina cuando el `id` no existe o está vacío.
   `DishImageCacheKey` (objeto puro) deriva la clave **versionada** `dish-image-v1-<slug>` del **nombre
   del plato** normalizado tipográficamente (colapso de espacios, `NFD` + `\p{Mn}+`, `Locale.ROOT`,
   alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
   (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
+  Desde la **fase 5** (`dish-visual-descriptor`) los tres ganchos aceptan un **descriptor visual
+  opcional** (`DishVisualDescriptor`: `dishKey`/`imagePrompt`, valor puro con `of`/`isEmpty`/`NONE`): con
+  `dishKey` utilizable la clave es la del **plato canónico** (misma normalización; `"arroz con pollo"` y
+  `"arroz con pollo fácil"` **comparten** imagen) y con `imagePrompt` el prompt **solo** cambia la
+  cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos); sin descriptor el resultado es
+  **exactamente** el de la fase 1 y `VERSION` **no** sube (no cambia ni la normalización ni la plantilla).
   La **caché** de la fase 3 ya existe (`data.image`, ver el bullet de más abajo) y el adaptador real de
   la fase 2 también; desde la fase 4 (`dish-image-progressive-ui`) el puerto **sí tiene consumidor**: el
   nivel generado entra por delante de la cadena de `recipe-photos` (assets offline), que pasa a ser el
@@ -616,7 +622,13 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   ingredientes con un DTO del wire `AiIngredientDraft` de `quantity` anulable que se normaliza a
   "al gusto" —`0.0`+`unit = null`— cuando llega nula o ausente, correctiva `ai-quantity-tolerance`), la
   app completa `id` (`AiRecipeIds`, determinista por contenido) y `source = ai` **antes** de aplicar
-  `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. El
+  `RecipeValidator.validateRecipe` con restricciones **neutras**; elemento a elemento, sin lanzar. Desde
+  la **fase 5** el DTO declara además `dishKey`/`imagePrompt` como `JsonElement?` **a propósito** (un tipo
+  JSON equivocado no puede contar la receta como `SCHEMA`; solo se aceptan `JsonPrimitive` de tipo string)
+  y `AiDecodeResult.descriptors` expone el descriptor limpio por `id` generado **solo de recetas
+  aceptadas**: es el transportador documentado, pero **nadie** lo consume en runtime todavía
+  (`MainActivity` compone `DishImageRequest.of(taxonomy, recipe)` sin descriptor) y **no** entra en el
+  `id` ni en `Recipe`. El
   **formato de la peticion** se prueba en `OpenAiChatTest` (sin formato **no** aparece
   `response_format` ni un `null`; con `ResponseFormat.JSON_OBJECT` se emite `{"type":"json_object"}`) y
   el **fallback one-shot** (400/422 -> 2 llamadas, la segunda sin formato; `401/403/404/429/5xx` sin
@@ -663,18 +675,27 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   bajo `app/src/main/assets/img/recipes/` (propiedad `recipe.photos.assets.dir` publicada por
   `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios (el glifo es el último
   recurso).
-- **Tests JVM de la política de imagen de plato (fase 1, `domain.image`)**: `DishImagePromptTest`
+- **Tests JVM de la política de imagen de plato (fase 1 y 5, `domain.image`)**: `DishImagePromptTest`
   (determinismo con dos `Taxonomy` parseadas aparte, título + etiqueta real de cocina + coletilla de
   estilo exactamente una vez, colapso de espacios, degradación por categoría real y al plato por
   defecto —receta vacía, categoría desconocida y Taxonomía vacía, sin lanzar—, cocina vacía o
-  desconocida sin marcador, la plantilla literal y la pureza de los tres fuentes por lectura),
+  desconocida sin marcador, la plantilla literal y la pureza de los tres fuentes por lectura; desde la
+  fase 5, el `imagePrompt` del descriptor como cláusula del plato conservando prefijo/cocina/coletilla y
+  la degradación idéntica a la fase 1 con descriptor `null`/`NONE`/solo `dishKey`),
   `DishImageCacheKeyTest` (las cuatro variantes del mismo nombre comparten clave, slug sin diacríticos,
   alfabeto `[a-z0-9-]` sin guiones sobrantes, estabilidad entre llamadas, discriminación por nombre,
   respaldo por `id` sin colisión, respaldo por defecto, frontera tipográfica no semántica y clave
-  independiente del `locale` del dispositivo) y `DishImageRequestTest` (composición desde la Taxonomía y
-  la receta, igualdad estructural, `recipeId = null` con `id` vacío o en blanco y no dependencia de la
-  clasificación ni del origen). Corren en JVM con la Taxonomía real (`taxonomy.asset.path`) y **sin**
-  dependencias nuevas: la fase 1 es política pura, sin red ni UI que probar.
+  independiente del `locale` del dispositivo; desde la fase 5, el `dishKey` gana al título y une
+  variantes —`dish-image-v1-arroz-con-pollo`— y el respaldo es idéntico a la fase 1 con descriptor
+  inutilizable), `DishVisualDescriptorTest` (colapso de espacios, `dishKey` conservado tal cual y
+  descartado si no deja `[a-z0-9]`, `imagePrompt` vacío descartado, `isEmpty`/`NONE` y pureza) y
+  `DishImageRequestTest` (composición desde la Taxonomía y
+  la receta, igualdad estructural, `recipeId = null` con `id` vacío o en blanco, no dependencia de la
+  clasificación ni del origen, composición con descriptor y que el `data class` **no** gana campos). Corren
+  en JVM con la Taxonomía real (`taxonomy.asset.path`) y **sin**
+  dependencias nuevas: la fase 1 es política pura, sin red ni UI que probar. El parseo tolerante del wire
+  (escenarios del descriptor presentes/ausentes/inválidos y estabilidad del `id`) vive en
+  `DishVisualDescriptorWireTest` (`data.ai`).
 - **Tests JVM de la caché de imagen de plato (fase 3, `data.image`)**: `DishImageCachePolicyTest`
   (nombre de fichero `<clave>.webp`, constantes del tope, y selección pura de víctimas: orden por
   recencia con desempate por nombre —con un caso negativo que falla si el desempate se invierte—,

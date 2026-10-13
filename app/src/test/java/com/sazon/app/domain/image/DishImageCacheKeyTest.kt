@@ -151,6 +151,100 @@ class DishImageCacheKeyTest {
         assertTrue(DishImageCacheKey.of("Arroz con pollo").startsWith("${DishImageCacheKey.VERSION}-"))
         assertEquals("${DishImageCacheKey.VERSION}-${DishImageCacheKey.FALLBACK_KEY}", DishImageCacheKey.of(""))
     }
+
+    // --- Escenarios 5-6 de `docs/specs/dish-visual-descriptor.md` (fase 5) ---
+
+    @Test
+    fun descriptor_escenario_5_el_dish_key_gana_al_titulo_y_une_variantes_del_mismo_plato() {
+        val facil = receta(id = "ai-facil", title = "Arroz con pollo fácil")
+        val criollo = receta(id = "seed-criollo", title = "Arroz con Pollo Criollo!!!")
+        val descriptor = DishVisualDescriptor(dishKey = "arroz-con-pollo")
+
+        assertEquals("dish-image-v1-arroz-con-pollo", DishImageCacheKey.of(facil, descriptor))
+        assertEquals(
+            "Dos titulos distintos con el mismo dishKey comparten clave",
+            DishImageCacheKey.of(facil, descriptor),
+            DishImageCacheKey.of(criollo, descriptor),
+        )
+        assertNotEquals(
+            "Sin descriptor la frontera tipografica de la fase 1 sigue vigente",
+            DishImageCacheKey.of(facil),
+            DishImageCacheKey.of(criollo),
+        )
+    }
+
+    @Test
+    fun descriptor_escenario_5b_el_dish_key_se_normaliza_como_el_nombre_de_plato() {
+        val recipe = receta(title = "Otra cosa")
+
+        assertEquals(
+            "Mayusculas, espacios y puntuacion del dishKey comparten clave",
+            DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "  Arroz  con  Pollo ")),
+            DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "arroz-con-pollo")),
+        )
+        assertEquals(
+            "dish-image-v1-arroz-con-pollo",
+            DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "¡Arroz, con pollo!")),
+        )
+    }
+
+    @Test
+    fun descriptor_escenario_6_sin_dish_key_utilizable_la_clave_es_la_de_la_fase_1() {
+        val conTitulo = receta(id = "seed-arroz-pollo", title = "Arroz con pollo")
+        val sinTituloConId = receta(id = "seed-tortilla-patatas", title = "")
+        val sinTituloNiId = receta(id = "", title = "")
+
+        val descriptoresInutiles = listOf(
+            null,
+            DishVisualDescriptor.NONE,
+            DishVisualDescriptor(dishKey = ""),
+            DishVisualDescriptor(dishKey = "   "),
+            DishVisualDescriptor(dishKey = "🍲"),
+            DishVisualDescriptor(dishKey = "..."),
+            DishVisualDescriptor(imagePrompt = "solo hay imagePrompt"),
+        )
+
+        descriptoresInutiles.forEach { descriptor ->
+            assertEquals(
+                "Con descriptor inutilizable ($descriptor) el respaldo de la fase 1 es identico",
+                DishImageCacheKey.of(conTitulo),
+                DishImageCacheKey.of(conTitulo, descriptor),
+            )
+            assertEquals(
+                DishImageCacheKey.of(sinTituloConId),
+                DishImageCacheKey.of(sinTituloConId, descriptor),
+            )
+            assertEquals(
+                DishImageCacheKey.of(sinTituloNiId),
+                DishImageCacheKey.of(sinTituloNiId, descriptor),
+            )
+        }
+
+        assertEquals("dish-image-v1-arroz-con-pollo", DishImageCacheKey.of(conTitulo))
+        assertEquals("dish-image-v1-plato-seed-tortilla-patatas", DishImageCacheKey.of(sinTituloConId))
+        assertEquals("dish-image-v1-plato", DishImageCacheKey.of(sinTituloNiId))
+    }
+
+    @Test
+    fun descriptor_la_clave_con_descriptor_conserva_el_alfabeto_y_la_independencia_del_idioma() {
+        val recipe = receta(title = "Da igual")
+        val clave = DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "Salmón a la Plancha"))
+
+        assertEquals("dish-image-v1-salmon-a-la-plancha", clave)
+        assertTrue(clave.matches(Regex("^dish-image-v1-[a-z0-9]+(-[a-z0-9]+)*$")))
+
+        val anterior = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            assertEquals(
+                "El idioma del dispositivo no cambia la clave del descriptor",
+                clave,
+                DishImageCacheKey.of(recipe, DishVisualDescriptor(dishKey = "Salmón a la Plancha")),
+            )
+        } finally {
+            Locale.setDefault(anterior)
+        }
+    }
 }
 
 private fun receta(

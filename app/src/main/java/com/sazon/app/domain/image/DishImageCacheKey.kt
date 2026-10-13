@@ -72,8 +72,17 @@ object DishImageCacheKey {
      * respaldo por defecto (`dish-image-v1-plato`).
      *
      * `categoryId`, `cuisineId`, `source` y `id` **no** influyen cuando hay titulo util.
+     *
+     * Con un [descriptor] (fase 5) cuyo `dishKey` sea utilizable, el **plato canonico** gana al
+     * titulo (misma [normalize] de siempre, de modo que `"Arroz con Pollo!!!"` y `"arroz-con-pollo"`
+     * comparten clave). Si no hay [descriptor], su `dishKey` es `null`/en blanco o no deja ningun
+     * caracter `[a-z0-9]`, el resultado es **exactamente** el de la fase 1.
      */
-    fun of(recipe: Recipe): String {
+    fun of(recipe: Recipe, descriptor: DishVisualDescriptor? = null): String {
+        descriptor?.dishKey?.let { byDescriptor ->
+            val slug = normalize(byDescriptor)
+            if (slug.isNotEmpty()) return "$VERSION-$slug"
+        }
         val byTitle = normalize(recipe.title)
         if (byTitle.isNotEmpty()) return "$VERSION-$byTitle"
         val byId = normalize(recipe.id)

@@ -13,7 +13,8 @@ import com.sazon.app.domain.taxonomy.Taxonomy
  * <PROMPT_PREFIX> <plato>[, <cocina>], <STYLE_SUFFIX>
  * ```
  *
- * - `<plato>` = titulo de la receta con espacios colapsados; si queda vacio, la etiqueta de su
+ * - `<plato>` = [DishVisualDescriptor.imagePrompt] del descriptor (fase 5) si existe y no esta en
+ *   blanco; si no, el titulo de la receta con espacios colapsados; si queda vacio, la etiqueta de su
  *   `categoryId` real en la Taxonomia; si tampoco hay, [DEFAULT_DISH].
  * - `<cocina>` = etiqueta de la cocina de la Taxonomia **solo** si existe y no esta en blanco; en
  *   cualquier otro caso la clausula se **omite** (nunca un marcador de "desconocida").
@@ -40,8 +41,8 @@ object DishImagePrompt {
     private val WHITESPACE = Regex("\\s+")
 
     /** Prompt de imagen de [recipe]; determinista y nunca en blanco. */
-    fun build(taxonomy: Taxonomy, recipe: Recipe): String {
-        val dish = dishName(taxonomy, recipe)
+    fun build(taxonomy: Taxonomy, recipe: Recipe, descriptor: DishVisualDescriptor? = null): String {
+        val dish = dishName(taxonomy, recipe, descriptor)
         val cuisine = taxonomy.cuisine(recipe.cuisineId)
             ?.label
             ?.let(::singleLine)
@@ -53,8 +54,20 @@ object DishImagePrompt {
         }
     }
 
-    /** Degradacion `titulo -> etiqueta de categoria real -> DEFAULT_DISH`. */
-    private fun dishName(taxonomy: Taxonomy, recipe: Recipe): String {
+    /**
+     * Degradacion `imagePrompt del descriptor -> titulo -> etiqueta de categoria real -> DEFAULT_DISH`.
+     * El descriptor (fase 5) **solo** cambia la fuente del plato: prefijo, cocina y [STYLE_SUFFIX]
+     * siguen intactos.
+     */
+    private fun dishName(
+        taxonomy: Taxonomy,
+        recipe: Recipe,
+        descriptor: DishVisualDescriptor?,
+    ): String {
+        descriptor?.imagePrompt
+            ?.let(::singleLine)
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { return it }
         singleLine(recipe.title).takeIf { it.isNotEmpty() }?.let { return it }
         val category = taxonomy.recipeCategory(recipe.categoryId)?.label?.let(::singleLine)
         if (!category.isNullOrEmpty()) return category

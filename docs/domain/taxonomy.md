@@ -127,6 +127,23 @@ enviarlos** (si los enviara, se ignoran). El adaptador (`com.sazon.app.data.ai`)
 (determinista por contenido, `ai-<sha256>`) y `source = ai` al decodificar la respuesta y **antes** de
 aplicar el Validador; `matchScore` lo deriva la app en memoria y no se persiste.
 
+**Descriptor visual opcional (fase 5).** El modelo **puede** añadir a cada receta dos campos
+**opcionales** (si no los envía, la app usa el título y la taxonomía como hasta ahora):
+
+- `dishKey`: el **plato canónico** (plato terminado, p. ej. `"arroz-con-pollo"`), **breve y específico**
+  —nunca un ingrediente ni la categoría—. La app lo usa como **clave de caché compartida** (misma
+  normalización tipográfica que el título): dos variantes del mismo plato (`"arroz con pollo"` y
+  `"arroz con pollo fácil"`) comparten imagen. Un `dishKey` demasiado grueso (`"pollo"`) hace que platos
+  distintos compartan imagen, así que la especificidad importa.
+- `imagePrompt`: una **descripción visual breve** del plato terminado, que la app usa como texto del
+  prompt de imagen.
+
+La app **normaliza** estos campos (colapsa espacios y descarta los inútiles) y **no los valida**: son
+información **cosmética del modelo**, **no** forman parte de `Recipe`, **no** se persisten y **no**
+entran en el `id` de la receta; un tipo JSON equivocado, un valor en blanco o un `dishKey` no
+canonicalizable se **ignora** sin descartar la receta (el Validador no cambia). Ver
+`docs/specs/dish-visual-descriptor.md` y `docs/adr/0005-ai-dish-images.md`.
+
 ---
 
 ## 5. Validación post-IA (capa obligatoria)
@@ -164,7 +181,8 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   tiempo de ejecución.
 - **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4)**: la app pide al
   proveedor la imagen del plato (`data.ai.image`), la resuelve por `data.image` (memoria → disco →
-  generador real, con la clave canónica del nombre del plato) y `ui.artwork.RecipeArtwork` la pinta
+  generador real, con la clave canónica del nombre del plato —o del `dishKey` del modelo cuando existe,
+  descriptor de la fase 5—) y `ui.artwork.RecipeArtwork` la pinta
   **por delante** de la cadena de assets con un crossfade, sin cambiar la firma, la geometría ni los 5
   puntos de uso. Si no está disponible (sin red, fallo, timeout o cancelación) se **conserva la foto
   local** (o el glifo de último recurso), así que **nunca** hay error de UI ni hueco y la app sigue

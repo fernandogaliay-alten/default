@@ -113,6 +113,94 @@ class DishImagePromptTest {
         assertEquals("plato casero", DishImagePrompt.DEFAULT_DISH)
     }
 
+    // --- Escenarios 7-8 de `docs/specs/dish-visual-descriptor.md` (fase 5) ---
+
+    @Test
+    fun descriptor_escenario_7_el_image_prompt_sustituye_la_clausula_del_plato() {
+        val recipe = receta(title = "Arroz con pollo fácil", cuisineId = "spanish")
+        val descriptor = DishVisualDescriptor(
+            dishKey = "arroz-con-pollo",
+            imagePrompt = "arroz amarillo con pollo desmenuzado, guisantes y zanahoria",
+        )
+
+        val prompt = DishImagePrompt.build(taxonomy, recipe, descriptor)
+
+        assertTrue(
+            "Debe usar el imagePrompt como descripcion del plato",
+            prompt.contains("arroz amarillo con pollo desmenuzado, guisantes y zanahoria"),
+        )
+        assertFalse("El titulo de la receta ya no describe el plato", prompt.contains("Arroz con pollo fácil"))
+        assertTrue("Conserva el prefijo", prompt.startsWith(DishImagePrompt.PROMPT_PREFIX))
+        assertTrue("Conserva la clausula de cocina de la receta", prompt.contains("Española"))
+        assertTrue("Conserva la coletilla de estilo", prompt.contains(DishImagePrompt.STYLE_SUFFIX))
+        assertEquals(
+            "La coletilla de estilo aparece exactamente una vez",
+            1,
+            prompt.split(DishImagePrompt.STYLE_SUFFIX).size - 1,
+        )
+        assertTrue("El prompt no puede quedar en blanco", prompt.isNotBlank())
+    }
+
+    @Test
+    fun descriptor_escenario_7b_los_espacios_del_image_prompt_se_colapsan() {
+        val recipe = receta(title = "Arroz con pollo")
+        val descriptor = DishVisualDescriptor(
+            imagePrompt = "  arroz   amarillo  con   pollo,  guisantes ",
+        )
+
+        val prompt = DishImagePrompt.build(taxonomy, recipe, descriptor)
+
+        assertTrue(prompt.contains("arroz amarillo con pollo, guisantes"))
+        assertFalse("No puede haber espacios dobles", prompt.contains("  "))
+    }
+
+    @Test
+    fun descriptor_escenario_7c_un_image_prompt_no_canonicalizable_sigue_sirviendo_de_texto() {
+        // `imagePrompt` es texto para un modelo de imagen: no se le exige el alfabeto de la clave.
+        val prompt = DishImagePrompt.build(
+            taxonomy,
+            receta(title = "Arroz con pollo"),
+            DishVisualDescriptor(imagePrompt = "🍲"),
+        )
+
+        assertTrue("El emoji sigue siendo una descripcion valida", prompt.contains("🍲"))
+        assertFalse("No cae al titulo si hay imagePrompt", prompt.contains("Arroz con pollo"))
+    }
+
+    @Test
+    fun descriptor_escenario_8_sin_image_prompt_el_prompt_es_el_de_la_fase_1() {
+        val conTitulo = receta(title = "Arroz con pollo criollo", cuisineId = "spanish")
+        val sinTituloConCategoria = receta(title = "", categoryId = "dessert", cuisineId = "spanish")
+        val sinTituloNiCategoria = receta(title = "", categoryId = "", cuisineId = "")
+
+        val descriptoresInutiles = listOf(
+            null,
+            DishVisualDescriptor.NONE,
+            DishVisualDescriptor(dishKey = "arroz-con-pollo"),
+            DishVisualDescriptor(dishKey = "arroz-con-pollo", imagePrompt = ""),
+            DishVisualDescriptor(dishKey = "arroz-con-pollo", imagePrompt = "   "),
+        )
+
+        descriptoresInutiles.forEach { descriptor ->
+            assertEquals(
+                "Con descriptor sin imagePrompt ($descriptor) el prompt es identico al de la fase 1",
+                DishImagePrompt.build(taxonomy, conTitulo),
+                DishImagePrompt.build(taxonomy, conTitulo, descriptor),
+            )
+            assertEquals(
+                DishImagePrompt.build(taxonomy, sinTituloConCategoria),
+                DishImagePrompt.build(taxonomy, sinTituloConCategoria, descriptor),
+            )
+            assertEquals(
+                DishImagePrompt.build(taxonomy, sinTituloNiCategoria),
+                DishImagePrompt.build(taxonomy, sinTituloNiCategoria, descriptor),
+            )
+        }
+
+        assertTrue(DishImagePrompt.build(taxonomy, sinTituloConCategoria).contains("Postres"))
+        assertTrue(DishImagePrompt.build(taxonomy, sinTituloNiCategoria).contains(DishImagePrompt.DEFAULT_DISH))
+    }
+
     @Test
     fun el_paquete_domain_image_no_importa_android_ni_hace_red() {
         val ficheros = listOf(
