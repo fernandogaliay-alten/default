@@ -158,6 +158,15 @@
   (`verboseDiagnostics`, activo solo en debug vía `BuildConfig.DEBUG`) con el detalle de cada descarte
   (`discard[i/n]`) y el JSON crudo troceado (`raw[i/n]` vía `AiVerboseDiagnostics`, ≤3000 char/trozo),
   apagado por defecto y sin exponer nunca la clave ni `Authorization`. El plan del MVP sigue **cerrado**.
+- Correctiva de `activity-summary`, `profile-stats-heading` (issue #86, `area: ui`): implementada y
+  autoverificada (`passing`) en la sesión 083 y **`accepted`** en la sesión 084 (validación independiente,
+  veredicto `accept`, rama `feature/profile-stats-heading`). El titular visible del bloque de cifras del
+  Perfil pasa de "Resumen" a **"Estadísticas"** (solo microcopy; `ActivitySummarySection.kt` + el KDoc de
+  `ProfileScreen.kt`) para explicitar que las dos tarjetas ("recetas generadas" y "favoritas") son
+  estadística informativa y **no navegable**; sin cambios de números, layout, tokens ni orden y sin añadir
+  `clickable`/`onClick`. La desviación de capturas está autorizada (issue #86, misma clase que
+  `recipe-artwork` #77) y registrada en `DESIGN.md`; **no** se crea
+  `docs/design/concepts/profile-stats-heading/`. WIP = 0.
 - Bloqueo actual: ninguno. Queda la **verificación manual** de la persona en el emulador de Android
   Studio (Windows): con clave válida, generar/buscar y comprobar en logcat (`SazonAi`) el detalle
   enriquecido por llamada (`content=…c/…b`, `received=… accepted=…`, `discards={…}`) y el modo de
@@ -2407,3 +2416,85 @@
 - Siguiente paso: **commit local** de la rama `feature/ai-quantity-tolerance` (lo hace el orquestador de
   `feature-flow`); la publicación (push + PR, `Closes #<n>`, sin merge) queda para `github-flow`. Con
   esta aceptación **no queda ninguna feature pendiente** en `feature_list.json` (todas `accepted`).
+
+### Sesión 083
+
+- Fecha: 2026-10-13
+- Objetivo: implementar `profile-stats-heading` (correctiva de `activity-summary`, `area: ui`): cambiar el
+  titular visible del bloque de cifras del Perfil de `"Resumen"` a `"Estadísticas"`, según
+  `docs/specs/profile-stats-heading.md`, en la rama `feature/profile-stats-heading` (worktree); solo
+  hasta implementación y autoverificación (`passing`), **sin commit/push/PR** (los hace el orquestador).
+- Completado:
+  - `ui/profile/ActivitySummarySection.kt`: literal del titular `text = "Resumen"` → `text = "Estadísticas"`
+    (línea 40) y su KDoc (línea 20) actualizado; el resto del `@Composable` (encabezado `titleMedium`/
+    `onBackground`, `Row`, `ActivityStatCard`, `tnum`, tokens `SazonSpacing`/`SazonShapes`) **intacto**.
+  - `ui/profile/ProfileScreen.kt`: **solo** el KDoc (línea 37) que citaba la sección como `"Resumen"` pasa a
+    `"Estadísticas"`; sin cambios de firma, layout ni orden de items (la sección sigue entre
+    `ProfileIdentityEditor` y `ProfileSuggestionsSection`).
+  - `DESIGN.md`: párrafo de excepción **issue #86** añadido en `Generated Concept Images` inmediatamente
+    después del de `recipe-artwork` (#77), que documenta la **desviación de microcopy** ("Estadísticas" en
+    vez de "Resumen", que es lo que dicen la captura aceptada y `docs/design/stitch/21-perfil-resumen.md`) y
+    la **exención de capturas** (no se crea `docs/design/concepts/profile-stats-heading/`); Core Screens 7
+    cita el titular visible **"Estadísticas"** manteniendo el significado (tarjetas informativas **no
+    navegables**). `DESIGN.md` queda internamente coherente (la única mención a "Resumen" es la del propio
+    párrafo de desviación, al explicar la diferencia con la captura/prompt).
+  - **Sin tests nuevos** (el titular es un literal de UI; no hay lógica JVM que cubrir y la infraestructura
+    de Compose UI del repo es instrumentada, fuera de `init.sh` y no ejecutable desde WSL). Sin
+    dependencias nuevas; `app/build.gradle.kts` y `gradle/libs.versions.toml` intactos; ficheros en **UTF-8
+    sin BOM**.
+- Verificación ejecutada: `bash init.sh` (exit 0; `./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`, sin procesos largos) y parseo propio de los XML de `testDebugUnitTest` y del informe
+  `lint-results-debug.sarif`; greps de inspección; `git diff --stat`; comprobación de BOM.
+- Evidencia capturada: gate **64 suites / 456 tests / 0 fallos / 0 errores / 0 saltados** (sin tests
+  nuevos) y lint **0 errores y 13 warnings preexistentes** (GradleDependency 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`**. Greps: **0** resultados de `"Resumen"`
+  entrecomillado en `app/src/main/java/com/sazon/app/ui`; en `ActivitySummarySection.kt` el literal y su KDoc
+  dicen "Estadísticas" (líneas 20 y 40); **0** resultados de `clickable`/`onClick` en
+  `ActivitySummarySection.kt` (`ActivityStatCard` sigue siendo `Surface` + `Column` + `Text`). Ficheros UTF-8
+  sin BOM (`head -c 3` → `pac`).
+- Alcance: `git diff --stat` solo con `ActivitySummarySection.kt`, `ProfileScreen.kt` (solo KDoc), `DESIGN.md`
+  y `feature_list.json`. Intactos `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`,
+  `scripts/**`, `ui/theme/**`, `domain/**`, `data/**`, `docs/specs/activity-summary.md` (su Non-Goal "No se
+  añade navegación" sigue vigente sin editar), `docs/design/concepts/**` y `docs/design/stitch/**`. **No** se
+  crea `docs/design/concepts/profile-stats-heading/` (exención autorizada por la persona, issue #86).
+- Riesgo o incógnita abierta: la **verificación manual** en el emulador (Scenarios 1-3: titular
+  "Estadísticas", tarjetas sin navegación, claro/oscuro y contadores poblados/0-0, contra la captura
+  aceptada `activity-summary/perfil-resumen`) la revisa la persona conforme a AGENTS.md; no es automatizable
+  desde WSL. Un problema de acabado se corrige con una feature correctiva. `docs/design/stitch/21-perfil-resumen.md`
+  y la captura seguirán diciendo "Resumen" (fuera de alcance), cubierto por la desviación registrada.
+- Siguiente paso: validación independiente de `profile-stats-heading` (`passing`); después, **commit local**
+  de la rama (orquestador de `feature-flow`) y publicación (push + PR, sin merge) por `github-flow`.
+
+### Sesión 084
+
+- Fecha: 2026-10-13
+- Objetivo: validar de forma independiente `profile-stats-heading` y persistir la aceptación. Ejecutada por
+  el orquestador de `feature-flow` en la rama `feature/profile-stats-heading` (worktree); solo
+  hasta-aceptación, **sin push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a `accepted`
+  con evidencia que nombra la validación independiente. Sin cambios de código tras la validación.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0) y, al verlo `UP-TO-DATE`, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (64 suites / 456 tests) y
+  `bash scripts/gradle.sh lint --rerun-tasks`; parseó por su cuenta los XML de resultados y el informe
+  `lint-results-debug.sarif`.
+- Evidencia capturada: **64 suites / 456 tests / 0 fallos / 0 errores / 0 saltados** (sin tests nuevos,
+  coincidente con la evidencia del implementer) y lint **13 warnings / 0 errores / 0 bajo `app/src`**.
+  Confirmó el literal exacto `"Estadísticas"` **a nivel de bytes** (UTF-8 sin BOM), **0** resultados de
+  `"Resumen"` entrecomillado en `app/src/main/java/com/sazon/app/ui`, **0** `clickable`/`onClick` en
+  `ActivitySummarySection.kt` (`ActivityStatCard` sigue `Surface` + `Column` + `Text`), ausencia de
+  `docs/design/concepts/profile-stats-heading/` (exención autorizada), `docs/specs/activity-summary.md` sin
+  editar con su Non-Goal "No se añade navegación" vigente, y ausencia de cambios en
+  `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**` y `app/src/androidTest/**`;
+  identificadores de dominio intactos ("Resumen de actividad", `domain.activity`, `data.activity`,
+  `activity_summary.db`, costuras de `GenerationService`/`AiSearchService`/`SuggestionBatchService`). Sin
+  hallazgos Critical/High/Medium; 3 Low informativos no bloqueantes (revisión visual de emulador pendiente
+  de la persona; `DESIGN.md` ya solo menciona "Resumen" en el párrafo de desviación; captura/prompt de
+  Stitch siguen diciendo "Resumen", cubiertos por la desviación autorizada).
+- Ficheros actualizados: `feature_list.json` y este registro.
+- Riesgo o incógnita abierta: la **verificación manual** en el emulador (Scenarios 1-3: titular
+  "Estadísticas", tarjetas sin navegación, claro/oscuro y contadores poblados/0-0, contra la captura
+  aceptada `activity-summary/perfil-resumen`) la revisa la persona tras el merge, conforme a AGENTS.md; un
+  defecto visual se corrige con una feature correctiva. `docs/design/stitch/21-perfil-resumen.md` y la
+  captura siguen diciendo "Resumen" (fuera de alcance, cubierto por la desviación registrada).
+- Siguiente paso: **commit local** de la rama `feature/profile-stats-heading` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR) queda para `github-flow`.
