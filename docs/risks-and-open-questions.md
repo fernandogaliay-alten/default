@@ -141,6 +141,7 @@ Evolutivos aceptados, a planificar después del MVP:
 | El Perfil duplica pantallas del onboarding y divergen | Media | Alto | Regla "un editor, dos entradas": reutilizar los mismos componentes |
 | La sincronización de la Taxonomía escribe en el árbol de fuentes y se engancha por nombre de tarea (`merge*Assets`) | Baja | Bajo | `syncTaxonomy` corre en cada build y el asset está ignorado en git; es deuda técnica anotada por el validador, no un fallo |
 | Las 31 fotos de receta engordan el APK o se decodifican de forma cara al hacer scroll | Media | Medio | Presupuesto **≤8 MB** para `assets/img/recipes/` (hoy ~5,9 MiB), formato WebP a ≤960 px cuando hay herramienta, decodificación en `Dispatchers.IO` y caché LRU de 16 bitmaps; si molesta al desplazar, la salida es una feature correctiva (p. ej. Coil, con su ADR) |
+| Generar la imagen de cada plato gasta cuota de IA (**~2 % por imagen**), añade latencia (**~4,2 s**) y hace crecer el almacenamiento | Media | Medio | Aún **no se genera nada**: en la fase 1 (`dish-image-domain`, ADR 0005) solo existe la política pura (prompt + clave canónica) **sin red**. Se materializa en las fases 2–3 de `docs/ai-dish-images-proposal.md`, con la mitigación ya prevista: clave canónica compartida por **nombre de plato** (una imagen se paga una vez), caché persistente con evicción LRU y tope de disco, tope de generaciones por sesión, interruptor y set semilla de platos frecuentes |
 
 ## Research Tasks
 
@@ -163,6 +164,10 @@ Evolutivos aceptados, a planificar después del MVP:
 - `docs/adr/0003-ai-provider.md` — proveedor de IA: DevExpert Inference (API compatible con OpenAI).
 - `docs/adr/0004-recipe-photos-as-assets.md` — las fotos de plato viajan empaquetadas como assets
   offline (convención, cadena de respaldo y descarte de Coil/red).
+- `docs/adr/0005-ai-dish-images.md` — las imágenes de plato generadas por IA se piden por un puerto de
+  dominio (`DishImageGenerator`) con prompt determinista y clave canónica versionada del nombre del
+  plato; ajusta parcialmente el 0004 (la cadena de assets pasa a respaldo). Estado: **aceptado
+  parcialmente (fase 1)**; adaptador, caché y UI siguen pendientes.
 
 `RecipeGenerator` como interfaz con implementación falsa **no se elevó a ADR**: introducir esa
 abstracción más tarde sería un refactor de una sola capa y el patrón es estándar. Queda documentado

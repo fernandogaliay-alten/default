@@ -51,7 +51,15 @@
   sesión 081 y **`accepted`** en la sesión 082 (validación independiente, veredicto `accept`, rama
   `feature/ai-quantity-tolerance`). **No hay features `not_started`, `in_progress`, `passing` ni
   `blocked`**: todas las entradas de `feature_list.json` están `accepted`. El resto del plan sigue
-  **cerrado**.
+  **cerrado**. Después se dio de alta la **fase 1** de `docs/ai-dish-images-proposal.md` como feature
+  **`dish-image-domain`** (`area: domain`; dependencias `recipe-domain-model` y `taxonomy-in-code`, ya
+  `accepted`): implementada y autoverificada (**`passing`**) en la **sesión 085** en su worktree
+  (`feature/dish-image-domain`, sin commit/push/PR) — política pura en `com.sazon.app.domain.image`
+  (puerto `DishImageGenerator` + `DishImageRequest`, prompt `DishImagePrompt` y clave canónica
+  `DishImageCacheKey`) con 20 tests JVM nuevos, ADR 0005 (**aceptado parcialmente**) y **sin** adaptador,
+  red, caché, UI, assets ni dependencias nuevas. Es la **única** entrada no `accepted` del plan
+  (WIP = 1 por worktree); las fases 2-7 de la propuesta **no** están dadas de alta en
+  `feature_list.json`.
 - Capturas de UI (política del PR #37): **backfill pendiente**; 11 features de UI `accepted` y 18
   pantallas por exportar de Stitch (ver sesión 046 y `docs/design/concepts/<feature-id>/README.md`).
   `results-screen`, `recipe-detail-screen`, `favorites`, `activity-summary` y `ai-search` ya aportan sus
@@ -194,7 +202,49 @@
   rejilla) y Detalle en claro y oscuro y confirmar que todas las tarjetas muestran foto, que una receta
   generada por IA muestra la de su categoría, que dos recetas de la misma categoría con fotos propias no
   se confunden y que (prueba destructiva opcional, quitando un asset) aparece el glifo en vez de un hueco.
-- Última verificación (2026-10-13, `recipe-photos`, validator, sesión 082): **veredicto `accept`
+- Última feature **`accepted`**: **`dish-image-domain`** (`area: domain`, fase 1 de
+  `docs/ai-dish-images-proposal.md`), cerrada en la **sesión 086** con validación independiente (veredicto
+  `accept`, rama `feature/dish-image-domain`; la sesión 085 la dejó `passing`). Deja fijada en el dominio,
+  **sin red**, la política de las imágenes de plato generadas: puerto
+  `domain.image.DishImageGenerator` (`suspend fun generate(DishImageRequest): ByteArray?`, `null` = no
+  disponible, sin excepción y con la cancelación propagada) + `DishImageRequest.of(taxonomy, recipe)` como
+  único punto de composición, prompt puro `DishImagePrompt` (plantilla
+  `<prefijo> <plato>[, <cocina>], <coletilla>`; degradación `título → etiqueta real de categoría →
+  plato casero`; cláusula de cocina omitida si el id no existe) y clave canónica versionada
+  `DishImageCacheKey` (`dish-image-v1-<slug>` del **nombre del plato**, normalización NFD + `\p{Mn}+` +
+  `locale` ROOT + alfabeto `[a-z0-9-]`, con respaldo por `id` y respaldo final `dish-image-v1-plato`).
+  Lógica pura en `com.sazon.app.domain.image`, testeada en JVM (20 tests nuevos: `DishImageCacheKeyTest`
+  8, `DishImagePromptTest` 7, `DishImageRequestTest` 5); **sin** adaptador real, caché, persistencia, UI,
+  assets ni dependencias nuevas (fases 2-7, no-goals). ADR nuevo
+  `docs/adr/0005-ai-dish-images.md` ("Aceptado parcialmente (fase 1)"), que registra la desviación
+  consciente (normalización tipográfica, **no** semántica) y ajusta parcialmente el ADR 0004;
+  `docs/technical-discovery.md` y `docs/risks-and-open-questions.md` actualizados. Detalle en
+  `docs/validations/dish-image-domain.md`. WIP = 0. Con esto, **toda** entrada de `feature_list.json`
+  queda `accepted`: el plan (MVP + ampliaciones + correctivas) sigue **cerrado** y no hay features
+  `not_started`, `in_progress`, `passing` ni `blocked`.
+- Última verificación (2026-10-13, `dish-image-domain`, validator, sesión 086): **veredicto `accept`
+  independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0, pero todo `UP-TO-DATE`
+  por la config cache del implementer) y, para no fiarse, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34 tareas ejecutadas),
+  parseando por su cuenta los XML frescos (**68 suites / 496 tests / 0 fallos / 0 errores / 0 saltados**;
+  `DishImageCacheKeyTest` 8, `DishImagePromptTest` 7, `DishImageRequestTest` 5 = 20 nuevos) y re-derivó la
+  baseline en `HEAD` (65 ficheros con `@Test` / 476 anotaciones; 476 + 20 = 496). Lint (SARIF): **0 errores,
+  13 warnings** preexistentes, **0 bajo `app/src`**. Verificó por greps propios la **pureza** (`domain.image`
+  solo importa `Recipe`, `Taxonomy`, `java.text.Normalizer` y `java.util.Locale`; 0
+  `android`/`androidx`/`io.ktor`/`java.net`/`random`/`UUID`/`currentTimeMillis`), que el puerto sigue **sin
+  implementación** ni consumidores (**0** referencias a `DishImage` fuera de `domain.image`), la disciplina
+  de alcance (solo los 9 ficheros previstos + la spec, `feature_list.json` y `PROGRESS.md`;
+  build/lockfile/`init.sh`/`scripts/**`/`data/**`/`ui/**`/dominio ya existente/Taxonomía/
+  `seed-recipes.json`/`assets/**`/`DESIGN.md`/`docs/design/**` intactos; **nada** en
+  `docs/design/concepts/`) y los 9 escenarios contra los tests, incluidos los negativos (receta vacía,
+  `categoryId` desconocido, `Taxonomy` vacía, cocina vacía/inexistente sin marcador, respaldo por `id` sin
+  colisión, frontera tipográfica del escenario 8, composición + igualdad estructural + `recipeId = null` y
+  clave estable con `Locale.setDefault("tr-TR")`). Sin hallazgos Critical/High/Medium; 3 Low informativos no
+  bloqueantes (L1: un título terminado en coma produciría una coma doble, caso no exigido por la plantilla
+  de la spec, anotado para la fase 2/4; L2: ADR 0004 sin puntero a 0005, sin contradicción; L3: la baseline
+  "64 suites / 456 tests" de la spec es una medición previa a `HEAD`, ya documentada por el implementer).
+  Detalle en `docs/validations/dish-image-domain.md`.
+- Verificación anterior (2026-10-13, `recipe-photos`, validator, sesión 082): **veredicto `accept`
   independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
   `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 2m42s) y
   `bash scripts/gradle.sh lint --rerun-tasks` (2m40s); parseó por su cuenta los XML (**65 suites / 467
@@ -2512,6 +2562,127 @@
 ### Sesión 085
 
 - Fecha: 2026-10-13
+- Objetivo: implementar `dish-image-domain` (fase 1 de `docs/ai-dish-images-proposal.md`, `area: domain`),
+  especificada en `docs/specs/dish-image-domain.md`: puerto `DishImageGenerator` + `DishImageRequest`,
+  prompt puro `DishImagePrompt` y clave canónica `DishImageCacheKey` en el dominio, **sin red**. Ejecutada
+  por el subagente `implementer` en la rama `feature/dish-image-domain` (worktree); solo hasta
+  implementación y autoverificación (`passing`), **sin commit/push/PR** (los hace el orquestador).
+- Completado:
+  - `app/src/main/java/com/sazon/app/domain/image/DishImageCacheKey.kt` (**nuevo**): `object` puro con
+    `VERSION = "dish-image-v1"`, `FALLBACK_KEY = "plato"`, `normalize(dishName)` (colapso de espacios,
+    `NFD` + `\p{Mn}+`, `lowercase(Locale.ROOT)` explícito, todo fuera de `[a-z0-9]` → `-`, colapso y
+    recorte de guiones), `of(dishName)` y `of(recipe)` (título → respaldo por `id`
+    `dish-image-v1-plato-<slug-id>` → respaldo por defecto `dish-image-v1-plato`).
+  - `app/src/main/java/com/sazon/app/domain/image/DishImagePrompt.kt` (**nuevo**): `object` puro con
+    `PROMPT_PREFIX`, `DEFAULT_DISH` y `STYLE_SUFFIX` y la plantilla única
+    `<prefijo> <plato>[, <cocina>], <coletilla>`; degradación `título → etiqueta real de categoryId →
+    plato casero` y **omisión** de la cláusula de cocina cuando el id no existe o está vacío.
+  - `app/src/main/java/com/sazon/app/domain/image/DishImageGenerator.kt` (**nuevo**): `DishImageRequest`
+    (`data class` con `cacheKey`, `prompt` y `recipeId` opcional) y su `of(taxonomy, recipe)` como
+    **único punto de composición**; puerto `interface DishImageGenerator { suspend fun
+    generate(request): ByteArray? }` con `null` = imagen no disponible (**sin** excepción; la
+    cancelación se propaga). **Sin** implementación en `app/src/main` (fase 2).
+  - `app/src/test/java/com/sazon/app/domain/image/{DishImageCacheKeyTest,DishImagePromptTest,DishImageRequestTest}.kt`
+    (**nuevos**): 20 tests JVM que cubren los 9 escenarios de la spec (determinismo con dos `Taxonomy`
+    parseadas aparte, etiqueta real de cocina, degradación por categoría y por defecto con receta vacía /
+    categoría desconocida / Taxonomía vacía, cocina vacía/desconocida sin marcador, clave de las cuatro
+    variantes del mismo nombre, alfabeto `[a-z0-9-]` sin guiones sobrantes, estabilidad, discriminación,
+    respaldo por `id` sin colisión, frontera tipográfica **no** semántica, clave independiente del
+    `locale`, composición/igualdad estructural de la petición y `recipeId = null` con `id` vacío), más la
+    pureza por lectura de los tres fuentes (0 imports de `android`/`androidx`/`io.ktor`/`java.net`/
+    `kotlin.random`/`java.util.Random`/`UUID`, 0 `currentTimeMillis`/`Math.random`).
+  - `docs/adr/0005-ai-dish-images.md` (**nuevo**): decisión (puerto en el dominio, prompt determinista,
+    clave canónica versionada del **nombre del plato**, cadena de `recipe-photos` como respaldo), estado
+    **"Aceptado parcialmente (fase 1)"**, ajuste parcial del ADR 0004 y las fases 2-7 enumeradas como
+    pendientes; registra la **desviación consciente** frente a la lectura amplia de la propuesta §5
+    (normalización tipográfica, no semántica).
+  - `docs/technical-discovery.md` (**modificado**): nuevo bullet del puerto `domain.image` (fase 1, puro,
+    **sin** adaptador/caché/UI y con la cadena de assets como **única** resolución hoy) en Integrations, y
+    bullet de los tests JVM de la política en Testing and Verification.
+  - `docs/risks-and-open-questions.md` (**modificado**): fila de riesgo de cuota/latencia/almacenamiento
+    por imagen (~2 % de cuota y ~4,2 s; se materializa en las fases 2-3) y ADR 0005 en la lista.
+  - **Sin dependencias nuevas**: `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`,
+    `scripts/**`, `data/**`, `ui/**`, `Recipe.kt`, `RecipeValidator.kt`, `PromptBuilder.kt`, la Taxonomía,
+    `seed-recipes.json`, `assets/**`, `DESIGN.md` y `docs/design/**` **intactos**; **no** se crea nada en
+    `docs/design/concepts/` (el gate de UI no aplica a una feature de dominio).
+- Verificación ejecutada: tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests
+  "com.sazon.app.domain.image.*"` (BUILD SUCCESSFUL) y gate estándar `bash init.sh` (**exit 0**;
+  `./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin procesos largos); parseo propio de los
+  XML de `testDebugUnitTest` y del `lint-results-debug.sarif`; greps de inspección de pureza y alcance;
+  `git diff --name-only`.
+- Evidencia capturada: gate **68 suites / 496 tests / 0 fallos / 0 errores / 0 saltados**, con las tres
+  suites nuevas (`DishImageCacheKeyTest` 8, `DishImagePromptTest` 7, `DishImageRequestTest` 5 = **20**
+  tests). Baseline del worktree antes del cambio: **476** métodos `@Test` en **65** ficheros rastreados
+  (`git grep -c "@Test"` sobre `HEAD`), es decir **+3 suites / +20 tests** exactos; el "64 suites / 456
+  tests" del handoff corresponde a una medición previa al estado de `HEAD` de esta rama. Lint: **0 errores
+  y 13 warnings preexistentes** (`GradleDependency` 7, `NewerVersionAvailable` 3,
+  `AndroidGradlePluginVersion` 2, `OldTargetApi` 1), **0** bajo `app/src` (todos en `app/build.gradle.kts`,
+  `gradle/libs.versions.toml` y `gradle/wrapper/gradle-wrapper.properties`). Inspección: **0** resultados
+  de `import android|import androidx|io.ktor|java.net|kotlin.random|java.util.Random|UUID|
+  currentTimeMillis` bajo `app/src/main/java/com/sazon/app/domain/image`; **0** implementaciones de
+  `DishImageGenerator` en `app/src/main`. `git status` limitado a los 6 ficheros nuevos (3 de código, 3 de
+  test) + `docs/adr/0005-ai-dish-images.md` + `docs/specs/dish-image-domain.md` (del planner) + las 3
+  modificaciones de docs/estado (`docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
+  `feature_list.json`) y este `PROGRESS.md`.
+- Alcance: se cumple la spec al pie de la letra; los escenarios 1-9 están cubiertos por test y los
+  no-goals respetados (sin adaptador, Ktor, `/images/*`, `b64_json`, WebP, caché, Room, UI ni cambios en
+  `RecipeArtwork`/`recipe-photos`).
+- Riesgo o incógnita abierta: el **puerto queda sin implementación** (código no ejecutado) por diseño; el
+  prompt depende de las **etiquetas** de la Taxonomía (editar una etiqueta de cocina/categoría cambia el
+  prompt pero **no** la clave, así que una imagen cacheada podría no reflejar la etiqueta nueva: se mitiga
+  subiendo `VERSION`); los títulos no latinos o solo símbolos caen al respaldo por `id`/por defecto
+  (cubierto por test); las preguntas §11 de la propuesta (Room vs ficheros, tamaño y tope de disco, set
+  semilla, interruptor, entrada de la variante C) siguen abiertas y **no** se deciden aquí.
+- Siguiente paso: validación independiente de `dish-image-domain` (`passing`); después, **commit local** de
+  la rama (orquestador de `feature-flow`) y publicación (push + PR contra `main`, sin merge) por
+  github-flow.
+
+### Sesión 086
+
+- Fecha: 2026-10-13
+- Objetivo: **validación independiente** de `dish-image-domain` (issue #90, `area: domain`, fase 1 de
+  `docs/ai-dish-images-proposal.md`) según `docs/specs/dish-image-domain.md`, en modo hasta-aceptación de
+  `feature-flow`. La sesión 085 la dejó `passing` (implementada y autoverificada, sin commit). Orquestada
+  por el agente principal y ejecutada por el subagente `validator` (contexto limpio); **sin push ni PR**
+  (los hace `github-flow`).
+- Completado:
+  - **Veredicto `accept`** del validador independiente: 9/9 escenarios cubiertos (incluidos los negativos
+    obligatorios), alcance respetado, pureza sostenida y documentación durable coherente. Sin hallazgos
+    Critical/High/Medium; 3 Low informativos no bloqueantes (L1: un título terminado en coma produciría una
+    coma doble, caso no exigido por la plantilla de la spec, anotado para la fase 2/4; L2: el ADR 0004 no
+    lleva puntero al 0005, sin contradicción; L3: la baseline "64 suites / 456 tests" de la spec es una
+    medición previa a `HEAD`, ya documentada por el implementer).
+  - **Acceptance persistida** por el orquestador: `feature_list.json` (`dish-image-domain` de `passing` a
+    `accepted`, con la evidencia de la validación) y este `PROGRESS.md`; nuevo registro
+    `docs/validations/dish-image-domain.md`.
+  - **Commit local** creado en la rama `feature/dish-image-domain` (`feat: complete dish-image-domain`),
+    con solo los cambios de la feature aceptada. **Sin** push y **sin** PR: publica el orquestador de
+    `github-flow` (push de la rama + PR `[dish-image-domain] …` contra `main`, con `Closes #90`).
+- Verificación ejecutada: re-ejecución independiente del gate por el validador — `bash init.sh` (exit 0,
+  pero todo `UP-TO-DATE`) más `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34
+  tareas), con parseo propio de los XML **68 suites / 496 tests / 0 fallos / 0 errores / 0 saltados** y de
+  `lint-results-debug.sarif` (**0 errores, 13 warnings** preexistentes, 0 bajo `app/src`); greps propios de
+  pureza, de ausencia de consumidores/implementaciones del puerto y de alcance.
+- Ficheros creados/cambiados: `docs/validations/dish-image-domain.md` (nuevo), `feature_list.json`
+  (`dish-image-domain` a `accepted` + evidencia) y este `PROGRESS.md`. El código y los tests ya estaban en
+  disco desde la sesión 085 (3 fuentes y 3 tests en `com.sazon.app.domain.image`, ADR 0005,
+  `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`) y entran en este mismo commit.
+- Hallazgos relevantes: al ver el gate `UP-TO-DATE`, el validador forzó la re-ejecución
+  (`--rerun-tasks`) en vez de dar por buenos los resultados cacheados; la baseline del worktree antes del
+  cambio (65 ficheros / 476 `@Test` en `HEAD`) confirma el delta exacto (+3 suites / +20 tests) y desmiente
+  la cifra "64 / 456" de la spec, que era una medición previa. No hay trabajo de reparación requerido.
+- Riesgo o incógnita abierta: ninguno nuevo. Siguen las incógnitas de la fase 1 (puerto sin implementación
+  por diseño; el prompt depende de las etiquetas de la Taxonomía mientras la clave no; títulos no latinos
+  caen al respaldo) y las preguntas §11 de la propuesta para las fases 2-7. La **verificación manual/E2E no
+  aplica**: la feature no cambia comportamiento observable (sin UI, sin red, sin persistencia y sin
+  consumidores del puerto).
+- Siguiente paso: publicar la rama `feature/dish-image-domain` (push + PR `[dish-image-domain] …` con
+  `Closes #90`), que lo hace el orquestador de `github-flow`; no hay siguiente feature (`feature_list.json`
+  queda **entero** `accepted`, el plan sigue cerrado).
+
+### Sesión 087
+
+- Fecha: 2026-10-13
 - Objetivo: implementar y autoverificar `home-recently-opened-group` (issue #91, correctiva de
   `home-offline-blocks`) según `docs/specs/home-recently-opened-group.md`. Ejecutada por el subagente
   **implementer** en la rama `feature/home-recently-opened-group` (worktree); **sin commit, push ni PR**
@@ -2577,9 +2748,9 @@
   cuando exista una feature que registre `lastOpenedAt` (reintroducirá la costura y su microcopy).
 - Siguiente paso: validación independiente de `home-recently-opened-group` (`passing`); después, **commit
   local** de la rama (orquestador de `feature-flow`) y publicación (push + PR, sin merge) por
-  `github-flow`.
+  github-flow.
 
-### Sesión 086
+### Sesión 088
 
 - Fecha: 2026-10-13
 - Objetivo: validar de forma independiente `home-recently-opened-group` y persistir la aceptación.

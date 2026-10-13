@@ -527,6 +527,24 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   buscar por texto y generar desde ingredientes), **no** de un SDK concreto. La implementación real
   es lo último que se conecta. El puerto vive en `com.sazon.app.domain.generator` (puro, sin Android)
   junto a `GenerationConstraints`, la costura minima de `generateFromIngredients`.
+- **Puerto de dominio de la imagen de plato (fase 1, sin adaptador)**: `com.sazon.app.domain.image`
+  (puro: sin Android, sin Compose, sin Ktor, sin red y sin estado) fija la política con la que la app
+  pedirá y cacheará la imagen generada de un plato (fase 1 de `docs/ai-dish-images-proposal.md`, ver
+  `docs/adr/0005-ai-dish-images.md`). El puerto es
+  `DishImageGenerator.suspend fun generate(request): ByteArray?` con **`null` = imagen no disponible**
+  (no excepción; la cancelación sí se propaga) y el adaptador no conoce ni la `Recipe` ni la Taxonomía,
+  porque `DishImageRequest.of(taxonomy, recipe)` es el **único punto de composición** de `prompt`,
+  `cacheKey` y `recipeId`. `DishImagePrompt` (objeto puro) construye la plantilla fija
+  `Fotografía gastronómica de <plato>[, <cocina>], cerámica artesanal, luz natural suave, estilo
+  editorial gastronómico, sin texto ni manos`, con degradación `título → etiqueta de categoría real →
+  plato casero` y omisión de la cláusula de cocina cuando el `id` no existe o está vacío.
+  `DishImageCacheKey` (objeto puro) deriva la clave **versionada** `dish-image-v1-<slug>` del **nombre
+  del plato** normalizado tipográficamente (colapso de espacios, `NFD` + `\p{Mn}+`, `Locale.ROOT`,
+  alfabeto `[a-z0-9-]`), con respaldo por `id` (`dish-image-v1-plato-<slug-id>`) y respaldo por defecto
+  (`dish-image-v1-plato`) cuando no hay título; subir `VERSION` es el único mecanismo de invalidación.
+  **Nadie consume el puerto todavía**: el adaptador real (fase 2), la caché de disco y memoria
+  (fase 3) y la UI progresiva (fase 4) siguen pendientes, y la cadena de `recipe-photos` (assets
+  offline) sigue siendo la **única** resolución de imagen en tiempo de ejecución.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
@@ -584,6 +602,18 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   bajo `app/src/main/assets/img/recipes/` (propiedad `recipe.photos.assets.dir` publicada por
   `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios (el glifo es el último
   recurso).
+- **Tests JVM de la política de imagen de plato (fase 1, `domain.image`)**: `DishImagePromptTest`
+  (determinismo con dos `Taxonomy` parseadas aparte, título + etiqueta real de cocina + coletilla de
+  estilo exactamente una vez, colapso de espacios, degradación por categoría real y al plato por
+  defecto —receta vacía, categoría desconocida y Taxonomía vacía, sin lanzar—, cocina vacía o
+  desconocida sin marcador, la plantilla literal y la pureza de los tres fuentes por lectura),
+  `DishImageCacheKeyTest` (las cuatro variantes del mismo nombre comparten clave, slug sin diacríticos,
+  alfabeto `[a-z0-9-]` sin guiones sobrantes, estabilidad entre llamadas, discriminación por nombre,
+  respaldo por `id` sin colisión, respaldo por defecto, frontera tipográfica no semántica y clave
+  independiente del `locale` del dispositivo) y `DishImageRequestTest` (composición desde la Taxonomía y
+  la receta, igualdad estructural, `recipeId = null` con `id` vacío o en blanco y no dependencia de la
+  clasificación ni del origen). Corren en JVM con la Taxonomía real (`taxonomy.asset.path`) y **sin**
+  dependencias nuevas: no hay adaptador, ni red, ni caché, ni UI que probar.
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es

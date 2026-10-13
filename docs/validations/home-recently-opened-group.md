@@ -42,7 +42,7 @@
 
 - `DESIGN.md`: Core Screen 2 "solo grupos con contenido" + párrafo de excepción de capturas (#91, tras el
   de #86). `docs/technical-discovery.md`: frase de coherencia. `feature_list.json` `passing` (6
-  evidencias); `PROGRESS.md` sesión 085. `init.sh` sin cambios y funcional.
+  evidencias); `PROGRESS.md` sesión 087. `init.sh` sin cambios y funcional.
 
 ## No commit / no push / no PR
 

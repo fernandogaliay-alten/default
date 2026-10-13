@@ -889,13 +889,24 @@
     "title": "Puerto y prompt determinista de imagen de plato",
     "user_visible_behavior": "Dada una Receta, la app dispone de un prompt de imagen y de una clave canónica deterministas; la generación real, su caché y su representación en pantalla llegan en fases posteriores.",
     "depends_on": ["recipe-domain-model", "taxonomy-in-code"],
-    "status": "not_started",
+    "status": "accepted",
     "verification": [
       "'./gradlew test' comprueba que el prompt de imagen es determinista y no vacío a partir de una Receta, y que la clave canónica normaliza el nombre del plato y es estable",
       "Un test negativo comprueba que una receta incompleta (sin título ni categoría) no lanza y degrada a un prompt por defecto"
     ],
-    "evidence": [],
-    "notes": "Fase 1 de docs/ai-dish-images-proposal.md. Lógica pura en com.sazon.app.domain.image (puerto DishImageGenerator, DishImagePrompt y DishImageCacheKey) sin Android ni red, testeada en JVM. Sin UI, sin adaptador real, sin caché, sin persistencia y sin dependencias nuevas (no-goals). Ver docs/ai-dish-images-proposal.md."
+    "evidence": [
+      "Validacion independiente: veredicto accept (sesion 086, agente con contexto limpio, rama feature/dish-image-domain). El validador re-ejecuto bash init.sh (exit 0, pero todo UP-TO-DATE por la config cache del implementer) y, para no fiarse, forzo bash scripts/gradle.sh testDebugUnitTest --rerun-tasks (BUILD SUCCESSFUL, 34 tareas) parseando por su cuenta los XML frescos: 68 suites / 496 tests / 0 fallos / 0 errores / 0 saltados, con las 3 suites nuevas (DishImageCacheKeyTest 8, DishImagePromptTest 7, DishImageRequestTest 5 = 20 tests) y la baseline re-derivada en HEAD (65 ficheros con @Test / 476 anotaciones; 476+20=496). Lint (SARIF): 0 errores, 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 bajo app/src. Comprobo por greps propios la pureza (solo Recipe, Taxonomy, java.text.Normalizer y java.util.Locale en domain/image; 0 android/androidx/io.ktor/java.net/random/UUID/currentTimeMillis), que el puerto sigue sin implementacion ni consumidores (0 referencias a DishImage fuera de domain.image) y la disciplina de alcance (solo 3 fuentes + 3 tests nuevos, ADR 0005, technical-discovery.md, risks-and-open-questions.md, feature_list.json, PROGRESS.md y la spec; build/lockfile/init.sh/scripts/data/ui/domain ya existente/Taxonomia/seed-recipes.json/assets/DESIGN.md/docs/design/** intactos; nada en docs/design/concepts/). Recorrio los 9 escenarios contra los tests (incluidos los negativos: receta vacia, categoryId desconocido, Taxonomy vacia, cocina vacia/inexistente sin marcador, respaldo por id sin colision, frontera tipografica S8, composicion + igualdad estructural + recipeId=null, y clave estable con Locale.setDefault('tr-TR')). Sin hallazgos Critical/High/Medium/; 3 Low informativos no bloqueantes (L1: un titulo terminado en coma produciria una coma doble, caso no exigido por la plantilla de la spec y anotado para la fase 2/4; L2: ADR 0004 sin puntero a 0005, sin contradiccion; L3: la baseline '64 suites / 456 tests' de la spec es una medicion previa a HEAD, ya documentada por el implementer). Detalle en docs/validations/dish-image-domain.md.",
+      "Implementado y autoverificado por el implementer en la sesión 085 (worktree dish-image-domain, rama feature/dish-image-domain, trabajo en disco SIN commit ni push). Estado passing = listo para validación independiente.",
+      "bash init.sh exit 0 (./gradlew test + ./gradlew lint vía scripts/gradle.sh, sin procesos largos). Parseo propio de los XML de testDebugUnitTest: 68 suites / 496 tests / 0 fallos / 0 errores / 0 saltados, con las 3 suites nuevas DishImageCacheKeyTest (8), DishImagePromptTest (7) y DishImageRequestTest (5) = 20 tests nuevos. Baseline rastreada antes del cambio (git grep -c @Test sobre HEAD): 65 ficheros con @Test / 476 métodos = +3 suites / +20 tests exactos; el '64 suites / 456 tests' del handoff es una medición previa al estado de HEAD de esta rama.",
+      "Tirada focal previa: bash scripts/gradle.sh testDebugUnitTest --tests \"com.sazon.app.domain.image.*\" -> BUILD SUCCESSFUL, 20 tests, 0 fallos.",
+      "Lint (SARIF app/build/reports/lint-results-debug.sarif): 0 errores y 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 bajo app/src (todos en app/build.gradle.kts, gradle/libs.versions.toml y gradle/wrapper/gradle-wrapper.properties).",
+      "Inspección de pureza y alcance: 0 resultados de import android|import androidx|io.ktor|java.net|kotlin.random|java.util.Random|UUID|currentTimeMillis bajo app/src/main/java/com/sazon/app/domain/image (DishImagePromptTest lo comprueba además por lectura de los 3 fuentes y del patrón de imports); 0 implementaciones de DishImageGenerator en app/src/main (el puerto queda sin adaptador, fase 2) y 0 referencias al puerto fuera de domain.image; git status/diff limitado a los 3 fuentes nuevos (DishImageCacheKey.kt, DishImagePrompt.kt, DishImageGenerator.kt), los 3 tests nuevos, docs/adr/0005-ai-dish-images.md (nuevo), docs/technical-discovery.md, docs/risks-and-open-questions.md, feature_list.json y PROGRESS.md; app/build.gradle.kts, gradle/libs.versions.toml, init.sh, scripts/**, app/src/androidTest/**, data/**, ui/**, domain/recipe/**, domain/taxonomy/**, domain/validation/**, domain/prompt/**, domain/generator/**, Recipe.kt, RecipeValidator.kt, PromptBuilder.kt, docs/domain/taxonomy.json, seed-recipes.json, assets/**, DESIGN.md y docs/design/** intactos; NO se crea nada en docs/design/concepts/ (el gate de UI no aplica; la feature no tiene comportamiento visual).",
+      "Vectores concretos verificados por test: 'Arroz con Pollo Criollo' / '  arroz  con   pollo criollo ' / 'ARROZ CON POLLO CRIOLLO' / 'Arroz con pollo criollo!' -> dish-image-v1-arroz-con-pollo-criollo y 'Salmón a la plancha' -> dish-image-v1-salmon-a-la-plancha (alfabeto [a-z0-9-], sin guiones sobrantes); receta incompleta (título/categoría/cocina vacíos) -> 'Fotografía gastronómica de plato casero, cerámica artesanal, luz natural suave, estilo editorial gastronómico, sin texto ni manos' sin lanzar, también con categoryId desconocido y con Taxonomy vacía; con la Taxonomía real -> 'Fotografía gastronómica de Arroz con pollo criollo, Española, <STYLE_SUFFIX>' (coletilla exactamente una vez, sin espacios dobles ni comas duplicadas); sin título con id 'seed-tortilla-patatas' -> dish-image-v1-plato-seed-tortilla-patatas y sin título ni id -> dish-image-v1-plato; DishImageRequest.of(taxonomy, recipe) coincide con DishImagePrompt.build y DishImageCacheKey.of, es un data class con igualdad estructural y degrada recipeId a null con id vacío o en blanco.",
+      "Frontera deliberada cubierta por test (escenario 8; desviación consciente de la lectura amplia de docs/ai-dish-images-proposal.md §5, registrada en el ADR 0005): 'Arroz con pollo' != 'Arroz con pollo fácil' y != 'Receta de arroz con pollo'; con Locale.setDefault('tr-TR') 'İSTANBUL' -> 'istanbul' (Locale.ROOT explícito, la clave no depende del idioma del dispositivo).",
+      "Documentación durable: docs/adr/0005-ai-dish-images.md (nuevo, estado 'Aceptado parcialmente (fase 1)'; fija puerto en el dominio, prompt determinista, clave canónica versionada del nombre del plato, cadena de recipe-photos como respaldo y ajuste parcial del ADR 0004, con las fases 2-7 enumeradas como pendientes); docs/technical-discovery.md (bullet del puerto domain.image en Integrations y de sus tests JVM en Testing and Verification); docs/risks-and-open-questions.md (riesgo de cuota ~2 %/imagen, latencia ~4,2 s y crecimiento de almacenamiento, a materializar en las fases 2-3, y ADR 0005 en la lista).",
+      "Verificación E2E/manual: no aplica (la feature no cambia comportamiento observable: sin UI, sin red, sin persistencia y sin consumidores del puerto; la verificación canónica del repo para lógica pura es el test JVM)."
+    ],
+    "notes": "Fase 1 de docs/ai-dish-images-proposal.md. Lógica pura en com.sazon.app.domain.image (puerto DishImageGenerator, DishImagePrompt y DishImageCacheKey) sin Android ni red, testeada en JVM. Sin UI, sin adaptador real, sin caché, sin persistencia y sin dependencias nuevas (no-goals). Ver docs/ai-dish-images-proposal.md. Estado accepted: implementado y autoverificado en la sesión 085 y validado de forma independiente con veredicto accept en la sesión 086 (ver PROGRESS.md y docs/validations/dish-image-domain.md). Decisión y desviación (normalización tipográfica, no semántica) en docs/adr/0005-ai-dish-images.md."
   },
   {
     "id": "home-recently-opened-group",
@@ -910,14 +921,104 @@
       "DESIGN.md registra que el bloque 'Tus recetas' solo lista grupos con contenido y la desviación autorizada de capturas"
     ],
     "evidence": [
-      "Implementacion (implementer, sesion 085): 'bash init.sh' exit 0 (./gradlew test + ./gradlew lint via scripts/gradle.sh, sin procesos largos). Parseo propio de los XML: 65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados; HomeRecipesTest 7 tests (8 -> 7: se elimina 'con_una_receta_abierta_hace_poco_el_bloque_no_esta_vacio' y se adaptan los 7 restantes al modelo de un grupo; cabecera HEAD 476 tests -> net -1). lint: 0 errores, 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 localizados bajo app/src",
+      "Implementacion (implementer, sesion 087): 'bash init.sh' exit 0 (./gradlew test + ./gradlew lint via scripts/gradle.sh, sin procesos largos). Parseo propio de los XML: 65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados; HomeRecipesTest 7 tests (8 -> 7: se elimina 'con_una_receta_abierta_hace_poco_el_bloque_no_esta_vacio' y se adaptan los 7 restantes al modelo de un grupo; cabecera HEAD 476 tests -> net -1). lint: 0 errores, 13 warnings preexistentes (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), 0 localizados bajo app/src",
       "Costura pura cubierta en JVM (Scenario 2 y 4): sin_guardadas_el_bloque_esta_vacio; con_una_receta_guardada_el_bloque_no_esta_vacio; filtered_by_categoria_filtra_las_guardadas; filtered_by_rapido_respeta_la_frontera_30_en_las_guardadas (30 entra, 31 no); filtered_by_all_conserva_las_guardadas_sin_tocarlas; filtered_by_sin_coincidencias_deja_el_grupo_vacio (isEmpty); filtered_by_no_altera_el_bloque_original",
       "Inspeccion (Scenarios 1-3): grep -rn 'recentlyOpened' app/src -> 0; grep -rn 'Abiertas hace poco' app/src -> 0; MainShell.HomeRecipes ya solo lleva saved = favorites.map { it.recipe }; HomeRecipesGroup arranca con 'if (recipes.isEmpty()) return' (ningun grupo sin contenido pinta titulo ni carrusel); RecipesSection usa allRecipes = recipes.saved e invoca el grupo 'Guardadas' sin condicionar su no-vacuidad en el call site",
       "Honestidad de cobertura: el guard de no-pintado vive en HomeRecipesGroup (Compose) y NO es testeable en JVM; la infra Compose UI del repo es instrumentada (androidTest, fuera de init.sh y no ejecutable desde WSL) y esta feature no la toca. Queda cubierto por inspeccion + la prueba manual exigida en emulador, pendiente de la persona (Scenarios 1-3 y 6, claro/oscuro)",
       "DESIGN.md actualizado (Scenario 5): Core Screen 2 pasa a 'el bloque Tus recetas solo lista los grupos con contenido (hoy, Guardadas)' y se anade el parrafo de excepcion de capturas de home-recently-opened-group (issue #91, misma clase que #77/#85/#86) sin crear docs/design/concepts/home-recently-opened-group/ (test -d -> no existe). docs/technical-discovery.md: una frase de coherencia (HomeRecipes conserva un unico grupo saved; la Home solo pinta grupos con contenido)",
       "git diff --stat solo con los ficheros previstos (HomeRecipes.kt, HomeScreen.kt, MainShell.kt, HomeRecipesTest.kt, DESIGN.md, docs/technical-discovery.md); app/build.gradle.kts, gradle/libs.versions.toml, init.sh, scripts/**, ui.theme, ui.filters, domain/**, data/** y las specs aceptadas (home-offline-blocks, local-result-filters, favorites) sin diff; ficheros tocados en UTF-8 sin BOM; sin dependencias ni infra de tests nueva; sin commit/push/PR",
-      "Aceptacion independiente (validator, sesion 086, agente con contexto limpio, veredicto accept): re-ejecuto bash init.sh (exit 0) y, al verlo UP-TO-DATE, forzo bash scripts/gradle.sh testDebugUnitTest --rerun-tasks (34/34 tareas, BUILD SUCCESSFUL) y bash scripts/gradle.sh lint --rerun-tasks (30/30 tareas); parseo por su cuenta los XML (65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados; HomeRecipesTest 7, ninguno vacio, reproduce el numero del implementer) y el informe de lint (0 errores, 13 warnings preexistentes, 0 bajo app/src). Confirmo por inspeccion del codigo real el guard 'if (recipes.isEmpty()) return' en HomeRecipesGroup, RecipesSection sin el grupo 'Abiertas hace poco' con 'Guardadas' invocado sin condicionar su no-vacuidad en el call site, HomeRecipes con unico grupo saved y MainShell sin recentlyOpened; greps 0 'recentlyOpened' y 0 'Abiertas hace poco' en app/src; docs/design/concepts/home-recently-opened-group/ no existe (exencion autorizada #91); DESIGN.md registra la estructura vigente y el parrafo de excepcion (#91, tras #86); disciplina de alcance intacta y trabajo sin commit/push/PR (HEAD == origin/main, sin upstream/PR). Sin hallazgos Critical/High/Medium; Low informativos no bloqueantes (guard Compose no testeable en JVM, declarado; referencias historicas a 'Abiertas hace poco' en docs no editadas, non-goal; verificacion manual de emulador pendiente de la persona). Detalle en docs/validations/home-recently-opened-group.md"
+      "Aceptacion independiente (validator, sesion 088, agente con contexto limpio, veredicto accept): re-ejecuto bash init.sh (exit 0) y, al verlo UP-TO-DATE, forzo bash scripts/gradle.sh testDebugUnitTest --rerun-tasks (34/34 tareas, BUILD SUCCESSFUL) y bash scripts/gradle.sh lint --rerun-tasks (30/30 tareas); parseo por su cuenta los XML (65 suites / 475 tests / 0 fallos / 0 errores / 0 saltados; HomeRecipesTest 7, ninguno vacio, reproduce el numero del implementer) y el informe de lint (0 errores, 13 warnings preexistentes, 0 bajo app/src). Confirmo por inspeccion del codigo real el guard 'if (recipes.isEmpty()) return' en HomeRecipesGroup, RecipesSection sin el grupo 'Abiertas hace poco' con 'Guardadas' invocado sin condicionar su no-vacuidad en el call site, HomeRecipes con unico grupo saved y MainShell sin recentlyOpened; greps 0 'recentlyOpened' y 0 'Abiertas hace poco' en app/src; docs/design/concepts/home-recently-opened-group/ no existe (exencion autorizada #91); DESIGN.md registra la estructura vigente y el parrafo de excepcion (#91, tras #86); disciplina de alcance intacta y trabajo sin commit/push/PR (HEAD == origin/main, sin upstream/PR). Sin hallazgos Critical/High/Medium; Low informativos no bloqueantes (guard Compose no testeable en JVM, declarado; referencias historicas a 'Abiertas hace poco' en docs no editadas, non-goal; verificacion manual de emulador pendiente de la persona). Detalle en docs/validations/home-recently-opened-group.md"
     ],
-    "notes": "Feature correctiva de home-offline-blocks, pedida por la persona (2026-10-13). Motivo: el bloque 5 'Tus recetas' pinta SIEMPRE el subtítulo 'Abiertas hace poco' (HomeRecipesGroup muestra el título aunque la lista venga vacía, HomeScreen.kt) y MainShell alimenta HomeRecipes.recentlyOpened con emptyList() hardcodeado, sin repositorio ni persistencia: el usuario ve un título sin nada debajo (visible en cuanto hay al menos una guardada, porque si no gana el estado vacío global). Alcance previsto: dejar de pintar un grupo sin recetas y, si la costura 'recentlyOpened' queda muerta, retirarla de HomeRecipes (ajustando HomeRecipesTest) en vez de conservar código sin uso; sin tocar 'Guardadas', el filtro local, el estado vacío global ni el resto de la Home. Desviación de capturas autorizada por la persona (misma clase que recipe-artwork #77 y profile-stats-heading #86): no se crea docs/design/concepts/home-recently-opened-group/; DESIGN.md registra el microcopy/estructura vigente. Sin dependencias nuevas. Implementada y autoverificada (implementer, sesion 085): estado 'passing', pendiente de validacion independiente. Estado accepted: validada de forma independiente con veredicto accept (validator, sesion 086; ver docs/validations/home-recently-opened-group.md)."
+    "notes": "Feature correctiva de home-offline-blocks, pedida por la persona (2026-10-13). Motivo: el bloque 5 'Tus recetas' pinta SIEMPRE el subtítulo 'Abiertas hace poco' (HomeRecipesGroup muestra el título aunque la lista venga vacía, HomeScreen.kt) y MainShell alimenta HomeRecipes.recentlyOpened con emptyList() hardcodeado, sin repositorio ni persistencia: el usuario ve un título sin nada debajo (visible en cuanto hay al menos una guardada, porque si no gana el estado vacío global). Alcance previsto: dejar de pintar un grupo sin recetas y, si la costura 'recentlyOpened' queda muerta, retirarla de HomeRecipes (ajustando HomeRecipesTest) en vez de conservar código sin uso; sin tocar 'Guardadas', el filtro local, el estado vacío global ni el resto de la Home. Desviación de capturas autorizada por la persona (misma clase que recipe-artwork #77 y profile-stats-heading #86): no se crea docs/design/concepts/home-recently-opened-group/; DESIGN.md registra el microcopy/estructura vigente. Sin dependencias nuevas. Implementada y autoverificada (implementer, sesion 087): estado 'passing', pendiente de validacion independiente. Estado accepted: validada de forma independiente con veredicto accept (validator, sesion 088; ver docs/validations/home-recently-opened-group.md)."
+  },
+  {
+    "id": "dish-image-generator",
+    "area": "integration",
+    "title": "Generador real de imagen de plato (proveedor de IA)",
+    "user_visible_behavior": "Dada una petición de imagen del dominio, la app obtiene del proveedor una imagen real del plato y la devuelve ya reducida; si el proveedor falla o tarda, no se lanza y se devuelve null (la app conserva su foto local).",
+    "depends_on": ["dish-image-domain"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el adaptador con un motor HTTP falso: petición correcta a /images/generations (modelo 'image', prompt y size 1024x1024), decodificación de data[0].b64_json y reducción a WebP q80 de 960 px de ancho; una respuesta de error o timeout devuelve null sin lanzar",
+      "El adaptador es la única capa que usa Ktor y la clave de API sale de local.properties sin registrarse en logs",
+      "Prueba real opcional y guardada (gasta ~2 % de cuota semanal por imagen): una generación 1024x1024 devuelve una imagen válida y se adjunta a la evidencia"
+    ],
+    "evidence": [],
+    "notes": "Fase 2 de docs/ai-dish-images-proposal.md y docs/adr/0005-ai-dish-images.md. Adaptador com.sazon.app.data.ai.image.DevExpertDishImageGenerator (Ktor, única capa con red) que implementa DishImageGenerator: POST /images/generations con modelo 'image', decodifica b64_json y reduce localmente a WebP q80 de 960 px de ancho. Sin caché, sin UI y sin consumidores del puerto (los añaden las fases 3-4). Decisiones de la persona (2026-10-13): se genera a 1024 y se reduce a 960 px WebP q80; 512 no lo soporta el proveedor."
+  },
+  {
+    "id": "dish-image-cache",
+    "area": "data",
+    "title": "Caché de imágenes de plato (disco + memoria)",
+    "user_visible_behavior": "Una imagen de plato generada una vez se reutiliza en usos posteriores con la misma clave canónica sin volver a llamar al proveedor (incluso sin red), y el almacenamiento queda acotado por un tope.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre la caché con un generador falso: la segunda petición con la misma clave canónica no llama al generador; dos títulos equivalentes comparten fichero; sin red se sirve del disco",
+      "La evicción LRU respeta el tope de 80 MB borrando los ficheros más antiguos; el formato guardado es WebP",
+      "La caché escribe bajo cacheDir, no toca el almacenamiento de recetas y no añade dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Fase 3 de docs/ai-dish-images-proposal.md. com.sazon.app.data.image: ficheros en cacheDir indexados por DishImageCacheKey (nombre de fichero = clave canónica) más una caché LRU en memoria, con tope de 80 MB y evicción. Se inserta delante de la cadena de recipe-photos (que pasa a respaldo). Sin UI (fase 4). Decisión de la persona (2026-10-13): ficheros en cacheDir, no Room."
+  },
+  {
+    "id": "dish-image-progressive-ui",
+    "area": "ui",
+    "title": "Carga progresiva de la imagen de plato",
+    "user_visible_behavior": "Las tarjetas y el hero muestran al instante su foto local y la sustituyen por la imagen generada del plato cuando llega, sin esperas ni saltos; nunca aparece un error por imagen y el usuario puede apagar la generación.",
+    "depends_on": ["dish-image-cache"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre la lógica y el estado en JVM: qué se pinta antes y después, cancelación al salir de pantalla o hacer scroll, tope de generaciones por sesión e interruptor apagado que desactiva la generación",
+      "Capturas de referencia obligatorias en docs/design/concepts/dish-image-progressive-ui/ antes de implementar; se respetan la firma y la geometría de RecipeArtwork (16:10, 96x96, alto 96, hero 240)",
+      "Prueba manual en emulador: la foto local se ve al instante y se sustituye por la generada; con el interruptor apagado no se genera nada"
+    ],
+    "evidence": [],
+    "notes": "Fase 4 de docs/ai-dish-images-proposal.md (area: ui, exige capturas de referencia). RecipeArtwork gana un nivel por delante de la cadena de recipe-photos. Solo lo visible, concurrencia limitada (2), timeout propio más corto que el de chat, fallo silencioso y transición suave. Guardarraíles de la persona (2026-10-13): interruptor de usuario + tope de generaciones por sesión (patrón AiProviderPolicy)."
+  },
+  {
+    "id": "dish-visual-descriptor",
+    "area": "integration",
+    "title": "Descriptor visual del plato en el contrato de la IA",
+    "user_visible_behavior": "El modelo puede indicar el plato canónico y una descripción visual en la misma llamada que genera la receta; si no los envía, la app usa el título y la Taxonomía como hasta ahora.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el campo opcional dishKey/imagePrompt en el parseo de la respuesta: presente, ausente (degradación) y formato inválido; RecipeValidator no cambia",
+      "La clave canónica usa dishKey cuando existe y mantiene el respaldo por título/id cuando falta; el prompt de imagen usa imagePrompt cuando existe",
+      "El contrato §4 de docs/domain/taxonomy.md documenta el campo opcional"
+    ],
+    "evidence": [],
+    "notes": "Fase 5, variante B de docs/ai-dish-images-proposal.md §4.1. Campo opcional en el wire (dishKey + imagePrompt), ignorado por RecipeValidator. Coherencia del mismo plato (p. ej. 'arroz con pollo' frente a 'arroz con pollo fácil') que la fase 1 deja como frontera tipográfica. Sin llamada extra."
+  },
+  {
+    "id": "dish-style-reference",
+    "area": "integration",
+    "title": "Estilo homogéneo con referencia (image-edit)",
+    "user_visible_behavior": "Las imágenes generadas comparten el estilo visual de la casa, anclado en una foto aceptada como referencia; si el ajuste falla, se cae a la generación por texto sin romper nada.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el adaptador /images/edits con motor falso: envía la imagen de referencia, decodifica la respuesta y degrada a /images/generations si el ajuste falla",
+      "La referencia de estilo es un asset versionado, no una imagen subida por el usuario",
+      "Prueba real opcional y guardada (~2 % de cuota) comparando el resultado con la variante A"
+    ],
+    "evidence": [],
+    "notes": "Fase 6, variante C de docs/ai-dish-images-proposal.md §4.2. POST /images/edits (modelo 'image-edit') con una foto aceptada como referencia de estilo, con fallback a texto→imagen. Depende del adaptador de la fase 2."
+  },
+  {
+    "id": "dish-image-seed",
+    "area": "data",
+    "title": "Set semilla de imágenes de platos frecuentes",
+    "user_visible_behavior": "Los platos más buscados del demo muestran su imagen sin gastar cuota ni esperar red, porque viajan preparadas en la app.",
+    "depends_on": ["dish-image-domain"],
+    "status": "not_started",
+    "verification": [
+      "Los assets semilla están versionados y se resuelven por la clave canónica (dish-image-v1-…); un test comprueba el mapeo clave→asset",
+      "'./gradlew test' sigue en verde y sin dependencias nuevas; el script de preparación es idempotente y no corre en runtime",
+      "Sin red, un plato del set semilla muestra su imagen propia y no la genérica de categoría"
+    ],
+    "evidence": [],
+    "notes": "Fase 7 de docs/ai-dish-images-proposal.md §5. Preparar una vez los platos frecuentes del demo (patrón scripts/fetch-recipe-photos.sh) y versionarlos en assets; resolución por clave canónica delante de la cadena de categoría."
   }
 ]
