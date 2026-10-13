@@ -13,6 +13,10 @@ val designTokensFile = rootProject.layout.projectDirectory.file("DESIGN.md")
 // Directorio de las fotos de plato empaquetadas (assets offline, fuente versionada); los tests JVM
 // comprueban que cada receta semilla, cada categoria y el caso por defecto resuelven un fichero real.
 val recipePhotosDir = layout.projectDirectory.dir("src/main/assets/img/recipes")
+// Directorio del set semilla de imagenes de plato (fase 7, assets versionados); el test JVM deriva la
+// clave canonica de cada plato de la lista (`DishImageCacheKey.of(titulo)`) y comprueba que resuelve un
+// fichero real, no vacio y con la extension esperada.
+val dishImageSeedDir = layout.projectDirectory.dir("src/main/assets/img/dishes/seed")
 
 // Clave del proveedor de IA leida en tiempo de configuracion desde local.properties (que NO se
 // versiona). Nunca se imprime su valor ni la ruta; si falta el fichero o la propiedad, queda "".
@@ -127,4 +131,5 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("seed.recipes.asset.path", seedRecipesAssetFile.asFile.absolutePath)
     systemProperty("design.tokens.path", designTokensFile.asFile.absolutePath)
     systemProperty("recipe.photos.assets.dir", recipePhotosDir.asFile.absolutePath)
+    systemProperty("dish.image.seed.assets.dir", dishImageSeedDir.asFile.absolutePath)
 }

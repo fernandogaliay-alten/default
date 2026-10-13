@@ -2,23 +2,25 @@
 
 ## Estado
 
-**Aceptado parcialmente (fases 1-6)** — features `dish-image-domain` (fase 1), `dish-image-generator`
+**Aceptado parcialmente (fases 1-7)** — features `dish-image-domain` (fase 1), `dish-image-generator`
 (fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración),
-`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5) y
-`dish-style-reference` (fase 6), 2026-10-13. Fija la decisión de arquitectura y de política (puerto,
-prompt determinista y clave canónica), implementa el **adaptador real** de transporte + códec y la
-**caché** de disco + memoria, **conecta** el nivel generado por delante de la cadena local con una
-progresión con crossfade, añade el **control de gasto** (interruptor de usuario + tope de generaciones
-por sesión), fija en el **contrato con la IA** el descriptor visual opcional (`dishKey`/`imagePrompt`)
-que alimenta esa misma política y, en la fase 6, añade al adaptador el **ajuste con una referencia de
-estilo versionada** (`/images/edits`, variante C) con respaldo por texto ante rechazo. Con eso la
-**fase 4 queda completa**, la **fase 5** entrega contrato + política pura y la **fase 6** entrega la
-capa de transporte del anclaje visual; deja **pendiente**, de forma explícita, la fase 7 de
-`docs/ai-dish-images-proposal.md` (set semilla de platos frecuentes). Ajusta **parcialmente**
-`docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y offline, pero pasa
-a ser el **respaldo** de la imagen generada, ya conectada en runtime; además, desde la fase 6 la foto
-por defecto de esa cadena (`img/recipes/default.<ext>`) es también la **referencia de estilo** del
-ajuste. Su afirmación "sin red en tiempo de ejecución" se mantiene para la cadena local.
+`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5),
+`dish-style-reference` (fase 6) y `dish-image-seed` (fase 7), 2026-10-13. Fija la decisión de
+arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
+real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
+delante de la cadena local con una progresión con crossfade, añade el **control de gasto** (interruptor
+de usuario + tope de generaciones por sesión), fija en el **contrato con la IA** el descriptor visual
+opcional (`dishKey`/`imagePrompt`) que alimenta esa misma política, añade al adaptador el **ajuste con
+una referencia de estilo versionada** (`/images/edits`, variante C) con respaldo por texto y, en la
+fase 7, **empaqueta preparado de antemano** el set semilla de platos frecuentes resuelto por la clave
+canónica **delante del generador**. Con eso la **fase 4 queda completa**, la **fase 5** entrega contrato
++ política pura, la **fase 6** entrega la capa de transporte del anclaje visual y la **fase 7** la
+tercera capa de la caché (assets semilla), de modo que la **lista de fases de la propuesta queda
+completa**. Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets
+sigue siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada, ya conectada en
+runtime; además, desde la fase 6 la foto por defecto de esa cadena (`img/recipes/default.<ext>`) es
+también la **referencia de estilo** del ajuste. Su afirmación "sin red en tiempo de ejecución" se
+mantiene para la cadena local.
 
 ## Contexto
 
@@ -192,6 +194,39 @@ ajuste cuesta **una llamada extra** (una desechada) para una unidad del tope por
 `STYLE_REFERENCE_ENABLED = false` es el rollback de una línea. Sin dependencias nuevas (el multipart vive
 en `ktor-client-core`) y sin UI. Ver `docs/specs/dish-style-reference.md`.
 
+Alcance de la **fase 7** (feature `dish-image-seed`): el **set semilla de platos frecuentes** como
+**tercera capa de la caché** (propuesta §5), **sin** tocar el puerto, el prompt, la clave, la caché de
+disco, el ajuste de sesión ni la UI. `DishImageResolver` recibe un parámetro **nuevo al final con
+default** (`seed: DishImageSeedSource? = null`) y amplía su orden a **memoria → disco → semilla →
+generador → persistir**: si el disco no tiene copia y la fuente semilla devuelve bytes no vacíos, se
+guardan en **memoria** y se devuelven **sin** escribir en disco y **sin** invocar al generador (el
+asset ya viaja en el APK; duplicarlo consumiría el tope de 80 MiB y podría perderse por evicción o un
+borrado de `cacheDir`). El **disco gana a la semilla** (solo decide el caso degenerado de un plato con
+copia generada antes de existir el asset: se conserva la semántica de acierto de la fase 3). La
+identidad del asset es la **clave canónica del plato** (`DishImageCacheKey`, ya presente en el
+`DishImageRequest`), y la convención es `assets/img/dishes/seed/<cacheKey>.<ext>` con la extensión
+probada en orden `webp → jpg → png` (se reutiliza `RecipePhotoAssets.EXTENSIONS`): el mapa clave→ruta
+es **lógico y puro** (`data.DishImageSeedAssets`: `ROOT`, `EXTENSIONS`, `SAFE_KEY` = `[a-z0-9-]+`,
+`isSafeKey`, `path`, `resolve(cacheKey, exists[, root])`, con `exists` **inyectado**), la lectura real
+es la costura Android `data.AssetDishImageSeedSource` (`Dispatchers.IO`, `null` **sin lanzar** si el
+asset falta o está vacío; **único** fichero nuevo con `android.*`) y el seam funcional
+`data.DishImageSeedSource` permite una fuente falsa en JVM sin red ni cuota. `MainActivity` gana **una
+línea** (`seed = AssetDishImageSeedSource(applicationContext)`), detrás del **mismo gate** del
+interruptor de la fase 4 (apagado = solo la foto local, tampoco las semilla) y **sin** consumir el tope
+por sesión (la semilla nunca llega al borde de generación). Restricciones: `DishImageCacheKey.VERSION`
+**no** sube (ni la normalización ni la plantilla cambian; el asset solo **añade** un origen de bytes) y
+**ningún** plato con foto propia (las 12 recetas semilla, `img/recipes/seed/<recipeId>.<ext>`) recibe
+asset semilla, porque pisaría su foto propia. El set se prepara con
+`scripts/prepare-dish-image-seed.sh`, **herramienta de una sola vez fuera de `init.sh` y de runtime**
+(nadie la invoca), idempotente (`--force` para regenerar), con lista exacta de claves ordenadas y
+plato/cocina, prompt **espejo** de `DishImagePrompt` con la etiqueta de cocina leída de
+`docs/domain/taxonomy.json`, modo proveedor (`/images/edits` con la referencia neutra
+`img/recipes/default.<ext>` y respaldo **acotado por estado** a `/images/generations`) o modo
+`--source <dir>` (**sin gastar cuota**), conversión a WebP q80 ≤960 px cuando hay herramienta,
+inventario y presupuesto **≤ 2 MiB** con `exit ≠ 0` ante cualquier desvío (**nunca** un empaquetado
+parcial silencioso). Sin dependencias nuevas y sin capturas (`area: data`; el set es **contenido**, no
+dirección visual). Ver `docs/specs/dish-image-seed.md`.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -223,6 +258,20 @@ en `ktor-client-core`) y sin UI. Ver `docs/specs/dish-style-reference.md`.
    la costura; (b) la decodificación y *su* LRU de bitmaps pertenecen a la fase 4 (UI), que es donde se
    pinta con scroll y donde ya existe el patrón aceptado (LRU 16); (c) el valor de la memoria aquí es no
    repetir disco y no repetir proveedor. La LRU guarda **bytes**.
+8. **Resolver el set semilla desde la cadena local** (`RecipePhotoSource`/`RecipePhotoAssets`, keyed por
+   `Recipe`) **o con un decorador del puerto `DishImageGenerator`.** Descartado en la fase 7: (a) la
+   identidad de un asset semilla es la **clave canónica del plato**, que ya viaja en el
+   `DishImageRequest` que consume el resolutor, mientras que la cadena local se indexa por `Recipe`
+   (`recipeId`/`categoryId`) y obligaría a duplicar el cálculo de la clave en la capa de assets,
+   tocando un seam Compose ya aceptado; (b) un decorador haría pasar los bytes semilla por el camino de
+   "generado", de modo que el resolutor los **persistiría** en `cacheDir` y consumirían el **tope por
+   sesión** como si fueran generación — justo lo que la fase 7 evita. El parámetro **opcional al final**
+   del resolutor mantiene la fase 7 aditiva y el comportamiento de la fase 3 intacto.
+9. **Persistir el asset semilla en `cacheDir` en la primera lectura.** Duplica bytes que ya viajan en el
+   APK, consume el presupuesto de 80 MiB, puede perderse por evicción LRU o por un borrado del sistema
+   (`cacheDir` es descartable) y convertiría una lectura determinista en un acierto opcional.
+   Descartado: se cachean los bytes solo en la **memoria** del resolutor (y las decodificadas en la LRU
+   del loader de la fase 4).
 
 ## Consecuencias
 
@@ -231,15 +280,21 @@ en `ktor-client-core`) y sin UI. Ver `docs/specs/dish-style-reference.md`.
   **no** la sube: el descriptor solo cambia de **dónde sale** el plato/el slug cuando el modelo lo emite,
   no la normalización ni la forma de la plantilla. La fase 6 **tampoco**: el ajuste con referencia no
   cambia el prompt (la referencia **añade** un ancla visual, no sustituye el `STYLE_SUFFIX`), así que la
-  plantilla —uno de los dos disparadores de invalidación— queda intacta.
+  plantilla —uno de los dos disparadores de invalidación— queda intacta. La fase 7 **tampoco** (el set
+  semilla solo añade un origen de bytes), pero subir `VERSION` cambia **todas** las claves y, con ellas,
+  los **nombres** de los assets semilla: la consecuencia documentada es **volver a preparar el set**
+  (`scripts/prepare-dish-image-seed.sh --force`) y que los `dish-image-v1-*` queden huérfanos hasta que
+  se limpien.
 - **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3), la **costura de UI**
   (fase 4) y el **control de gasto** (fase 4, ajuste de usuario) ya existen, así que el riesgo (~2 % de
   la cuota semanal y ~4 s por imagen) **se materializa** al navegar. Está registrado en
   `docs/risks-and-open-questions.md` con la mitigación implementada (clave compartida por nombre de
   plato + caché persistente con evicción LRU y tope de 80 MiB + LRU de bytes en memoria +
   **concurrencia limitada a 2** + **cancelación al salir de pantalla/hacer scroll** +
-  **tope de generaciones por sesión** + **interruptor de usuario**) y la pendiente (**set semilla de
-  platos frecuentes**, fase 7).
+  **tope de generaciones por sesión** + **interruptor de usuario**) y, desde la fase 7, el **set
+  semilla** adelanta la primera imagen de los platos frecuentes del demo: esos platos **no** gastan
+  cuota ni esperan red en runtime a cambio de un coste de preparación **de una sola vez** (~2 % de cuota
+  por plato, fuera del gate del interruptor y evitable con `--source`).
 - **Crecimiento de almacenamiento acotado**: el tope de 80 MiB con evicción LRU deja de ser hipotético en
   la fase 3; el espacio lo ocupa `cacheDir/dish-images`, que es **descartable** por el sistema (si el
   sistema lo vacía, un acierto falla y solo se regenera, volviendo a gastar cuota: comportamiento
@@ -258,15 +313,18 @@ en `ktor-client-core`) y sin UI. Ver `docs/specs/dish-style-reference.md`.
   tiempo conviven imágenes "de texto" y "ajustadas" (sin error y sin gasto extra). Subir a
   `dish-image-v2` las uniformaría de golpe pero **repagaría cuota** por cada plato ya cacheado; queda
   como decisión de seguimiento (una línea con su propia evidencia) si se prefiere uniformidad a gasto.
-- **Pendiente**: la **fase 7** (set semilla de platos frecuentes) y la **entrega en runtime** del
-  descriptor de la fase 5. La fase 6 entrega el ajuste con referencia versionada y respaldo por texto,
-  con la entrada de la variante C **cerrada** en `DishImagePolicy` (`IMAGES_EDITS_PATH`,
-  `EDIT_MODEL_ALIAS`, `EDIT_FALLBACK_STATUSES`, `STYLE_REFERENCE_ENABLED`); la fase 4 se entrega
+- **Pendiente**: la **entrega en runtime** del descriptor de la fase 5. La fase 6 entrega el ajuste con
+  referencia versionada y respaldo por texto, con la entrada de la variante C **cerrada** en
+  `DishImagePolicy` (`IMAGES_EDITS_PATH`, `EDIT_MODEL_ALIAS`, `EDIT_FALLBACK_STATUSES`,
+  `STYLE_REFERENCE_ENABLED`); la **fase 7** entrega el set semilla (assets versionados por clave
+  canónica delante del generador, con la preparación de una sola vez); la fase 4 se entrega
   **completa** (integración + ajuste de usuario), ambas mitades con capturas **omitidas por desviación
   autorizada** registrada en `DESIGN.md` (issues #98 y #101); la revisión puramente visual la hace la
   persona tras el merge. De las preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda
   **resuelta** en la fase 3 (ficheros en `cacheDir`), el **interruptor de usuario y el tope por sesión
-  quedan resueltos** en la fase 4 (constantes en `DishImageSettingsPolicy`) y la **coherencia conceptual
-  del mismo plato queda cubierta** en la fase 5 vía `dishKey` del modelo; siguen abiertas el tamaño
-  objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste) y el set
-  semilla de la fase 7.
+  quedan resueltos** en la fase 4 (constantes en `DishImageSettingsPolicy`), la **coherencia conceptual
+  del mismo plato queda cubierta** en la fase 5 vía `dishKey` del modelo y el **set semilla queda
+  resuelto** en la fase 7 (assets empaquetados, con `--source` como vía sin cuota); siguen abiertas el
+  tamaño objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste) y
+  la **lista concreta** de platos frecuentes (hoy 6, ampliable de forma aditiva: una línea en el script
+  y un título en el test).

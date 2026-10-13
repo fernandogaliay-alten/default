@@ -1,5 +1,6 @@
 package com.sazon.app.data.image
 
+import com.sazon.app.data.DishImageSeedSource
 import com.sazon.app.domain.image.DishImageGenerator
 import com.sazon.app.domain.image.DishImageRequest
 import java.util.concurrent.ConcurrentHashMap
@@ -11,9 +12,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Resolutor de la imagen de plato: orquesta **memoria -> disco -> generador real -> persistir** por la
- * clave canonica del peticion. Es el nivel que la fase 4 (`dish-image-progressive-ui`) insertara
- * delante de la cadena de `recipe-photos`; aqui queda **sin consumidores ni cableado**.
+ * Resolutor de la imagen de plato: orquesta **memoria -> disco -> semilla -> generador real ->
+ * persistir** por la clave canonica del peticion. Es el nivel que la fase 4
+ * (`dish-image-progressive-ui`) inserta delante de la cadena de `recipe-photos`.
  *
  * Orden y garantias:
  *
@@ -21,25 +22,34 @@ import kotlinx.coroutines.withContext
  * 2. **Seccion critica por clave**: una [Mutex] por `cacheKey` **serializa** las peticiones
  *    simultaneas del mismo plato, de modo que dos tarjetas del mismo plato no pagan dos veces ~2 % de
  *    cuota. Dentro del cerrojo se re-consulta la memoria y, si no, el disco en [ioDispatcher].
- * 3. **Generador**: `null` o array vacio = "no disponible" -> se devuelve `null` **sin** persistir
+ * 3. **Semilla** (fase 7): si el disco no tiene copia y [seed] devuelve bytes no vacios, se guardan en
+ *    **memoria** y se devuelven **sin** escribir en disco y **sin** invocar al generador. El asset ya
+ *    viaja en el APK: duplicarlo consumiria el presupuesto de la cache y podria perderse por eviccion.
+ *    El **disco gana a la semilla** (un plato con copia generada antes de existir el asset se sirve de
+ *    su copia, como en la fase 3). `null`/array vacio/excepcion de la fuente degradan a `null` (la
+ *    cadena sigue); la cancelacion se relanza.
+ * 4. **Generador**: `null` o array vacio = "no disponible" -> se devuelve `null` **sin** persistir
  *    nada. Cualquier `Exception` se degrada a `null`; la **cancelacion** se relanza (la fase 4 cancela
  *    al salir de pantalla o al hacer scroll).
- * 4. **Persistir y devolver**: la persistencia es *best-effort* (`disk.write` puede fallar y se
+ * 5. **Persistir y devolver**: la persistencia es *best-effort* (`disk.write` puede fallar y se
  *    devuelven igualmente los bytes generados), despues se guardan en memoria.
  *
  * No conoce el modelo de recetas ni la Taxonomia: consume el [DishImageRequest] ya compuesto por
  * `DishImageRequest.of(taxonomy, recipe)` (fase 1) y usa `request.cacheKey`/`request.prompt` tal cual.
+ * Con `seed = null` (parametro nuevo al final, por defecto) el comportamiento es **exactamente** el de
+ * la fase 3.
  */
 class DishImageResolver(
     private val disk: FileDishImageCache,
     private val memory: MemoryDishImageCache,
     private val generator: DishImageGenerator,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val seed: DishImageSeedSource? = null,
 ) {
 
     private val locks = ConcurrentHashMap<String, Mutex>()
 
-    /** Imagen de [request]: memoria, disco, generacion; `null` si no hay ninguna disponible. */
+    /** Imagen de [request]: memoria, disco, semilla, generacion; `null` si no hay ninguna disponible. */
     suspend fun imageFor(request: DishImageRequest): ByteArray? {
         val cacheKey = request.cacheKey
         memory.get(cacheKey)?.let { return it }
@@ -54,12 +64,33 @@ class DishImageResolver(
                 return@withLock fromDisk
             }
 
+            val seeded = seedOrNull(cacheKey)
+            if (seeded != null) {
+                memory.put(cacheKey, seeded)
+                return@withLock seeded
+            }
+
             val generated = generateOrNull(request)
             if (generated == null || generated.isEmpty()) return@withLock null
 
             withContext(ioDispatcher) { disk.write(cacheKey, generated) }
             memory.put(cacheKey, generated)
             generated
+        }
+    }
+
+    /**
+     * Bytes del asset semilla de [cacheKey] (fase 7), o `null` si no hay fuente, no hay asset, esta
+     * vacio o falla. Degrada cualquier fallo a `null`, pero **relanza** la cancelacion.
+     */
+    private suspend fun seedOrNull(cacheKey: String): ByteArray? {
+        val source = seed ?: return null
+        return try {
+            source.bytesFor(cacheKey)?.takeIf { it.isNotEmpty() }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (exception: Exception) {
+            null
         }
     }
 

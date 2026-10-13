@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asImageBitmap
+import com.sazon.app.data.AssetDishImageSeedSource
 import com.sazon.app.data.AssetRecipePhotoSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
@@ -138,6 +139,10 @@ class MainActivity : ComponentActivity() {
         // (asset ausente o ilegible) deja la app exactamente en el comportamiento de la fase 2 (una
         // peticion por texto por imagen), sin error ni UI.
         val dishImageStyleReference = AssetDishImageStyleReference(applicationContext).load()
+        // Set semilla (fase 7): los platos frecuentes del demo viajan preparados en el APK y se
+        // resuelven por la clave canonica del plato; ganan al generador (0 cuota, 0 red, 0 espera) y
+        // quedan detras del mismo gate del interruptor. Best-effort: un asset ausente degrada a la
+        // cadena de la fase 3 sin error ni UI.
         val dishImageResolver = DishImageResolver(
             disk = FileDishImageCache(AndroidDishImageCache.root(applicationContext)),
             memory = MemoryDishImageCache(),
@@ -149,6 +154,7 @@ class MainActivity : ComponentActivity() {
                 ),
                 settings = dishImageSettings,
             ),
+            seed = AssetDishImageSeedSource(applicationContext),
         )
         val dishImageLoader = DishImageArtworkLoader(
             requestFor = { recipe -> DishImageRequest.of(taxonomy, recipe) },
