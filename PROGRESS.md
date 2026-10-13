@@ -4059,7 +4059,7 @@
   `app/**`, `scripts/**`, `init.sh` ni `gradle*`; sin dependencias nuevas.
 - Nota: los prototipos de trabajo de `preview/` (sin versionar) quedan **superados**: la referencia
   versionada es `docs/design/concepts/typographic-cards/`.
-- Siguiente paso: la formalización viaja en la rama **`docs/typographic-cards-formalization`** con un PR
+- Siguiente paso: la formalización viaja en la rama **`docs/typographic-cards-formalization`** (PR #114) con un PR
   propio contra `main` (el agente **no** mergea: lo mergea la persona; permiso de push permanente). Con el
   PR mergeado, arranca `github-flow execute card-typographic-tokens-and-design`. La limpieza previa de
   `execute` borrará el worktree y la rama de `home-suggestions-personalized` (PR #112 ya mergeado).
