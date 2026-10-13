@@ -1190,6 +1190,21 @@
     ],
     "evidence": [],
     "notes": "Ampliacion pedida por la persona (2026-10-13). Es contenido, no solo codigo: autorar 38 recetas nuevas en app/src/main/assets/seed-recipes.json (reglas de violations() de SeedRecipeCatalogTest) y aportar 38 fotos propias en app/src/main/assets/img/recipes/seed/ (material de la persona; script scripts/fetch-recipe-photos.sh). Actualizar los tres '12' de RecipePhotoAssetsTest (lineas 37, 117 y 161) y el inventario/presupuesto (hoy 8 MB; con 50 fotos a ~190 KB son ~9,5 MB, asi que hay que convertir a WebP o subir el tope). Actualizar docs/risks-and-open-questions.md (hoy dice 'Empezar con 12 recetas') y el inventario de assets citado en docs. Exencion de capturas a confirmar por la persona (mismo diseno visual). Debe ir DESPUES de home-suggestions-personalized para que el carrusel ya aplique filtro y tope. Ver docs/specs/seed-catalog-50.md."
+  },
+  {
+    "id": "dish-image-prompt-v2",
+    "area": "integration",
+    "title": "Prompt de imagen v2 y diagnóstico del origen de la imagen",
+    "user_visible_behavior": "Las imágenes generadas representan mejor el plato (el prompt incluye siempre el nombre del plato, sus detalles e ingredientes clave, con composición y negativos más fuertes) y el diagnóstico permite ver si una imagen es generada, del set semilla, de la categoría o el glifo.",
+    "depends_on": ["dish-visual-descriptor-wiring", "dish-image-seed"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre el nuevo template del prompt (título + descripción/ingredientes + composición + negativos), determinista y nunca en blanco, y el bump de DishImageCacheKey.VERSION a dish-image-v2 (clave nueva que invalida lo cacheado)",
+      "El diagnóstico del origen resuelto (GENERATED / SEED / CATEGORY / GLYPH) está disponible solo en depuración y no cambia el comportamiento",
+      "'bash init.sh' verde; sin dependencias nuevas; sin UI nueva (sin capturas)"
+    ],
+    "evidence": [],
+    "notes": "Correctiva pedida por la persona (2026-10-13) tras probar: imágenes que no cuadran con el plato y una repetida 3 veces. Causa probable del segundo síntoma: fallback a la foto de CATEGORÍA cuando la generación devuelve null (timeout/429/tope de 12 por sesión), hoy indistinguible en el logcat. Alcance: (1) DishImagePrompt v2 — incluir SIEMPRE el título como identidad + la descripción del descriptor como detalle + ingredientes clave, con composición (ración completa, primer plano, fondo neutro) y negativos más fuertes; ajustar el contrato de PromptBuilder para pedir un imagePrompt más rico; (2) subir DishImageCacheKey.VERSION a dish-image-v2 (obligatorio por ADR 0005 al cambiar el prompt); (3) diagnóstico del origen de la imagen (solo debug). Pendiente separado, a decidir tras confirmar el fallback: revisar el tope de 12 por sesión / manejo de 429 (otra correctiva). Ver docs/ai-dish-images-proposal.md."
   }
 
 ]
