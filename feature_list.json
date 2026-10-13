@@ -907,5 +907,20 @@
       "Verificación E2E/manual: no aplica (la feature no cambia comportamiento observable: sin UI, sin red, sin persistencia y sin consumidores del puerto; la verificación canónica del repo para lógica pura es el test JVM)."
     ],
     "notes": "Fase 1 de docs/ai-dish-images-proposal.md. Lógica pura en com.sazon.app.domain.image (puerto DishImageGenerator, DishImagePrompt y DishImageCacheKey) sin Android ni red, testeada en JVM. Sin UI, sin adaptador real, sin caché, sin persistencia y sin dependencias nuevas (no-goals). Ver docs/ai-dish-images-proposal.md. Estado accepted: implementado y autoverificado en la sesión 085 y validado de forma independiente con veredicto accept en la sesión 086 (ver PROGRESS.md y docs/validations/dish-image-domain.md). Decisión y desviación (normalización tipográfica, no semántica) en docs/adr/0005-ai-dish-images.md."
+  },
+  {
+    "id": "home-recently-opened-group",
+    "area": "ui",
+    "title": "Quitar el grupo vacío 'Abiertas hace poco' de la Home",
+    "user_visible_behavior": "En 'Tus recetas' ya no aparece el subtítulo 'Abiertas hace poco' con un carrusel vacío debajo: solo se muestran los grupos con contenido (hoy, 'Guardadas') y, si no hay ninguna receta, se mantiene el estado vacío 'Cuando guardes una receta aparecerá aquí.'.",
+    "depends_on": ["home-offline-blocks"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' (vía 'bash init.sh') sigue en verde y la costura ajustada queda cubierta en JVM (p. ej. que 'Tus recetas' no tenga ningún grupo sin recetas que pintar, o el estado vacío cuando no hay ninguna)",
+      "Prueba manual en emulador: con al menos una receta guardada, 'Tus recetas' muestra 'Guardadas' y NO muestra 'Abiertas hace poco'",
+      "DESIGN.md registra que el bloque 'Tus recetas' solo lista grupos con contenido y la desviación autorizada de capturas"
+    ],
+    "evidence": [],
+    "notes": "Feature correctiva de home-offline-blocks, pedida por la persona (2026-10-13). Motivo: el bloque 5 'Tus recetas' pinta SIEMPRE el subtítulo 'Abiertas hace poco' (HomeRecipesGroup muestra el título aunque la lista venga vacía, HomeScreen.kt) y MainShell alimenta HomeRecipes.recentlyOpened con emptyList() hardcodeado, sin repositorio ni persistencia: el usuario ve un título sin nada debajo (visible en cuanto hay al menos una guardada, porque si no gana el estado vacío global). Alcance previsto: dejar de pintar un grupo sin recetas y, si la costura 'recentlyOpened' queda muerta, retirarla de HomeRecipes (ajustando HomeRecipesTest) en vez de conservar código sin uso; sin tocar 'Guardadas', el filtro local, el estado vacío global ni el resto de la Home. Desviación de capturas autorizada por la persona (misma clase que recipe-artwork #77 y profile-stats-heading #86): no se crea docs/design/concepts/home-recently-opened-group/; DESIGN.md registra el microcopy/estructura vigente. Sin dependencias nuevas."
   }
 ]
