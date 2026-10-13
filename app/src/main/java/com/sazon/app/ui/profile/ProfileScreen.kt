@@ -34,7 +34,7 @@ import com.sazon.app.ui.theme.SazonSpacing
  * editado a [onSaveProfile]; como `SazonApp` observa el Perfil, el armazon se recompone y cambiar
  * `preferences` (y no solo la identidad) es lo unico que invalida el Lote.
  *
- * Tras la cabecera de identidad y antes de "Mis preferencias" se pintan la seccion **"Resumen"**
+ * Tras la cabecera de identidad y antes de "Mis preferencias" se pintan la seccion **"Estadísticas"**
  * ([ActivitySummarySection], que recibe el contador persistido de recetas generadas y el numero de
  * Favoritas derivado) y despues la seccion **"Sugerencias"** ([ProfileSuggestionsSection]), que muestra
  * la antiguedad del Lote observado y ofrece un refresco manual; el async y el estado "en vuelo" los

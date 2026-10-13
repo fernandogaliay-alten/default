@@ -17,7 +17,7 @@ import com.sazon.app.ui.theme.SazonSpacing
 private const val TABULAR_FIGURES = "tnum"
 
 /**
- * Seccion **"Resumen"** del Perfil: dos tarjetas de estadistica compactas y de **igual ancho** ("recetas
+ * Seccion **"Estadísticas"** del Perfil: dos tarjetas de estadistica compactas y de **igual ancho** ("recetas
  * generadas" y "favoritas").
  *
  * Capa Compose delgada y puramente presentacional: los dos numeros llegan ya calculados (`recipesGeneratedCount`
@@ -37,7 +37,7 @@ fun ActivitySummarySection(
         verticalArrangement = Arrangement.spacedBy(SazonSpacing.sm),
     ) {
         Text(
-            text = "Resumen",
+            text = "Estadísticas",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
