@@ -37,7 +37,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
-| Iconos e imágenes de receta | Sin imágenes empaquetadas: placeholder dibujado con Compose en `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) | Determinista, offline, sin coste |
+| Iconos e imágenes de receta | **Fotos de plato empaquetadas** como assets versionados en `app/src/main/assets/img/recipes/` (12 `seed/`, 18 `category/cat-`, 1 `default`), resueltas por `data.RecipePhotoAssets` y decodificadas por `data.AssetRecipePhotoSource`; el placeholder dibujado `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) queda como **último recurso** | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
@@ -217,18 +217,31 @@ DI) y lo encadena por `SazonApp` y `MainShell` hasta `GeneratorFlow`. Testeado e
 caso negativo obligatorio del `build-brief`: una receta insegura no llega a `accepted`. Ver
 `docs/specs/generation-flow-with-validation.md`.
 
-La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) vive en
-`com.sazon.app.ui.artwork`: el mapeo es **puro** y testeable en JVM (`RecipeArtworkStyle`, sin Compose
-ni Android: `RecipeGlyph` con 18 miembros ↔ 18 `recipeCategories`, `RecipeAccent` con 10 acentos +
-`DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback total `null`/vacío/desconocido → `PLATE` +
-`DEFAULT`) y la capa Compose es un unico componente delgado, `RecipeArtwork(recipe, modifier,
-glyphSize)`, que pinta el bloque con degradado por **roles del tema** (`primaryContainer`,
-`secondaryContainer`, `tertiaryContainer`, `surfaceVariant`) y el glifo de linea con primitivas de
-`Canvas`. El llamante aporta el ratio/tamaño/recorte, asi que se conservan el 16:10 de las tarjetas
-(glifo 48 en `RecipeCard`, 56 en `ResultRecipeCard`), el 96x96 y el alto 96 de Favoritos (40) y el hero
-de 240 del Detalle (72). **No** se empaqueta `assets/img/recipes/**` en el MVP (drift preexistente de
-`docs/domain/taxonomy.md` §6); `RecipeArtwork` es el unico punto a cambiar cuando existan imagenes
-generadas por IA. Ver `docs/specs/recipe-artwork.md`.
+La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) combina **fotos
+empaquetadas** y el **placeholder dibujado** de `recipe-artwork`. La resolucion de la foto es **pura** y
+testeable en JVM (`com.sazon.app.data.RecipePhotoAssets`, sin Compose ni Android: `ROOT = img/recipes`,
+`EXTENSIONS = webp|jpg|png`, `CATEGORY_IDS` con las 18 `recipeCategories` reales, `candidates` y
+`resolve(recipeId, categoryId, exists)`), con la **cadena de respaldo determinista** foto propia de la
+receta semilla (`seed/<id>.<ext>`) -> foto de su categoria (`category/cat-<categoryId>.<ext>`) -> foto
+generica (`default.<ext>`) -> `null` (glifo). Un `categoryId` nulo/vacio/desconocido **no** produce
+candidato de categoria (nunca `cat-no-existe`) y cae al `default`; la resolucion es determinista y no
+lanza. La lectura/decodificacion es una **costura Android** en `com.sazon.app.data.AssetRecipePhotoSource`
+(`context.assets.open` + `BitmapFactory` en `Dispatchers.IO`, `LRU` propia de 16 bitmaps, `null` sin
+excepcion) y devuelve `android.graphics.Bitmap`, asi que `data` sigue sin depender de `ui`. El seam
+Compose es `ui.artwork.RecipePhotoSource` (`fun interface` + `LocalRecipePhotoSource`, cuyo valor por
+defecto devuelve `null`), y `MainActivity` lo provee con `CompositionLocalProvider`; el mapeo puro
+`RecipeArtworkStyle` (sin Compose ni Android: `RecipeGlyph` con 18 miembros ↔ 18 `recipeCategories`,
+`RecipeAccent` con 10 acentos + `DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback total
+`null`/vacio/desconocido -> `PLATE` + `DEFAULT`) **no cambia** y sigue siendo el **ultimo recurso**. La
+capa Compose es el unico componente delgado, `RecipeArtwork(recipe, modifier, glyphSize)`: pinta la foto
+con `Image(ContentScale.Crop)` y, si no hay, el bloque con degradado por **roles del tema**
+(`primaryContainer`, `secondaryContainer`, `tertiaryContainer`, `surfaceVariant`) y el glifo de linea con
+primitivas de `Canvas`. El llamante aporta el ratio/tamaño/recorte, asi que se conservan el 16:10 de las
+tarjetas (glifo 48 en `RecipeCard`, 56 en `ResultRecipeCard`), el 96x96 y el alto 96 de Favoritos (40) y
+el hero de 240 del Detalle (72). Los 31 assets viven versionados (no ignorados) en
+`app/src/main/assets/img/recipes/` (≤8 MB) y los empaqueta `scripts/fetch-recipe-photos.sh`, una
+herramienta de una sola vez **fuera** del gate. Ver `docs/specs/recipe-photos.md`,
+`docs/adr/0004-recipe-photos-as-assets.md` y `docs/specs/recipe-artwork.md`.
 
 La **pantalla de Resultados** vive en `com.sazon.app.ui.results`, con logica **pura** testeable en JVM
 (sin Compose ni Android) y una capa Compose delgada. `MatchScore.of(recipe, preferences, taxonomy,
@@ -561,6 +574,15 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Tests unitarios de dominio en JVM** (obligatorios): integridad de la Taxonomía, `PromptBuilder`,
   parsing y validación de la respuesta, descarte por Restricciones duras, firma de preferencias y
   política de caché, escalado de raciones.
+- **Tests JVM de la imagen de receta** (`recipe-photos`): `RecipePhotoAssetsTest` cubre la **cadena de
+  respaldo pura** (semilla → categoría → `default` → `null`), el respaldo parcial (fallo del primer
+  candidato), la categoría desconocida/`null` que cae a `default`, el determinismo y los casos negativos
+  (`cat-no-existe` nunca es candidato); además, la **exhaustividad de assets** itera la Taxonomía real
+  (`taxonomy.asset.path`) y el catálogo semilla real (`seed.recipes.asset.path`) y afirma que las **12
+  recetas semilla**, las **18 `recipeCategories`** y `default` resuelven un fichero existente y no vacío
+  bajo `app/src/main/assets/img/recipes/` (propiedad `recipe.photos.assets.dir` publicada por
+  `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios (el glifo es el último
+  recurso).
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
@@ -652,8 +674,11 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   peticiones hasta el reset) → la política cache-first y el modo semilla protegen el coste.
 - **Red intermitente**: solo la Búsqueda con IA necesita red; el Lote de sugerencias, "Tus recetas" y
   Favoritos deben funcionar sin conexión.
-- **Tamaño del APK**: las imágenes locales de receta suman; conviene formato WebP y resolución
-  moderada.
+- **Tamaño del APK**: las **31 fotos** de receta viajan empaquetadas en `app/src/main/assets/img/recipes/`
+  y suman al APK; el presupuesto de esa carpeta es **≤ 8 MB** y conviene **WebP q80** con ancho máximo
+  **960 px** cuando la máquina del implementer tiene `cwebp`/ImageMagick (`scripts/fetch-recipe-photos.sh`;
+  si no hay herramienta, conserva el original y lo registra). Cada receta semilla nueva implica añadir su
+  foto (ver `docs/adr/0004-recipe-photos-as-assets.md`).
 - **OkHttp frente a `compileSdk`**: Ktor 3.6.0 trae OkHttp 5.5.0, cuyo artefacto Android
   (`okhttp-android`) declara `minCompileSdk=37`; con `compileSdk` 36.1 la verificación del AAR
   (`checkDebugAarMetadata`) falla. El build **fuerza OkHttp 5.4.0** en `app/build.gradle.kts` (la

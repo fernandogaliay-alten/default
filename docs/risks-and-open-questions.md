@@ -91,9 +91,13 @@ números eran **posicionales** y no se renumeran retroactivamente.
   en `AiProviderPolicy`, sin depender de `json_schema`/structured outputs forzados (siguen descartados).
   Ver `docs/adr/0003-ai-provider.md`.
 - **Licencias de iconos y fotos de receta** (era la pregunta 2 de la tabla): resuelta como **no
-  bloqueante**. La app es personal y no se publica, así que la elección de assets es libre y se
-  prioriza la comodidad: iconos vía Material Symbols (incluido en Material 3) y fotos con placeholders
-  de degradado o imágenes propias. Ver `docs/design/concepts/README.md`.
+  bloqueante**. La app es personal y no se publica, así que la elección de assets es libre. Los iconos
+  van vía Material Symbols (incluido en Material 3) y las **fotos de plato** (`recipe-photos`) son
+  **generadas por nosotros** con el prompt propio del repo
+  (`docs/design/concepts/recipe-photos/stitch-prompt.md`) a partir de las láminas de Stitch versionadas
+  en `docs/design/concepts/recipe-photos/{fotos-semillas,fotos-categorias}/`, y se empaquetan como assets
+  offline. El placeholder dibujado (degradado) sigue existiendo como último recurso. Ver
+  `docs/design/concepts/README.md` y `docs/adr/0004-recipe-photos-as-assets.md`.
 
 ## Later / Not MVP
 
@@ -136,6 +140,7 @@ Evolutivos aceptados, a planificar después del MVP:
 | La Búsqueda con IA se percibe como "rota" cuando el Perfil bloquea lo que el usuario escribe | Media | Medio | Estado vacío que explica el motivo y enlaza a editar el Perfil |
 | El Perfil duplica pantallas del onboarding y divergen | Media | Alto | Regla "un editor, dos entradas": reutilizar los mismos componentes |
 | La sincronización de la Taxonomía escribe en el árbol de fuentes y se engancha por nombre de tarea (`merge*Assets`) | Baja | Bajo | `syncTaxonomy` corre en cada build y el asset está ignorado en git; es deuda técnica anotada por el validador, no un fallo |
+| Las 31 fotos de receta engordan el APK o se decodifican de forma cara al hacer scroll | Media | Medio | Presupuesto **≤8 MB** para `assets/img/recipes/` (hoy ~5,9 MiB), formato WebP a ≤960 px cuando hay herramienta, decodificación en `Dispatchers.IO` y caché LRU de 16 bitmaps; si molesta al desplazar, la salida es una feature correctiva (p. ej. Coil, con su ADR) |
 
 ## Research Tasks
 
@@ -144,8 +149,9 @@ Evolutivos aceptados, a planificar después del MVP:
 2. Medir latencia y coste reales de generar 4–6 recetas con el contrato de la Taxonomía.
 3. Elegir set de iconos de ingredientes (**no bloqueante**: app personal y no publicada; se prioriza
    comodidad, p. ej. Material Symbols o Noto Emoji).
-4. Elegir origen de las fotos de receta (**no bloqueante**: app personal; fotos propias o placeholders
-   de degradado).
+4. Elegir origen de las fotos de receta — **resuelto** (`recipe-photos`, issue #83): fotos generadas por
+   nosotros con el prompt del repo, empaquetadas como assets offline (12 semillas + 18 categorías + 1 por
+   defecto). Ver `docs/adr/0004-recipe-photos-as-assets.md`.
 5. Validar el contrato del prompt contra un modelo real antes de fijarlo como definitivo.
 6. Regenerar las pantallas de Stitch a partir de `DESIGN.md` (las actuales quedan obsoletas).
 
@@ -155,6 +161,8 @@ Evolutivos aceptados, a planificar después del MVP:
 - `docs/adr/0002-local-first-no-backend.md` — todo el estado en el dispositivo; la clave de IA viaja
   en el APK.
 - `docs/adr/0003-ai-provider.md` — proveedor de IA: DevExpert Inference (API compatible con OpenAI).
+- `docs/adr/0004-recipe-photos-as-assets.md` — las fotos de plato viajan empaquetadas como assets
+  offline (convención, cadena de respaldo y descarte de Coil/red).
 
 `RecipeGenerator` como interfaz con implementación falsa **no se elevó a ADR**: introducir esa
 abstracción más tarde sería un refactor de una sola capa y el patrón es estándar. Queda documentado

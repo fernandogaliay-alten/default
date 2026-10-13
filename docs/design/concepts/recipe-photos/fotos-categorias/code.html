@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sazón — Batch B: Vista Dividida / Inspector Técnico de Assets (19 Fotos)</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              terracotta: '#D9552B',
+              terracottaHover: '#BF451F',
+              primaryContainer: '#FFDCCF',
+              olive: '#4C662C',
+              oliveBg: '#E9EEDF',
+              honey: '#F2A93B',
+              cream: '#FFF8F5',
+              surface: '#FFFFFF',
+              charcoal: '#231A11',
+              muted: '#7A6E65',
+              outline: '#E8DDD3',
+              borderLight: '#F2DFD1'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Manrope', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
+          },
+          boxShadow: {
+            'warm-card': '0 4px 20px -2px rgba(35, 26, 17, 0.05), 0 2px 6px -1px rgba(35, 26, 17, 0.03)',
+            'warm-hover': '0 10px 25px -4px rgba(217, 85, 43, 0.1), 0 4px 10px -2px rgba(35, 26, 17, 0.04)'
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #F8EFE6;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #F8EFE6;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #E0BFB6;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col custom-scroll text-brand-charcoal">
+<!-- Desktop App Header & Inspector Bar -->
+<header class="sticky top-0 z-30 bg-brand-cream/95 backdrop-blur-md border-b border-brand-outline shadow-sm">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center space-x-3.5">
+<div class="w-10 h-10 rounded-xl bg-brand-terracotta flex items-center justify-center text-white shadow-sm">
+<span class="material-symbols-outlined text-2xl">soup_kitchen</span>
+</div>
+<div>
+<div class="flex items-center gap-2.5">
+<h1 class="font-display font-extrabold text-xl lg:text-2xl tracking-tight text-brand-charcoal">
+              Sazón · Batch B
+            </h1>
+<span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-brand-primaryContainer text-brand-terracotta border border-brand-terracotta/20">
+              Inspector Técnico
+            </span>
+</div>
+<p class="text-xs text-brand-muted mt-0.5 font-medium">
+            18 categorías maestras + 1 default universal · Formato nativo 16:9 · 1376×768px
+          </p>
+</div>
+</div>
+<!-- Quick Metrics & Toolbar -->
+<div class="flex items-center gap-3 self-end md:self-auto">
+<div class="hidden sm:flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-brand-outline text-xs">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-mono text-brand-muted">Total: <strong class="text-brand-charcoal">19 Assets</strong></span>
+<span class="text-brand-outline">|</span>
+<span class="font-mono text-brand-muted">Aspect: <strong class="text-brand-charcoal">16:9</strong></span>
+</div>
+<button class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-terracotta hover:bg-brand-terracottaHover text-white shadow-sm transition" onclick="navigator.clipboard?.writeText('cat-pasta, cat-rice, cat-soup_cream, cat-salad, cat-meat, cat-poultry, cat-fish_seafood, cat-vegetarian, cat-vegan, cat-legume_stew, cat-pizza_bread, cat-egg_breakfast, cat-sandwich_wrap, cat-tapas_appetizer, cat-dessert, cat-smoothie_drink, cat-casserole_oven, cat-other, default')">
+<span class="material-symbols-outlined text-base">copy_all</span>
+<span>Copiar Todas las Claves</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Container: Desktop Asset Inspector -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!-- Subheader Info Card -->
+<div class="mb-6 p-4 rounded-2xl bg-brand-cream border border-brand-outline/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+<div class="flex items-center gap-2 text-brand-muted">
+<span class="material-symbols-outlined text-brand-terracotta text-lg">info</span>
+<span>Mostrando vista dividida técnica: imagen 16:9 calibrada a la izquierda y metadatos de integración a la derecha.</span>
+</div>
+<div class="flex items-center gap-2 font-mono text-[11px] text-brand-muted">
+<span class="px-2 py-0.5 rounded bg-white border border-brand-outline">Target: Mobile Web &amp; App UI</span>
+<span class="px-2 py-0.5 rounded bg-white border border-brand-outline">Color: sRGB warm-calibrated</span>
+</div>
+</div>
+<!-- 19 Split-Row Asset Inspector List -->
+<div class="space-y-4">
+<!-- Asset 01: cat-pasta -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-pasta" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1X-PpaW5VT3PwvrzysKaas8d2WsqbE0iyCuwCN0kf_BMpGLFg3IGxj-rmZq3nk3sGiJfHcx3PKVw179N36h0shWUBJaLdvwwo9GgrTCYscsZsF-Nwee65YoZ54H8km4Rlqiq3mn5okZKgvMwk3h9JDc_k-Odqm5MtI_TBkekYfvNRedmrFDcvYQIgGEb_o3JXUhLdznLjkgNsNtUpAE2mjEqsRyDK4_drP06RtALyOemRU1lqVnAp7uSro"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#01</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-pasta</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Pasta &amp; Espaguetis</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· pasta dish</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Plato reconfortante de espaguetis clásicos italianos con salsa marinara de tomate artesanal, albahaca fresca y queso parmesano rallado.
+          </p>
+</div>
+</article>
+<!-- Asset 02: cat-rice -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-rice" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1UVObMr07ez0H3MgO0Bx4qg7H74xVmfKn8inXSesIh-JdlM00WhAJwD4oobIWT6Iauyr7nBrwcS1K5eNgGAbaqpVoidx16yzc2fYAVxUhWk-zsFoKU3x67-r-bcGsFV8Qy6MRtRSy9ABgNE6DWxr6FVVxx7Lgq_8nEvDsP8_vobKIAeUfeJlxUpZVDWw9a5nShNRaz-XUZyrNvDTopOGerfeuzYUku1dDz2EuX0U70OohLAmlJRFBVf24oL"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#02</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-rice</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Arroces &amp; Paellas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· Spanish rice dish</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Arroz tradicional dorado al azafrán en paella rústica con mariscos selectos, gajos de limón fresco y pimientos rojos caramelizados.
+          </p>
+</div>
+</article>
+<!-- Asset 03: cat-soup_cream -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-soup_cream" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1VcRDb1uC5hX6RxQAAz8vvBylBpU1MvE0658Ac6kd4U3S5wAh83eGq7ubZ5kkqaFUbJ0p-LQbK60dyxrZs6byFdVYbg6-qhXanItOYQ38NbrR6I3MyL1oC-qDXk6_mJPRNp61GwqbcbvWvOSgCg4mxyNJ-bB97Sh_aE6fyKl--GTKLu5So4lgvm1V_5MpSg2yezEz4n1h2Lfu8A97e_MA-yQLtcBnr2btHPgNvzVpKvpi2m6bAAwuE8558M"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#03</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-soup_cream</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Sopas &amp; Cremas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· creamy soup</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Crema aterciopelada de calabaza y hortalizas de raíz, con espiral de nata fresca, semillas de calabaza tostadas y pimienta molida.
+          </p>
+</div>
+</article>
+<!-- Asset 04: cat-salad -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-salad" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1VfJlZciONKv4Z3pkxRnc8x99M0za9d30UctIfO2SJfYEMm7_w2VvYpdUSloyWEMmiFc16FRYJtMUipzYEPQUDpc8xdNVRtgNqbszg2gW9OFcJFo5qd3E3glBLSrrgsNrKYdEjvCtOZczlp8RGm3UxsvQANKOecvGn48JjW2ylLrQJPiP83h4e7b0j0H9HAg-O4dTRH0WKlpPiL5M3kticNmqkIQMrTsPoElB0DWN4jkR-gfTaeCQeXOPQ"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#04</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-salad</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Ensaladas Frescas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· green salad bowl</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Bol vibrante de hojas verdes frescas, pepino, rabanitos crujientes, queso feta y aliño ligero de aceite de oliva virgen extra.
+          </p>
+</div>
+</article>
+<!-- Asset 05: cat-meat -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-meat" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WuF3ZPNZMMssfB_bxHZSBM2nuhv01IQrZxf18tA5uMpO6-K49M-L7RxXu_MQTxHkjhqXZkFRaWK8zqhUe3PPXx5O20n8nzbocs_f5dPZE3KUxrShzzNi7SVx-qF2OJbhzdWc2quGJXbr6QHAjTbyoyF97cTYYbgMO0s9s3zww_J4lJMSkZ73otmiWbuB26HXKL5Tu1p6uXkaG53jdHIY-9jvrLqLIO8ez1GcBqjEbPJgv5SlnExwR6DGhO"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#05</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-meat</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Carnes Rojas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· steak / chop</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Entrecot de vacuno a la plancha fileteado en su punto, terminado con romero fresco, escamas de sal marina y jugos naturales.
+          </p>
+</div>
+</article>
+<!-- Asset 06: cat-poultry -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-poultry" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WONbpdTDYW8cDBFlrWIpx4uO6lxP_vsJ6jdDLVg6qBxjCh9pIyQAI_p8GopQfI_zTvG5M2iQPGFCrpvOKDmn0UOWC1dQNqUkjxyRS3i1M724Vo_tDGdCDoBX07HJ_xH5NbzrquXepEuLTWTIMjVlp5IYAT3hnKZhHziudRpcMkiF0tiW7BCU4DQLWKSyOMvnkuqCE1gNdrYw9-DC52NXDOT1iyRL0xFVSSzr2We3g0QlBJ0CF-9QZNQfm-"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#06</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-poultry</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Aves &amp; Pollo</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· roasted chicken</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Pollo asado con piel crujiente dorada, sazonado con hierbas provenzales, cabezas de ajo confitadas y rodajas de limón rustidas.
+          </p>
+</div>
+</article>
+<!-- Asset 07: cat-fish_seafood -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-fish_seafood" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1XqgOMbO9YeBLIY6OljV1VMZaIRkJj857kUG1JNEwyLhkYhbV6qECWy5w0tvYJAHvkyzr8sEFrMOs0dY37bP9MRmTp3ZzC3Bl1U8_ErvYdhGgx3gMSbeHCz0vy1sqriP5lBm-b2unBfVdSptPz85T58omd50YydIWdS8JMa3l_oyduRSxBRQwwQVtFpjsqPiD5Whjl-cpO2nUqAoXkf9IRRPXN2IGv4-A3NitAjdgLKpPZliaNQqhYjOCA"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#07</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-fish_seafood</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Pescados &amp; Mariscos</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· fish / seafood</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Lomo de pescado blanco sellado con piel crocante, acompañado de alcaparras mediterráneas, eneldo fresco y limón aromatizado.
+          </p>
+</div>
+</article>
+<!-- Asset 08: cat-vegetarian -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-vegetarian" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WBp8peVUP1jMTTzJIPUxihHTwVqDPlIiqU3tKQ6uXls0CjkjyghwNKvNwfibp5nP0inUj1hYS-hnKddHHbLBiqtaUqdPTLRby3QTQl8u6Ccsyh7u3ZzFFHvfUf960ZwEtQ2DiLOFNYGIbMkP2HvPcfEajhn944JrkHrY5UzRIolI2gopxFseGTFTeOSnrPQ_L4CHPKW10k9EO--8XYbrJQbri7JYyqY-Uv0WSISXFe1MGiuU6wdNAp4UW1"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#08</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-vegetarian</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Vegetariano</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· vegetable dish</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Salteado de verduras mediterráneas al dente con calabacín, pimientos tricolor, berenjenas asadas y albahaca fresca en fuente de cerámica.
+          </p>
+</div>
+</article>
+<!-- Asset 09: cat-vegan -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-vegan" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1VJAm7NSYjnBlXDnEYyajALkPEUM0nopQXQZLV9bL2tCrRckGJE737A7QwuTasR6LBoIx2Au7thD_-ApNqNUd-IUbbVJnEbKfNvDereHR0J4GhjW0AAImdDY7TEGnhi4fVixd5bJUpkJVM9gJ9z9Xt0n4wVGLbFvNXNoqXF2m-ji9o0XWs0K5p2S58ZELSXjMUM6lnZUleU7TzuKL81uf8mdPBMPyoNOF2XXW8qc_SLkcrf3YGMBDs3lo5l"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#09</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-vegan</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Vegano / Plant-based</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· plant-based bowl</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Buddha bowl equilibrado con aguacate fileteado, batata asada en dados, garbanzos tostados con especias, quinoa real y col morada.
+          </p>
+</div>
+</article>
+<!-- Asset 10: cat-legume_stew -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-legume_stew" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1X6X0jyebGQ2ZdO7p_H3TKRoO2pJrM6scP8ygh9C1BZkFTUuWtIhkATakPoLVn5mMcYRV5R6kebmrbU5yisMsqeu2SAiAQS6JuzIOZxnhK4zDAFMKTVjZljm6Wa8HSYrvMN7fD8NyBFV0AQsaTiQ-T1Xo_vyQtuLckfbCDo7FiYqm-VIYR6UhCvMDnCQrLxvxBHnG0vtMtWX69uMd1FB-rfMsT0HJu2Q6Rip2whWw_PbAhZjrd3BvP16LtR"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#10</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-legume_stew</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Guisos &amp; Legumbres</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· legume stew pot</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Guiso sustancioso de alubias y garbanzos en cazuela tradicional de barro humeante con sofrito de hortalizas y perejil fresco picado.
+          </p>
+</div>
+</article>
+<!-- Asset 11: cat-pizza_bread -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-pizza_bread" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1Xi5drWHsiqSbAOmcTSJC5bz_Zxm3FOvou0QHihnXTfo2EJeyAcFXT-Ah37-O-RLVPF_Q0Tpx-_P7v4T2QUfGE6m9vGtxDQ-iFTAoi8-pG7JxZGFVQnfmDC5gfg0AKL3l7yo4G2Nh2ofeAU-JpMNTN7zIfSaQTMGWftiLq8YrbAhWP9fI-B23efEkkG4Wrc6lOYgt5G1XU7ayZk72QKXXsSwami4JJ0GoQTtI-J0mPro7p1fxgmfT2J-lU"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#11</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-pizza_bread</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Pizzas &amp; Panes Rústicos</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· pizza / rustic bread</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Pizza artesanal horneada a la piedra con borde leudado y crujiente, mozzarella fundente, hojas de albahaca fresca y base de tomate.
+          </p>
+</div>
+</article>
+<!-- Asset 12: cat-egg_breakfast -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-egg_breakfast" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1XF1dkjPqYt-g11XEwIdEy2aAv2VEw8uZynj4jsevUOe45o8pNt8dgwWp8fI5PVwAV9X8MzYku_REK8FiQk-8mBCXVOyc7Tfdp5l7mB_9UJ7--jgMyG8AvSTEOha8RF8zGpWqVXftUeTdqZpt5RtckkIgZaTFBEbkvf8H2M9c9-5eRHQ_Se2RqfwvTm7Uht17bMnH6LqjRCG5uic8uxjMJm8iOL7TpCm9Supy4dIC_UXoqWVp0KWpnGZc0"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#12</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-egg_breakfast</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Huevos &amp; Desayunos</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· breakfast egg dish</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Huevos fritos con yemas doradas cremosas, acompañados de hogaza de masa madre tostada a la sartén y tomates cherry asados en rama.
+          </p>
+</div>
+</article>
+<!-- Asset 13: cat-sandwich_wrap -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-sandwich_wrap" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1Xu7bCppx8z3W0WzJRfci7eRSduim97wmQUQPGVRDfEwmPGLm--MpBSyEKFgwgMeCLyy5jOHQV4qT9zc75_YsRDDlu0Zts0W-GDjPwbRcVku0RmHKvzMw1YoAkOe0wBflWxMrZllF-E2CxLvZpkmPxbyNGS9Nkm4SuMGcGMUKsvNoxYSt5oQOVj7TFnxd-1ykXMrOemr7zhotTXNjKoLqWyYMmsSTqCU0CLpBW-4I6HkSEN4mYt2TS1vfQ"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#13</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-sandwich_wrap</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Sandwiches &amp; Wraps</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· sandwich / wrap</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Wrap gourmet tostado al grill cortado en diagonal, mostrando relleno jugoso, láminas de aguacate, hojas crujientes y salsa ligera.
+          </p>
+</div>
+</article>
+<!-- Asset 14: cat-tapas_appetizer -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-tapas_appetizer" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WxBJn3nilo9v228xc7JSYHlGkHO7y8FnCHgitt3G7CDIccdWhZu3mzK1ovTzJqahlcA5GDfnLoMHDADucPaoAFNjSV9JFnlaHZsU893RNgRnUd9SUxkhhAdBtPUF0jRtB5ZHCdC_IKDrr7VS4RLKtAMTretZnT7yg0G2rTS47oXNiJ34UV7q9QongM9HAwQENkAtX47m0qbEt-Dwm8HPOMBBpiGA3LqoH1sC7xLIFADvmYbcV3QyzOCGE"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#14</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-tapas_appetizer</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Tapas &amp; Entrantes</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· tapas platter</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Surtido de tapas españolas con jamón ibérico curado, queso manchego en triángulos, aceitunas marinadas y pan con tomate tradicional.
+          </p>
+</div>
+</article>
+<!-- Asset 15: cat-dessert -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-dessert" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1Wy1uDXYxaAvCwQBbZRrzNPcMMvm9W-QDRVqmJoUC4-rxWa06TSUdrjjL-nD0Vt9m9vuNRn932ysU_QIAWYYtGlogN0uyHNgsgIGglkGchXTiQ0pI1-jcVZALvzaL0UBRIzkXbEc1OQeAZGLP3anjgxHY4q5ZoF2euhCGHjbxOkFMrybjX8pl3u8Mov9oxAt9a56_5YMAwR4kHiXggwQLjfl3Q-_sH0uPHC_HypzaU_W0GOrqTQfB-SW56m"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#15</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-dessert</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Postres &amp; Tartas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· dessert pastry</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Porción de tarta rústica artesanal con compota casera de frutos rojos, arándanos frescos, frambuesas y ligero velo de azúcar glas.
+          </p>
+</div>
+</article>
+<!-- Asset 16: cat-smoothie_drink -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-smoothie_drink" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WDGvLCbHPC3fj26PNVmVSSC5YW3JTuUWNFgz5dAeuUR1y00rs5iPe96dQWQjlqpiCaKPEeHmj4EVHGFtVc2_vCO9BCGy9GjwtnLB0isYJ6BrQxosy7kim2eCipESntwJdF_7K51Yqz3caQ2fIHH9BjwG-AwDMFiZTlQF00zuzmY1iV3CJsDRN-uFcgcQQn0W6yc-xAB4-5Y3-Iy6MtezEFAgwbGObHBdWDkKXl4QJRjEaq6hmOt1lDhmXD"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#16</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-smoothie_drink</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Batidos &amp; Bebidas</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· smoothie / drink</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Smoothie espeso de bayas silvestres en vaso de cerámica artesanal, decorado con brote de menta fresca, moras enteras y pajita metálica.
+          </p>
+</div>
+</article>
+<!-- Asset 17: cat-casserole_oven -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-casserole_oven" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1UQ9MWCP2pP4EP72lMlKHY0dFIVT21b3DiqyHCVAAvh2vF8pdlzP3gS3NCJzwPKHqdftwMrDLcGse3u4JV66GGZGYiaFG3rihhCVOlxO2lV-HMO4YU23rV5nSUodeway4C0qmuWZIrNy6TgG0RNmwdd5byXveoEi_0-T1MHbvMfBzYDQbhTKEtVbTXL8T7OvvqF_BSU2rXGycBb48EgAAeGade8wR8uvY6-KK0o3pOxPoWxE5SEBsDZnE_F"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#17</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-casserole_oven</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Gratinados &amp; Horno</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· oven casserole</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Gratinado al horno en fuente de barro con costra dorada burbujeante de queso curado, hierbas aromáticas y pasta horneada.
+          </p>
+</div>
+</article>
+<!-- Asset 18: cat-other -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border border-brand-outline/70 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-brand-cream border border-brand-outline/60 shadow-inner group">
+<img alt="cat-other" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1WiKz4SoJ5CVpmtI6ryRadco-F8o1dmqzfvl14yOJr2MiuQU6DlzDWWLGtDtP5TpVM1w42Sxqs60K84kDo9_0z6osxqp_r7XqjLd4qwJL1H6NMGkGJtN-0MFMbNBQBnM2s0fhzz8OD4jbElWUk9chFB_oERaFi6gPZadXGqLgeO23gGignQ5i_s36_6Ssn8_s4aP8EhSEc57DAEGvpJOFAWVE9cHsgYxl-htN8mB8vQ4H6ixpgL2Muq3cXn"/>
+<span class="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-sm text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#18</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-terracotta bg-brand-primaryContainer/70 px-2.5 py-1 rounded-lg border border-brand-terracotta/20 select-all">cat-other</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-terracotta transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Listo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-charcoal bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">Degustación &amp; Varios</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· tasting plate</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Plato de degustación surtido con bocados artesanales, hummus de remolacha, frutos secos, quesos cortados en dados y pimientos rellenos.
+          </p>
+</div>
+</article>
+<!-- Asset 19: default (Fallback) -->
+<article class="bg-brand-surface rounded-2xl p-4 sm:p-5 border-2 border-brand-olive/30 shadow-warm-card hover:shadow-warm-hover transition flex flex-col md:flex-row items-stretch gap-5 bg-gradient-to-r from-brand-surface to-[#F9FAF6]">
+<div class="md:w-5/12 lg:w-4/12 flex-shrink-0">
+<div class="relative aspect-[16/9] w-full rounded-xl overflow-hidden bg-[#ECE6DE] border border-brand-outline/80 shadow-inner group">
+<img alt="default" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1Up2N7LA2ASxx7bjjZ74iaHt33aETEgqYCaKjDXlFFrBlKUk18FrpEeyH1xhi_xMKCTK9L5Tq4oz6bujmPBbmtXCSsN1IFZ-COF_J-71jEo0CkAp3B3q22S5gQhssgcbCktpE4NuX6aUJ9cWdXjJxG4hzTHNL_0in-Wifzg3LohV7OLEKexUkaCTjlff1g82ntudidanGQA-vGQfYm90ZdnCywa3AHL-xex1XfVL320VDuWs3gdlbjQazm0"/>
+<span class="absolute top-2.5 left-2.5 bg-brand-olive text-white font-mono text-[10px] px-2 py-0.5 rounded-md font-semibold">#19</span>
+<div class="absolute bottom-2.5 right-2.5 bg-brand-charcoal/85 text-white font-mono text-[9px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider backdrop-blur-sm">
+              Universal Fallback
+            </div>
+</div>
+</div>
+<div class="flex-1 flex flex-col justify-between py-0.5 space-y-3">
+<div class="space-y-2">
+<div class="flex flex-wrap items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<code class="text-sm font-mono font-bold text-brand-olive bg-brand-oliveBg px-2.5 py-1 rounded-lg border border-brand-olive/30 select-all">default</code>
+<button class="p-1 rounded-lg hover:bg-brand-cream text-brand-muted hover:text-brand-olive transition border border-transparent hover:border-brand-outline" title="Copiar key">
+<span class="material-symbols-outlined text-sm block">content_copy</span>
+</button>
+</div>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-oliveBg text-brand-olive border border-brand-olive/30">
+<span class="w-1.5 h-1.5 rounded-full bg-brand-olive"></span> Fallback Activo
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-2 text-xs">
+<span class="font-medium text-brand-olive bg-emerald-50 px-2.5 py-0.5 rounded-md border border-brand-olive/20">Por Defecto Universal</span>
+<span class="font-mono text-brand-muted bg-stone-50 px-2 py-0.5 rounded border border-stone-200">1376×768 · 16:9</span>
+<span class="text-brand-muted">· generic fallback dish</span>
+</div>
+</div>
+<p class="text-xs text-brand-muted leading-relaxed">
+            Plato de cerámica artesanal desaturado y minimalista. Sirve como imagen de sustitución cuando una categoría carece de fotografía propia o se encuentra en carga.
+          </p>
+</div>
+</article>
+</div>
+<!-- Technical Footer -->
+<footer class="mt-10 py-6 border-t border-brand-outline text-center flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-brand-muted">
+<div class="flex items-center gap-2 font-mono">
+<span class="w-2 h-2 rounded-full bg-brand-terracotta"></span>
+<span>Sazón Asset Engine · Batch B Verificado (19 fotografías independientes)</span>
+</div>
+<div class="text-[11px] font-mono">
+        Status: <span class="text-emerald-700 font-semibold">100% Calibrado</span> · Aspect Ratio: 1.777 (16:9)
+      </div>
+</footer>
+</main>
+</body></html>
