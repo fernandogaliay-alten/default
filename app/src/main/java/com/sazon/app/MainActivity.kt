@@ -16,6 +16,7 @@ import com.sazon.app.data.activity.RoomActivitySummaryRepository
 import com.sazon.app.data.ai.AiHttpClientFactory
 import com.sazon.app.data.ai.AiVerboseDiagnostics
 import com.sazon.app.data.ai.DevExpertRecipeGenerator
+import com.sazon.app.data.ai.image.AssetDishImageStyleReference
 import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
@@ -132,6 +133,11 @@ class MainActivity : ComponentActivity() {
         // gatea el interruptor (apagado = no se pide nada: ni cache ni generacion). Uno por proceso =
         // una sesion; no se persiste.
         val dishImageSettings = DishImageSettings()
+        // Referencia de estilo (fase 6): el asset neutro y versionado de `recipe-photos`
+        // (`img/recipes/default.<ext>`) viaja en el APK; no hay subida del usuario. Best-effort: `null`
+        // (asset ausente o ilegible) deja la app exactamente en el comportamiento de la fase 2 (una
+        // peticion por texto por imagen), sin error ni UI.
+        val dishImageStyleReference = AssetDishImageStyleReference(applicationContext).load()
         val dishImageResolver = DishImageResolver(
             disk = FileDishImageCache(AndroidDishImageCache.root(applicationContext)),
             memory = MemoryDishImageCache(),
@@ -139,6 +145,7 @@ class MainActivity : ComponentActivity() {
                 delegate = DevExpertDishImageGenerator(
                     apiKey = BuildConfig.DEVEXPERT_API_KEY,
                     client = aiClient,
+                    styleReference = dishImageStyleReference,
                 ),
                 settings = dishImageSettings,
             ),

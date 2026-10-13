@@ -2,19 +2,23 @@
 
 ## Estado
 
-**Aceptado parcialmente (fases 1-5)** — features `dish-image-domain` (fase 1), `dish-image-generator`
+**Aceptado parcialmente (fases 1-6)** — features `dish-image-domain` (fase 1), `dish-image-generator`
 (fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración),
-`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario) y `dish-visual-descriptor` (fase 5),
-2026-10-13. Fija la decisión de arquitectura y de política (puerto, prompt determinista y clave
-canónica), implementa el **adaptador real** de transporte + códec y la **caché** de disco + memoria,
-**conecta** el nivel generado por delante de la cadena local con una progresión con crossfade, añade el
-**control de gasto** (interruptor de usuario + tope de generaciones por sesión) y fija en el **contrato
-con la IA** el descriptor visual opcional (`dishKey`/`imagePrompt`) que alimenta esa misma política.
-Con eso la **fase 4 queda completa** y la **fase 5** entrega contrato + política pura; deja
-**pendientes**, de forma explícita, las fases 6–7 de `docs/ai-dish-images-proposal.md` (referencia de
-estilo y set semilla). Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de
-assets sigue siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada, ya
-conectada en runtime; su afirmación "sin red en tiempo de ejecución" se mantiene para la cadena local.
+`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5) y
+`dish-style-reference` (fase 6), 2026-10-13. Fija la decisión de arquitectura y de política (puerto,
+prompt determinista y clave canónica), implementa el **adaptador real** de transporte + códec y la
+**caché** de disco + memoria, **conecta** el nivel generado por delante de la cadena local con una
+progresión con crossfade, añade el **control de gasto** (interruptor de usuario + tope de generaciones
+por sesión), fija en el **contrato con la IA** el descriptor visual opcional (`dishKey`/`imagePrompt`)
+que alimenta esa misma política y, en la fase 6, añade al adaptador el **ajuste con una referencia de
+estilo versionada** (`/images/edits`, variante C) con respaldo por texto ante rechazo. Con eso la
+**fase 4 queda completa**, la **fase 5** entrega contrato + política pura y la **fase 6** entrega la
+capa de transporte del anclaje visual; deja **pendiente**, de forma explícita, la fase 7 de
+`docs/ai-dish-images-proposal.md` (set semilla de platos frecuentes). Ajusta **parcialmente**
+`docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y offline, pero pasa
+a ser el **respaldo** de la imagen generada, ya conectada en runtime; además, desde la fase 6 la foto
+por defecto de esa cadena (`img/recipes/default.<ext>`) es también la **referencia de estilo** del
+ajuste. Su afirmación "sin red en tiempo de ejecución" se mantiene para la cadena local.
 
 ## Contexto
 
@@ -161,6 +165,33 @@ La **entrega en runtime** del descriptor (conectar `AiDecodeResult.descriptors` 
 integración (`dish-visual-descriptor-wiring`, recomendada en la spec); el argumento `descriptor` de
 `DishImageRequest.of` ya existe para eso.
 
+Alcance de la **fase 6** (feature `dish-style-reference`): el **ajuste con referencia de estilo** en el
+adaptador ya aceptado (`DevExpertDishImageGenerator`), **sin** tocar el puerto, el prompt ni la clave.
+Cuando el adaptador recibe una `DishImageStyleReference` (bytes + `mediaType` + `fileName`) y el
+interruptor `DishImagePolicy.STYLE_REFERENCE_ENABLED` está activo, pide la imagen con **una** petición
+`POST /images/edits` (multipart) con las partes `model` = `image-edit` (alias del proveedor),
+`prompt` = el prompt de la petición (idéntico, con su `STYLE_SUFFIX`), `size` = `1024x1024` y `image` =
+los bytes de la referencia con su `Content-Type` y `filename`; la respuesta se decodifica con
+`DishImagePayload` y se reduce con el `DishImageReducer` compartido. El respaldo **solo** se dispara
+ante un **rechazo definitivo** del ajuste (`400/404/405/413/415/422`, `DishImagePolicy.EDIT_FALLBACK_STATUSES`)
+o una carga `2xx` inutilizable, y en ese caso se reutiliza el camino de texto→imagen de la fase 2 con
+el **mismo** `prompt` (nunca más de **dos** llamadas por `generate`). Un fallo de transporte/timeout o
+un `401/403/429/5xx` devuelven `null` **sin** respaldo (misma disciplina que `MAX_ATTEMPTS = 1` y que
+`AiProviderPolicy.requiresResponseFormatFallback`): el respaldo fallaría igual y duplicaría el gasto.
+La referencia es un **asset ya empaquetado y versionado** (la foto neutra `img/recipes/default.<ext>` de
+`recipe-photos`, resuelta por extensiones con `DishImageStyleReferencePolicy`), **nunca** una imagen
+subida por el usuario: no hay permisos, galería, cámara, `mask`, `n`, `response_format` ni persistencia
+nueva. El adaptador sigue siendo **transporte puro y mudo** (sin `Log`, sin `Recipe`/`Taxonomía`, sin
+`cacheKey`/`recipeId` en la petición) y `MainActivity` carga la referencia de forma *best-effort*
+(`AssetDishImageStyleReference`; `null` = comportamiento exacto de la fase 2). `DishImageCacheKey.VERSION`
+**no** sube (el prompt y su normalización no cambian; la referencia **añade** un ancla visual, no
+sustituye el `STYLE_SUFFIX`), así que las imágenes ya cacheadas conservan el aspecto anterior hasta que
+la LRU las evicte (**estilo mixto transitorio aceptado**; subir a `dish-image-v2` sería uniforme pero
+repagaría cuota por cada plato cacheado). Consecuencia de gasto **acotada y reversible**: un rechazo del
+ajuste cuesta **una llamada extra** (una desechada) para una unidad del tope por sesión, y
+`STYLE_REFERENCE_ENABLED = false` es el rollback de una línea. Sin dependencias nuevas (el multipart vive
+en `ktor-client-core`) y sin UI. Ver `docs/specs/dish-style-reference.md`.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -198,7 +229,9 @@ integración (`dish-visual-descriptor-wiring`, recomendada en la spec); el argum
 - **Invalidación**: cualquier cambio de `STYLE_SUFFIX`, del orden de las cláusulas del prompt o de la
   normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión). La fase 5
   **no** la sube: el descriptor solo cambia de **dónde sale** el plato/el slug cuando el modelo lo emite,
-  no la normalización ni la forma de la plantilla.
+  no la normalización ni la forma de la plantilla. La fase 6 **tampoco**: el ajuste con referencia no
+  cambia el prompt (la referencia **añade** un ancla visual, no sustituye el `STYLE_SUFFIX`), así que la
+  plantilla —uno de los dos disparadores de invalidación— queda intacta.
 - **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3), la **costura de UI**
   (fase 4) y el **control de gasto** (fase 4, ajuste de usuario) ya existen, así que el riesgo (~2 % de
   la cuota semanal y ~4 s por imagen) **se materializa** al navegar. Está registrado en
@@ -220,12 +253,20 @@ integración (`dish-visual-descriptor-wiring`, recomendada en la spec); el argum
   visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Pendiente**: las fases 6–7 (`image-edit` con referencia de estilo y set semilla de platos frecuentes),
-  y la **entrega en runtime** del descriptor de la fase 5. La fase 4 se entrega **completa** (integración
-  + ajuste de usuario), ambas mitades con capturas **omitidas por desviación autorizada** registrada en
-  `DESIGN.md` (issues #98 y #101); la revisión puramente visual la hace la persona tras el merge. De las
-  preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda **resuelta** en la fase 3
-  (ficheros en `cacheDir`), el **interruptor de usuario y el tope por sesión quedan resueltos** en la fase
-  4 (constantes en `DishImageSettingsPolicy`) y la **coherencia conceptual del mismo plato queda cubierta**
-  en la fase 5 vía `dishKey` del modelo; siguen abiertas el tamaño objetivo y el tope de disco (fijados
-  aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste), el set semilla y la entrada de la variante C.
+- **Estilo mixto transitorio por la fase 6**: como `DishImageCacheKey.VERSION` **no** sube, las imágenes
+  ya cacheadas (fases 2-5) mantienen su aspecto anterior hasta que la LRU las evicte, así que durante un
+  tiempo conviven imágenes "de texto" y "ajustadas" (sin error y sin gasto extra). Subir a
+  `dish-image-v2` las uniformaría de golpe pero **repagaría cuota** por cada plato ya cacheado; queda
+  como decisión de seguimiento (una línea con su propia evidencia) si se prefiere uniformidad a gasto.
+- **Pendiente**: la **fase 7** (set semilla de platos frecuentes) y la **entrega en runtime** del
+  descriptor de la fase 5. La fase 6 entrega el ajuste con referencia versionada y respaldo por texto,
+  con la entrada de la variante C **cerrada** en `DishImagePolicy` (`IMAGES_EDITS_PATH`,
+  `EDIT_MODEL_ALIAS`, `EDIT_FALLBACK_STATUSES`, `STYLE_REFERENCE_ENABLED`); la fase 4 se entrega
+  **completa** (integración + ajuste de usuario), ambas mitades con capturas **omitidas por desviación
+  autorizada** registrada en `DESIGN.md` (issues #98 y #101); la revisión puramente visual la hace la
+  persona tras el merge. De las preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda
+  **resuelta** en la fase 3 (ficheros en `cacheDir`), el **interruptor de usuario y el tope por sesión
+  quedan resueltos** en la fase 4 (constantes en `DishImageSettingsPolicy`) y la **coherencia conceptual
+  del mismo plato queda cubierta** en la fase 5 vía `dishKey` del modelo; siguen abiertas el tamaño
+  objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste) y el set
+  semilla de la fase 7.

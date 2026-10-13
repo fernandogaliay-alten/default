@@ -567,6 +567,28 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   constructor y solo viaja en la cabecera; el adaptador **no registra nada** (sin `Log`). Sigue **sin UI
   y sin consumidores** (lo cablea la fase 4), con el formato y el tamaño fijados aquí por el adaptador
   (ADR 0005). Ver `docs/specs/dish-image-generator.md`.
+- **Ajuste con referencia de estilo (fase 6) en el adaptador de imagen**: `data.ai.image` gana
+  `POST /images/edits` (multipart) con el alias `image-edit` **dentro del mismo adaptador**
+  (`DevExpertDishImageGenerator`), gobernado por `DishImagePolicy` (`IMAGES_EDITS_PATH`,
+  `EDIT_MODEL_ALIAS = "image-edit"`, `EDIT_FALLBACK_STATUSES = 400/404/405/413/415/422`,
+  `editFailureRequiresTextFallback(status)` y el interruptor `STYLE_REFERENCE_ENABLED`). El cuerpo
+  (`editsFormData`) lleva **solo** `model=image-edit`, `prompt` = el de la petición, `size=1024x1024` y
+  `image` = los bytes de la referencia con su `Content-Type` y `filename`; la respuesta se decodifica
+  (`DishImagePayload`) y se reduce (`DishImageReducer`) igual que en la fase 2. El respaldo por texto
+  (`/images/generations`, camino de la fase 2 extraído y reutilizado) **solo** se dispara ante un
+  **rechazo definitivo** del ajuste o una carga `2xx` inutilizable; un transporte/timeout o
+  `401/403/429/5xx` devuelven `null` **sin** segunda llamada (misma disciplina que `MAX_ATTEMPTS = 1`),
+  así que hay **como mucho dos llamadas** por `generate`. La **referencia** es un asset **empaquetado y
+  versionado** (la foto neutra `img/recipes/default.<ext>` de `recipe-photos`, resuelta por extensiones
+  con la política pura `DishImageStyleReferencePolicy` y leída por la costura Android
+  `AssetDishImageStyleReference`; `null` sin lanzar → camino de texto), **nunca** una subida del usuario
+  (sin permisos, galería, cámara, `mask`, `n`, `response_format` ni persistencia). `MainActivity` carga
+  la referencia de forma *best-effort* y la pasa al adaptador; `DishImageCacheKey.VERSION` **no** sube
+  (el prompt no cambia). **Matiz del presupuesto**: el tope por sesión sigue contando **una unidad por
+  petición de imagen**, no por llamada al proveedor; un rechazo del ajuste implica **≤2 llamadas** (una
+  desechada) para una unidad, acotado y reversible con `STYLE_REFERENCE_ENABLED = false`. Sin
+  dependencias nuevas (el multipart vive en `ktor-client-core`) y sin UI. Ver
+  `docs/specs/dish-style-reference.md`.
 - **Caché de la imagen de plato (fase 3)**: `com.sazon.app.data.image` es la capa de datos que evita
   volver a pagar cuota y esperar por la misma imagen: `DishImageResolver.imageFor(request)` orquesta
   **memoria → disco → generador → persistir** con una `Mutex` **por clave** (dos peticiones simultáneas
