@@ -1,6 +1,7 @@
 package com.sazon.app.data.ai
 
 import com.sazon.app.domain.generator.GenerationConstraints
+import com.sazon.app.domain.image.DishVisualDescriptor
 import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.recipe.MeasureUnit
 import com.sazon.app.domain.recipe.Recipe
@@ -949,6 +950,83 @@ class DevExpertRecipeGeneratorTest {
         }
     }
 
+    // --- Escenarios de `docs/specs/dish-visual-descriptor-wiring.md` (fase 5, entrega en runtime) ---
+
+    // Escenario 1: la costura `onDescriptors` se invoca UNA vez con el mapa del decode, indexado por
+    // el `id` generado de la receta aceptada.
+    @Test
+    fun el_descriptor_del_decode_se_expone_una_vez_por_operacion_exitosa() = runTest {
+        val recorded = mutableListOf<Map<String, DishVisualDescriptor>>()
+        val mock = MockAi { _, _ -> okBody(DESCRIPTOR_CONTRACT_CONTENT) }
+
+        val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onDescriptors = { recorded += it })
+            .generateFromIngredients(listOf(RecipeIngredient("Tomate", 1.0)), constraints())
+
+        assertEquals("Una invocacion por decode exitoso", 1, recorded.size)
+        val recipe = recipes.single()
+        val mapa = recorded.single()
+        assertEquals("El mapa va indexado por el id generado", recipe.id, mapa.keys.single())
+        assertEquals("arroz-con-pollo", mapa.getValue(recipe.id).dishKey)
+        assertEquals("arroz amarillo con pollo", mapa.getValue(recipe.id).imagePrompt)
+    }
+
+    // Escenario 1 (negativo): una respuesta sin descriptor expone un mapa VACIO (una sola vez), y el
+    // default de la costura es un no-op que no cambia constructores ni tests existentes.
+    @Test
+    fun sin_descriptor_la_costura_expone_un_mapa_vacio_y_el_default_es_un_no_op() = runTest {
+        val recorded = mutableListOf<Map<String, DishVisualDescriptor>>()
+        val mock = MockAi { _, _ -> okBody(recipeEnvelope(arroz())) }
+
+        val recipes = provider(client = AiHttpClientFactory.create(mock.engine), onDescriptors = { recorded += it })
+            .suggestByPreferences(perfil())
+
+        assertEquals(1, recorded.size)
+        assertTrue("Sin descriptor el mapa es vacio", recorded.single().isEmpty())
+        assertEquals(1, recipes.size)
+
+        // Sin pasar `onDescriptors` el generador funciona exactamente como antes (default no-op).
+        val porDefecto = provider(client = AiHttpClientFactory.create(mock.engine))
+            .generateFromIngredients(emptyList(), constraints())
+        assertEquals(1, porDefecto.size)
+    }
+
+    // Escenario 1 (negativo): en fallo, degradacion o cancelacion NO se invoca; un 200 sin recetas
+    // aceptadas si es un decode exitoso y expone el mapa (vacio).
+    @Test
+    fun en_fallo_degradacion_o_cancelacion_no_se_invoca_la_costura() = runTest {
+        // Fallo definitivo (401): no hay decode.
+        val failure = mutableListOf<Map<String, DishVisualDescriptor>>()
+        val failureMock = MockAi { _, _ -> respond(content = "", status = HttpStatusCode.Unauthorized) }
+        captureUnavailable {
+            provider(client = AiHttpClientFactory.create(failureMock.engine), onDescriptors = { failure += it })
+                .suggestByPreferences(perfil())
+        }
+        assertTrue("Un fallo no expone descriptor", failure.isEmpty())
+
+        // 200 ilegible: decode EMPTY, sin recetas aceptadas -> un mapa vacio, una sola vez.
+        val empty = mutableListOf<Map<String, DishVisualDescriptor>>()
+        val emptyMock = MockAi { _, _ -> okBody("lo siento, no puedo ayudarte") }
+        provider(client = AiHttpClientFactory.create(emptyMock.engine), onDescriptors = { empty += it })
+            .suggestByPreferences(perfil())
+        assertEquals(1, empty.size)
+        assertTrue(empty.single().isEmpty())
+
+        // Cancelacion: no hay decode -> sin invocacion.
+        val cancelled = mutableListOf<Map<String, DishVisualDescriptor>>()
+        val started = CompletableDeferred<Unit>()
+        val cancelMock = MockAi { _, _ ->
+            started.complete(Unit)
+            awaitCancellation()
+        }
+        val job = launch {
+            provider(client = AiHttpClientFactory.create(cancelMock.engine), onDescriptors = { cancelled += it })
+                .suggestByPreferences(perfil())
+        }
+        started.await()
+        job.cancelAndJoin()
+        assertTrue("Una cancelacion no expone descriptor", cancelled.isEmpty())
+    }
+
     private fun provider(
         apiKey: String = KEY,
         client: HttpClient,
@@ -956,6 +1034,7 @@ class DevExpertRecipeGeneratorTest {
         onEvent: (AiCallEvent) -> Unit = {},
         now: () -> Long = System::currentTimeMillis,
         verboseDiagnostics: Boolean = false,
+        onDescriptors: (Map<String, DishVisualDescriptor>) -> Unit = {},
     ) = DevExpertRecipeGenerator(
         apiKey = apiKey,
         taxonomy = taxonomy,
@@ -964,6 +1043,7 @@ class DevExpertRecipeGeneratorTest {
         onEvent = onEvent,
         now = now,
         verboseDiagnostics = verboseDiagnostics,
+        onDescriptors = onDescriptors,
     )
 
     private suspend fun captureUnavailable(block: suspend () -> Unit): AiUnavailableException? {
@@ -1015,6 +1095,40 @@ private val REAL_CONTRACT_CONTENT: String = """
       "tips":[],
       "nutrition":null,
       "declaredAllergens":[]
+    }]}
+""".trimIndent()
+
+
+/**
+ * Forma real del contrato §4 con el **descriptor visual** de la fase 5 (`dishKey`/`imagePrompt`):
+ * cierra el escenario 1 de `docs/specs/dish-visual-descriptor-wiring.md` (la costura `onDescriptors`
+ * recibe el mapa del decode indexado por el `id` **generado**).
+ */
+private val DESCRIPTOR_CONTRACT_CONTENT: String = """
+    {"recipes":[{
+      "title":"Arroz salteado con verduras",
+      "description":"Un arroz rapido con verduras.",
+      "categoryId":"rice",
+      "mealTypeId":"lunch",
+      "cuisineId":"asian",
+      "totalMinutes":25,
+      "prepMinutes":10,
+      "cookMinutes":15,
+      "difficultyId":"easy",
+      "servings":2,
+      "ingredients":[
+        {"name":"Arroz","quantity":200,"unit":"g","isPantry":false,"ingredientId":"arroz"},
+        {"name":"Zanahoria","quantity":1,"unit":"ud","isPantry":false,"ingredientId":"zanahoria"}
+      ],
+      "steps":[
+        {"order":1,"title":"Cocer el arroz","description":"Cuece el arroz.","minutes":12},
+        {"order":2,"title":"Saltear","description":"Saltea las verduras.","minutes":13}
+      ],
+      "tips":[],
+      "nutrition":null,
+      "declaredAllergens":[],
+      "dishKey":"arroz-con-pollo",
+      "imagePrompt":"arroz amarillo con pollo"
     }]}
 """.trimIndent()
 

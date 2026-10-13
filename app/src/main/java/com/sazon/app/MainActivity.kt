@@ -24,6 +24,7 @@ import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
 import com.sazon.app.data.image.DishImageResolver
 import com.sazon.app.data.image.DishImageSettings
+import com.sazon.app.data.image.DishVisualDescriptorStore
 import com.sazon.app.data.image.FileDishImageCache
 import com.sazon.app.data.image.GatedDishImageGenerator
 import com.sazon.app.data.image.MemoryDishImageCache
@@ -68,6 +69,11 @@ class MainActivity : ComponentActivity() {
         // se inyecta en BuildConfig desde local.properties (no versionada); se crea tras cargar la
         // Taxonomia y lo comparten los tres servicios, igual que antes con el generador falso.
         val aiClient = AiHttpClientFactory.create()
+        // Almacen de sesion del descriptor visual (fase 5): el generador lo alimenta con el mapa del
+        // decode y el `requestFor` de la imagen lo consulta por `id`. En memoria (se vacia al recrear
+        // la Activity, degradando a fase 1) y compartido por Lote, Generador y Busqueda, porque los
+        // tres usan el mismo generador.
+        val dishVisualDescriptors = DishVisualDescriptorStore()
         val generator = DevExpertRecipeGenerator(
             apiKey = BuildConfig.DEVEXPERT_API_KEY,
             taxonomy = taxonomy,
@@ -96,6 +102,10 @@ class MainActivity : ComponentActivity() {
                 AiVerboseDiagnostics.discardLines(event.discards).forEach { Log.d("SazonAi", it) }
                 AiVerboseDiagnostics.rawLines(event.rawContent).forEach { Log.d("SazonAi", it) }
             },
+            // Costura del descriptor visual (fase 5): cada decode exitoso registra por `id` el
+            // descriptor que el modelo emitio en la misma llamada, de modo que el `requestFor` de la
+            // imagen pueda compartir clave por `dishKey` sin cambiar el puerto `RecipeGenerator`.
+            onDescriptors = dishVisualDescriptors::record,
         )
         val suggestionBatchService = SuggestionBatchService(
             generator = generator,
@@ -157,7 +167,12 @@ class MainActivity : ComponentActivity() {
             seed = AssetDishImageSeedSource(applicationContext),
         )
         val dishImageLoader = DishImageArtworkLoader(
-            requestFor = { recipe -> DishImageRequest.of(taxonomy, recipe) },
+            // Con descriptor registrado, la clave/prompt salen del `dishKey`/`imagePrompt` del modelo
+            // (dos variantes del mismo plato comparten imagen); sin descriptor, la composicion es
+            // exactamente la de la fase 1 (respaldo por titulo).
+            requestFor = { recipe ->
+                DishImageRequest.of(taxonomy, recipe, dishVisualDescriptors.descriptorFor(recipe.id))
+            },
             resolve = dishImageResolver::imageFor,
             decode = AndroidRecipeImageDecoder::decode,
         )
