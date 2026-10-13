@@ -41,6 +41,13 @@ Explícitamente **fuera del MVP**. Son evolutivos (backlog post-MVP), no se desc
 - Multi-idioma.
 - Notificaciones y recordatorios.
 - Editor de recetas propias (crear o editar recetas a mano).
+- **Ampliación del MVP (issue #83, 2026-10-13): las fotos de plato entran en el MVP.** El MVP nacía con
+  solo el placeholder dibujado, sin imágenes empaquetadas (ver `DESIGN.md` → Open Design Question 4 y
+  `docs/technical-discovery.md`). La feature `recipe-photos` añade **31 fotos** (12 recetas semilla + 18
+  categorías + 1 por defecto) **empaquetadas como assets offline** en `app/src/main/assets/img/recipes/`,
+  con la cadena de respaldo semilla → categoría → por defecto y el placeholder dibujado como **último
+  recurso**. Sigue **sin** dependencias nuevas y **sin** red en tiempo de ejecución. Ver
+  `docs/adr/0004-recipe-photos-as-assets.md`.
 
 Fuera del MVP de forma permanente:
 

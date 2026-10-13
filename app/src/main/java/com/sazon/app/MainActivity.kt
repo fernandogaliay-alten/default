@@ -5,6 +5,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.asImageBitmap
+import com.sazon.app.data.AssetRecipePhotoSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
 import com.sazon.app.data.NetworkStatusSource
@@ -25,6 +28,8 @@ import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.ui.SazonApp
+import com.sazon.app.ui.artwork.LocalRecipePhotoSource
+import com.sazon.app.ui.artwork.RecipePhotoSource
 import com.sazon.app.ui.theme.SazonTheme
 
 class MainActivity : ComponentActivity() {
@@ -103,22 +108,31 @@ class MainActivity : ComponentActivity() {
         val favoritesDatabase = FavoritesDatabase.build(applicationContext)
         val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
         val favoriteService = FavoriteService(favoriteRepository)
+        // Fotos de plato empaquetadas como assets offline; se inyectan en el arbol de composicion por
+        // el seam `LocalRecipePhotoSource` (composicion explicita, sin DI, como el resto).
+        val recipePhotoSource = AssetRecipePhotoSource(applicationContext)
 
         setContent {
             SazonTheme {
-                SazonApp(
-                    profileRepository = profileRepository,
-                    taxonomy = taxonomy,
-                    suggestionBatchRepository = suggestionBatchRepository,
-                    suggestionBatchService = suggestionBatchService,
-                    generationService = generationService,
-                    favoriteRepository = favoriteRepository,
-                    favoriteService = favoriteService,
-                    activitySummaryRepository = activitySummaryRepository,
-                    aiSearchService = aiSearchService,
-                    networkStatusSource = networkStatusSource,
-                    seedRecipes = seedRecipes,
-                )
+                CompositionLocalProvider(
+                    LocalRecipePhotoSource provides RecipePhotoSource { recipe ->
+                        recipePhotoSource.bitmapFor(recipe)?.asImageBitmap()
+                    },
+                ) {
+                    SazonApp(
+                        profileRepository = profileRepository,
+                        taxonomy = taxonomy,
+                        suggestionBatchRepository = suggestionBatchRepository,
+                        suggestionBatchService = suggestionBatchService,
+                        generationService = generationService,
+                        favoriteRepository = favoriteRepository,
+                        favoriteService = favoriteService,
+                        activitySummaryRepository = activitySummaryRepository,
+                        aiSearchService = aiSearchService,
+                        networkStatusSource = networkStatusSource,
+                        seedRecipes = seedRecipes,
+                    )
+                }
             }
         }
     }
