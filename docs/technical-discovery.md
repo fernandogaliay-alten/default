@@ -594,7 +594,18 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   reciclar la tarjeta cancela la petición) y no hay `Log`. `MainActivity` compone la cadena reutilizando
   el `aiClient` compartido (los timeouts de imagen se aplican por petición) y la caché de la fase 3. La
   cadena en runtime queda `ui.artwork` → `data.image` → `data.ai.image`, con la cadena local
-  (`RecipePhotoSource`/`AssetRecipePhotoSource`) como respaldo. Ver `docs/specs/dish-image-progressive-ui.md`.
+  (`RecipePhotoSource`/`AssetRecipePhotoSource`) como respaldo. El **ajuste de sesión** de la fase 4
+  (`dish-image-settings-toggle`) se gobierna en **dos puntos**: el proveedor del seam gatea el
+  **interruptor** (`DishImageSettings.generatedIfEnabled`; apagado = `null` **sin leer caché ni
+  generar**, así que se usa solo la foto local) y el generador real va envuelto por
+  `GatedDishImageGenerator`, que impone el **tope de generaciones por sesión** en el borde de generación
+  (una unidad por petición al proveedor, `null` sin invocar al delegado cuando está agotado; los
+  aciertos de memoria/disco no lo consumen). Las constantes viven en un único sitio
+  (`DishImageSettingsPolicy`: `DEFAULT_ENABLED = true`, `MAX_GENERATIONS_PER_SESSION = 12`) y el estado
+  observable (`DishImageSettings.state`, un `StateFlow`) alimenta la sección "Imágenes del plato" del
+  Perfil. El ajuste es **de sesión** (vida del proceso, sin persistir): al reiniciar vuelve a activado
+  y el contador a 12. Ver `docs/specs/dish-image-progressive-ui.md` y
+  `docs/specs/dish-image-settings-toggle.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
@@ -688,6 +699,16 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   (el default no produce imagen) y `AndroidRecipeImageDecoderTest` (Robolectric `@GraphicsMode(NATIVE)`:
   WebP real → `ImageBitmap` no nulo; bytes vacíos/basura → `null`). Sin Compose en `testImplementation`:
   la lógica testeable se extrae de `@Composable`, así que corre en JVM.
+- **Tests JVM del ajuste de imagen de plato (fase 4, `dish-image-settings-toggle`)**: `DishImageGenerationBudgetTest` (contador atómico del tope con tope **inyectado**: `used`/`remaining`/`exhausted`
+  y `remaining >= 0` con tope 0, N reservas **concurrentes** nunca rebasan `k < N`, y cada reserva
+  consume una unidad), `DishImageSettingsTest` (interruptor apagado = `generatedIfEnabled` devuelve
+  `null` con **0** invocaciones del productor y sin consumo; encendido = 1; apagado no reserva tope;
+  apagar/encender **no** reinicia el tope agotado; `state` observable (`(true,0,12)` → `(true,1,12)`,
+  `remaining`/`exhausted`) y como `StateFlow`; `GatedDishImageGenerator` no invoca al delegado con el
+  tope agotado; acierto de **memoria y de disco** sin consumo con `DishImageResolver` real, caché
+  temporal y generador falso; fallo → `null` con la unidad consumida y `CancellationException`
+  propagada) y `DishImageSettingsCopyTest` (microcopy puro y determinista: singular/plural, tope
+  alcanzado, apagado que manda sobre el tope y `max` inyectado en el texto).
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es

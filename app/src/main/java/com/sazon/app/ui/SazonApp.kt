@@ -10,6 +10,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.sazon.app.data.NetworkStatusSource
+import com.sazon.app.data.image.DishImageSettings
 import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
@@ -48,6 +49,7 @@ fun SazonApp(
     activitySummaryRepository: ActivitySummaryRepository,
     aiSearchService: AiSearchService,
     networkStatusSource: NetworkStatusSource,
+    dishImageSettings: DishImageSettings,
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
 ) {
@@ -86,6 +88,7 @@ fun SazonApp(
                     activitySummaryRepository = activitySummaryRepository,
                     aiSearchService = aiSearchService,
                     networkStatusSource = networkStatusSource,
+                    dishImageSettings = dishImageSettings,
                     seedRecipes = seedRecipes,
                     onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
                     modifier = modifier,

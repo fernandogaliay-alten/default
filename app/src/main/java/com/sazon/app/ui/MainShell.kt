@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.sazon.app.data.NetworkStatusSource
+import com.sazon.app.data.image.DishImageSettings
 import com.sazon.app.domain.activity.ActivitySummaryRepository
 import com.sazon.app.domain.favorites.FavoriteRepository
 import com.sazon.app.domain.favorites.FavoriteService
@@ -77,7 +78,9 @@ import kotlinx.coroutines.launch
  * carga. La Home es offline: el unico generador conectado es `FakeRecipeGenerator` (sin red).
  *
  * El estado de navegacion vive en un `Saver` (patron de `OnboardingFlow`) y no en una libreria. La
- * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile]);
+ * pestana Perfil monta la pantalla real ([ProfileScreen], que escribe el Perfil con [onSaveProfile])
+ * y hospeda el **ajuste de imagen de plato** ([DishImageSettings]): observa su estado y pasa el
+ * interruptor y el tope por sesion a la seccion "Imagenes del plato";
  * la pestana Favoritos monta [FavoritesScreen] sobre los favoritos persistidos (observa
  * [FavoriteRepository.observe]) y su corazon cablea [FavoriteService.toggle]; esa misma lista alimenta
  * el bloque "Guardadas" de la Home y el corazon/"Guardada" del Detalle. El Generador es real
@@ -105,6 +108,7 @@ fun MainShell(
     activitySummaryRepository: ActivitySummaryRepository,
     aiSearchService: AiSearchService,
     networkStatusSource: NetworkStatusSource,
+    dishImageSettings: DishImageSettings,
     seedRecipes: List<Recipe>,
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
@@ -133,6 +137,9 @@ fun MainShell(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     // Conectividad observada (unica dependencia externa de la Home); inicial optimista (true).
     val isOnline by networkStatusSource.observe().collectAsState(initial = true)
+    // Ajuste de imagen de plato (interruptor + tope por sesion): el host lo **observa** (patron de
+    // `networkStatusSource`) y pasa el estado y el callback a la seccion de Perfil.
+    val imageGeneration by dishImageSettings.state.collectAsState()
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
@@ -216,6 +223,8 @@ fun MainShell(
                             },
                             recipesGeneratedCount = recipesGeneratedCount,
                             favoritesCount = favorites.size,
+                            imageGeneration = imageGeneration,
+                            onImageGenerationChange = { dishImageSettings.setEnabled(it) },
                         )
                     }
                 }
