@@ -2,10 +2,11 @@
 
 ## Estado
 
-**Aceptado parcialmente (fase 1)** — feature `dish-image-domain`, 2026-10-13. Fija la decisión de
-arquitectura y de política (puerto, prompt determinista y clave canónica) y deja **pendientes**, de
-forma explícita, las fases 2–7 de `docs/ai-dish-images-proposal.md` (adaptador real, caché, UI
-progresiva, descriptor del modelo, referencia de estilo y set semilla). Ajusta **parcialmente**
+**Aceptado parcialmente (fases 1-2)** — features `dish-image-domain` (fase 1) y `dish-image-generator`
+(fase 2), 2026-10-13. Fija la decisión de arquitectura y de política (puerto, prompt determinista y
+clave canónica) e implementa el **adaptador real** de transporte + códec, y deja **pendientes**, de
+forma explícita, las fases 3–7 de `docs/ai-dish-images-proposal.md` (caché, UI progresiva, descriptor
+del modelo, referencia de estilo y set semilla). Ajusta **parcialmente**
 `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y offline, pero
 pasa a ser el **respaldo** de la imagen generada cuando la fase 4 la conecte; su afirmación "sin red en
 tiempo de ejecución" se mantiene para la cadena local.
@@ -59,9 +60,22 @@ modo que las fases siguientes solo aporten transporte, persistencia y pintado.
    **delante** de la cadena de `recipe-photos` en la fase 4. Sin red, fallo o timeout, la app sigue
    pintando exactamente lo de hoy. Sin dependencias nuevas en ninguna fase de esta política.
 
-Alcance de la **fase 1** (esta feature): solo la política pura y sus tests JVM. **No** hay adaptador,
-ni red, ni Ktor, ni caché (memoria o disco), ni Room, ni UI, ni assets semilla, ni campos nuevos en el
-contrato de la IA. Nadie consume todavía el puerto.
+Alcance de la **fase 1** (feature `dish-image-domain`): solo la política pura y sus tests JVM. **No** hay
+adaptador, ni red, ni Ktor, ni caché (memoria o disco), ni Room, ni UI, ni assets semilla, ni campos
+nuevos en el contrato de la IA. Nadie consume todavía el puerto.
+
+Alcance de la **fase 2** (feature `dish-image-generator`): el **adaptador real** en
+`com.sazon.app.data.ai.image` (`DevExpertDishImageGenerator`), **transporte + códec puros**. `POST
+/images/generations` con el alias `image` y `size 1024x1024` (`512` responde 400), decodificación
+tolerante de `data[0].b64_json` y **reducción local** a WebP q80 de **960 px** de ancho (nunca
+agranda). La política vive en `DishImagePolicy` (un único sitio): endpoint sobre la base del proveedor,
+timeouts propios **más cortos** que los de chat (connect 10 s / socket 30 s / request 40 s) y **un solo
+intento** (`MAX_ATTEMPTS = 1`): con ~2 % de cuota por imagen, reintentar duplicaría el gasto sin cambiar
+la experiencia. Fallo = `null` **sin excepción y sin reintento**; la cancelación se propaga. El
+adaptador **no** conoce el modelo de recetas ni la Taxonomía (usa `request.prompt`; `request.cacheKey`
+es la identidad de la fase 3 y **no** viaja en la petición), no registra nada (sin `Log`) y **nadie lo
+consume todavía**. **No** hay caché, ni UI, ni persistencia, ni cambios en el dominio, ni dependencias
+nuevas. Ver `docs/specs/dish-image-generator.md`.
 
 ## Alternativas consideradas
 
@@ -87,17 +101,18 @@ contrato de la IA. Nadie consume todavía el puerto.
 
 - **Invalidación**: cualquier cambio de `STYLE_SUFFIX`, del orden de las cláusulas del prompt o de la
   normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión).
-- **Riesgo de cuota/latencia**: se materializa en la fase 2 (~2 % de la cuota semanal y ~4 s por
-  imagen); queda registrado en `docs/risks-and-open-questions.md` con la mitigación prevista (clave
+- **Riesgo de cuota/latencia**: el **transporte** de la fase 2 ya existe, pero sin consumidores, así que
+  el riesgo (~2 % de la cuota semanal y ~4 s por imagen) se materializa cuando lo consuman las fases
+  3-4; queda registrado en `docs/risks-and-open-questions.md` con la mitigación prevista (clave
   compartida + caché persistente + tope por sesión + interruptor + set semilla).
 - **La cadena de `recipe-photos` no cambia** y sigue siendo la única resolución en runtime; el
   offline-first no se rompe porque la generación se inserta *delante* y degrada en silencio.
-- **Puerto sin implementación**: deliberado (precedente de `RecipeGenerator` antes de
-  `real-ai-provider`); ningún test sustituye al adaptador real.
+- **Adaptador real, sin consumidores**: la fase 2 implementa el puerto, pero ninguna ruta de runtime lo
+  llama todavía (fases 3-4), así que la app no gasta cuota ni cambia visualmente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Pendiente (fases 2–7)**: adaptador `/images/generations` (b64 → WebP reducido), caché en disco y
-  memoria con evicción, UI progresiva con capturas obligatorias, `dishKey`/`imagePrompt` en el wire,
-  `image-edit` con referencia de estilo y set semilla de platos frecuentes. Las preguntas abiertas de
-  la propuesta §11 (Room vs ficheros, tamaño objetivo y tope de disco, set semilla, interruptor de
-  usuario, entrada de la variante C) siguen abiertas y **no** se deciden aquí.
+- **Pendiente (fases 3–7)**: caché en disco y memoria con evicción, UI progresiva con capturas
+  obligatorias, `dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de estilo y set semilla
+  de platos frecuentes. Las preguntas abiertas de la propuesta §11 (Room vs ficheros, tamaño objetivo y
+  tope de disco, set semilla, interruptor de usuario, entrada de la variante C) siguen abiertas y
+  **no** se deciden aquí.
