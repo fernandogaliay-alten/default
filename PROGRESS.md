@@ -448,6 +448,28 @@
   persona tras el merge (apagar el interruptor deja de generar imágenes nuevas, encender las reanuda, el
   tope baja al generar y vuelve a 12 al reiniciar la app), no automatizable desde WSL. Las fases 5-7
   (`dish-visual-descriptor`, `dish-style-reference`, `dish-image-seed`) siguen `not_started`.
+- Última feature **`accepted`** — **`dish-visual-descriptor`** (fase 5, variante B de
+  `docs/ai-dish-images-proposal.md` §4.1, `area: integration`): cerrada en la **sesión 094** con
+  validación independiente (veredicto **`accept`**, rama `feature/dish-visual-descriptor`; la sesión 094
+  la dejó `passing` tras el implementer; **sin commit/push/PR del implementer**, el commit lo crea el
+  orquestador de `feature-flow` y publica `github-flow`). Fija en el **contrato con la IA** y en la
+  **política pura** el descriptor visual **opcional** del plato: el wire puede traer `dishKey` (plato
+  canónico = clave de caché compartida) e `imagePrompt` (descripción visual del plato terminado),
+  tolerante a tipos inválidos (un `dishKey: 123` u objeto/array **nunca** descarta la receta como
+  `SCHEMA`), con valor puro nuevo `com.sazon.app.domain.image.DishVisualDescriptor` (`of`/`isEmpty`/`NONE`),
+  parámetros **opcionales con default** en `DishImageCacheKey.of`, `DishImagePrompt.build` y
+  `DishImageRequest.of`, `descriptors` en `AiDecodeResult` y los campos en el `OUTPUT_CONTRACT` de
+  `PromptBuilder`. `Recipe.kt`, `RecipeValidator.kt` y `AiRecipeIds.kt` **no** cambian (el descriptor es
+  cosmético, no se valida ni entra en el `id`) y `DishImageCacheKey.VERSION` **no** sube. **Sin entrega en
+  runtime** (non-goal): `MainActivity` sigue componiendo `DishImageRequest.of(taxonomy, recipe)` sin
+  descriptor, así que la app sigue con el respaldo por título; se recomienda una feature posterior
+  `dish-visual-descriptor-wiring`. Docs durables: §4 y §6 de `docs/domain/taxonomy.md`, ADR 0005
+  (**fases 1-5**), `docs/technical-discovery.md` y `docs/risks-and-open-questions.md`. Gate: `bash init.sh`
+  exit 0; **86 suites / 619 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD` 84/593; delta
+  +2 suites / +26 tests), lint 0 errores y 13 warnings preexistentes (ninguno bajo `app/src`). Sin capturas
+  (`docs/design/concepts/dish-visual-descriptor/` **no** existe). Detalle en
+  `docs/validations/dish-visual-descriptor.md`. **WIP = 0.** En el plan quedan las fases 6-7
+  (`dish-style-reference`, `dish-image-seed`, `not_started`).
 
 ## Registro de sesiones
 
@@ -3160,3 +3182,92 @@
   del mismo daemon) y dejó un `hs_err_pid*.log` en la raíz (retirado); era del daemon (heap/uptime), no del
   código, porque el `bash init.sh` y las tiradas focales ya habían pasado en verde. No se usó
   `./gradlew --stop` (AGENTS.md, Notas de entorno).
+
+### Sesión 094
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-implementer` para `dish-visual-descriptor` (fase 5, **variante B** de
+  `docs/ai-dish-images-proposal.md` §4.1: descriptor visual opcional del plato en el contrato de la IA)
+  en el worktree `feature/dish-visual-descriptor`. **Sin commit, push ni PR** (el commit lo hace el
+  orquestador de `feature-flow`; publica `github-flow`). `area: integration`; **gate de capturas no
+  aplica** (**no** se crea `docs/design/concepts/dish-visual-descriptor/`).
+- Completado (rol **implementer**): la feature queda **`passing`** (validación independiente pendiente).
+  Valor puro nuevo `domain.image.DishVisualDescriptor` (`dishKey`/`imagePrompt`, `of`/`isEmpty`/`NONE`:
+  colapsa espacios, conserva el `dishKey` tal cual y lo descarta si no deja ningún carácter `[a-z0-9]`,
+  descarta `imagePrompt` en blanco); parámetros **opcionales con default** en `DishImageCacheKey.of`
+  (el `dishKey` normalizado gana al título), `DishImagePrompt.build` (precedencia `imagePrompt → título →
+  categoría → DEFAULT_DISH`, conservando prefijo/cocina/`STYLE_SUFFIX`) y `DishImageRequest.of`;
+  `AiRecipeDraft` gana `dishKey`/`imagePrompt` como `JsonElement?` tolerantes + `descriptor()`;
+  `AiDecodeResult.descriptors` (por `id` **generado**, solo recetas aceptadas) rellenado en
+  `AiRecipePayload.decode`; y `OUTPUT_CONTRACT` de `PromptBuilder` con los dos campos opcionales + su
+  instrucción. `Recipe.kt`, `RecipeValidator.kt` y `AiRecipeIds.kt` **no** cambian (el descriptor no se
+  valida, no se persiste y no entra en el `id`); `DishImageCacheKey.VERSION` **no** sube.
+- Ficheros creados: `app/src/main/java/com/sazon/app/domain/image/DishVisualDescriptor.kt`,
+  `app/src/test/java/com/sazon/app/domain/image/DishVisualDescriptorTest.kt` (7 tests) y
+  `app/src/test/java/com/sazon/app/data/ai/DishVisualDescriptorWireTest.kt` (7 tests).
+- Ficheros modificados: `domain/image/{DishImageCacheKey,DishImagePrompt,DishImageGenerator}.kt`,
+  `data/ai/{AiRecipeDraft,AiDecodeResult,AiRecipePayload}.kt`,
+  `domain/prompt/PromptBuilder.kt`; tests ampliados `DishImageCacheKeyTest` (8→12),
+  `DishImagePromptTest` (7→11), `DishImageRequestTest` (5→7), `PromptBuilderTest` (10→12); y los 4 docs
+  durables (`docs/domain/taxonomy.md` §4 y §6, `docs/adr/0005-ai-dish-images.md`,
+  `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`).
+- Verificación ejecutada: `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`; sin procesos largos, sin red, sin cuota, sin tocar `init.sh`). Tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.domain.image.*" --tests
+  "com.sazon.app.data.ai.DishVisualDescriptorWireTest" --tests "com.sazon.app.domain.prompt.PromptBuilderTest"`
+  → `BUILD SUCCESSFUL`; tirada completa forzada `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  → `BUILD SUCCESSFUL` (34/34 tareas ejecutadas). Parseo propio de los XML frescos
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **86 suites / 619 tests / 0 fallos / 0 errores /
+  0 saltados**. Baseline en `HEAD` re-derivada (`git grep -c '@Test' -- 'app/src/test/**'`) = **593**;
+  delta **+2 suites / +26 tests** (`DishVisualDescriptorTest` 7, `DishVisualDescriptorWireTest` 7,
+  `DishImageCacheKeyTest` +4, `DishImagePromptTest` +4, `DishImageRequestTest` +2, `PromptBuilderTest` +2).
+  Lint (SARIF `app/build/reports/lint-results-debug.sarif`): **0 errores** y **13 warnings**
+  preexistentes (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2,
+  `OldTargetApi` 1), **0 bajo `app/src`**.
+- Vectores concretos comprobados: dos títulos distintos con el mismo `dishKey` comparten
+  `dish-image-v1-arroz-con-pollo` (frente a sus claves por título distintas); clave y prompt con
+  descriptor `null`/`NONE`/solo `dishKey` idénticos a la fase 1; respuestas con `"dishKey": 123`, objeto,
+  array o `"🍲"` **aceptadas** sin `SCHEMA` y sin descriptor; descriptor parcial conserva el campo
+  utilizable; `id` idéntico con y sin descriptor.
+- Inspección de pureza y alcance: `domain.image` solo importa `domain.recipe`/`domain.taxonomy` y
+  `java.text.Normalizer`/`java.util.Locale` (0 `android.*`, `androidx.*`, `io.ktor`, `java.net`,
+  `Random`/`UUID`/`currentTimeMillis`); `DishVisualDescriptor.kt` **no importa nada**; `git diff
+  --name-only` = lista prevista (7 `main`, 4 tests ampliados + 3 nuevos, 4 docs, `feature_list.json`);
+  `Recipe.kt`, `RecipeValidator.kt`, `AiRecipeIds.kt`, `domain/validation/**`, `data/image/**`,
+  `data/ai/image/**`, `ui/**`, `MainActivity.kt`, build, `init.sh`, `scripts/**`, Taxonomía,
+  `seed-recipes.json` y `assets/**` **sin diff**; sin dependencias nuevas; nada creado en
+  `docs/design/concepts/`.
+- Hallazgos relevantes: (a) el parseo tolerante (`JsonElement?` + `JsonPrimitive.isString`) es
+  imprescindible: con `val dishKey: String?` un `"dishKey": 123` contaría la receta como `SCHEMA`, justo
+  lo que el contrato prohíbe; (b) el descriptor **no** entra en `AiRecipeIds.canonical`, así que los
+  `id` `ai-<sha256>` no cambian (Favoritos/`isSaved` intactos); (c) `VERSION` no sube porque ni la
+  normalización ni la plantilla cambian, solo la **fuente** del plato cuando el modelo lo emite.
+- Riesgo o incógnita abierta (registrados, no bloqueantes): un `dishKey` demasiado grueso (`"pollo"`)
+  haría que platos distintos compartan imagen (el contrato pide especificidad; el descriptor no se valida
+  y una imagen equivocada es peor que una duplicada, anotado en `docs/risks-and-open-questions.md`);
+  **entrega en runtime y persistencia del descriptor pendientes** (`AiDecodeResult.descriptors` no tiene
+  consumidor: `MainActivity` sigue componiendo sin descriptor; se recomienda una feature de integración
+  `dish-visual-descriptor-wiring`); al entregarlo, un plato antes cacheado por título pasará a pedirse por
+  `dishKey` → un fallo de caché y una generación extra la primera vez.
+- Siguiente paso: **validación independiente** de esta feature (rol `validator`, contexto limpio) y, si
+  sale `accept`, el commit local del orquestador de `feature-flow`. En el plan, las fases 6-7
+  (`dish-style-reference`, `dish-image-seed`, `not_started`).
+- Validación independiente (rol **validator**, misma sesión 094, contexto limpio): veredicto
+  **`accept`**. Re-ejecutó `bash init.sh` (exit 0; la pasada de test salió `UP-TO-DATE`, así que forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` —34/34 tareas— y
+  `bash scripts/gradle.sh lint --rerun-tasks`), parseó por su cuenta los XML (**86 suites / 619 tests / 0
+  fallos / 0 errores / 0 saltados**) y el SARIF (**13 warnings, 0 errores, 0 bajo `app/src`**), y
+  re-derivó la baseline en `HEAD` (**593** `@Test` ⇒ delta +26). Confirmó los escenarios 1-10 y los
+  negativos clave (sin descriptor degrada exactamente a la fase 1; `dishKey` numérico/objeto/array/emoji/en
+  blanco **nunca** descarta la receta como `SCHEMA`; `id` idéntico con y sin descriptor; `DishImageRequest`
+  sin campos nuevos por reflexión; `VERSION` sigue `dish-image-v1` con independencia de `Locale`), la
+  pureza de `domain.image`, la disciplina de alcance (`git diff` = lista prevista; prohibidos sin diff;
+  `docs/design/concepts/dish-visual-descriptor/` **no** existe) y que no hubo commit/push/PR. Sin
+  hallazgos Critical/High/Medium; 3 Low informativos no bloqueantes. Detalle en
+  `docs/validations/dish-visual-descriptor.md`.
+- Siguiente paso (orquestador): persistir la aceptación (hecho: `dish-visual-descriptor` pasa a
+  **`accepted`** en `feature_list.json`) y crear el **commit local** (`feat: complete
+  dish-visual-descriptor`); **sin push ni PR** (publica `github-flow`). En el plan, las fases 6-7
+  (`dish-style-reference`, `dish-image-seed`, `not_started`); seguimiento no bloqueante recomendado: feature
+  de integración `dish-visual-descriptor-wiring` para entregar el descriptor al runtime (hoy
+  `AiDecodeResult.descriptors` no tiene consumidor).

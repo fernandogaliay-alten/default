@@ -2,19 +2,19 @@
 
 ## Estado
 
-**Aceptado parcialmente (fases 1-4)** — features `dish-image-domain` (fase 1), `dish-image-generator`
-(fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración) y
-`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), 2026-10-13. Fija la decisión de
-arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
-real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
-delante de la cadena local con una progresión con crossfade y añade el **control de gasto**: el
-interruptor de usuario (apagado = solo foto local) y el **tope de generaciones por sesión** (una unidad
-por petición al proveedor, impuesta por un decorador del puerto). Con eso la **fase 4 queda completa**;
-deja **pendientes**, de forma explícita, las fases 5–7 de `docs/ai-dish-images-proposal.md` (descriptor
-del modelo, referencia de estilo y set semilla). Ajusta **parcialmente**
-`docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets sigue siendo válida y offline, pero
-pasa a ser el **respaldo** de la imagen generada, ya conectada en runtime; su afirmación "sin red en
-tiempo de ejecución" se mantiene para la cadena local.
+**Aceptado parcialmente (fases 1-5)** — features `dish-image-domain` (fase 1), `dish-image-generator`
+(fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración),
+`dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario) y `dish-visual-descriptor` (fase 5),
+2026-10-13. Fija la decisión de arquitectura y de política (puerto, prompt determinista y clave
+canónica), implementa el **adaptador real** de transporte + códec y la **caché** de disco + memoria,
+**conecta** el nivel generado por delante de la cadena local con una progresión con crossfade, añade el
+**control de gasto** (interruptor de usuario + tope de generaciones por sesión) y fija en el **contrato
+con la IA** el descriptor visual opcional (`dishKey`/`imagePrompt`) que alimenta esa misma política.
+Con eso la **fase 4 queda completa** y la **fase 5** entrega contrato + política pura; deja
+**pendientes**, de forma explícita, las fases 6–7 de `docs/ai-dish-images-proposal.md` (referencia de
+estilo y set semilla). Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de
+assets sigue siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada, ya
+conectada en runtime; su afirmación "sin red en tiempo de ejecución" se mantiene para la cadena local.
 
 ## Contexto
 
@@ -137,6 +137,30 @@ llamada); apagar/encender **no** reinicia el tope. Degradación silenciosa intac
 fallo → foto local, nunca error de UI; la `CancellationException` se propaga. Sin dependencias nuevas,
 sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
 
+Alcance de la **fase 5** (feature `dish-visual-descriptor`): el **contrato con la IA** y la **política
+pura** del descriptor visual opcional del plato, **sin entrega en runtime**. El wire gana dos campos
+**opcionales** por receta, `dishKey` (plato canónico, pensado como clave compartida) e `imagePrompt`
+(descripción visual del plato terminado): el DTO del wire los declara como `JsonElement?` para que un
+tipo JSON equivocado **nunca** descarte la receta como `SCHEMA` (mismo espíritu que "al gusto") y el
+valor puro `com.sazon.app.domain.image.DishVisualDescriptor` los limpia (`of`/`isEmpty`/`NONE`). Los tres
+ganchos de la política pasan a aceptar el descriptor como **parámetro opcional con default**
+(`DishImageCacheKey.of(recipe, descriptor)`, `DishImagePrompt.build(taxonomy, recipe, descriptor)` y
+`DishImageRequest.of(taxonomy, recipe, descriptor)`): con `dishKey` utilizable la clave es la del plato
+canónico (misma normalización; `"arroz con pollo"` y `"arroz con pollo fácil"` **comparten** imagen) y con
+`imagePrompt` el prompt cambia **solo** la cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos).
+`AiDecodeResult` expone los descriptores por `id` generado (`descriptors`) solo de recetas **aceptadas**,
+pero **nadie** los consume todavía: `MainActivity` compone `DishImageRequest.of(taxonomy, recipe)` sin
+descriptor, así que la app sigue con el respaldo por título. `Recipe` y `RecipeValidator` **no** cambian
+(el descriptor es cosmético: no se valida ni se persiste) y `AiRecipeIds.canonical` queda **intacto** (el
+descriptor no entra en el `id`). **No** sube `DishImageCacheKey.VERSION` porque ni la normalización ni la
+plantilla cambian, solo la **fuente** del plato cuando el modelo lo emite. Ver
+`docs/specs/dish-visual-descriptor.md`.
+
+La **entrega en runtime** del descriptor (conectar `AiDecodeResult.descriptors` con
+`DishImageArtworkLoader.requestFor`) es un non-goal declarado de la fase 5 y merece su propia feature de
+integración (`dish-visual-descriptor-wiring`, recomendada en la spec); el argumento `descriptor` de
+`DishImageRequest.of` ya existe para eso.
+
 ## Alternativas consideradas
 
 1. **Usar `recipe.id` como clave de caché.** Identidad de *receta*, no de *plato*: el mismo plato
@@ -172,7 +196,9 @@ sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
 ## Consecuencias
 
 - **Invalidación**: cualquier cambio de `STYLE_SUFFIX`, del orden de las cláusulas del prompt o de la
-  normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión).
+  normalización **obliga** a subir `DishImageCacheKey.VERSION` (regla durable de esta decisión). La fase 5
+  **no** la sube: el descriptor solo cambia de **dónde sale** el plato/el slug cuando el modelo lo emite,
+  no la normalización ni la forma de la plantilla.
 - **Riesgo de cuota/latencia**: el **transporte** (fase 2), la **caché** (fase 3), la **costura de UI**
   (fase 4) y el **control de gasto** (fase 4, ajuste de usuario) ya existen, así que el riesgo (~2 % de
   la cuota semanal y ~4 s por imagen) **se materializa** al navegar. Está registrado en
@@ -194,12 +220,12 @@ sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
   visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.
 - **Títulos no latinos o solo símbolos** producen slug vacío y caen al respaldo por `id`/por defecto
   (cubierto por test); si alguna vez importa, lo resuelve el `dishKey` de la fase 5.
-- **Pendiente**: las fases 5–7 (`dishKey`/`imagePrompt` en el wire, `image-edit` con referencia de
-  estilo y set semilla de platos frecuentes). La fase 4 se entrega **completa** (integración + ajuste de
-  usuario), ambas mitades con capturas **omitidas por desviación autorizada** registrada en `DESIGN.md`
-  (issues #98 y #101); la revisión puramente visual la hace la persona tras el merge. De las preguntas
-  abiertas de la propuesta §11, la decisión Room vs ficheros queda **resuelta** en la fase 3 (ficheros
-  en `cacheDir`) y el **interruptor de usuario y el tope por sesión quedan resueltos** en la fase 4
-  (constantes en `DishImageSettingsPolicy`); siguen abiertas el tamaño objetivo y el tope de disco
-  (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste), el set semilla y la entrada de la
-  variante C.
+- **Pendiente**: las fases 6–7 (`image-edit` con referencia de estilo y set semilla de platos frecuentes),
+  y la **entrega en runtime** del descriptor de la fase 5. La fase 4 se entrega **completa** (integración
+  + ajuste de usuario), ambas mitades con capturas **omitidas por desviación autorizada** registrada en
+  `DESIGN.md` (issues #98 y #101); la revisión puramente visual la hace la persona tras el merge. De las
+  preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda **resuelta** en la fase 3
+  (ficheros en `cacheDir`), el **interruptor de usuario y el tope por sesión quedan resueltos** en la fase
+  4 (constantes en `DishImageSettingsPolicy`) y la **coherencia conceptual del mismo plato queda cubierta**
+  en la fase 5 vía `dishKey` del modelo; siguen abiertas el tamaño objetivo y el tope de disco (fijados
+  aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste), el set semilla y la entrada de la variante C.

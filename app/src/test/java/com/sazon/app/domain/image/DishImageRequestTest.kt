@@ -87,6 +87,50 @@ class DishImageRequestTest {
         assertEquals("seed-arroz-pollo", semilla.recipeId)
         assertEquals("ai-1234", ia.recipeId)
     }
+
+    // --- Escenario 9 de `docs/specs/dish-visual-descriptor.md` (fase 5) ---
+
+    @Test
+    fun descriptor_escenario_9_la_peticion_compone_ambas_piezas_con_el_descriptor() {
+        val recipe = receta(title = "Arroz con pollo fácil", cuisineId = "spanish")
+        val descriptor = DishVisualDescriptor(
+            dishKey = "arroz-con-pollo",
+            imagePrompt = "arroz amarillo con pollo desmenuzado",
+        )
+
+        val request = DishImageRequest.of(taxonomy, recipe, descriptor)
+
+        assertEquals(DishImageCacheKey.of(recipe, descriptor), request.cacheKey)
+        assertEquals(DishImagePrompt.build(taxonomy, recipe, descriptor), request.prompt)
+        assertEquals("El recipeId no cambia con el descriptor", "seed-arroz-pollo", request.recipeId)
+        assertEquals("dish-image-v1-arroz-con-pollo", request.cacheKey)
+        val camposDelValor = DishImageRequest::class.java.declaredFields
+            .map { it.name }
+            // El companion es estatico y el compilador de Compose sintetiza `$stable`: ninguno es un
+            // campo del valor.
+            .filterNot { it == "Companion" || it == "\$stable" }
+            .toSet()
+        assertEquals(
+            "El descriptor no anade campos al transporte puro",
+            setOf("cacheKey", "prompt", "recipeId"),
+            camposDelValor,
+        )
+    }
+
+    @Test
+    fun descriptor_escenario_9b_sin_descriptor_el_resultado_es_el_de_la_fase_1() {
+        val recipe = receta(title = "Arroz con pollo criollo", cuisineId = "spanish")
+
+        assertEquals(
+            "Omitir el descriptor equivale a la fase 1",
+            DishImageRequest.of(taxonomy, recipe),
+            DishImageRequest.of(taxonomy, recipe, descriptor = null),
+        )
+        assertEquals(
+            DishImageRequest.of(taxonomy, recipe),
+            DishImageRequest.of(taxonomy, recipe, descriptor = DishVisualDescriptor.NONE),
+        )
+    }
 }
 
 private fun receta(

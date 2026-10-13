@@ -80,7 +80,9 @@ object PromptBuilder {
               ],
               "tips": ["string"],
               "nutrition": { "kcal": 420, "protein": 25, "carbs": 30, "fat": 18 },
-              "declaredAllergens": ["hardRestrictions.id"]
+              "declaredAllergens": ["hardRestrictions.id"],
+              "dishKey": "string (opcional)",
+              "imagePrompt": "string (opcional)"
             }
           ]
         }
@@ -103,6 +105,8 @@ object PromptBuilder {
         appendLine()
         appendLine("En \"unit\" usa solo uno de estos valores: g, ml, ud, cda, cdta, o null para \"al gusto\".")
         appendLine("La despensa básica se asume disponible y no hace falta declararla: sal, aceite, pimienta y agua.")
+        appendLine()
+        appendLine("Campos opcionales de cada receta: \"dishKey\" (nombre breve y específico del plato terminado; nunca un ingrediente ni la categoría) e \"imagePrompt\" (descripción visual breve del plato terminado). Si no los envías, la app usará el título y la taxonomía.")
         appendLine()
         appendLine("Respeta SIEMPRE el patrón de dieta y las restricciones duras que se indican más abajo;")
         appendLine("si una receta incumple una restricción dura, descártala y propón otra.")

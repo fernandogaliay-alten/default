@@ -7,8 +7,9 @@ import com.sazon.app.domain.taxonomy.Taxonomy
  * Peticion de imagen de un plato, ya resuelta: el adaptador (fase 2) es transporte puro y **no**
  * conoce ni la [Recipe] ni la [Taxonomy].
  *
- * [prompt] y [cacheKey] son el punto de entrada estable del puerto: la variante B (fase 5) cambiara
- * **quien** los rellena, no la firma. [recipeId] es solo trazabilidad (nunca la identidad de cache).
+ * [prompt] y [cacheKey] son el punto de entrada estable del puerto: la variante B (fase 5) cambio
+ * **quien** los rellena (el descriptor opcional de [DishImageRequest.of]), no la firma.
+ * [recipeId] es solo trazabilidad (nunca la identidad de cache).
  */
 data class DishImageRequest(
     /** Clave canonica de cache (`DishImageCacheKey`), apta como nombre de fichero. */
@@ -22,11 +23,16 @@ data class DishImageRequest(
 
         /**
          * **Unico punto de composicion** de la peticion: prompt y clave se derivan aqui de la
-         * Taxonomia y la receta, de modo que ningun llamante redecide la politica.
+         * Taxonomia, la receta y el [descriptor] opcional (fase 5), de modo que ningun llamante
+         * redecide la politica. Con `descriptor = null` el resultado es exactamente el de la fase 1.
          */
-        fun of(taxonomy: Taxonomy, recipe: Recipe): DishImageRequest = DishImageRequest(
-            cacheKey = DishImageCacheKey.of(recipe),
-            prompt = DishImagePrompt.build(taxonomy, recipe),
+        fun of(
+            taxonomy: Taxonomy,
+            recipe: Recipe,
+            descriptor: DishVisualDescriptor? = null,
+        ): DishImageRequest = DishImageRequest(
+            cacheKey = DishImageCacheKey.of(recipe, descriptor),
+            prompt = DishImagePrompt.build(taxonomy, recipe, descriptor),
             recipeId = recipe.id.takeIf { it.isNotBlank() },
         )
     }
