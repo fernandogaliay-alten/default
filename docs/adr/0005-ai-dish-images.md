@@ -24,7 +24,15 @@ completa**. Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: 
 sigue siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada, ya conectada en
 runtime; además, desde la fase 6 la foto por defecto de esa cadena (`img/recipes/default.<ext>`) es
 también la **referencia de estilo** del ajuste. Su afirmación "sin red en tiempo de ejecución" se
-mantiene para la cadena local.
+mantiene mientras la cadena local exista (**retirada por ADR 0006**). Se **conserva** el asset neutro
+`img/recipes/default.<ext>` como **ancla de estilo** de la fase 6 (OQ7 de `DESIGN.md`, resuelta el
+2026-10-13): no se muestra en ninguna pantalla.
+
+**Ajustado por `docs/adr/0006-typographic-recipe-cards.md`** (2026-10-13): la imagen generada **pasa a ser
+capa de fondo** del hueco (deja de ser "la imagen de la receta"), supeditada al ajuste del usuario; el
+**interruptor** ("Generar imágenes del plato") y el **tope por sesión** se mantienen. La **cadena local**
+de fotos que le servía de respaldo **se retira** con `retire-recipe-photos`, así que la **capa base** pasa
+a ser la **ficha tipográfica**.
 
 ## Contexto
 

@@ -18,6 +18,8 @@ colors:
   error: "#B3261E"
   darkBackground: "#241C16"
   darkSurface: "#312720"
+  darkCardSurface: "#3A2E26"
+  darkCardOutline: "#7D6A5C"
 typography:
   display:
     fontFamily: Manrope
@@ -64,9 +66,21 @@ components:
     rounded: "{rounded.full}"
   recipe-card:
     backgroundColor: "{colors.surface}"
-    imageRatio: "16:10"
+    backgroundDark: "{colors.darkCardSurface}"
+    borderDark: "{colors.darkCardOutline}"
     rounded: "{rounded.md}"
+    accentRule: "6px, degradado por cocina (RecipeAccent)"
     shadow: "y=4 blur=16 alpha=6%"
+  recipe-card-image:
+    position: "capa de fondo del hueco, solo con el ajuste de imágenes encendido"
+    ratio: "16:10 (tarjeta completa) y 16:9 (héroe y tarjeta L2)"
+    rounded: "{rounded.md}"
+    scrim: "degradado de contraste bajo el texto blanco"
+  recipe-tile-favorites:
+    size: "96x96"
+    backgroundColor: "{colors.surfaceVariant}"
+    accentRule: "5px a la izquierda, terracota (primary)"
+    content: "monograma de iniciales del plato"
   bottom-nav:
     backgroundColor: "{colors.surface}"
     activeColor: "{colors.primary}"
@@ -79,9 +93,15 @@ components:
 ## Overview
 
 "Sazón" debe sentirse como un libro de cocina moderno: **cálido, apetitoso y limpio**, nunca clínico
-ni corporativo. La comida y las fotos mandan; el cromo de la interfaz se retira para no competir. La
-identidad visual se apoya en tres ideas: fondo crema, tarjetas blancas con esquinas muy redondeadas,
-y un naranja terracota reservado para la acción principal.
+ni corporativo. La identidad visual se apoya en tres ideas: fondo crema, tarjetas blancas con esquinas
+muy redondeadas, y un naranja terracota reservado para la acción principal.
+
+**La imagen de una receta es tipográfica** (ADR 0006). La tarjeta es una **ficha editorial**: categoría
+en versalitas, título grande y los **tres ingredientes principales** con su cantidad, más un filete de
+color por cocina. Nunca una foto por defecto que no corresponda al plato. Si el ajuste **"Generar
+imágenes del plato"** está encendido y hay imagen disponible, esa imagen es la **capa de fondo** del
+hueco (variante **L2**) y la tipografía se queda encima. La dirección anterior —"la foto del plato como
+protagonista"— queda **sustituida**; ver ADR 0006.
 
 Esta dirección nace del prompt de Stitch y de las decisiones de discovery. **Es la fuente de verdad
 de la UI**: si un mockup generado contradice estos tokens o estas reglas, manda este documento.
@@ -207,9 +227,24 @@ merge.
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
+**Dirección tipográfica: capturas desde los prototipos locales (ADR 0006, 2026-10-13, autorizado):**
+la dirección tipográfica (tarjeta **C3**,
+oscuro **B+C**, imagen **L2**) se decidió sobre **prototipos HTML locales**, no sobre export de Stitch.
+Los prototipos que sostienen la decisión están versionados en
+`docs/design/concepts/typographic-cards/`. Las **capturas `.png` por pantalla** están **aportadas**
+(2026-10-14) en `docs/design/concepts/<feature-id>/<pantalla>/` —siete pantallas, en claro y oscuro,
+renderizadas de esos prototipos con Chrome headless a 390×844 y 2×— para `card-typographic-tokens-and-design`
+(`tarjeta-oscura`), `recipe-card-typographic` (`recipe-card` —Inicio y Resultados—, `favoritos-lista`,
+`favoritos-rejilla`), `recipe-detail-typographic-header` (`detalle-receta`) y
+`dish-artwork-as-card-background` (`tarjeta-con-imagen`, `detalle-con-imagen`). Es una **desviación de la
+política de capturas** (que parte de export de Stitch) **autorizada por la persona** (2026-10-13, sesión
+101): el origen son los prototipos locales, no Stitch.
+
 ## Product Feel
 
-- **Apetitoso antes que técnico**: la foto del plato siempre presente, con luz cálida y natural.
+- **Editorial antes que fotográfico**: el apetito lo dan la jerarquía tipográfica, el color cálido y la
+  claridad de la ficha (qué plato es y qué lleva). La fotografía es opcional y, cuando aparece, es
+  **fondo**, no protagonista.
 - **Cercano, no infantil**: redondeado y amable, pero con tipografía y jerarquía de nivel editorial.
 - **Tranquilo**: mucho aire, pocos colores, sin adornos innecesarios.
 - **Táctil**: botones altos, chips tipo píldora, sombras muy suaves.
@@ -227,6 +262,8 @@ pixel-perfect).
 | Text | `#2B2118` | Texto principal |
 | Outline | `#E8DDD3` | Hairlines y separadores |
 | Avatar (iniciales) | 8 tonos cálidos | Identidad; lista canónica en `avatarColors` de `docs/domain/taxonomy.json` |
+| Tarjeta (modo oscuro) | `#3A2E26` | Superficie de las tarjetas en oscuro; **3,26:1** con `darkBackground` (ADR 0006) |
+| Borde de tarjeta (modo oscuro) | `#7D6A5C` | Separa la tarjeta del fondo en oscuro; cumple el 3:1 de WCAG 1.4.11 |
 
 Regla de uso: el terracota se reserva para **una** acción principal por pantalla. Si todo es naranja,
 nada lo es.
@@ -255,17 +292,43 @@ nada lo es.
 
 ## Components
 
-- **RecipeCard** (vertical): imagen 16:10 redondeada, título a 2 líneas máximo, fila de metadatos
-  `tiempo · dificultad · comensales` y una píldora terracota con el porcentaje de coincidencia.
-- **RecipeListCard** (horizontal): miniatura 96x96, texto a la derecha, corazón a la derecha.
-- **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork` y `recipe-photos`): la
-  **fotografía del plato** empaquetada como asset **offline** (31 fotos en
-  `app/src/main/assets/img/recipes/`) es la imagen principal; el **bloque con degradado + glifo de
-  línea** dibujado con Compose queda como **último recurso** si falta la foto.
-  - **Cadena de respaldo** (determinista, en `data.RecipePhotoAssets`): foto propia de la
-    receta semilla (`seed/<id>.<ext>`) → foto de su categoría (`category/cat-<categoryId>.<ext>`) →
-    foto genérica (`default.<ext>`) → glifo. Las recetas generadas por IA no tienen foto propia y usan
-    la de su categoría; `categoryId` nulo/vacío/desconocido cae al `default`.
+- **RecipeCard** (ficha editorial, ADR 0006): **sin foto por defecto**. Dentro del hueco 16:10:
+  categoría en versalitas (`onSurfaceVariant`, tracking amplio), **título** en Manrope Bold (21sp en el
+  carrusel, 26sp en Resultados) a 2 líneas máximo, los **tres ingredientes principales** con su cantidad
+  en cifras tabulares (tres filas con hairline entre ellas cuando hay ancho; una línea con separadores
+  `·` cuando la tarjeta es estrecha), la fila `tiempo · dificultad · comensales` y el **porcentaje de
+  coincidencia** en terracota. **Filete de 6px** en el borde inferior con el degradado de la cocina
+  (`RecipeAccent`). En oscuro: superficie `darkCardSurface` + borde `darkCardOutline` (3,26:1) + tinte
+  cálido de la cocina.
+- **RecipeListCard** (horizontal): **miniatura 96x96 con el monograma** de iniciales sobre
+  `surfaceVariant` y la regla terracota de 5px a la izquierda, texto a la derecha, corazón a
+  la derecha.
+- **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork`, `recipe-photos` y
+  `dish-image-*`): la **capa base es la ficha tipográfica** del `RecipeCard`, no una foto.
+  `RecipeArtwork` aporta la **capa de fondo** del hueco y solo cuando existe imagen:
+  - **Variante L2** (la aceptada, ADR 0006): la imagen ocupa la parte superior (16:9 en las tarjetas y en
+    el héroe) con un `scrim` de contraste y la **categoría y el título encima**; los ingredientes con
+    cantidad y los metadatos van en una **banda sólida** con los tokens de superficie.
+  - **Sin imagen**: queda la ficha tipográfica, con una **marca de agua** del glifo de la categoría al
+    12 % en la esquina inferior derecha, para que dos recetas de la misma categoría y cocina no se vean
+    idénticas.
+  - **Cuándo hay imagen**: solo si el ajuste **"Generar imágenes del plato"** está encendido y el
+    resolver devuelve una (memoria → disco → semilla → generador). Apagado = `null`, sin leer caché, sin
+    red y sin cuota. Degradación **silenciosa**: si falla, tarda, se cancela o se agota el tope por
+    sesión, se queda la tipografía, sin microcopy ni estado de error.
+  - La imagen entra con el **crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`) sobre la
+    tipografía: **nunca hay hueco, frame en blanco ni salto de layout**.
+
+  > Los apartados siguientes describen el detalle **ya implementado** de la cadena local de fotos y del
+  > nivel generado. Con ADR 0006 la **cadena local se retira** (`retire-recipe-photos`) y el nivel
+  > generado pasa a ser **capa de fondo**. El glifo y el acento por cocina siguen vigentes como marca de
+  > agua, filete y último recurso.
+  - **Cadena de respaldo local (retirada, ADR 0006)**: `data.RecipePhotoAssets` resolvía foto propia de
+    la receta semilla (`seed/<id>.<ext>`) → foto de su categoría (`category/cat-<categoryId>.<ext>`) →
+    foto genérica (`default.<ext>`) → glifo. Con `retire-recipe-photos` esa cadena **desaparece**: la
+    foto de categoría es la que no corresponde al plato, y salen del APK **30 de los 31 assets**
+    (~6,2 MiB): se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de `dish-style-reference`,
+    que no se muestra en ninguna pantalla (OQ7).
   - La foto se recorta con `ContentScale.Crop` y conserva la geometría aceptada (16:10 de las tarjetas,
     96x96 y alto 96 de Favoritos, hero de 240 del Detalle); no cambian esquinas ni tamaños. La imagen
     es **decorativa** (`contentDescription = null`): el título de la receta ya se anuncia.
@@ -367,12 +430,17 @@ nada lo es.
    y la línea "No hay recetas con este filtro." cuando el filtro deja el grupo sin recetas.
 3. **Generador**: paso 1 ingredientes (chips + input), paso 2 ajustes agrupados en tarjetas, estado
    de generación con animación cálida.
-4. **Resultados**: chips de orden + lista de RecipeCard; estados vacío, error y **modo semilla** (sin
-   IA disponible, se muestran las recetas locales).
-5. **Detalle**: foto ancha, tarjeta superpuesta con metadatos, pestañas Ingredientes · Pasos · Notas,
-   barra inferior con "Guardar" y "Empezar a cocinar".
+4. **Resultados**: chips de orden + lista de **RecipeCard tipográfica** (título, tres ingredientes con
+   cantidad, metadatos y coincidencia); estados vacío, error y **modo semilla** (sin IA disponible, se
+   muestran las recetas locales).
+5. **Detalle**: **hero tipográfico** (categoría + título + tres ingredientes con cantidad, con la marca
+   de agua del glifo y el filete de la cocina) y, solo con el ajuste de imágenes encendido, la foto como
+   **capa de fondo** de ese hero; tira de metadatos (Tiempo · Dificultad · Comensales · Calorías),
+   pestañas Ingredientes · Pasos · Notas, barra inferior con "Guardar" y "Empezar a cocinar". Ya **no
+   hay** tarjeta blanca superpuesta sobre la foto: el hero y la tira de metadatos ocupan su lugar.
 6. **Favoritos**: búsqueda, orden (chip por defecto **"Recientes"**) con el toggle lista/rejilla
-   icónico, lista, estado vacío con nota "Disponibles sin conexión".
+   icónico, lista con **miniaturas de monograma** (96x96), rejilla con las tarjetas tipográficas, estado
+   vacío con nota "Disponibles sin conexión".
 7. **Perfil**: identidad (nombre y color de avatar con vista previa), preferencias editables
    (alimentación, estilo, cocinas, ingredientes que me gustan e ingredientes que evito), comensales
    habituales, tarjeta ámbar de alérgenos, bloque de cifras titulado **"Estadísticas"** (recetas
@@ -392,7 +460,11 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 ## Accessibility Baseline
 
 - Objetivos táctiles mínimos de 48dp.
-- Contraste suficiente de texto sobre fotografía: usar un degradado sutil bajo el texto blanco.
+- Contraste suficiente de texto sobre fotografía: usar un degradado sutil bajo el texto blanco (el
+  `scrim` de la variante L2).
+- **Contraste de las tarjetas sobre el fondo en modo oscuro ≥ 3:1** (WCAG 1.4.11): con
+  `darkCardSurface` `#3A2E26` y borde `#7D6A5C` el ratio es **3,26:1**. Los tokens anteriores daban
+  1,15:1 (el defecto que corrige el ADR 0006).
 - No depender solo del color para transmitir estado (los alérgenos llevan icono y etiqueta, no solo
   ámbar).
 - Soporte de tipografía dinámica de Android.
@@ -401,15 +473,18 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 ## Do's and Don'ts
 
 **Sí**
-- Deja que la foto del plato sea la protagonista.
+- Escribe la receta como una **ficha**: qué plato es y qué lleva, legible de un vistazo.
 - Usa el terracota para una sola acción principal por pantalla.
-- Mantén cifras tabulares en todo lo cuantificable.
+- Mantén cifras tabulares en todo lo cuantificable (cantidades, tiempos, comensales).
+- Usa el filete de color de la cocina como único cromo de color de la tarjeta.
 - Muestra siempre estados vacíos y de carga cuidados.
 
 **No**
 - No usar rojo de alarma para alérgenos o errores de contenido.
 - No introducir una tercera tipografía ni gradientes llamativos.
-- No añadir bordes duros ni sombras marcadas.
+- No añadir bordes duros ni sombras marcadas (salvo el borde de tarjeta en modo oscuro, que es
+  contraste de accesibilidad, no decoración).
+- No mostrar una foto que no corresponda al plato: si no hay imagen, la ficha tipográfica se queda.
 - No inventar pantallas o flujos que no estén en `docs/build-brief.md`.
 
 ## Open Design Questions
@@ -420,11 +495,21 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 2. ¿Existe nombre de producto e icono definitivos, o "Sazón" es un marcador de posición?
 3. **Resuelto (2026-10-06):** el modo oscuro **entra en el MVP**. Se implementa la variante oscura con
    `darkBackground`/`darkSurface` y los acentos terracota y oliva (feature `design-tokens-and-theme`).
-4. **Resuelto (2026-10-12, `recipe-artwork`) y revisado (2026-10-13, `recipe-photos`, issue #83):** el
-   MVP **sí** lleva fotos de receta, pero **empaquetadas como assets offline** (31 fotos en
-   `app/src/main/assets/img/recipes/`), **sin** dependencia de imágenes ni red en tiempo de ejecución. La
-   cadena es determinista: foto propia de la receta semilla → foto de su categoría → foto por defecto →
-   placeholder dibujado `ui.artwork.RecipeArtwork` (glifo por categoría + acento por cocina), que queda
-   como **último recurso**. Ver la sección **Imagen de receta** de `Components` y
-   `docs/adr/0004-recipe-photos-as-assets.md`. `RecipeArtwork` sigue siendo el único punto de imagen.
+4. **Resuelto y revisado (2026-10-13, ADR 0006):** la imagen de una receta es una **ficha tipográfica**
+   (categoría, título y los tres ingredientes principales con cantidad) y **ninguna foto por defecto**.
+   La fotografía queda como **capa de fondo opcional** (variante L2), supeditada al ajuste **"Generar
+   imágenes del plato"**. Resoluciones anteriores, sustituidas: `recipe-artwork` (2026-10-12) fijó el
+   glifo + acento por cocina y `recipe-photos` (issue #83) las 31 fotos empaquetadas; esa cadena local
+   **se retira**. Ver **Imagen de receta** en `Components`, `docs/adr/0006-typographic-recipe-cards.md` y
+   `docs/adr/0004-recipe-photos-as-assets.md` / `0005-ai-dish-images.md` (ajustados).
 5. ¿La ilustración de los estados vacíos es un estilo definido (línea, color plano) o se improvisa?
+6. **Abierto:** ¿el carrusel de "Sugeridas para ti" sube a **3:2** para que quepan las tres filas de
+   ingredientes, o mantiene el 16:10 con los ingredientes en una línea? Hoy el prototipo usa 16:10 con
+   una línea en las tarjetas estrechas y tres filas en las anchas (Resultados y Detalle).
+7. **Parcialmente resuelto (2026-10-13, sesión 101):** se retiran los assets `seed/` y `category/` junto
+   con la cadena local, y **se conserva `img/recipes/default.<ext>`** (~136 KB) como **ancla de estilo**
+   de `dish-style-reference` (ADR 0005, fase 6): no se muestra en ninguna pantalla, así que no
+   reintroduce ninguna imagen imprecisa ni ninguna ficha. **Sigue abierto** si, además, el set `seed/`
+   se conserva para el hero del Detalle o si el hero se queda siempre tipográfico.
+8. **Abierto:** ¿la marca de agua del glifo (12 % de opacidad) es suficiente para distinguir dos recetas
+   de la misma categoría y cocina, o conviene el monograma del título también en la tarjeta?

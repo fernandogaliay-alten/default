@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sazón · Comparativa de alternativas a la imagen de receta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens reales de DESIGN.md + ui/theme/Color.kt ===== */
+:root{
+  --primary:#D9552B; --on-primary:#FFFFFF; --primary-container:#FFDCCF;
+  --secondary:#5F7A3D; --secondary-container:#DCE8CC;
+  --accent:#F2A93B;   --tertiary-container:#FCE3B8;
+  --background:#FFF8F0; --surface:#FFFFFF;
+  --text:#2B2118; --outline:#E8DDD3;
+  --surface-variant:#F2E8DE; --on-surface-variant:#5A4B40;
+  --card-radius:24px; --input-radius:16px;
+  --shadow:0 4px 16px rgba(0,0,0,.06);
+  --hairline:#E8DDD3;
+}
+.dark{
+  --background:#241C16; --surface:#312720;
+  --text:#FFF8F0; --outline:#5A4B40;
+  --surface-variant:#3D3129; --on-surface-variant:#E8DDD3;
+  --primary-container:#6E2C15; --secondary-container:#2F3D1E; --tertiary-container:#4A3413;
+  --hairline:#5A4B40;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--background); color:var(--text);
+  font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif; font-size:15px; line-height:1.5;
+}
+h1,h2,h3{font-family:Manrope,Inter,sans-serif; margin:0}
+h1{font-size:28px; font-weight:700; letter-spacing:-.02em}
+h2{font-size:20px; font-weight:600}
+h3{font-size:15px; font-weight:600}
+p{margin:.4em 0}
+.wrap{max-width:1280px; margin:0 auto; padding:32px 20px 96px}
+
+/* Cabecera */
+.hero{border-bottom:1px solid var(--hairline); padding-bottom:20px; margin-bottom:28px}
+.hero .kicker{font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--on-surface-variant)}
+.note{background:var(--primary-container); border-radius:var(--input-radius); padding:14px 16px; margin:18px 0}
+.note.warn{background:var(--tertiary-container)}
+.note ul{margin:.4em 0 0 1.2em; padding:0}
+.controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:18px 0}
+button{
+  font:inherit; font-weight:600; border:1px solid var(--outline); background:transparent; color:var(--text);
+  border-radius:999px; padding:9px 18px; cursor:pointer;
+}
+button.on{background:var(--primary); border-color:var(--primary); color:var(--on-primary)}
+
+/* Paneles de variante */
+.variant{background:var(--surface); border-radius:var(--card-radius); box-shadow:var(--shadow); padding:20px; margin:20px 0}
+.variant > header{display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; margin-bottom:6px}
+.tag{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 10px; border-radius:999px; background:var(--primary-container); color:var(--text)}
+.tag.keep{background:var(--secondary-container)}
+.tag.real{background:var(--tertiary-container)}
+.facts{font-size:13px; color:var(--on-surface-variant); margin:6px 0 18px}
+.facts b{color:var(--text)}
+
+/* Rejilla de ejemplos */
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px}
+.geoms{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-top:20px; padding-top:18px; border-top:1px solid var(--hairline)}
+.geoms .label{font-size:12px; color:var(--on-surface-variant); margin-bottom:6px}
+
+/* RecipeCard 16:10 */
+.card{border-radius:var(--card-radius); overflow:hidden; background:var(--surface); box-shadow:var(--shadow)}
+.art{position:relative; aspect-ratio:16/10; width:100%; overflow:hidden; display:grid; place-items:center}
+.art img{width:100%; height:100%; object-fit:cover; display:block}
+.scrim{position:absolute; inset:auto 0 0 0; height:46%; background:linear-gradient(to top,rgba(0,0,0,.34),transparent)}
+.pill{position:absolute; top:10px; right:10px; background:var(--primary); color:#fff; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px}
+.heart{position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:999px; background:rgba(255,255,255,.92); display:grid; place-items:center; font-size:14px}
+.card .body{padding:12px}
+.card .title{font-family:Manrope,sans-serif; font-weight:700; font-size:16px; line-height:1.25}
+.card .desc{font-size:13px; color:var(--on-surface-variant); margin-top:2px}
+.card .meta{font-size:12px; color:var(--on-surface-variant); margin-top:8px; font-variant-numeric:tabular-nums}
+
+/* RecipeListCard 96x96 */
+.listcard{display:flex; gap:12px; align-items:center; background:var(--surface); border-radius:var(--input-radius); padding:10px; box-shadow:var(--shadow); width:100%}
+.thumb{width:96px; height:96px; border-radius:var(--card-radius); overflow:hidden; flex:0 0 auto; display:grid; place-items:center; position:relative}
+.thumb img{width:100%; height:100%; object-fit:cover}
+
+/* Hero detalle 240 */
+.hero-art{width:100%; max-width:420px; height:240px; border-radius:0 0 var(--card-radius) var(--card-radius); overflow:hidden; position:relative; display:grid; place-items:center; box-shadow:var(--shadow)}
+.hero-art img{width:100%; height:100%; object-fit:cover}
+.overlap{max-width:420px; background:var(--surface); border-radius:var(--card-radius) var(--card-radius) 0 0; margin-top:-28px; position:relative; padding:16px; box-shadow:var(--shadow)}
+
+/* Degradados reales de RecipeAccent (roles del tema) */
+.g-ember{background:linear-gradient(160deg,var(--surface-variant),var(--primary-container))}
+.g-grove{background:linear-gradient(160deg,var(--secondary-container),var(--primary-container))}
+.g-tomato{background:linear-gradient(160deg,var(--primary-container),var(--tertiary-container))}
+.g-ginger{background:linear-gradient(160deg,var(--tertiary-container),var(--primary-container))}
+.g-sesame{background:linear-gradient(160deg,var(--surface-variant),var(--secondary-container))}
+.g-curry{background:linear-gradient(160deg,var(--tertiary-container),var(--secondary-container))}
+.g-chili{background:linear-gradient(160deg,var(--primary-container),var(--surface-variant))}
+.g-honey{background:linear-gradient(160deg,var(--tertiary-container),var(--surface-variant))}
+.g-clay{background:linear-gradient(160deg,var(--secondary-container),var(--surface-variant))}
+.g-rose{background:linear-gradient(160deg,var(--secondary-container),var(--tertiary-container))}
+.g-default{background:linear-gradient(160deg,var(--primary-container),var(--secondary-container))}
+
+/* Glifo (aproximación de los 18 de ui/artwork; trazo = onSurfaceVariant) */
+.glyph{color:var(--on-surface-variant); stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+.glyph .fill{fill:currentColor; stroke:none; opacity:.85}
+
+/* Monograma y collage */
+.mono{font-family:Manrope,sans-serif; font-weight:700; color:var(--on-surface-variant); letter-spacing:-.03em}
+.collage{display:flex; gap:10px}
+.collage span{width:56px; height:56px; border-radius:999px; background:rgba(255,255,255,.55); display:grid; place-items:center}
+.dark .collage span{background:rgba(0,0,0,.28)}
+.counter{display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--on-surface-variant)}
+.counter .n{font-family:Manrope,sans-serif; font-weight:700; font-size:30px; line-height:1; font-variant-numeric:tabular-nums}
+.counter .l{font-size:11px; letter-spacing:.06em; text-transform:uppercase}
+.chips{display:flex; gap:6px; flex-wrap:wrap; justify-content:center}
+.chips em{font-style:normal; font-size:11px; font-weight:600; background:rgba(255,255,255,.6); color:var(--on-surface-variant); padding:4px 9px; border-radius:999px}
+.dark .chips em{background:rgba(0,0,0,.3)}
+.catlabel{position:absolute; inset:auto 0 0 0; padding:8px 12px; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-surface-variant)}
+
+/* Tarjeta tipográfica (variante C) */
+.typo{aspect-ratio:16/10; border-radius:var(--card-radius); padding:16px; display:flex; flex-direction:column; justify-content:space-between; background:var(--surface-variant)}
+.typo .t{font-family:Manrope,sans-serif; font-weight:700; font-size:19px; line-height:1.2}
+.typo .cat{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-surface-variant)}
+.typo .chips{justify-content:flex-start}
+.typo .chips em{background:var(--surface)}
+
+.darkbox{background:var(--background); border-radius:var(--card-radius); padding:20px; margin-top:20px}
+table{border-collapse:collapse; width:100%; font-size:13px; margin-top:10px}
+th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--hairline); vertical-align:top}
+th{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--on-surface-variant)}
+code{background:var(--surface-variant); padding:1px 6px; border-radius:6px; font-size:12px}
+footer{margin-top:40px; font-size:12px; color:var(--on-surface-variant); border-top:1px solid var(--hairline); padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="kicker">Sazón · bocetos de comparación</div>
+    <h1>Alternativas a la foto del plato</h1>
+    <p>Mismo hueco de imagen (16:10 de las tarjetas, 96×96 de Favoritos, hero 240 del Detalle), misma
+      receta de ejemplo, distinta fuente de imagen. Colores, radios y tipografías salen de
+      <code>DESIGN.md</code> y <code>ui/theme/Color.kt</code>.</p>
+    <div class="note warn">
+      <b>Qué es fiel y qué no.</b>
+      <ul>
+        <li><b>Fiel:</b> tokens y degradados (pares de roles reales de <code>RecipeAccent</code>), geometría, y las <b>fotos reales</b> del APK en la variante 0.</li>
+        <li><b>Aproximado:</b> los glifos de <code>ui/artwork</code> están dibujados a mano en Compose; aquí son SVG equivalentes, no idénticos. No es una spec pixel-perfect.</li>
+      </ul>
+    </div>
+    <div class="controls">
+      <button id="t-light" class="on">Modo claro</button>
+      <button id="t-dark">Modo oscuro</button>
+      <span class="facts" style="margin:0">Cambia de tema para ver cómo sobrevive el placeholder.</span>
+    </div>
+  </div>
+
+  <!-- ============ 0. HOY ============ -->
+  <div class="variant">
+    <header><span class="tag real">0 · hoy (estado real)</span><h2>Foto de la cadena actual</h2></header>
+    <div class="facts">
+      Cadena: <code>foto de la semilla → foto de CATEGORÍA → default → glifo</code>.
+      La semilla acierta (<b>1 foto por receta</b>). La receta de IA cae en la foto de su categoría:
+      <b>ahí está la imprecisión</b> — y de ahí sale la misma imagen repetida en platos distintos.
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="art"><img src="../../../../app/src/main/assets/img/recipes/seed/seed-tortilla-patatas.jpg" alt="">
+          <span class="heart">♥</span><span class="pill">98% coincidencia</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div>
+          <div class="desc">Photo de su propia receta semilla.</div>
+          <div class="meta">25 min · Fácil · 4 pers.</div></div>
+      </div>
+      <div class="card">
+        <div class="art"><img src="../../../../app/src/main/assets/img/recipes/category/cat-rice.jpg" alt="">
+          <span class="heart">♥</span><span class="pill">92% coincidencia</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div>
+          <div class="desc">Receta de IA: <b>no tiene foto</b>; hereda <code>cat-rice.jpg</code>.</div>
+          <div class="meta">30 min · Media · 2 pers.</div></div>
+      </div>
+      <div class="card">
+        <div class="art"><img src="../../../../app/src/main/assets/img/recipes/category/cat-legume_stew.jpg" alt="">
+          <span class="heart">♥</span><span class="pill">88% coincidencia</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div>
+          <div class="desc">Receta de IA: hereda <code>cat-legume_stew.jpg</code>.</div>
+          <div class="meta">35 min · Media · 3 pers.</div></div>
+      </div>
+    </div>
+    <p class="facts" style="margin-top:16px">
+      <b>Lo que ve el usuario:</b> cuatro recetas de arroz distintas con <b>la misma foto</b>. Ese es el
+      problema 2 que me contabas.
+    </p>
+  </div>
+
+  <!-- ============ 1. A ============ -->
+  <div class="variant">
+    <header><span class="tag keep">1 · recomendada como mínimo</span><h2>A — glifo por categoría + degradado por cocina</h2></header>
+    <div class="facts">
+      Es <b>lo que la app ya sabe pintar</b> (<code>recipe-artwork</code>, aceptado) y hoy es solo el último
+      recurso. La propuesta es <b>cortar el nivel de foto de categoría</b>: la receta de IA cae aquí.
+      Coste: <b>−3,5 MiB</b> de APK, cero API, cero assets nuevos, cambio puro y testeable.
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="art g-ember">
+          <svg class="glyph" width="72" height="72" viewBox="0 0 100 100">
+            <ellipse cx="50" cy="46" rx="26" ry="30"/><path d="M24 62h52a26 30 0 0 1-52 0z"/><circle cx="40" cy="42" r="6"/>
+          </svg><span class="heart">♥</span><span class="pill">98% coincidencia</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div>
+          <div class="desc">Glifo <code>egg_breakfast</code> · acento <code>EMBER</code> (española).</div>
+          <div class="meta">25 min · Fácil · 4 pers.</div></div>
+      </div>
+      <div class="card">
+        <div class="art g-rose">
+          <svg class="glyph" width="72" height="72" viewBox="0 0 100 100">
+            <path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/>
+          </svg><span class="heart">♥</span><span class="pill">92% coincidencia</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div>
+          <div class="desc">Glifo <code>rice</code> · acento <code>ROSE</code> (latina).</div>
+          <div class="meta">30 min · Media · 2 pers.</div></div>
+      </div>
+      <div class="card">
+        <div class="art g-curry">
+          <svg class="glyph" width="72" height="72" viewBox="0 0 100 100">
+            <rect x="22" y="34" width="56" height="34" rx="6"/><path d="M18 68h64M30 34V22M70 34V22"/>
+          </svg><span class="heart">♥</span><span class="pill">88% coincidencia</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div>
+          <div class="desc">Glifo <code>legume_stew</code> · acento <code>CURRY</code> (india).</div>
+          <div class="meta">35 min · Media · 3 pers.</div></div>
+      </div>
+    </div>
+    <div class="geoms">
+      <div>
+        <div class="label">Favoritos · 96×96</div>
+        <div class="listcard" style="width:320px">
+          <div class="thumb g-rose"><svg class="glyph" width="40" height="40" viewBox="0 0 100 100"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg></div>
+          <div><div class="title" style="font-family:Manrope;font-weight:700">Arroz con pollo criollo</div>
+            <div class="desc" style="font-size:13px;color:var(--on-surface-variant)">30 min · Media · 2 pers.</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="label">Detalle · hero 240</div>
+        <div class="hero-art g-rose" style="width:420px">
+          <svg class="glyph" width="110" height="110" viewBox="0 0 100 100"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+          <div class="scrim"></div>
+        </div>
+        <div class="overlap"><div class="title" style="font-family:Manrope;font-weight:700;font-size:22px">Arroz con pollo criollo</div>
+          <div class="desc" style="color:var(--on-surface-variant)">30 min · Media · 2 pers. · 480 kcal</div></div>
+      </div>
+    </div>
+    <div class="note">
+      <b>Hallazgo honesto:</b> dos cocinas distintas pueden caer en degradados casi idénticos
+      (<code>ROSE</code> = secondaryContainer→tertiaryContainer y <code>CURRY</code> = lo mismo al revés), y
+      <code>EMBER</code> (española) es muy beige. Y el glifo solo distingue <b>18 categorías</b>: dos recetas de
+      arroz siguen viéndose iguales.
+    </div>
+  </div>
+
+  <!-- ============ 2. A+ monograma ============ -->
+  <div class="variant">
+    <header><span class="tag">2 · variante</span><h2>A+ — el mismo glifo + monograma del plato</h2></header>
+    <div class="facts">
+      Truco puro y barato para que <b>dos recetas de la misma categoría no se vean iguales</b>: 1–2 letras del
+      título. Sin assets, sin red, determinista (misma receta ⇒ misma imagen, siempre).
+    </div>
+    <div class="grid">
+      <div class="card"><div class="art g-ember">
+        <svg class="glyph" width="120" height="120" viewBox="0 0 100 100" style="opacity:.22">
+          <ellipse cx="50" cy="46" rx="26" ry="30"/><path d="M24 62h52a26 30 0 0 1-52 0z"/></svg>
+        <div style="position:absolute" class="mono" ><span style="font-size:64px">TP</span></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div><div class="meta">25 min · Fácil · 4 pers.</div></div></div>
+      <div class="card"><div class="art g-rose">
+        <svg class="glyph" width="120" height="120" viewBox="0 0 100 100" style="opacity:.22">
+          <path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+        <div style="position:absolute" class="mono"><span style="font-size:64px">AC</span></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div><div class="meta">30 min · Media · 2 pers.</div></div></div>
+      <div class="card"><div class="art g-curry">
+        <svg class="glyph" width="120" height="120" viewBox="0 0 100 100" style="opacity:.22">
+          <rect x="22" y="34" width="56" height="34" rx="6"/><path d="M18 68h64M30 34V22M70 34V22"/></svg>
+        <div style="position:absolute" class="mono"><span style="font-size:64px">CG</span></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div><div class="meta">35 min · Media · 3 pers.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 3. A++ contador / ingredientes ============ -->
+  <div class="variant">
+    <header><span class="tag">3 · variante</span><h2>A++ — glifo + dato verdadero del plato</h2></header>
+    <div class="facts">
+      En vez de un adorno, el hueco muestra <b>algo cierto de esa receta</b>: cuántos ingredientes lleva o
+      cuáles son. Dos arroces de distinta categoría/cocina ya se distinguen, y nunca se afirma nada falso.
+    </div>
+    <div class="grid">
+      <div class="card"><div class="art g-ember">
+        <svg class="glyph" width="150" height="150" viewBox="0 0 100 100" style="position:absolute;opacity:.16">
+          <ellipse cx="50" cy="46" rx="26" ry="30"/><path d="M24 62h52a26 30 0 0 1-52 0z"/></svg>
+        <div class="counter" style="position:relative"><span class="n">6</span><span class="l">ingredientes</span></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div><div class="meta">25 min · Fácil · 4 pers.</div></div></div>
+      <div class="card"><div class="art g-rose">
+        <svg class="glyph" width="150" height="150" viewBox="0 0 100 100" style="position:absolute;opacity:.16">
+          <path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+        <div class="chips" style="position:relative"><em>Pollo</em><em>Arroz</em><em>Zanahoria</em></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div><div class="meta">30 min · Media · 2 pers.</div></div></div>
+      <div class="card"><div class="art g-curry">
+        <svg class="glyph" width="150" height="150" viewBox="0 0 100 100" style="position:absolute;opacity:.16">
+          <rect x="22" y="34" width="56" height="34" rx="6"/><path d="M18 68h64M30 34V22M70 34V22"/></svg>
+        <div class="chips" style="position:relative"><em>Garbanzos</em><em>Tomate</em><em>Leche de coco</em></div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div><div class="meta">35 min · Media · 3 pers.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 4. D collage ============ -->
+  <div class="variant">
+    <header><span class="tag">4 · variante con más trabajo</span><h2>D — collage de iconos de los ingredientes reales</h2></header>
+    <div class="facts">
+      El hueco pasa a ser una <b>composición de 3 iconos de línea</b> de los ingredientes principales, sobre el
+      acento de la cocina. La Taxonomía ya guarda un <code>icon</code> por ingrediente (95), pero la app
+      <b>no dibuja iconos de ingrediente todavía</b>: hay que crearlos y decidir qué ingredientes son "principales".
+      Es lo más informativo sin ninguna foto.
+    </div>
+    <div class="grid">
+      <div class="card"><div class="art g-ember">
+        <div class="collage">
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><ellipse cx="50" cy="55" rx="26" ry="32"/><ellipse cx="50" cy="55" rx="12" ry="16"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><ellipse cx="34" cy="58" rx="16" ry="11"/><ellipse cx="66" cy="58" rx="16" ry="11"/><ellipse cx="50" cy="36" rx="15" ry="10"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><path d="M50 22c22 12 26 48 0 56-26-8-22-44 0-56z"/><path d="M50 30v40"/></svg></span>
+        </div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div><div class="meta">25 min · Fácil · 4 pers.</div></div></div>
+      <div class="card"><div class="art g-rose">
+        <div class="collage">
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><path d="M20 60c8-18 22-26 30-26 8 0 22 8 30 26-10 6-20 8-30 8s-20-2-30-8z"/><circle cx="34" cy="44" r="3" class="fill"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><path d="M20 46h60a30 24 0 0 1-60 0z"/><path d="M34 26c0 8 6 10 6 18M52 22c0 8 6 10 6 18M70 26c0 8 6 10 6 18"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><path d="M50 22c22 12 26 48 0 56-26-8-22-44 0-56z"/><path d="M50 30v40"/></svg></span>
+        </div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div><div class="meta">30 min · Media · 2 pers.</div></div></div>
+      <div class="card"><div class="art g-curry">
+        <div class="collage">
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><circle cx="38" cy="50" r="14"/><circle cx="62" cy="42" r="12"/><circle cx="58" cy="66" r="10"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><circle cx="50" cy="54" r="22"/><path d="M50 32v22l14 8"/></svg></span>
+          <span><svg class="glyph" width="28" height="28" viewBox="0 0 100 100"><path d="M36 30h28v26a14 14 0 0 1-28 0z"/><path d="M30 78h40"/></svg></span>
+        </div>
+        <span class="heart">♥</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div><div class="meta">35 min · Media · 3 pers.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 5. C tipográfica ============ -->
+  <div class="variant">
+    <header><span class="tag">5 · cambio de diseño</span><h2>C — tarjeta tipográfica, sin hueco de imagen</h2></header>
+    <div class="facts">
+      Se <b>elimina la imagen</b> y manda el título + los ingredientes. Imposible que mienta, pero es
+      <b>cambio de layout</b> (RecipeCard, carrusel, hero del Detalle) y choca con el principio de
+      <code>DESIGN.md</code> "la comida y las fotos mandan".
+    </div>
+    <div class="grid">
+      <div class="card"><div class="typo" style="border-radius:24px 24px 0 0">
+        <div><div class="cat">Desayuno</div><div class="t">Tortilla de patatas</div></div>
+        <div class="chips"><em>Huevo</em><em>Patata</em><em>Cebolla</em></div></div>
+        <div class="body"><div class="meta">25 min · Fácil · 4 pers.</div></div></div>
+      <div class="card"><div class="typo" style="border-radius:24px 24px 0 0">
+        <div><div class="cat">Arroz</div><div class="t">Arroz con pollo criollo</div></div>
+        <div class="chips"><em>Pollo</em><em>Arroz</em><em>Zanahoria</em></div></div>
+        <div class="body"><div class="meta">30 min · Media · 2 pers.</div></div></div>
+      <div class="card"><div class="typo" style="border-radius:24px 24px 0 0">
+        <div><div class="cat">Legumbres</div><div class="t">Curry de garbanzos</div></div>
+        <div class="chips"><em>Garbanzos</em><em>Tomate</em><em>Coco</em></div></div>
+        <div class="body"><div class="meta">35 min · Media · 3 pers.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 6. E abstracto ============ -->
+  <div class="variant">
+    <header><span class="tag">6 · la más barata</span><h2>E — degradado abstracto + etiqueta de categoría</h2></header>
+    <div class="facts">
+      El hueco es un bloque de color con la categoría escrita. Cero ambición visual, pero legible y
+      coherente; útil como respaldo de emergencia.
+    </div>
+    <div class="grid">
+      <div class="card"><div class="art g-ember">
+        <span class="catlabel">Desayuno</span><span class="heart">♥</span></div>
+        <div class="body"><div class="title">Tortilla de patatas</div><div class="meta">25 min · Fácil · 4 pers.</div></div></div>
+      <div class="card"><div class="art g-rose">
+        <span class="catlabel">Arroz</span><span class="heart">♥</span></div>
+        <div class="body"><div class="title">Arroz con pollo criollo</div><div class="meta">30 min · Media · 2 pers.</div></div></div>
+      <div class="card"><div class="art g-curry">
+        <span class="catlabel">Legumbres</span><span class="heart">♥</span></div>
+        <div class="body"><div class="title">Curry de garbanzos</div><div class="meta">35 min · Media · 3 pers.</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ Resumen ============ -->
+  <h2 style="margin-top:40px">Resumen para decidir</h2>
+  <table>
+    <tr><th>#</th><th>Alternativa</th><th>¿Miente sobre el plato?</th><th>Coste</th><th>Precisión</th></tr>
+    <tr><td>0</td><td>Hoy</td><td>Sí (foto de categoría en recetas de IA)</td><td>0</td><td>Alta en semilla, baja en IA</td></tr>
+    <tr><td>1</td><td>A · glifo + degradado</td><td>No (no afirma plato)</td><td>−3,5 MiB, puro</td><td>Categoría (2 de 18)</td></tr>
+    <tr><td>2</td><td>A+ · glifo + monograma</td><td>No</td><td>Puro, sin assets</td><td>Receta (distingue del mismo tipo)</td></tr>
+    <tr><td>3</td><td>A++ · glifo + ingredientes</td><td>No</td><td>Puro, sin assets</td><td>Alta: muestra <em>qué lleva</em></td></tr>
+    <tr><td>4</td><td>D · collage de iconos</td><td>No</td><td>Iconos nuevos</td><td>Alta: derivada de la receta</td></tr>
+    <tr><td>5</td><td>C · tipográfica</td><td>No</td><td>Cambio de layout + capturas</td><td>Alta</td></tr>
+    <tr><td>6</td><td>E · abstracta + etiqueta</td><td>No</td><td>Puro</td><td>Categoría</td></tr>
+  </table>
+
+  <footer>
+    Bocetos de comparación generados en local. No son assets del producto ni una spec: la dirección visual
+    aprobada sigue siendo <code>DESIGN.md</code>. Fichero fuera de control de versiones (<code>preview/</code>).
+  </footer>
+</div>
+
+<script>
+  const light = document.getElementById('t-light'), dark = document.getElementById('t-dark');
+  light.onclick = () => { document.body.classList.remove('dark'); light.classList.add('on'); dark.classList.remove('on'); };
+  dark.onclick  = () => { document.body.classList.add('dark');  dark.classList.add('on');  light.classList.remove('on'); };
+</script>
+</body>
+</html>

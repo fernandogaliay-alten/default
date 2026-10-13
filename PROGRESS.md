@@ -30,6 +30,12 @@
   `RecipeGenerator` (DevExpert Inference, Ktor + OkHttp aislado en `data.ai`, política de
   timeouts/reintentos y degradación a modo semilla), con lo que el corte vertical principal del MVP queda
   completo de punta a punta.
+- Dirección de diseño vigente (2026-10-13, sesión 101): la imagen de una receta es una **ficha
+  tipográfica** (ADR 0006) y la foto es **capa de fondo opcional** supeditada al ajuste de imágenes por
+  IA; se retira la cadena local de fotos (se conserva `default.<ext>` como ancla de estilo). Cinco
+  features nuevas en `feature_list.json`, todas `not_started`, y sus capturas de referencia ya **aportadas**
+  (2026-10-14, renderizadas de los prototipos locales con Chrome headless; desviación de la política de
+  capturas autorizada por la persona).
 - Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
   quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
   local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. Después se
@@ -3939,3 +3945,121 @@
   `accepted`) y crea el **commit local** en `feature/dish-image-prompt-v2`; la publicación (push + PR con
   `Closes #111`) la hace `github-flow`. No queda ninguna feature `not_started` dependiente de esta: el
   plan sigue cerrado salvo `home-suggestions-personalized` y `seed-catalog-50` (no relacionadas).
+
+### Sesión 101
+
+- Fecha: 2026-10-13
+- Objetivo: **formalizar la dirección de diseño "tarjeta tipográfica"** (agente principal, rol
+  orquestador; sin subagente de rol). Nace de la revisión por la persona de los problemas de las fotos
+  reales: (1) dependencia de la API de imágenes con cuota y (2) imágenes preestablecidas imprecisas (la
+  receta de IA caía en la foto de su categoría). Se bocetaron alternativas en prototipos HTML locales y
+  la persona eligió la **tarjeta C3 "carta de restaurante"** con los tres ingredientes principales, el
+  oscuro **B + C** y la imagen **L2**.
+- Completado:
+  - **`docs/adr/0006-typographic-recipe-cards.md`** (nuevo): la imagen de una receta es una ficha
+    tipográfica; la foto (generada, opt-in) pasa a **capa de fondo** (L2); se retira la cadena local de
+    fotos; tokens de tarjeta en oscuro (`darkCardSurface` `#3A2E26` + `darkCardOutline` `#7D6A5C`,
+    **3,26:1**, frente al 1,15:1 anterior, por debajo del 3:1 de WCAG 1.4.11); monograma en Favoritos;
+    `RecipeArtwork` pasa a proveedor de la capa de fondo. Ajusta los ADR 0004 y 0005.
+  - **`DESIGN.md`** como fuente de verdad: Overview, Product Feel, tarjeta de colores (2 filas nuevas),
+    frontmatter (tokens y componentes de tarjeta), `Components` (`RecipeCard`, `RecipeListCard`,
+    "Imagen de receta" con la variante L2 y la marca de agua), Core Screens 4/5/6, Accessibility,
+    Do's and Don'ts, OQ4 revisada y OQ6/7/8 nuevas, y el registro de que **faltan las capturas** de esta
+    dirección (desviación de la política pendiente de autorización).
+  - **`feature_list.json`**: cinco features nuevas con `depends_on` y verificación —
+    `card-typographic-tokens-and-design` (ui, **blocked**), `recipe-card-typographic` (ui, **blocked**),
+    `recipe-detail-typographic-header` (ui, **blocked**), `dish-artwork-as-card-background` (integration,
+    **blocked**) y `retire-recipe-photos` (data, `not_started`). Total: 56 features.
+  - **Prototipos versionados** en `docs/design/concepts/typographic-cards/` (+ `design.md`): 
+    `prototipo-c3.html` (cinco pantallas en claro y oscuro + hoja de componentes + par OFF/ON),
+    `prototipo-c3-imagenes.html` (opciones de contraste A/B/C y variantes L1/L2) y las dos
+    `comparativa-*.html`. Es la **referencia** de la que saldrán las capturas por pantalla.
+  - **Peticiones de capturas** (`README.md` con la lista exacta de pantallas) en
+    `docs/design/concepts/{card-typographic-tokens-and-design,recipe-card-typographic,recipe-detail-typographic-header,dish-artwork-as-card-background}/`.
+  - **Docs derivados** (subagente `general`, contexto propio): `docs/build-brief.md`,
+    `docs/domain/taxonomy.md` §6, `docs/technical-discovery.md`, `docs/risks-and-open-questions.md` y las
+    líneas de "Estado" de `docs/adr/0004` y `docs/adr/0005`.
+  - Prototipos de trabajo sin versionar en `preview/` (fuera del repo, no se commitean).
+- Ficheros creados/cambiados: `docs/adr/0006-typographic-recipe-cards.md`,
+  `docs/design/concepts/typographic-cards/{design.md,*.html}` y las cuatro carpetas de petición de
+  capturas (nuevos); `DESIGN.md`, `feature_list.json`, `PROGRESS.md` y los docs derivados del subagente
+  (modificados). **Sin** tocar `app/**`, `scripts/**`, `init.sh` ni `gradle*`; sin dependencias nuevas.
+- **Bloqueo registrado**: las cuatro features de UI quedan `blocked` porque **faltan las capturas de
+  referencia** y el origen previsto (prototipos locales en vez de export de Stitch) es una **desviación
+  de la política pendiente de autorización explícita de la persona**. Al autorizarla, se capturan los
+  prototipos (claro y oscuro) en las carpetas de cada feature y las features pasan a `not_started`.
+- Riesgo o incógnita abierta: se renuncia al atractivo apetitoso de la fotografía como protagonista
+  (registro editorial, reversible); el Detalle pierde el recurso del solape de la tarjeta sobre la foto;
+  OQ6 (¿carrusel a 3:2 para tener las tres filas siempre?), OQ7 (¿se limpia también el set semilla de
+  imágenes `img/dishes/seed/`?) y OQ8 (¿basta la marca de agua del glifo al 12 %?).
+- Hallazgos del subagente y cierre (agente principal): el subagente detectó cuatro incoherencias en los
+  docs y **todas quedan resueltas**: (1) `docs/domain/taxonomy.md` §3 — el campo `recipeCategories[].image`
+  y el invariante "todo `recipeCategories[].id` tiene imagen local" quedan marcados como retirados por
+  ADR 0006 (anotados, se limpian con `retire-recipe-photos`); (2) `docs/technical-discovery.md` (Testing)
+  — el bloque de `RecipePhotoAssetsTest` y `recipe.photos.assets.dir` se marca como "describe el código
+  vigente hasta `retire-recipe-photos`"; (3) el **ancla de estilo** de `dish-style-reference`
+  (`img/recipes/default.<ext>`) deja de existir con la retirada: queda como **decisión abierta** en
+  `DESIGN.md` OQ7 y en la línea de estado de ADR 0005 (¿conservar ese solo asset, ~136 KB y no visible en
+  ninguna pantalla, o generar solo por texto→imagen?); (4) la frase de ADR 0005 "se mantiene para la
+  cadena local" se matiza a "mientras la cadena local exista (retirada por ADR 0006)".
+- Autorizaciones de la persona (misma sesión 101, tras revisar la formalización): (1) **la desviación de
+  capturas queda autorizada** — las capturas de referencia se toman de los prototipos locales
+  (`docs/design/concepts/typographic-cards/`), en claro y oscuro, y se dejan en la carpeta de cada
+  feature; las cuatro features de UI pasan de `blocked` a `not_started` y **no se implementan hasta que
+  esas capturas existan** (lo exige el planner y lo impide `github-flow`); (2) **se conserva
+  `img/recipes/default.<ext>`** (~136 KB) como ancla de estilo de `dish-style-reference` (ADR 0005,
+  fase 6), sin mostrarse en ninguna pantalla: salen del APK los otros **30 de los 31 assets (~6,2 MiB)**.
+  Ambos ajustes se propagaron a `DESIGN.md` (registro de capturas y OQ7), `docs/adr/0004`, `0005` y
+  `0006`, `docs/build-brief.md`, `docs/risks-and-open-questions.md`, `docs/technical-discovery.md`,
+  `docs/domain/taxonomy.md`, `docs/design/concepts/README.md`, los cuatro `README.md` de capturas, el
+  `design.md` de `typographic-cards/` y las cinco entradas de `feature_list.json`.
+- Siguiente paso: aportar las capturas (claro y oscuro) en las carpetas preparadas de cada feature y, con
+  ellas dentro, `github-flow execute card-typographic-tokens-and-design` para arrancar la cadena por el
+  planner. **No** se ha hecho commit, push ni PR: el árbol de trabajo queda con los cambios en disco para
+  revisión.
+
+### Sesión 102
+
+- Fecha: 2026-10-14
+- Objetivo: **capturar los prototipos** de la dirección tipográfica (ADR 0006) y depositarlos como
+  capturas de referencia versionadas en la carpeta de cada feature. Desviación de la política de capturas
+  (origen: prototipos locales en vez de export de Stitch) ya autorizada por la persona en la sesión 101.
+- Completado:
+  - **Pipeline reproducible**: se extrajeron del prototipo `docs/design/concepts/typographic-cards/`
+    (`prototipo-c3.html`) el `<style>` y cada bloque `<div class="app">` y se generó un `code.html`
+    autónomo por pantalla (390×844, sin marco de dispositivo, con `?mode=dark` para la variante oscura).
+    Render con **Chrome headless de Windows por interop desde WSL**
+    (`--headless=new --force-device-scale-factor=2 --window-size=390,844 --virtual-time-budget=4000`), que
+    da PNG de **780×1688**. Sin dependencias nuevas en el proyecto: el navegador es el del sistema.
+  - **16 capturas en 7 pantallas** (claro y oscuro), cada carpeta con su `code.html` y su `DESIGN.md`:
+    `card-typographic-tokens-and-design/tarjeta-oscura/` (2);
+    `recipe-card-typographic/recipe-card/` (4: Inicio y Resultados, claro y oscuro),
+    `.../favoritos-lista/` (2), `.../favoritos-rejilla/` (2);
+    `recipe-detail-typographic-header/detalle-receta/` (2);
+    `dish-artwork-as-card-background/tarjeta-con-imagen/` (2) y `.../detalle-con-imagen/` (2).
+  - **Dos pantallas extra** que el prototipo no tenía como pantalla: el **par OFF/ON** del ajuste de
+    imágenes (tarjeta tipográfica vs imagen como capa de fondo L2) y el **Detalle con la imagen de fondo**
+    (construido desde la pantalla de Detalle). En las dos, la foto de muestra es un asset real del APK
+    (`img/recipes/category/cat-rice.jpg`), advertido en su `DESIGN.md`.
+- **Defectos detectados por las capturas y corregidos** (para eso sirven): (1) `.ing3` no era una clase
+  global en el CSS, así que en el hero del Detalle los tres ingredientes salían **en una línea** y
+  empujaban el texto contra el botón de atrás → `.ing3` pasa a global en los dos prototipos y se
+  re-renderiza; (2) en la variante **L2** los tokens de "texto sobre imagen" (`--text` en blanco) se
+  aplicaban a **toda** la tarjeta, de modo que la **banda sólida de ingredientes quedaba en blanco sobre
+  blanco** → esos tokens se acotan al área del arte (`.ncard.onimg .art`), con lo que la banda vuelve a
+  usar los tokens normales de tarjeta; (3) la **regla de 5 px** de la miniatura de Favoritos era
+  terracota y `DESIGN.md` decía "color de la cocina": a 5 px los pares suaves de `RecipeAccent` no se
+  perciben, así que se corrige la redacción de `DESIGN.md` a **terracota** (la variación por cocina vive
+  en el filete de 6 px de las tarjetas).
+- Ficheros creados/cambiados: los 16 `.png`, 8 `code*.html` y 7 `DESIGN.md` nuevos en
+  `docs/design/concepts/`; `DESIGN.md` (registro de capturas aportadas + regla de la miniatura),
+  `feature_list.json` (las cuatro entradas de UI citan las capturas aportadas), los cuatro `README.md` de
+  capturas, `docs/design/concepts/README.md`, `docs/design/concepts/typographic-cards/design.md` y los dos
+  prototipos versionados (`.ing3` global y tokens de la variante L2 acotados al arte). **Sin** tocar
+  `app/**`, `scripts/**`, `init.sh` ni `gradle*`; sin dependencias nuevas.
+- Nota: los prototipos de trabajo de `preview/` (sin versionar) quedan **superados**: la referencia
+  versionada es `docs/design/concepts/typographic-cards/`.
+- Siguiente paso: la formalización viaja en la rama **`docs/typographic-cards-formalization`** con el **PR #114**
+  contra `main` (el agente **no** mergea: lo mergea la persona; permiso de push permanente). Con el
+  PR mergeado, arranca `github-flow execute card-typographic-tokens-and-design`. La limpieza previa de
+  `execute` borrará el worktree y la rama de `home-suggestions-personalized` (PR #112 ya mergeado).

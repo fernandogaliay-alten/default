@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sazón · Prototipo C3 — carta de restaurante + ingredientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===================== página ===================== */
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,sans-serif;background:#EFE7DE;color:#2B2118;font-size:15px;line-height:1.5}
+h1,h2,h3,h4{font-family:Manrope,sans-serif;margin:0}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:20px;font-weight:700;margin-top:36px}
+p{margin:.4em 0}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 120px}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5A4B40}
+.note{background:#FFDCCF;border-radius:16px;padding:14px 16px;margin:16px 0}
+.note.warn{background:#FCE3B8}
+.note ul{margin:.4em 0 0 1.2em;padding:0}
+.caption{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.caption .t{font-family:Manrope;font-weight:700;font-size:17px}
+.caption .s{font-size:13px;color:#5A4B40}
+.cap{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A4B40;margin-bottom:8px;text-align:center}
+.board{display:flex;gap:34px;flex-wrap:wrap}
+.cell{display:flex;align-items:flex-start;gap:18px}
+.col{display:flex;flex-direction:column;align-items:center}
+
+/* ===================== tokens por tema ===================== */
+.phone{
+  --primary:#D9552B; --on-primary:#FFFFFF;
+  --secondary:#5F7A3D; --accent:#F2A93B; --error:#B3261E;
+  width:390px;height:844px;border-radius:40px;position:relative;overflow:hidden;
+  background:var(--background);color:var(--text);
+  border:1px solid var(--hairline);box-shadow:0 12px 40px rgba(0,0,0,.16);
+  font-family:Inter,sans-serif;
+}
+.phone.light{
+  --background:#FFF8F0; --surface:#FFFFFF; --text:#2B2118; --outline:#E8DDD3;
+  --surface-variant:#F2E8DE; --on-surface-variant:#5A4B40;
+  --primary-container:#FFDCCF; --secondary-container:#DCE8CC; --tertiary-container:#FCE3B8;
+  --hairline:#E8DDD3; --scrim:rgba(0,0,0,.34); --shadow:0 4px 16px rgba(0,0,0,.06);
+  --card-bg:#FFFFFF; --card-line:transparent; --card-tint:none;
+}
+.phone.dark{
+  --background:#241C16; --surface:#312720; --text:#FFF8F0; --outline:#5A4B40;
+  --surface-variant:#3D3129; --on-surface-variant:#E8DDD3;
+  --primary-container:#6E2C15; --secondary-container:#2F3D1E; --tertiary-container:#4A3413;
+  --hairline:#5A4B40; --scrim:rgba(0,0,0,.55); --shadow:0 4px 16px rgba(0,0,0,.35);
+  /* Decisión B+C (contraste de tarjeta en oscuro): borde 3,26:1 + tinte cálido */
+  --card-bg:#3A2E26; --card-line:#7D6A5C; --card-tint:linear-gradient(160deg,#3A2E26,#45261E);
+}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.body{flex:1;overflow:hidden;padding:0 16px}
+.stack{display:flex;flex-direction:column;gap:14px}
+
+/* degradados reales de RecipeAccent */
+.g-ember{background:linear-gradient(160deg,var(--surface-variant),var(--primary-container))}
+.g-grove{background:linear-gradient(160deg,var(--secondary-container),var(--primary-container))}
+.g-rose{background:linear-gradient(160deg,var(--secondary-container),var(--tertiary-container))}
+.b-ember{background:linear-gradient(90deg,var(--surface-variant),var(--primary-container))}
+.b-rose{background:linear-gradient(90deg,var(--secondary-container),var(--tertiary-container))}
+.b-curry{background:linear-gradient(90deg,var(--tertiary-container),var(--secondary-container))}
+.b-grove{background:linear-gradient(90deg,var(--secondary-container),var(--primary-container))}
+
+/* ===================== RecipeCard C3 + ingredientes ===================== */
+.ncard{background:var(--card-bg);border:1px solid var(--card-line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.ncard .art{position:relative;aspect-ratio:16/10;display:flex;flex-direction:column;justify-content:space-between;padding:13px;background:var(--card-tint,var(--surface));background-color:var(--card-bg)}
+.ncard.wide .art{aspect-ratio:16/10;padding:16px}
+.ncard .cat{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-surface-variant)}
+.ncard .t{font-family:Manrope;font-weight:800;font-size:21px;line-height:1.13;letter-spacing:-.02em;margin-top:3px}
+.ncard.wide .t{font-size:26px}
+.ncard .ing1{font-size:11.5px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ing3{display:grid;gap:3px;font-size:12px;color:var(--on-surface-variant)}
+.ing3 span{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--hairline);padding-bottom:2px}
+.ing3 b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.ncard .foot{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid var(--hairline);padding-top:7px;font-size:11.5px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.ncard .match{font-family:Manrope;font-weight:800;font-size:13px;color:var(--primary)}
+.ncard .cardbody{padding:10px 13px 13px}
+.ncard .sub{font-size:12px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.filete{position:absolute;left:0;right:0;bottom:0;height:6px}
+.heart{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--surface) 92%,transparent);display:grid;place-items:center;color:var(--primary);font-size:14px}
+.wm{position:absolute;right:-16px;bottom:18px;color:var(--on-surface-variant);opacity:.12;stroke:currentColor;fill:none;stroke-width:2.2}
+
+/* ===== Decisión L2: imagen de IA como fondo del hueco + banda sólida de ingredientes ===== */
+.ncard .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.ncard .scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(20,12,8,.78),rgba(20,12,8,.18) 52%,rgba(20,12,8,.42))}
+.ncard.onimg .art > :not(.bgimg):not(.scrim):not(.filete){position:relative;z-index:2}
+.ncard.onimg .art{--text:#FFFFFF;--on-surface-variant:rgba(255,255,255,.86);--hairline:rgba(255,255,255,.32)}
+.ncard.onimg .art .foot{border-top-color:rgba(255,255,255,.32)}
+.ncard.onimg .art .match{color:#fff;background:var(--primary);padding:2px 8px;border-radius:999px}
+.ncard.onimg .cat{color:rgba(255,255,255,.86)}
+.ncard.onimg .t{color:#fff}
+.ncard.l2 .ingband{padding:11px 13px 13px;background:var(--card-bg)}
+.ncard.l2 .ingband .ing3 span{color:var(--on-surface-variant)}
+.ncard.l2 .ingband .ing3 b{color:var(--text)}
+
+/* ===================== Home ===================== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 10px;gap:10px}
+.greet{font-family:Manrope;font-weight:700;font-size:19px;letter-spacing:-.01em}
+.greet-sub{font-size:12px;color:var(--on-surface-variant)}
+.avatar{width:38px;height:38px;border-radius:999px;background:var(--primary-container);color:var(--text);display:grid;place-items:center;font-family:Manrope;font-weight:800;font-size:15px}
+.searchbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--hairline);border-radius:999px;height:46px;padding:0 16px;box-shadow:var(--shadow)}
+.searchbar .ph{font-size:14px;color:var(--on-surface-variant)}
+.spark{color:var(--primary);font-size:15px}
+.helper{font-size:11.5px;color:var(--on-surface-variant);padding:6px 4px 0}
+.herocard{background:linear-gradient(140deg,var(--primary),#B7431F);border-radius:24px;padding:16px;color:#fff;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.herocard .ht{font-family:Manrope;font-weight:800;font-size:20px;letter-spacing:-.02em}
+.herocard .hs{font-size:12.5px;opacity:.92;margin-top:3px;max-width:240px}
+.hbtn{display:inline-block;margin-top:12px;background:#fff;color:#2B2118;font-weight:700;font-size:13px;padding:8px 16px;border-radius:999px}
+.secrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:4px 0 0}
+.secrow .h{font-family:Manrope;font-weight:700;font-size:16px}
+.secrow .c{font-size:11.5px;color:var(--on-surface-variant)}
+.carousel{display:flex;gap:12px;margin:0 -16px;padding:0 16px}
+.chiprow{display:flex;gap:8px;overflow:hidden;margin:0 -16px;padding:0 16px}
+.chip{flex:0 0 auto;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;border:1px solid var(--hairline);color:var(--on-surface-variant);background:var(--surface)}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.grp{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-variant);margin-top:6px}
+.listrow{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:20px;padding:9px;box-shadow:var(--shadow)}
+.mono-tile{width:96px;height:96px;border-radius:24px;background:var(--surface-variant);display:grid;place-items:center;position:relative;flex:0 0 auto;border-left:5px solid var(--primary)}
+.mono{font-family:Manrope;font-weight:800;font-size:30px;letter-spacing:-.04em;color:var(--on-surface-variant)}
+.listrow .lt{font-family:Manrope;font-weight:700;font-size:15px;line-height:1.2}
+.listrow .ls{font-size:12px;color:var(--on-surface-variant);margin-top:2px;font-variant-numeric:tabular-nums}
+.listrow .lh{margin-left:auto;color:var(--primary);font-size:15px;padding-right:6px}
+
+/* ===================== barra inferior + FAB ===================== */
+.bottomnav{position:absolute;left:0;right:0;bottom:0;height:80px;background:var(--surface);border-top:1px solid var(--hairline);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:space-around;padding-bottom:8px}
+.navitem{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--on-surface-variant)}
+.navitem.on{color:var(--primary);font-weight:700}
+.navitem .dot{width:22px;height:22px;border-radius:6px;border:2px solid currentColor;opacity:.9}
+.fab{position:absolute;right:18px;bottom:92px;background:var(--primary);color:#fff;font-weight:700;font-size:13.5px;padding:12px 18px;border-radius:999px;box-shadow:0 8px 20px rgba(217,85,43,.35)}
+
+/* ===================== Detalle ===================== */
+.herowrap{position:relative}
+.hero{height:240px;border-radius:0 0 24px 24px;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:18px;background:var(--surface-variant);overflow:hidden}
+.hero .cat{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-surface-variant)}
+.hero .t{font-family:Manrope;font-weight:800;font-size:29px;line-height:1.08;letter-spacing:-.025em;margin-top:4px}
+.hero .ing3{margin-top:12px;font-size:12.5px;color:var(--on-surface-variant)}
+.fabback{position:absolute;top:14px;left:14px;width:34px;height:34px;border-radius:999px;background:color-mix(in srgb,var(--surface) 88%,transparent);display:grid;place-items:center;font-size:15px}
+.metastrip{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-radius:0 0 24px 24px;padding:12px 4px;box-shadow:var(--shadow);margin-bottom:12px}
+.metastrip div{text-align:center;border-right:1px solid var(--hairline)}
+.metastrip div:last-child{border-right:0}
+.metastrip .k{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-variant)}
+.metastrip .v{font-family:Manrope;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;margin-top:2px}
+.tabs{display:flex;gap:4px;background:var(--surface-variant);border-radius:999px;padding:4px;margin:6px 0 12px}
+.tabs span{flex:1;text-align:center;font-size:12.5px;font-weight:600;padding:8px 0;border-radius:999px;color:var(--on-surface-variant)}
+.tabs span.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.serv{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px}
+.serv .l{font-size:12.5px;font-weight:600}
+.serv .s{font-size:11px;color:var(--on-surface-variant)}
+.stepper{display:flex;align-items:center;gap:12px;font-family:Manrope;font-weight:700;font-variant-numeric:tabular-nums}
+.stepper i{font-style:normal;width:28px;height:28px;border-radius:999px;border:1px solid var(--outline);display:grid;place-items:center;color:var(--on-surface-variant)}
+.inglist{background:var(--surface);border-radius:20px;padding:4px 14px;box-shadow:var(--shadow)}
+.ingrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--hairline);font-size:13.5px}
+.ingrow:last-child{border-bottom:0}
+.box{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--outline);flex:0 0 auto}
+.ingrow .q{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--on-surface-variant)}
+.actionbar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;padding:14px 16px 20px;background:var(--surface);border-top:1px solid var(--hairline);border-radius:24px 24px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+.btn{flex:1;text-align:center;font-weight:700;font-size:14px;padding:14px 0;border-radius:999px}
+.btn.outline{border:1px solid var(--outline);color:var(--text)}
+.btn.solid{background:var(--primary);color:#fff}
+
+/* hoja de componentes (sin teléfono) */
+.sheet{background:#FFF;border-radius:24px;padding:22px;box-shadow:0 4px 16px rgba(0,0,0,.08);display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #E8DDD3;vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5A4B40}
+code{background:#F2E8DE;padding:1px 6px;border-radius:6px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Sazón · prototipo para revisión</div>
+  <h1>C3 «carta de restaurante» + los 3 ingredientes principales</h1>
+  <p>Pantallas reales, claro y oscuro, con los tokens de <code>DESIGN.md</code> y los degradados reales
+    de <code>RecipeAccent</code>. Sin fotos en ningún sitio: cero assets, cero red.</p>
+
+  <div class="note">
+    <b>La decisión que trae esta versión:</b> los 3 ingredientes con cantidad no caben en una tarjeta de
+    240×150 (16:10) con el título grande. Por eso verás <b>dos tratamientos</b>:
+    <ul>
+      <li><b>Compacto (16:10):</b> los 3 ingredientes en <b>una línea</b> («pollo · arroz · zanahoria») — para carrusel y rejilla.</li>
+      <li><b>Completo (16:10 ancha):</b> las <b>3 filas con cantidad</b> en cifras tabulares — para Resultados y el hero del Detalle, donde hay ancho.</li>
+    </ul>
+    Si quieres las filas <b>siempre</b>, la tarjeta del carrusel tiene que crecer a <b>3:2</b> (lo tienes abajo, en la hoja de componentes).
+  </div>
+
+  <div class="board" id="board">
+
+    <!-- ================= HOME ================= -->
+    <div class="cell"><div class="phone light">
+      <div class="cap">Claro · Inicio</div>
+      <div class="app">
+        <div class="topbar">
+          <div><div class="greet">Buenas tardes, Lucía</div><div class="greet-sub">¿Qué cocinamos hoy?</div></div>
+          <div class="avatar">L</div>
+        </div>
+        <div class="body" style="display:flex;flex-direction:column;gap:12px">
+          <div class="searchbar"><span class="spark">✦</span><span class="ph">¿Qué te apetece hoy?</span></div>
+          <div class="helper" style="padding:0 4px">Pídeselo a la IA: «algo con pollo y arroz»</div>
+
+          <div class="herocard">
+            <div class="ht">¿Qué tienes en la nevera?</div>
+            <div class="hs">Añade tus ingredientes y te proponemos recetas al instante.</div>
+            <span class="hbtn">Crear receta</span>
+          </div>
+
+          <div class="secrow"><span class="h">Sugeridas para ti</span><span class="c">basado en tus gustos</span></div>
+          <div class="carousel">
+            <div class="ncard" style="width:232px;flex:0 0 auto">
+              <div class="art">
+                <div><div class="cat">Desayuno · Española</div><div class="t">Tortilla<br>de patatas</div></div>
+                <div class="ing1">huevo · patata · cebolla</div>
+                <div class="foot"><span>25 min · Fácil</span><span class="match">98%</span></div>
+                <div class="filete b-ember"></div>
+              </div>
+            </div>
+            <div class="ncard" style="width:232px;flex:0 0 auto">
+              <div class="art">
+                <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+                <div class="ing1">pollo · arroz · zanahoria</div>
+                <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+                <div class="filete b-rose"></div>
+              </div>
+            </div>
+            <div class="ncard" style="width:232px;flex:0 0 auto">
+              <div class="art">
+                <div><div class="cat">Legumbres · India</div><div class="t">Curry de<br>garbanzos</div></div>
+                <div class="ing1">garbanzos · tomate · coco</div>
+                <div class="foot"><span>35 min · Media</span><span class="match">88%</span></div>
+                <div class="filete b-curry"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="secrow"><span class="h">Tus recetas</span></div>
+          <div class="chiprow">
+            <span class="chip on">Todas</span><span class="chip">Postres</span><span class="chip">Pasta</span>
+            <span class="chip">Arroz</span><span class="chip">Rápido</span><span class="chip">Vegetariano</span>
+          </div>
+          <div class="grp">Guardadas</div>
+          <div class="listrow">
+            <div class="mono-tile"><span class="mono">PT</span></div>
+            <div><div class="lt">Pasta al tomate</div><div class="ls">20 min · Fácil · 2 pers.</div></div>
+            <div class="lh">♥</div>
+          </div>
+        </div>
+        <div class="fab">＋ Crear receta</div>
+        <nav class="bottomnav">
+          <div class="navitem on"><span class="dot"></span>Inicio</div>
+          <div class="navitem"><span class="dot"></span>Favoritos</div>
+          <div class="navitem"><span class="dot"></span>Perfil</div>
+        </nav>
+      </div>
+    </div></div>
+
+    <!-- ================= RESULTADOS ================= -->
+    <div class="cell"><div class="phone light">
+      <div class="cap">Claro · Resultados</div>
+      <div class="app">
+        <div class="topbar" style="padding-bottom:4px">
+          <div><div class="greet">Estas son tus recetas</div>
+            <div class="greet-sub">A partir de 6 ingredientes · 30 min · 2 comensales</div></div>
+        </div>
+        <div class="body stack" style="padding-top:10px">
+          <div class="chiprow">
+            <span class="chip on">Relevancia</span><span class="chip">Más rápida</span>
+            <span class="chip">Más fácil</span><span class="chip">Ajustar</span>
+          </div>
+
+          <div class="ncard wide">
+            <div class="art">
+              <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con pollo criollo</div></div>
+              <div class="ing3">
+                <span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Zanahoria <b>1</b></span>
+              </div>
+              <div class="foot"><span>30 min · Media · 2 pers.</span><span class="match">92% coincidencia</span></div>
+              <div class="filete b-rose"></div>
+            </div>
+            <div class="cardbody"><div class="sub">Un clásico latino en una olla, listo en media hora.</div></div>
+          </div>
+
+          <div class="ncard wide">
+            <div class="art">
+              <div><div class="cat">Legumbres · India</div><div class="t">Curry de garbanzos</div></div>
+              <div class="ing3">
+                <span>Garbanzos <b>300 g</b></span><span>Tomate <b>2</b></span><span>Leche de coco <b>200 ml</b></span>
+              </div>
+              <div class="foot"><span>35 min · Media · 3 pers.</span><span class="match">88% coincidencia</span></div>
+              <div class="filete b-curry"></div>
+            </div>
+            <div class="cardbody"><div class="sub">Cremoso, especiado y sin nada de origen animal.</div></div>
+          </div>
+        </div>
+        <div class="actionbar"><span class="btn outline">Cambiar ingredientes</span></div>
+      </div>
+    </div></div>
+
+    <!-- ================= FAVORITOS LISTA ================= -->
+    <div class="cell"><div class="phone light">
+      <div class="cap">Claro · Favoritos (lista)</div>
+      <div class="app">
+        <div class="topbar" style="padding-bottom:4px">
+          <div><div class="greet">Mis recetas guardadas</div><div class="greet-sub">4 recetas</div></div>
+          <div style="display:flex;gap:6px">
+            <span class="chip" style="border-radius:999px">☰</span>
+            <span class="chip on" style="border-radius:999px">▦</span>
+          </div>
+        </div>
+        <div class="body stack" style="padding-top:10px">
+          <div class="searchbar" style="height:42px"><span style="color:var(--on-surface-variant)">⌕</span><span class="ph">Buscar en mis recetas</span></div>
+          <div class="chiprow"><span class="chip on">Recientes</span><span class="chip">Tiempo</span><span class="chip">Dificultad</span></div>
+          <div class="listrow">
+            <div class="mono-tile"><span class="mono">AC</span></div>
+            <div><div class="lt">Arroz con pollo criollo</div><div class="ls">30 min · Media · 2 pers.</div></div>
+            <div class="lh">♥</div>
+          </div>
+          <div class="listrow">
+            <div class="mono-tile"><span class="mono">TP</span></div>
+            <div><div class="lt">Tortilla de patatas</div><div class="ls">25 min · Fácil · 4 pers.</div></div>
+            <div class="lh">♥</div>
+          </div>
+          <div class="listrow">
+            <div class="mono-tile"><span class="mono">CG</span></div>
+            <div><div class="lt">Curry de garbanzos</div><div class="ls">35 min · Media · 3 pers.</div></div>
+            <div class="lh">♥</div>
+          </div>
+          <div class="listrow">
+            <div class="mono-tile"><span class="mono">GA</span></div>
+            <div><div class="lt">Gazpacho andaluz</div><div class="ls">10 min · Fácil · 4 pers.</div></div>
+            <div class="lh">♥</div>
+          </div>
+          <div style="font-size:11.5px;color:var(--on-surface-variant);display:flex;gap:6px;align-items:center;padding:2px 4px">
+            <span>☁</span> Disponibles sin conexión
+          </div>
+        </div>
+        <nav class="bottomnav">
+          <div class="navitem"><span class="dot"></span>Inicio</div>
+          <div class="navitem on"><span class="dot"></span>Favoritos</div>
+          <div class="navitem"><span class="dot"></span>Perfil</div>
+        </nav>
+      </div>
+    </div></div>
+
+    <!-- ================= FAVORITOS REJILLA ================= -->
+    <div class="cell"><div class="phone light">
+      <div class="cap">Claro · Favoritos (rejilla)</div>
+      <div class="app">
+        <div class="topbar" style="padding-bottom:4px">
+          <div><div class="greet">Mis recetas guardadas</div><div class="greet-sub">4 recetas</div></div>
+          <div style="display:flex;gap:6px">
+            <span class="chip on" style="border-radius:999px">☰</span>
+            <span class="chip" style="border-radius:999px">▦</span>
+          </div>
+        </div>
+        <div class="body stack" style="padding-top:10px">
+          <div class="chiprow"><span class="chip on">Recientes</span><span class="chip">Tiempo</span><span class="chip">Dificultad</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="ncard">
+              <div class="art">
+                <div><div class="cat">Arroz</div><div class="t" style="font-size:16px">Arroz con pollo</div></div>
+                <div class="ing1" style="font-size:10.5px">pollo · arroz · zanahoria</div>
+                <div class="filete b-rose"></div>
+              </div>
+            </div>
+            <div class="ncard">
+              <div class="art">
+                <div><div class="cat">Desayuno</div><div class="t" style="font-size:16px">Tortilla de patatas</div></div>
+                <div class="ing1" style="font-size:10.5px">huevo · patata · cebolla</div>
+                <div class="filete b-ember"></div>
+              </div>
+            </div>
+            <div class="ncard">
+              <div class="art">
+                <div><div class="cat">Legumbres</div><div class="t" style="font-size:16px">Curry de garbanzos</div></div>
+                <div class="ing1" style="font-size:10.5px">garbanzos · tomate · coco</div>
+                <div class="filete b-curry"></div>
+              </div>
+            </div>
+            <div class="ncard">
+              <div class="art">
+                <div><div class="cat">Pasta</div><div class="t" style="font-size:16px">Pasta al tomate</div></div>
+                <div class="ing1" style="font-size:10.5px">pasta · tomate · albahaca</div>
+                <div class="filete b-grove"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <nav class="bottomnav">
+          <div class="navitem"><span class="dot"></span>Inicio</div>
+          <div class="navitem on"><span class="dot"></span>Favoritos</div>
+          <div class="navitem"><span class="dot"></span>Perfil</div>
+        </nav>
+      </div>
+    </div></div>
+
+    <!-- ================= DETALLE ================= -->
+    <div class="cell"><div class="phone light">
+      <div class="cap">Claro · Detalle</div>
+      <div class="app">
+        <div style="padding:0 16px">
+          <div class="herowrap">
+            <div class="hero g-rose">
+              <svg class="wm" width="190" height="190" viewBox="0 0 100 100" style="right:-24px;bottom:-6px">
+                <path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+              <div class="fabback">←</div>
+              <div class="fbheart" style="position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:999px;background:color-mix(in srgb,var(--surface) 88%,transparent);display:grid;place-items:center;color:var(--primary)">♥</div>
+              <div class="cat">De la cocina latina</div>
+              <div class="t">Arroz con pollo criollo</div>
+              <div class="ing3">
+                <span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Zanahoria <b>1</b></span>
+              </div>
+              <div class="filete b-rose"></div>
+            </div>
+          </div>
+          <div class="metastrip">
+            <div><div class="k">Tiempo</div><div class="v">30 min</div></div>
+            <div><div class="k">Dificultad</div><div class="v">Media</div></div>
+            <div><div class="k">Comensales</div><div class="v">2</div></div>
+            <div><div class="k">Calorías</div><div class="v">480</div></div>
+          </div>
+          <div class="tabs"><span class="on">Ingredientes</span><span>Pasos</span><span>Notas</span></div>
+          <div class="serv">
+            <div><div class="l">Comensales</div><div class="s">Cantidades ajustadas automáticamente</div></div>
+            <div class="stepper"><i>−</i>2<i>+</i></div>
+          </div>
+          <div class="inglist">
+            <div class="ingrow"><span class="box"></span>Pollo<span class="q">400 g</span></div>
+            <div class="ingrow"><span class="box"></span>Arroz<span class="q">300 g</span></div>
+            <div class="ingrow"><span class="box"></span>Zanahoria<span class="q">1</span></div>
+            <div class="ingrow"><span class="box"></span>Pimiento rojo<span class="q">1</span></div>
+            <div class="ingrow"><span class="box"></span>Caldo de pollo<span class="q">600 ml</span></div>
+            <div class="ingrow"><span class="box"></span>Azafrán<span class="q">1 pizca</span></div>
+          </div>
+        </div>
+        <div class="actionbar">
+          <span class="btn outline">♥ Guardar</span>
+          <span class="btn solid">Empezar a cocinar</span>
+        </div>
+      </div>
+    </div></div>
+
+  </div><!-- /board -->
+
+  <h2>Hoja de componentes</h2>
+  <div class="sheet">
+    <div>
+      <div class="cap">RecipeCard · 16:10 · 232 px (carrusel)</div>
+      <div class="ncard" style="width:232px">
+        <div class="art">
+          <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+          <div class="ing1">pollo · arroz · zanahoria</div>
+          <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+          <div class="filete b-rose"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">RecipeCard · 16:10 · 358 px (Resultados)</div>
+      <div class="ncard wide" style="width:358px">
+        <div class="art">
+          <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con pollo criollo</div></div>
+          <div class="ing3"><span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Zanahoria <b>1</b></span></div>
+          <div class="foot"><span>30 min · Media · 2 pers.</span><span class="match">92%</span></div>
+          <div class="filete b-rose"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">Alternativa si quieres las 3 filas siempre: 3:2</div>
+      <div class="ncard" style="width:232px">
+        <div class="art" style="aspect-ratio:3/2">
+          <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+          <div class="ing3"><span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Zanahoria <b>1</b></span></div>
+          <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+          <div class="filete b-rose"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">Favoritos · miniatura 96×96</div>
+      <div class="mono-tile"><span class="mono">AC</span></div>
+      <div class="cap" style="margin-top:14px">Regla de color = cocina</div>
+      <div style="display:flex;gap:8px">
+        <div style="width:34px;height:34px;border-radius:8px" class="b-ember"></div>
+        <div style="width:34px;height:34px;border-radius:8px" class="b-rose"></div>
+        <div style="width:34px;height:34px;border-radius:8px" class="b-curry"></div>
+        <div style="width:34px;height:34px;border-radius:8px" class="b-grove"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>El interruptor de imágenes de IA, dentro de la tarjeta (L2)</h2>
+  <div class="note">
+    <b>OFF</b> (tu preferencia) la tarjeta es tipográfica y no toca red ni cuota. <b>ON</b>, la imagen
+    generada es la <b>capa de fondo</b> del hueco (categoría y título encima, con el <i>scrim</i> que
+    <code>DESIGN.md</code> ya exige) y los <b>3 ingredientes con cantidad bajan a una banda sólida</b>
+    (L2). La tipografía es la capa base, así que la imagen entra con el crossfade de 250 ms
+    <b>sin salto de layout</b>; si falla, tarda o se agota el tope de sesión, se queda la tipográfica en
+    silencio. Las tarjetas de abajo llevan las fotos reales del APK puestas como fondo, solo para ver
+    cómo lee la tipografía encima.
+  </div>
+  <div class="sheet" style="background:#FFF">
+    <div>
+      <div class="cap">OFF · tipográfica</div>
+      <div class="ncard" style="width:300px;--card-bg:#FFFFFF;--card-tint:none;--card-line:transparent">
+        <div class="art">
+          <svg class="wm" width="150" height="150" viewBox="0 0 100 100"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+          <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con pollo criollo</div></div>
+          <div class="ing1">pollo · arroz · zanahoria</div>
+          <div class="foot"><span>30 min · Media · 2 pers.</span><span class="match">92%</span></div>
+          <div class="filete b-rose"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">ON · L2, banda sólida (claro)</div>
+      <div class="ncard onimg l2" style="width:300px;--card-bg:#FFFFFF;--card-line:transparent">
+        <div class="art" style="aspect-ratio:16/9">
+          <img class="bgimg" src="../../../../app/src/main/assets/img/recipes/category/cat-rice.jpg" alt="">
+          <div class="scrim"></div>
+          <div><div class="cat">Arroz · Latina</div><div class="t" style="font-size:23px">Arroz con pollo criollo</div></div>
+          <div class="filete b-rose"></div>
+        </div>
+        <div class="ingband">
+          <div class="ing3" style="color:#5A4B40">
+            <span>Pollo <b style="color:#2B2118">400 g</b></span>
+            <span>Arroz <b style="color:#2B2118">300 g</b></span>
+            <span style="border-bottom:0">Zanahoria <b style="color:#2B2118">1</b></span>
+          </div>
+          <div class="foot" style="margin-top:7px"><span>30 min · Media · 2 pers.</span><span class="match">92%</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">ON · L2, banda sólida (oscuro, B+C)</div>
+      <div class="ncard onimg l2" style="width:300px;--card-bg:#3A2E26;--card-line:#7D6A5C;--card-tint:none;background:#3A2E26">
+        <div class="art" style="aspect-ratio:16/9;background:#3A2E26">
+          <img class="bgimg" src="../../../../app/src/main/assets/img/recipes/seed/seed-pollo-al-ajillo.jpg" alt="">
+          <div class="scrim"></div>
+          <div><div class="cat">Pollo · Española</div><div class="t" style="font-size:23px">Pollo al ajillo</div></div>
+          <div class="filete b-ember"></div>
+        </div>
+        <div class="ingband" style="background:#3A2E26">
+          <div class="ing3" style="color:#E8DDD3">
+            <span>Pollo <b style="color:#FFF8F0">4 muslos</b></span>
+            <span>Ajo <b style="color:#FFF8F0">6 dientes</b></span>
+            <span style="border-bottom:0">Vino blanco <b style="color:#FFF8F0">100 ml</b></span>
+          </div>
+          <div class="foot" style="margin-top:7px;border-top-color:#5A4B40"><span>40 min · Fácil · 4 pers.</span><span class="match">95%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Especificación de la tarjeta</h2>
+  <table>
+    <tr><th>Elemento</th><th>Valor</th><th>De dónde</th></tr>
+    <tr><td>Fondo de la tarjeta</td><td><code>surface</code> (#FFFFFF / #312720)</td><td><code>DESIGN.md</code> · inline</td></tr>
+    <tr><td>Categoría</td><td>10 px · 700 · versalitas · <code>letter-spacing .14em</code> · <code>onSurfaceVariant</code></td><td>nuevo</td></tr>
+    <tr><td>Título</td><td>Manrope 800 · 21 px (16:10 · 232) / 26 px (16:10 · 358) / 29 px (hero 240)</td><td><code>DESIGN.md</code> · Manrope Bold</td></tr>
+    <tr><td>Ingredientes (compacto)</td><td>1 línea, 11,5 px, <code>onSurfaceVariant</code>, recorte con puntos suspensivos</td><td>nuevo</td></tr>
+    <tr><td>Ingredientes (completo)</td><td>3 filas, 12–12,5 px, cantidad a la derecha en <b>cifras tabulares</b>, hairline entre filas</td><td><code>DESIGN.md</code> "cifras tabulares"</td></tr>
+    <tr><td>Filete inferior</td><td>6 px, degradado por <code>cuisineId</code> (mismo <code>RecipeAccent</code>)</td><td>reutiliza <code>RecipeArtworkStyle</code></td></tr>
+    <tr><td>Coincidencia</td><td>Manrope 800 · 13 px · <code>primary</code></td><td><code>DESIGN.md</code> (píldora terracota)</td></tr>
+    <tr><td>Miniatura Favoritos</td><td>96×96 · <code>surfaceVariant</code> + filete de 5 px a la izquierda + monograma</td><td>sustituye la foto</td></tr>
+    <tr><td>Marca de agua</td><td>glifo de categoría de <code>ui/artwork</code>, al 12 %, esquina inferior derecha</td><td>reutiliza <code>RecipeGlyph</code></td></tr>
+    <tr><td>Sin fotos</td><td>0 assets · −6,4 MiB de APK</td><td>se retira <code>img/recipes/</code></td></tr>
+  </table>
+
+  <div class="note warn">
+    <b>Avísame de dos cosas al mirarlo:</b> (1) ¿la tarjeta compacta con ingredientes en una línea se lee
+    bien o prefieres subir el carrusel a 3:2?; (2) el Detalle sin foto es la pantalla que más cambia:
+    dime si el hero con la marca de agua te convence o quieres ahí una ilustración/foto propia (una sola
+    pantalla, coste de assets mínimo, y no vuelve la imprecisión).
+  </div>
+
+  <p style="font-size:12.5px;color:#5A4B40;margin-top:24px">
+    Bocetos de comparación generados en local; no son assets del producto ni una spec. La dirección visual
+    aprobada sigue siendo <code>DESIGN.md</code>. Cada pantalla aparece duplicada en modo oscuro
+    automáticamente. Fichero fuera de control de versiones (<code>preview/</code>).
+  </p>
+</div>
+
+<script>
+  /* Saca el rótulo fuera del marco y duplica cada pantalla en modo oscuro */
+  document.querySelectorAll('.phone').forEach(p => {
+    const cap = p.querySelector('.cap');
+    const col = document.createElement('div');
+    col.className = 'col';
+    p.parentElement.insertBefore(col, p);
+    if (cap) { cap.remove(); col.appendChild(cap); }
+    col.appendChild(p);
+
+    const dc = cap.cloneNode(true);
+    dc.textContent = cap.textContent.replace('Claro', 'Oscuro');
+    const d = p.cloneNode(true);
+    d.classList.remove('light'); d.classList.add('dark');
+    col.appendChild(dc); col.appendChild(d);
+  });
+</script>
+</body>
+</html>

@@ -5,6 +5,11 @@
 Aceptado (feature `recipe-photos`, issue #83). Ajusta parcialmente la decisión "sin imágenes" que
 fijaba `DESIGN.md` (Open Design Question 4, resuelta el 2026-10-12 por `recipe-artwork`).
 
+**Ajustado por `docs/adr/0006-typographic-recipe-cards.md`**: la **cadena local de fotos se retira** con
+la feature `retire-recipe-photos` (la imagen de una receta es **tipográfica** y, cuando existe foto, es
+**capa de fondo** del hueco). Se conserva únicamente `img/recipes/default.<ext>` (~136 KB) como **ancla
+de estilo** de `dish-style-reference` (ADR 0005, fase 6), que no se muestra en ninguna pantalla.
+
 ## Contexto
 
 El MVP resolvía la imagen de una receta con un **placeholder dibujado**: un bloque con degradado
