@@ -5,16 +5,19 @@
 **Aceptado parcialmente (fases 1-7)** — features `dish-image-domain` (fase 1), `dish-image-generator`
 (fase 2), `dish-image-cache` (fase 3), `dish-image-progressive-ui` (fase 4, mitad de integración),
 `dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5),
-`dish-style-reference` (fase 6) y `dish-image-seed` (fase 7), 2026-10-13. Fija la decisión de
+`dish-style-reference` (fase 6) y `dish-image-seed` (fase 7), más el seguimiento de integración
+`dish-visual-descriptor-wiring` (entrega en runtime de la fase 5), 2026-10-13. Fija la decisión de
 arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
 real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
 delante de la cadena local con una progresión con crossfade, añade el **control de gasto** (interruptor
 de usuario + tope de generaciones por sesión), fija en el **contrato con la IA** el descriptor visual
-opcional (`dishKey`/`imagePrompt`) que alimenta esa misma política, añade al adaptador el **ajuste con
+opcional (`dishKey`/`imagePrompt`) que alimenta esa misma política y **lo entrega en runtime** (el
+almacén de sesión y el `requestFor` lo consumen), añade al adaptador el **ajuste con
 una referencia de estilo versionada** (`/images/edits`, variante C) con respaldo por texto y, en la
 fase 7, **empaqueta preparado de antemano** el set semilla de platos frecuentes resuelto por la clave
 canónica **delante del generador**. Con eso la **fase 4 queda completa**, la **fase 5** entrega contrato
-+ política pura, la **fase 6** entrega la capa de transporte del anclaje visual y la **fase 7** la
++ política pura + entrega en runtime, la **fase 6** entrega la capa de transporte del anclaje visual y
+la **fase 7** la
 tercera capa de la caché (assets semilla), de modo que la **lista de fases de la propuesta queda
 completa**. Ajusta **parcialmente** `docs/adr/0004-recipe-photos-as-assets.md`: la cadena de assets
 sigue siendo válida y offline, pero pasa a ser el **respaldo** de la imagen generada, ya conectada en
@@ -144,7 +147,8 @@ fallo → foto local, nunca error de UI; la `CancellationException` se propaga. 
 sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
 
 Alcance de la **fase 5** (feature `dish-visual-descriptor`): el **contrato con la IA** y la **política
-pura** del descriptor visual opcional del plato, **sin entrega en runtime**. El wire gana dos campos
+pura** del descriptor visual opcional del plato (la entrega en runtime quedó diferida a su feature de
+seguimiento `dish-visual-descriptor-wiring`). El wire gana dos campos
 **opcionales** por receta, `dishKey` (plato canónico, pensado como clave compartida) e `imagePrompt`
 (descripción visual del plato terminado): el DTO del wire los declara como `JsonElement?` para que un
 tipo JSON equivocado **nunca** descarte la receta como `SCHEMA` (mismo espíritu que "al gusto") y el
@@ -154,18 +158,25 @@ ganchos de la política pasan a aceptar el descriptor como **parámetro opcional
 `DishImageRequest.of(taxonomy, recipe, descriptor)`): con `dishKey` utilizable la clave es la del plato
 canónico (misma normalización; `"arroz con pollo"` y `"arroz con pollo fácil"` **comparten** imagen) y con
 `imagePrompt` el prompt cambia **solo** la cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos).
-`AiDecodeResult` expone los descriptores por `id` generado (`descriptors`) solo de recetas **aceptadas**,
-pero **nadie** los consume todavía: `MainActivity` compone `DishImageRequest.of(taxonomy, recipe)` sin
-descriptor, así que la app sigue con el respaldo por título. `Recipe` y `RecipeValidator` **no** cambian
-(el descriptor es cosmético: no se valida ni se persiste) y `AiRecipeIds.canonical` queda **intacto** (el
+`AiDecodeResult` expone los descriptores por `id` generado (`descriptors`) solo de recetas **aceptadas**
+y, desde la feature de seguimiento `dish-visual-descriptor-wiring` (2026-10-13), **sí se entregan en
+runtime**: el adaptador los expone por la costura aditiva `onDescriptors` (una vez por decode exitoso,
+nunca en fallo/degradación/cancelación), `data.image.DishVisualDescriptorStore` los guarda **por sesión**
+por `id` y `MainActivity` compone `DishImageRequest.of(taxonomy, recipe, descriptorFor(recipe.id))`, con
+lo que el `dishKey` del modelo es la clave canónica compartida y el `imagePrompt` el prompt. Sin
+descriptor (receta semilla, restaurada del Lote o un Favorito, o `id` desconocido) la app sigue con el
+respaldo por título. `Recipe` y `RecipeValidator` **no** cambian
+(el descriptor es cosmético: no se valida y **no se persiste**; el almacén es en memoria y se pierde al
+recrear la `Activity`) y `AiRecipeIds.canonical` queda **intacto** (el
 descriptor no entra en el `id`). **No** sube `DishImageCacheKey.VERSION` porque ni la normalización ni la
 plantilla cambian, solo la **fuente** del plato cuando el modelo lo emite. Ver
-`docs/specs/dish-visual-descriptor.md`.
+`docs/specs/dish-visual-descriptor.md` y `docs/specs/dish-visual-descriptor-wiring.md`.
 
-La **entrega en runtime** del descriptor (conectar `AiDecodeResult.descriptors` con
-`DishImageArtworkLoader.requestFor`) es un non-goal declarado de la fase 5 y merece su propia feature de
-integración (`dish-visual-descriptor-wiring`, recomendada en la spec); el argumento `descriptor` de
-`DishImageRequest.of` ya existe para eso.
+La **entrega en runtime** del descriptor ya **no** está pendiente: la cerró la feature de integración
+`dish-visual-descriptor-wiring` (2026-10-13) cableando `AiDecodeResult.descriptors` →
+`DishVisualDescriptorStore` → `DishImageArtworkLoader.requestFor` con el argumento `descriptor` que
+`DishImageRequest.of` ya aceptaba. La limitación viva es que el descriptor es **efímero por sesión**: una
+receta restaurada del Lote o un Favorito se resuelve por título hasta la siguiente llamada de IA.
 
 Alcance de la **fase 6** (feature `dish-style-reference`): el **ajuste con referencia de estilo** en el
 adaptador ya aceptado (`DevExpertDishImageGenerator`), **sin** tocar el puerto, el prompt ni la clave.
@@ -313,7 +324,12 @@ dirección visual). Ver `docs/specs/dish-image-seed.md`.
   tiempo conviven imágenes "de texto" y "ajustadas" (sin error y sin gasto extra). Subir a
   `dish-image-v2` las uniformaría de golpe pero **repagaría cuota** por cada plato ya cacheado; queda
   como decisión de seguimiento (una línea con su propia evidencia) si se prefiere uniformidad a gasto.
-- **Pendiente**: la **entrega en runtime** del descriptor de la fase 5. La fase 6 entrega el ajuste con
+- **Entregado y ya sin pendientes de la fase 5**: la **entrega en runtime** del descriptor la cerró
+  `dish-visual-descriptor-wiring` (2026-10-13): `onDescriptors` en el adaptador + almacén de sesión en
+  `data.image` + `requestFor` con `descriptorFor(recipe.id)`. La limitación viva es que el descriptor es
+  **efímero por sesión** (no se persiste; una receta restaurada del Lote o un Favorito se resuelve por
+  título hasta la siguiente llamada de IA) y la consecuencia de caché ya anotada (título → `dishKey`:
+  una generación extra la primera vez). La fase 6 entrega el ajuste con
   referencia versionada y respaldo por texto, con la entrada de la variante C **cerrada** en
   `DishImagePolicy` (`IMAGES_EDITS_PATH`, `EDIT_MODEL_ALIAS`, `EDIT_FALLBACK_STATUSES`,
   `STYLE_REFERENCE_ENABLED`); la **fase 7** entrega el set semilla (assets versionados por clave
@@ -323,7 +339,8 @@ dirección visual). Ver `docs/specs/dish-image-seed.md`.
   persona tras el merge. De las preguntas abiertas de la propuesta §11, la decisión Room vs ficheros queda
   **resuelta** en la fase 3 (ficheros en `cacheDir`), el **interruptor de usuario y el tope por sesión
   quedan resueltos** en la fase 4 (constantes en `DishImageSettingsPolicy`), la **coherencia conceptual
-  del mismo plato queda cubierta** en la fase 5 vía `dishKey` del modelo y el **set semilla queda
+  del mismo plato queda cubierta** en la fase 5 vía `dishKey` del modelo (ya **entregado en runtime**) y
+  el **set semilla queda
   resuelto** en la fase 7 (assets empaquetados, con `--source` como vía sin cuota); siguen abiertas el
   tamaño objetivo y el tope de disco (fijados aquí en 960 px WebP q80 y 80 MiB, susceptibles de ajuste) y
   la **lista concreta** de platos frecuentes (hoy 6, ampliable de forma aditiva: una línea en el script

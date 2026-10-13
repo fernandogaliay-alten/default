@@ -2,6 +2,7 @@ package com.sazon.app.data.ai
 
 import com.sazon.app.domain.generator.GenerationConstraints
 import com.sazon.app.domain.generator.RecipeGenerator
+import com.sazon.app.domain.image.DishVisualDescriptor
 import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.prompt.BuiltPrompt
 import com.sazon.app.domain.prompt.PromptBuilder
@@ -63,6 +64,16 @@ class DevExpertRecipeGenerator(
      * (`BuildConfig.DEBUG`). El desglose `INCOHERENT` **no** depende de este interruptor.
      */
     private val verboseDiagnostics: Boolean = false,
+    /**
+     * Costura aditiva (patron `onEvent`/`onRecipesGenerated`) que expone el **descriptor visual** del
+     * modelo ([AiDecodeResult.descriptors], fase 5) sin cambiar el puerto [RecipeGenerator]. Se invoca
+     * **una vez por decode exitoso** con el mapa de descriptores por `id` **generado** de cada receta
+     * aceptada (posiblemente vacio) y **nunca** en fallo, degradacion ni cancelacion. El default es un
+     * no-op: no rompe constructores ni tests existentes; `MainActivity` lo cablea al almacen de sesion.
+     * El tipo es publico (`DishVisualDescriptor` es de dominio), asi que `AiDecodeResult` (`internal`)
+     * no entra en la firma.
+     */
+    private val onDescriptors: (Map<String, DishVisualDescriptor>) -> Unit = {},
 ) : RecipeGenerator {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -147,6 +158,9 @@ class DevExpertRecipeGenerator(
                         responseFormat = formatOf(includeFormat),
                         rawContent = if (verboseDiagnostics) outcome.content else null,
                     )
+                    // Descriptor visual (fase 5): se expone **una vez** el mapa del decode (clave = `id`
+                    // generado, posiblemente vacio). En fallo/degradacion/cancelacion no se llega aqui.
+                    onDescriptors(result.descriptors)
                     return result.accepted
                 }
 

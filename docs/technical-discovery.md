@@ -550,6 +550,11 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `"arroz con pollo fácil"` **comparten** imagen) y con `imagePrompt` el prompt **solo** cambia la
   cláusula del plato (prefijo, cocina y `STYLE_SUFFIX` intactos); sin descriptor el resultado es
   **exactamente** el de la fase 1 y `VERSION` **no** sube (no cambia ni la normalización ni la plantilla).
+  Desde `dish-visual-descriptor-wiring` (2026-10-13) el descriptor **sí se entrega en runtime**: el
+  adaptador lo expone por `onDescriptors` y `MainActivity` compone con `descriptorFor(recipe.id)`
+  (ver el bullet del adaptador de chat), así que un `dishKey` compartido se materializa en una sola
+  imagen; sin descriptor (receta semilla, restaurada del Lote o un Favorito, o id desconocido) la
+  composición es la de siempre.
   La **caché** de la fase 3 ya existe (`data.image`, ver el bullet de más abajo) y el adaptador real de
   la fase 2 también; desde la fase 4 (`dish-image-progressive-ui`) el puerto **sí tiene consumidor**: el
   nivel generado entra por delante de la cadena de `recipe-photos` (assets offline), que pasa a ser el
@@ -686,9 +691,12 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   la **fase 5** el DTO declara además `dishKey`/`imagePrompt` como `JsonElement?` **a propósito** (un tipo
   JSON equivocado no puede contar la receta como `SCHEMA`; solo se aceptan `JsonPrimitive` de tipo string)
   y `AiDecodeResult.descriptors` expone el descriptor limpio por `id` generado **solo de recetas
-  aceptadas**: es el transportador documentado, pero **nadie** lo consume en runtime todavía
-  (`MainActivity` compone `DishImageRequest.of(taxonomy, recipe)` sin descriptor) y **no** entra en el
-  `id` ni en `Recipe`. El
+  aceptadas**: desde `dish-visual-descriptor-wiring` **sí tiene consumidor en runtime** —el adaptador
+  lo entrega por la costura aditiva `onDescriptors` (una vez por decode exitoso, nunca en
+  fallo/degradación/cancelación), `data.image.DishVisualDescriptorStore` lo guarda **por sesión** por
+  `id` y `MainActivity` compone `DishImageRequest.of(taxonomy, recipe, descriptorFor(recipe.id))`—, de
+  modo que el `dishKey` del modelo es la **clave canónica compartida** y el `imagePrompt` el prompt; el
+  descriptor sigue siendo **efímero** (no se persiste) y **no** entra en el `id` ni en `Recipe`. El
   **formato de la peticion** se prueba en `OpenAiChatTest` (sin formato **no** aparece
   `response_format` ni un `null`; con `ResponseFormat.JSON_OBJECT` se emite `{"type":"json_object"}`) y
   el **fallback one-shot** (400/422 -> 2 llamadas, la segunda sin formato; `401/403/404/429/5xx` sin
@@ -755,7 +763,15 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   en JVM con la Taxonomía real (`taxonomy.asset.path`) y **sin**
   dependencias nuevas: la fase 1 es política pura, sin red ni UI que probar. El parseo tolerante del wire
   (escenarios del descriptor presentes/ausentes/inválidos y estabilidad del `id`) vive en
-  `DishVisualDescriptorWireTest` (`data.ai`).
+  `DishVisualDescriptorWireTest` (`data.ai`). La **entrega en runtime**
+  (`dish-visual-descriptor-wiring`, 2026-10-13) se prueba con `DishVisualDescriptorStoreTest`
+  (`data.image`: ids en blanco y descriptores `NONE`/vacíos ignorados, último gana, `null` para
+  id nulo/en blanco/desconocido y sin estado compartido entre instancias),
+  `DishVisualDescriptorWiringTest` (`data.ai`: decode → `record` → `DishImageRequest.of` con la clave y
+  el prompt del descriptor, dos variantes del mismo `dishKey` con la **misma** clave canónica, y
+  degradación **exacta** a la fase 1 sin descriptor) y los casos nuevos de
+  `DevExpertRecipeGeneratorTest` (la costura `onDescriptors` se invoca **una vez** con el mapa del
+  decode —vacío si no hay descriptor—, nunca en fallo/cancelación, y su default es un no-op).
 - **Tests JVM de la caché de imagen de plato (fase 3, `data.image`)**: `DishImageCachePolicyTest`
   (nombre de fichero `<clave>.webp`, constantes del tope, y selección pura de víctimas: orden por
   recencia con desempate por nombre —con un caso negativo que falla si el desempate se invierte—,
