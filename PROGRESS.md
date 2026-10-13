@@ -84,8 +84,17 @@
   persistencia, `ui.theme` ni el resto de la pantalla. La desviación de capturas está autorizada
   (issue #85, misma clase que #77) y registrada en `DESIGN.md` (microcopy "Recientes" + toggle icónico);
   **no** se crea `docs/design/concepts/favorites-sort-controls/`. Detalle en
-  `docs/validations/favorites-sort-controls.md`. WIP = 0. Antes:
-  la por aquel entonces última feature **`accepted`**: **`recipe-artwork`** (issue #77, `area: ui`), cerrada en la sesión 078
+  `docs/validations/favorites-sort-controls.md`. WIP = 0. También quedó **`accepted`** la correctiva
+  **`recipe-photos`** (issue #83, `area: ui`, correctiva de `recipe-artwork`), cerrada en la sesión 082
+  con validación independiente (veredicto `accept`, rama `feature/recipe-photos`): las tarjetas y el
+  Detalle muestran **fotos de plato** como **assets offline** versionados (31 ficheros: 12 semillas + 18
+  categorías + `default`; 5,81 MiB), con cadena de respaldo pura `seed → category → default → null`
+  (`data.RecipePhotoAssets`), una costura `RecipePhotoSource` (`LocalRecipePhotoSource` +
+  `AssetRecipePhotoSource` con `AssetManager`/`BitmapFactory` en `Dispatchers.IO` y LRU 16) cableada en
+  `MainActivity`, y `RecipeArtwork` con foto (`Image(ContentScale.Crop)`) dejando el degradado + glifo
+  como último recurso (firma/geometría intactas). ADR nuevo `docs/adr/0004-recipe-photos-as-assets.md`;
+  sin dependencias nuevas. Antes,
+- **`recipe-artwork`** (issue #77, `area: ui`), cerrada en la sesión 078
   con validación independiente (veredicto `accept`, rama `feature/recipe-artwork`; la sesión 077 la dejó
   `passing`). Es la primera feature del plan posterior al MVP ya cerrado. Sustituye las **4 copias** del
   placeholder de receta
@@ -114,6 +123,20 @@
   navegación y marcado) + `CookingModeScreen` como overlay encima del Detalle, cableando el
   `onStartCooking` que antes era un no-op; sin notificación de sistema ni persistencia (Non-Goals),
   sin dependencias nuevas.
+- Feature más reciente — `recipe-photos` (issue #83, `area: ui`): **`passing`** (implementada y
+  autoverificada en la sesión 081, rama `feature/recipe-photos`; **pendiente de validación
+  independiente**). Las tarjetas y el Detalle muestran **fotos de plato** empaquetadas como **assets
+  offline** (31 fotos: 12 `seed/`, 18 `category/cat-`, 1 `default.jpg`; 6.092.271 B ≈ 5,9 MiB ≤ 8 MB) con
+  cadena de respaldo determinista (`data.RecipePhotoAssets`: foto propia → categoría → `default` →
+  `null`) y `RecipeArtwork` con foto (`Image(ContentScale.Crop)`) y el degradado + glifo de
+  `recipe-artwork` como **último recurso**. Costura Android `data.AssetRecipePhotoSource`
+  (`AssetManager` + `BitmapFactory`, `Dispatchers.IO`, LRU 16) y seam Compose
+  `ui.artwork.RecipePhotoSource` (`LocalRecipePhotoSource`, default nulo) provisto en `MainActivity`; sin
+  dependencias nuevas y sin red en runtime. La ampliación del MVP queda registrada en
+  `docs/build-brief.md`, `DESIGN.md`, `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md` y `docs/domain/taxonomy.md` §6, con ADR nuevo
+  `docs/adr/0004-recipe-photos-as-assets.md`; `scripts/fetch-recipe-photos.sh` es la herramienta de una
+  sola vez **fuera** de `init.sh`. WIP = 1 (es la única entrada no aceptada).
 - Cuarta **correctiva** de `real-ai-provider`, `ai-response-format` (issue #74): implementada y
   autoverificada (`passing`) en la sesión 074 por el implementer, rama `feature/ai-response-format`.
   La validación independiente devolvió **`revise`** (Finding 1 Medium: el fallback podía añadir un
@@ -147,7 +170,27 @@
   el registro de `DESIGN.md`; un defecto visual se corrige con una feature correctiva. Con la
   misma limitación queda la **verificación manual** de `cooking-mode`: abrir una receta, pulsar
   "Empezar a cocinar" y recorrer los pasos con "Siguiente"/"Anterior"/"Terminar", con el temporizador
-  (Iniciar/Pausar/Reanudar/Reiniciar y el aviso "¡Listo!" al llegar a cero). Para `ai-quantity-tolerance`
+  (Iniciar/Pausar/Reanudar/Reiniciar y el aviso "¡Listo!" al llegar a cero). Con la misma limitación
+  queda la **verificación manual** de `recipe-photos`: abrir Home, Resultados, Favoritos (lista y
+  rejilla) y Detalle en claro y oscuro y confirmar que todas las tarjetas muestran foto, que una receta
+  generada por IA muestra la de su categoría, que dos recetas de la misma categoría con fotos propias no
+  se confunden y que (prueba destructiva opcional, quitando un asset) aparece el glifo en vez de un hueco.
+- Última verificación (2026-10-13, `recipe-photos`, validator, sesión 082): **veredicto `accept`
+  independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
+  `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 2m42s) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (2m40s); parseó por su cuenta los XML (**65 suites / 467
+  tests / 0 fallos / 0 errores / 0 saltados**; `RecipePhotoAssetsTest` 11, `RecipeArtworkStyleTest` 8) y el
+  informe de lint (**0 errores, 13 warnings** preexistentes, 0 bajo `app/src`). Confirmó `assembleDebug` +
+  inspección del APK (**31 assets** `img/recipes/**`, 6.092.271 B = 5,81 MiB ≤ 8 MB) y recomputó el mapeo
+  contra la Taxonomía y el catálogo semilla reales (12 semillas → foto propia, 18 categorías → foto propia,
+  `default` → `default.jpg`; `null`/`""`/`"  "`/desconocido → `default`; nada existe → `null`),
+  contrastando por **md5** los 31 ficheros descargados de los `src` con los empaquetados (**31/31**
+  idénticos, JPEG 1376×768). Sin hallazgos Critical/High/Medium; 5 Low informativos no bloqueantes (KDoc
+  de `AssetRecipePhotoSource` dice ≤960 px cuando los assets son 1376×768; el test fija `.jpg` literal en 4
+  aserciones; `docs/domain/taxonomy.json` conserva `imageResolution` `.webp` fuera de alcance;
+  `docs/technical-discovery.md` ~línea 504 cita solo ADR 0001-0003; el seam Android sin test unitario).
+  Detalle en `docs/validations/recipe-photos.md`.
+  Para `ai-quantity-tolerance`
   queda también la **prueba manual** de emulador de la persona: con `devexpert.apiKey` válida, buscar
   *"arroz con pollo"* y comprobar que las recetas con ingredientes "al gusto" (p. ej. *perejil fresco*)
   ya **no** caen por `SCHEMA` en el diagnóstico (`SazonAi`) y llegan a Resultados, con "Al gusto" en el
@@ -185,7 +228,7 @@
   `feature_list.json`); `Recipe.kt`/`RecipeValidator.kt`/`AiRecipePayload.kt`/`domain/**`/`ui/**`/build/
   Taxonomía/`seed-recipes.json`/`init.sh` intactos; sin dependencias nuevas; sin capturas (no es UI).
   Docs actualizadas (`docs/technical-discovery.md`, `docs/domain/taxonomy.md` §4, `docs/domain-model.md`).
-- Última verificación (2026-10-12, `recipe-artwork`, validator, sesión 078): **veredicto `accept`
+- Verificación anterior (2026-10-12, `recipe-artwork`, validator, sesión 078): **veredicto `accept`
   independiente** (agente con contexto limpio). Re-ejecutó `bash init.sh` (exit 0) y, al verlo
   `UP-TO-DATE`, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
   `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los XML (**60 suites /
@@ -2122,8 +2165,60 @@
   automatiza UI de emulador y un defecto visual se corrige con una feature correctiva.
 - Siguiente paso: **validación independiente** de `favorites-sort-controls` con `feature-validator`;
   después, commit local de la rama (orquestador de `feature-flow`) y publicación por `github-flow`.
-- Nota de integración: la sesión 081 la ejecutaron en paralelo dos ramas (una por feature,
-  `favorites-sort-controls` y `ai-quantity-tolerance`); se conservan las **dos** entradas.
+- Nota de integración: la sesión 081 la ejecutaron en paralelo tres ramas (una por feature,
+  `favorites-sort-controls`, `recipe-photos` y `ai-quantity-tolerance`); se conservan las **tres**
+  entradas.
+- Objetivo: implementar y **autoverificar** `recipe-photos` (issue #83, `area: ui`) en su worktree/rama
+  `feature/recipe-photos`, siguiendo `docs/specs/recipe-photos.md`; sin commit/push/PR (los hace el
+  orquestador de `github-flow` al `accept`).
+- Completado: las cinco piezas de la spec. (1) `scripts/fetch-recipe-photos.sh` (bash, idempotente,
+  `--force`) extrae los `src` de las láminas versionadas (semillas **por posición** con el comentario
+  `<!-- NN. <clave> -->`; categorías por `alt`), descarga con `=s0`, elige extensión por *magic bytes* y
+  exige 12/19 claves exactas (exit ≠ 0 si falta algo). (2) `data/RecipePhotoAssets.kt` (cadena **pura**
+  `seed → category → default → null`, con `ROOT`/`DEFAULT_KEY`/`EXTENSIONS` y las 18 categorías reales).
+  (3) `data/AssetRecipePhotoSource.kt` (`AssetManager` + `BitmapFactory` en `Dispatchers.IO`, LRU 16,
+  `null` sin lanzar, devuelve `Bitmap`). (4) `ui/artwork/RecipePhotoSource.kt` (`fun interface` +
+  `LocalRecipePhotoSource` con default nulo). (5) `RecipeArtwork` con foto (`produceState` +
+  `Image(ContentScale.Crop)`) y el degradado + glifo como último recurso (firma/geometría intactas);
+  `MainActivity` provee el seam con `CompositionLocalProvider` y `app/build.gradle.kts` solo gana
+  `systemProperty("recipe.photos.assets.dir", …)`.
+- Evidencia capturada (real): assets **31 ficheros / 6.092.271 B (5.949 KiB) ≤ 8 MB** en
+  `app/src/main/assets/img/recipes/` (12 `seed/`, 18 `category/`, 1 `default.jpg`), versionados
+  (`git check-ignore`: no ignorados). Sin `cwebp`/ImageMagick en la máquina → el script **conserva el
+  original** y lo registra (paso 4 de la spec); re-ejecución idempotente con **exit 0**
+  (`ya empaquetado, se omite` × 31).
+- Verificación ejecutada: `bash init.sh` **exit 0** (test: BUILD SUCCESSFUL en 52 s; lint: BUILD
+  SUCCESSFUL en 1 m 13 s), parseo propio de los XML de resultado y del informe de lint. Gate **65 suites /
+  467 tests / 0 fallos / 0 errores / 0 saltados** (la rama parte de un `origin/main` más nuevo que la
+  sesión 080, que medía 419; se añaden los 11 de `RecipePhotoAssetsTest`); `RecipePhotoAssetsTest`
+  **11/0/0/0** y `RecipeArtworkStyleTest` **8/0/0/0** (sin cambios). Lint **0 errores / 13 warnings**
+  preexistentes (versiones en `gradle/libs.versions.toml`, `gradle-wrapper.properties` y
+  `app/build.gradle.kts`), **0 bajo `app/src`**. `bash scripts/gradle.sh assembleDebug` BUILD SUCCESSFUL y
+  `unzip -l app-debug.apk` → **31 assets** `assets/img/recipes/**` (5,81 MiB). Grep: `RecipeArtwork` en 4
+  ficheros / 5 puntos de llamada, **0 `PlateGlyph`**, **0 `BitmapFactory`/`AssetManager`** fuera de
+  `data/AssetRecipePhotoSource.kt`; `RecipeArtworkStyle.kt`, `domain/**`, `gradle/libs.versions.toml`,
+  `ui.theme/**`, `docs/domain/taxonomy.json`, `seed-recipes.json`, `init.sh` y `scripts/gradle.sh`
+  intactos.
+- Docs durables: ADR nuevo `docs/adr/0004-recipe-photos-as-assets.md`; `DESIGN.md` (Components → Imagen
+  de receta, registro de las capturas `recipe-photos: fotos-semillas/fotos-categorias` y OQ4 revisada),
+  `docs/technical-discovery.md` (fila Iconos e imágenes, párrafo de la imagen de receta, Constraint de
+  tamaño del APK y tests JVM nuevos), `docs/build-brief.md` (ampliación del MVP en `Non-Goals`),
+  `docs/risks-and-open-questions.md` (licencias/precisión, riesgo de tamaño/decodificación y ADR 0004) y
+  `docs/domain/taxonomy.md` §6 (convención real `img/recipes/{seed,category}/…` + `default`).
+- Hallazgos / desviaciones menores: el snippet de la spec usaba `exists = { File(assetsDir, it).isFile }`,
+  pero `recipe.photos.assets.dir` apunta a `.../assets/img/recipes` mientras los candidatos incluyen la
+  raíz `img/recipes`; el test usa un helper `photoFile()` que resta `RecipePhotoAssets.ROOT` (documentado
+  en el KDoc del test) y la lógica de resolución no cambia. El script conserva JPEG porque no hay
+  herramienta de conversión (permitido por el paso 4 de la spec); migrar a WebP no requiere cambios de
+  Kotlin (`EXTENSIONS` los prueba en orden).
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (jank/memoria al hacer scroll con
+  muchas tarjetas, mitigado con `Dispatchers.IO` + LRU 16; fidelidad genérica de la foto de categoría para
+  recetas de IA; procedencia de las fotos registrada en el ADR 0004). Queda la **verificación manual** de
+  emulador de la persona (Home, Resultados, Favoritos lista+rejilla y Detalle, claro y oscuro; receta IA
+  → foto de categoría; prueba destructiva opcional → glifo), no automatizable desde WSL.
+- Siguiente paso: **validación independiente** de `recipe-photos` con `feature-validator`; después, commit
+  local de la rama (lo hace el orquestador de `feature-flow`) y publicación (push + PR, sin merge) por
+  `github-flow`.
 - Objetivo: implementar `ai-quantity-tolerance` (correctiva de `ai-recipe-decode`): tolerar el
   ingrediente "al gusto" del wire del modelo (`quantity` nula o ausente) en la capa anti-corrupción
   `data.ai` y normalizarlo a `0.0` + `unit = null`, según `docs/specs/ai-quantity-tolerance.md`, en la
@@ -2229,8 +2324,46 @@
   `feature-flow`); la publicación queda para `github-flow` (`sync-worktree.sh` + push + PR
   `[favorites-sort-controls] …` con `Closes #85`). Tras esta feature, la siguiente correctiva pendiente es
   `profile-stats-heading`.
-- Nota de integración: la sesión 082 corrió en paralelo para dos features (`favorites-sort-controls` y
-  `ai-quantity-tolerance`); se conservan las **dos** entradas de aceptación.
+- Nota de integración: la sesión 082 corrió en paralelo para tres features (`favorites-sort-controls`,
+  `recipe-photos` y `ai-quantity-tolerance`); se conservan las **tres** entradas de aceptación.
+- Objetivo: validar `recipe-photos` de forma independiente y persistir la aceptación. Ejecutada por el
+  orquestador de `feature-flow` en la rama `feature/recipe-photos` (worktree), solo hasta-aceptación; **sin
+  push ni PR** (publica `github-flow`).
+- Completado: veredicto **`accept`** de un agente con contexto limpio; `feature_list.json` pasa a
+  `accepted` con la evidencia del validador independiente y se crea
+  `docs/validations/recipe-photos.md`. Sin cambios de código tras la validación. Commit local de la rama
+  (lo hace el orquestador de `feature-flow`).
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (exit 0) y, al verlo `UP-TO-DATE`, forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 2m42s) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (2m40s); parseó por su cuenta los XML y el informe de lint.
+- Evidencia capturada: gate **65 suites / 467 tests / 0 fallos / 0 errores / 0 saltados**
+  (`RecipePhotoAssetsTest` 11, `RecipeArtworkStyleTest` 8); lint **0 errores / 13 warnings** preexistentes,
+  0 bajo `app/src`; `assembleDebug` + inspección del APK con **31 assets** `img/recipes/**`
+  (6.092.271 B = 5,81 MiB ≤ 8 MB). Recomputó el mapeo contra la Taxonomía y el catálogo semilla reales y
+  contrastó por **md5** los 31 ficheros descargados de los `src` con los empaquetados (**31/31**
+  idénticos, JPEG 1376×768). Confirmó Scenarios 1-10, pureza de la cadena, geometría/firma de
+  `RecipeArtwork` intactas, **0 `PlateGlyph`**, sin dependencias nuevas (`libs.versions.toml` sin diff),
+  disciplina de alcance (`domain/**`, `ui.theme/**`, `docs/domain/taxonomy.json`, `seed-recipes.json`,
+  `init.sh`, `scripts/gradle.sh` intactos), docs/ADR coherentes, gate de capturas satisfecho y que el
+  implementer no hizo commit/push/PR.
+- Hallazgos del validador (5 Low informativos, ninguno bloqueante): el KDoc de `AssetRecipePhotoSource`
+  dice ≤960 px cuando los assets son 1376×768 (≈4 MiB por bitmap, techo LRU-16 ≈64,5 MiB; riesgo ya
+  registrado); `RecipePhotoAssetsTest` fija `.jpg` literal en 4 aserciones pese a la afirmación de que
+  migrar a WebP no requiere cambios; `docs/domain/taxonomy.json` conserva `imageResolution` `.webp` (fuera
+  de alcance por la spec); `docs/technical-discovery.md` ~línea 504 lista solo los ADR 0001-0003; el seam
+  Android `AssetRecipePhotoSource` no tiene test unitario (la cadena pura sí, como pedía la spec). Sin
+  hallazgos Critical/High/Medium.
+- Ficheros actualizados: `feature_list.json` (feature a `accepted` con la evidencia del validador),
+  `docs/validations/recipe-photos.md` (nuevo) y este registro. Sin cambios de código.
+- Riesgo o incógnita abierta: se mantienen los `Unknown` de la spec (jank/memoria al hacer scroll,
+  mitigado con `Dispatchers.IO` + LRU 16; fidelidad genérica de la foto de categoría para recetas de IA;
+  procedencia de las fotos en el ADR 0004). Queda la **verificación manual** de emulador de la persona
+  (Home, Resultados, Favoritos lista+rejilla y Detalle, claro y oscuro; receta IA → foto de categoría;
+  prueba destructiva opcional → glifo), no automatizable desde WSL. La rama está 4 commits por detrás de
+  `origin/main` → el orquestador de `github-flow` debe `scripts/sync-worktree.sh recipe-photos` antes de
+  publicar.
+- Siguiente paso: **commit local** de la rama `feature/recipe-photos` (lo hace el orquestador de
+  `feature-flow`); la publicación (push + PR con `Closes #83`, sin merge) queda para `github-flow`.
 - Objetivo: validar `ai-quantity-tolerance` de forma independiente y persistir la aceptación. Ejecutada
   por el orquestador de `feature-flow` en la rama `feature/ai-quantity-tolerance` (worktree), solo
   hasta-aceptación; **sin push ni PR** (publica `github-flow`).

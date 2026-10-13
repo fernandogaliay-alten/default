@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sazón — Batch A (12 Platos)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              terracotta: '#D9552B',
+              olive: '#5F7A3D',
+              honey: '#F2A93B',
+              bg: '#FFF8F0',
+              surface: '#FFFFFF',
+              charcoal: '#2B2118',
+              outline: '#E8DDD3',
+              subtle: '#8C7B70',
+            }
+          },
+          fontFamily: {
+            manrope: ['Manrope', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #ECE5DE;
+      margin: 0;
+      padding: 24px 0;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      color: #2B2118;
+    }
+    .phone-container {
+      width: 390px;
+      min-height: 844px;
+      background-color: #FFF8F0;
+      box-shadow: 0 20px 40px -15px rgba(43, 33, 24, 0.15), 0 0 0 1px rgba(232, 221, 211, 0.8);
+      border-radius: 40px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    /* Hide scrollbar for clean app appearance */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Android Native Frame (Pixel 390 x 844) -->
+  <div class="phone-container">
+
+    <!-- Top Status Bar (Material 3 style) -->
+    <header class="pt-3 px-6 pb-2 flex items-center justify-between text-xs font-semibold text-brand-charcoal bg-brand-bg select-none">
+      <span class="tracking-tight">9:41</span>
+      <div class="flex items-center gap-1.5 text-brand-charcoal">
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 18.25l1.42 1.42.64-.64C7.94 20.26 9.88 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/></svg>
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z"/></svg>
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M17 4h-3V2h-4v2H7v18h10V4z"/></svg>
+      </div>
+    </header>
+
+    <!-- Clean Header -->
+    <div class="px-5 pt-3 pb-3 bg-brand-bg border-b border-brand-outline/60 flex items-baseline justify-between">
+      <div>
+        <h1 class="font-manrope font-extrabold text-xl text-brand-charcoal tracking-tight">Sazón · Batch A</h1>
+        <p class="text-xs text-brand-subtle font-medium mt-0.5">12 platos independientes · Formato 16:9</p>
+      </div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-brand-terracotta/10 text-brand-terracotta border border-brand-terracotta/20">
+        12 fotos
+      </span>
+    </div>
+
+    <!-- Vertical List of 12 Dish Rows -->
+    <main class="flex-1 p-4 flex flex-col gap-5 overflow-y-auto">
+
+      <!-- 01. seed-tortilla-patatas -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDj1w4TWp08EVtDELbbDVj72mUaW8vuVCNT6QrZVj3e_cjo9K0FSNqgp-tIUP7r4n50GxzWpxZAIa1Di4CFENKHgNtUusC4UMzHFtD50UBbCJ2McwL-WG5d-HTOseNt7KKuZGAu9xPa9sEu6ShebYgU4ZtFpo9JIs2U_wdxJKQ_SMesf6lu2Dq46KI2DB-MgVwKtsjCKxLiIG5qf3xhKmbVu_WX3naaOvFnb5X3NCEGxSfVT27vDcJ42w" alt="Spanish potato tortilla wedge" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">01</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-tortilla-patatas</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">tortilla wedge</span>
+        </div>
+      </article>
+
+      <!-- 02. seed-gazpacho-andaluz -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcCGFqngktLotPWT7NhfTtMnM0YKvk_uEfkgHpt-0tJnisx_rRyuW6AbQ7jT5trvFw8Ayon39dyH3DJVcP47tAZMXm2ydVGviw6qawhvfZLsh8zhrkNFWTY02Eo-wn1Nhaqw6tqGssppwZCcAC1fvOutcdxD9WnX99kuKve6aacGlxU569yabwbT9u6C8xOmyaa4aaWuvRLEO74NUIgUysBF20Cks1cRoYrNXM2a227IQDm7_XvkXjWw" alt="Chilled Andalusian tomato soup" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">02</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-gazpacho-andaluz</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">chilled soup</span>
+        </div>
+      </article>
+
+      <!-- 03. seed-pasta-tomate -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGeokvk3CdkEjHElzcVYgZoMoWdI7bcGxkmmnk2QrOh9zPeUqTfNE_OybCscfCRlJbbiaGUd1-DTGSJY7rWhzURqvt5RxDc6Wf5hn47fhWkJhoFVmr-HX7aUN0VnZS7BURtFvosEEGoC-iNkfoN3sXP7to7Sfqk8aLD_5JB4dHsEofKJqhENJ2R301XsMg6ALncMWYfUrAiyXAHhBK3yVKTrF0eO1Mx57IuXXlMLI2_go1klwQgkbPHg" alt="Pasta with tomato sauce and oregano" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">03</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-pasta-tomate</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">pasta dish</span>
+        </div>
+      </article>
+
+      <!-- 04. seed-pollo-al-ajillo -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzQk265pZXGCDeC9LWBFp9Lzub2ckvlu5Shj11N8IsuddBAbUfHI5tZHPCMkFDREQuthHrnyJC09LOQiFYzq7ahm14MYsmM_kXd7RUiiOk2WIigTJuRNboKRierPXnS_lQ90Sf9ajCur_iFDASXl1mtQJWKyToUL54U2PPIgOX9hbIRf405R7S_3mFRmkqMGxjtJTuy0EIdhixA_PzO7zyQVRGbQ9mP-Q6E6QlFDaUlmHIRJypWaeSUQ" alt="Chicken pieces in garlic sauce" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">04</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-pollo-al-ajillo</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">clay dish</span>
+        </div>
+      </article>
+
+      <!-- 05. seed-lentejas-estofadas -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwNBQ1fW0AOXsX9OS64yXPfh4HY50_3pQjlYEICqpWsWem8Zxl5_PKL1cuIctyiR47zxZCLWWn8Bx4bAhO3zWmFB58YUySi8fvo8ot8Cn6aytVsgoEydiEOU0UUT-b3i_jliP4j73XKPYwq6sXKH943OY3vImvPr7ilOb3HmneAKXVWYhnpp-eZR2ymzqeLvjBqE3Ds2DFqsFlnFIC0CkUbwCWnrzmYJMbBDFewc5Uo2X20Ykl79AHKw" alt="Spanish brown lentil stew" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">05</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-lentejas-estofadas</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">terracotta pot</span>
+        </div>
+      </article>
+
+      <!-- 06. seed-salmon-a-la-plancha -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgmxK36tdGnDLVTqo47SctiRQf0gQYBgAKBONAvHhiXh255fo1qmxNgAwKALDRo5-afXkpbQMMC3VVP-p1e75JHolDWQHqVyES2mGM3JhtuFCg2D7jPy1guw7V-x2Gu4j79yymxuj06aiDBBwobS-JMpROgOadz0bCK5h5yMZ-Oo37vpDMvqvAwoTDJk1d3K-iREXDRxZI9wuOJSNDIJ09j7xm5cAolg52s2jvRPqoHa6eNf-8C0M0SQ" alt="Grilled salmon fillet with lemon" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">06</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-salmon-a-la-plancha</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">grilled fish</span>
+        </div>
+      </article>
+
+      <!-- 07. seed-tacos-de-pollo -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfqo_aeEWVcv_G1QmScfjHubMo4Uvbs8SP07m7ibqBtydg5AJYL0g6vlzRir914259vPOtG_cr_F6hBguXae3jA9rH7_01DgvrqNI9Gx6OvGb2gOo_Tgv86w0LxXnow3qtMfBGIXsiBAWPIP6ZjVvslHnljk9oVjYs7FA-CAD9xa_yYW7IOa6HXSyaPuhswA4LQeuCFbIifHjuzT9yc2__jRJwPccFoLAO1ZgCu6oUVnqzlpm4x5MyWg" alt="Two chicken tacos, Mexican style" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">07</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-tacos-de-pollo</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">mexican tacos</span>
+        </div>
+      </article>
+
+      <!-- 08. seed-ensalada-de-quinoa -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGORWYNSWGLtZQ1hZNOlUgYjEdNLOSpvSuonuyD8W5FyADiuyFki__EE7jMQPf_TB6ES_dp0cgR7Gf8XPlmP1_P1a1QMqxbBlI-yigiBwP5s9-Ql72L2t9-5Zmcur0EPzCHRmiY8jxSAT1yD3Tqp1SFxtCGEWKWjM1c3Sa5a_rI3hWrW8eqGGvIaG3fnCNei3bAeat3WR8t8Xb8ih3pPD6-_G1AVrfw7eiIuz7LNwPacdPfDcMee2brQ" alt="Quinoa salad bowl with vegetables" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">08</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-ensalada-de-quinoa</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">salad bowl</span>
+        </div>
+      </article>
+
+      <!-- 09. seed-tofu-salteado -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFt7ClEjkp6FMU0KcZuVBHoP1AIbQhMz1AOMhLAvcBcwIDbNJthEOgLSJ87rru1DXHlRKb8Tyw6YkGjQVXq4UtShvOUsY69uCXBHoxXigKIryLjHiKFLODOCyXVs1Zo5Tlb79TSyaNJZ9QG6HSgHyps7OavuTeBWhAMC_Ln8XAisZPqReklZOEuE4S6wJW4CStWYHqYZ8NaAV-RWLmJ9rT10S4hrZWvq3OLnrWWc5gbrVMWOpOuVei9Q" alt="Stir-fried tofu with vegetables" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">09</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-tofu-salteado</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">stir-fry</span>
+        </div>
+      </article>
+
+      <!-- 10. seed-crema-de-calabaza -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLkiqi1NDNgJeYSJUl4Cy9boMjPG6-T63C_p30sIUz7y9FTI4JOJWZ2fQoO_rfKF2gJZs3zbrEAvoUCUJOeimOhNAnLGZleVCvHC6acZaFtmuzY1sQ53bEEgn5oelIXYBlGC6H821vIKdq-9Ly3r9q7u-ttjIEQOTBWsHwJxAKHegyl1WyiynamDofAAJEiDJGpFzpbRuDtf8YkB107Njv3FBPdNSm6QV2d4SfAEi4pvQP86K08Lsbvg" alt="Pumpkin cream soup in a bowl" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">10</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-crema-de-calabaza</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">creamy soup</span>
+        </div>
+      </article>
+
+      <!-- 11. seed-tortitas-de-avena -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOZTbT7RzJv6E6hwezxbkYKpNlpRK2v2DbHQIzt4SjoZa45PKFoo2zYhS4Jfy_ZZ92bIa7XSrQKjHwxB_HfrvbbrQS42BD6A2w69agYTwNYJASBUiMdwDQUwa7iDFHDa0OI1ncQVIfRZooJ9OxinKejdP8W9ZfCeg_1CP1Nx_GXQvnl_-tNKosLkv3I_QieanUwI67zCNEUg87-vcQPSOuB8EAwNho2CXqFgZ9e350MWAzFm5Dq4FkEg" alt="Stacked oat-and-banana pancakes" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">11</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-tortitas-de-avena</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">pancakes</span>
+        </div>
+      </article>
+
+      <!-- 12. seed-tarta-de-manzana -->
+      <article class="bg-brand-surface rounded-[24px] p-2.5 shadow-[0_4px_16px_rgba(43,33,24,0.06)] border border-brand-outline/40">
+        <div class="w-full aspect-[16/9] rounded-[18px] overflow-hidden bg-brand-outline/20">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrE-R_ychG08HgyKCnufhuFkgLruANaOUSaaNVlPHBKq3xqMR4CesGgnZlmTuHiXELCv8fl1X6pILjIxpYKuWYUM2Wq-PZALwzwCOW2QvGZCVwSJvBgNGdXF9rfQblKD5A_emrUu0zhoUqD51vA2bxvJ4U5PkVA5GZLQExjNyUzykBFV2KLeV2oOHYoOnHpb1bDovnq6N78tltF33RBH6RxThv2YvBp-E6s_1Ww-ak3-bK9dfH5nR7wA" alt="Home-baked apple tart slice" class="w-full h-full object-cover block" loading="lazy" />
+        </div>
+        <div class="mt-2.5 px-2 pb-1 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-brand-subtle font-semibold">12</span>
+            <code class="font-mono text-xs font-semibold text-brand-terracotta bg-brand-bg px-2 py-0.5 rounded-md border border-brand-outline/50">seed-tarta-de-manzana</code>
+          </div>
+          <span class="text-[11px] text-brand-subtle font-medium">apple tart</span>
+        </div>
+      </article>
+
+      <!-- Bottom Spacer for Android navigation gesture area -->
+      <div class="h-6"></div>
+    </main>
+
+  </div>
+
+</body>
+</html>
