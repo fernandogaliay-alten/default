@@ -3,6 +3,7 @@ package com.sazon.app.data.ai.image
 import com.sazon.app.data.ai.AiProviderPolicy
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -80,5 +81,36 @@ class DishImagePolicyTest {
     @Test
     fun el_alto_reducido_se_acota_al_minimo_de_un_pixel() {
         assertArrayEquals(intArrayOf(960, 1), DishImagePolicy.scaledSize(2_000, 1))
+    }
+
+    // Escenario 11: el ajuste vive en este unico sitio y reutiliza la base/ruta del proveedor.
+    @Test
+    fun el_endpoint_de_ajuste_reutiliza_la_base_y_la_ruta_de_edits() {
+        assertEquals(
+            "https://inference.devexpert.io/v1/images/edits",
+            DishImagePolicy.editsUrl(),
+        )
+        assertEquals(AiProviderPolicy.BASE_URL + "/images/edits", DishImagePolicy.editsUrl())
+        assertEquals("image-edit", DishImagePolicy.EDIT_MODEL_ALIAS)
+        assertTrue("El anclaje esta activo por defecto", DishImagePolicy.STYLE_REFERENCE_ENABLED)
+    }
+
+    // Escenario 11: solo un rechazo definitivo dispara el respaldo por texto; ningun otro estado.
+    @Test
+    fun el_respaldo_por_texto_solo_lo_dispara_un_rechazo_definitivo() {
+        val fallback = setOf(400, 404, 405, 413, 415, 422)
+        assertEquals(fallback, DishImagePolicy.EDIT_FALLBACK_STATUSES)
+        fallback.forEach { status ->
+            assertTrue(
+                "El estado $status debe disparar respaldo",
+                DishImagePolicy.editFailureRequiresTextFallback(status),
+            )
+        }
+        listOf(401, 403, 408, 429, 500, 502, 503, 200, 201, 204, 100, 999).forEach { status ->
+            assertFalse(
+                "El estado $status NO debe disparar respaldo",
+                DishImagePolicy.editFailureRequiresTextFallback(status),
+            )
+        }
     }
 }

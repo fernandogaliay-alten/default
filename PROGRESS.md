@@ -470,6 +470,27 @@
   (`docs/design/concepts/dish-visual-descriptor/` **no** existe). Detalle en
   `docs/validations/dish-visual-descriptor.md`. **WIP = 0.** En el plan quedan las fases 6-7
   (`dish-style-reference`, `dish-image-seed`, `not_started`).
+- Última feature **`accepted`** — **`dish-style-reference`** (fase 6, variante C de
+  `docs/ai-dish-images-proposal.md` §4.2, `area: integration`): cerrada en la **sesión 095** con
+  validación independiente (veredicto **`accept`**, rama `feature/dish-style-reference`; la sesión 095
+  la dejó `passing` tras el implementer). Aporta el **ajuste de estilo con referencia** en
+  `/images/edits`: el adaptador `DevExpertDishImageGenerator` envía una petición multipart
+  (`model=image-edit`, `prompt`, `size=1024x1024`, parte `image` con los bytes de una **foto de
+  referencia aceptada como asset versionado** `img/recipes/default.jpg`) y **degrada a texto→imagen**
+  (`/images/generations`, fase 2) solo ante rechazo definitivo (`400/404/405/413/415/422`) o `2xx`
+  inutilizable; `null` sin respaldo ante transporte/timeout y `401/403/429/5xx`; sin tercer intento;
+  `CancellationException` relanzada; interruptor `DishImagePolicy.STYLE_REFERENCE_ENABLED` (por
+  defecto `true`). Valor + política pura nuevos (`DishImageStyleReference`,
+  `DishImageStyleReferencePolicy`) y cargador Android *best-effort* (`AssetDishImageStyleReference`);
+  `domain.image`, `data.image`, `ui/**`, los assets y `RecipePhotoAssets.kt` sin cambios;
+  `DishImageCacheKey.VERSION` sigue `dish-image-v1`; sin dependencias nuevas; **sin capturas** (no es
+  UI, `docs/design/concepts/dish-style-reference/` no se crea). Gate: `bash init.sh` exit 0, **88
+  suites / 643 tests / 0 fallos / 0 errores / 0 saltados** (baseline 86/619; delta +2 suites / +24
+  tests), lint 0 errores y 13 warnings preexistentes (ninguno bajo `app/src`). Detalle en
+  `docs/validations/dish-style-reference.md`. **WIP = 0.** En el plan queda la fase 7
+  (`dish-image-seed`, `not_started`) y, como seguimiento no bloqueante previo,
+  `dish-visual-descriptor-wiring` (`not_started`). Queda la **prueba real opcional** (~2 % de cuota,
+  comparar con la variante A) y la revisión visual de la persona, no automatizables desde WSL.
 
 ## Registro de sesiones
 
@@ -3271,3 +3292,99 @@
   (`dish-style-reference`, `dish-image-seed`, `not_started`); seguimiento no bloqueante recomendado: feature
   de integración `dish-visual-descriptor-wiring` para entregar el descriptor al runtime (hoy
   `AiDecodeResult.descriptors` no tiene consumidor).
+
+### Sesión 095
+
+- Fecha: 2026-10-13
+- Objetivo: ejecutar `feature-implementer` para `dish-style-reference` (fase 6, **variante C** de
+  `docs/ai-dish-images-proposal.md` §4.2: ajuste de estilo con referencia en `/images/edits`) en el
+  worktree `feature/dish-style-reference`. **Sin commit, push ni PR** (el commit lo hace el orquestador
+  de `feature-flow`; publica `github-flow`). `area: integration`; **gate de capturas no aplica** (**no**
+  se crea `docs/design/concepts/dish-style-reference/`).
+- Completado (rol **implementer**): la feature queda **`passing`** (validación independiente pendiente).
+  `DishImagePolicy` gana `IMAGES_EDITS_PATH`, `EDIT_MODEL_ALIAS = "image-edit"`,
+  `EDIT_FALLBACK_STATUSES = 400/404/405/413/415/422`, `editsUrl()`, `editFailureRequiresTextFallback` y
+  el interruptor `STYLE_REFERENCE_ENABLED = true` (patrón `AiProviderPolicy.RESPONSE_FORMAT_ENABLED`).
+  Nuevos: `DishImageStyleReference` (bytes + `mediaType` + `fileName`), `DishImageStyleReferencePolicy`
+  (pura: `ASSET_BASE = img/recipes/default`, reutiliza `RecipePhotoAssets.EXTENSIONS`, `resolve`,
+  `mediaTypeFor`, `fileNameFor`) y `AssetDishImageStyleReference` (lectura *best-effort* del asset,
+  `null` sin lanzar; único fichero Android nuevo junto al reductor). `OpenAiImages.kt` añade
+  `EDIT_REFERENCE_PART = "image"` y `editsFormData(...)` (multipart: `model`, `prompt`, `size`, `image`).
+  `DevExpertDishImageGenerator` gana `styleReference`/`styleReferenceEnabled` y el flujo edits→texto:
+  una petición multipart a `/images/edits`, respaldo por texto **solo** ante rechazo definitivo o carga
+  `2xx` inutilizable, `null` sin respaldo ante transporte/timeout y `401/403/429/5xx`,
+  `CancellationException` relanzada en ambas fases, y el camino de texto de la fase 2 extraído a un
+  privado reutilizado. `MainActivity` carga la referencia y la pasa al adaptador (best-effort; `null` =
+  fase 2). `domain.image`, `data.image`, `ui/**`, los assets y `RecipePhotoAssets.kt` **no** cambian;
+  `DishImageCacheKey.VERSION` sigue `dish-image-v1`; sin dependencias nuevas (multipart en
+  `ktor-client-core`).
+- Ficheros creados: `app/src/main/java/com/sazon/app/data/ai/image/DishImageStyleReference.kt`,
+  `app/src/main/java/com/sazon/app/data/ai/image/AssetDishImageStyleReference.kt`,
+  `app/src/test/java/com/sazon/app/data/ai/image/DishImageStyleReferenceTest.kt` (7 tests) y
+  `app/src/test/java/com/sazon/app/data/ai/image/AssetDishImageStyleReferenceTest.kt` (2 tests,
+  Robolectric `@Config(sdk = [33])`, lee el asset real `default.jpg`).
+- Ficheros modificados: `data/ai/image/{DishImagePolicy,OpenAiImages,DevExpertDishImageGenerator}.kt`,
+  `MainActivity.kt`; tests ampliados `DishImagePolicyTest` (7→9) y `DevExpertDishImageGeneratorTest`
+  (7→20); y los 3 docs durables (`docs/adr/0005-ai-dish-images.md` — fases 1-6 —,
+  `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`).
+- Verificación ejecutada: `bash init.sh` → **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`; sin procesos largos, sin red, sin cuota, sin tocar `init.sh`). Tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.image.*" --rerun-tasks` →
+  `BUILD SUCCESSFUL` (6 suites / 46 tests). Parseo propio de los XML frescos
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **88 suites / 643 tests / 0 fallos / 0 errores
+  / 0 saltados**. Baseline re-derivada en este `HEAD` antes de tocar tests (**86 suites / 619 tests**);
+  delta **+2 suites / +24 tests** (`DishImagePolicyTest` +2, `DevExpertDishImageGeneratorTest` +13,
+  `DishImageStyleReferenceTest` 7 nueva, `AssetDishImageStyleReferenceTest` 2 nueva). Lint (SARIF
+  `app/build/reports/lint-results-debug.sarif`): **0 errores** y **13 warnings** preexistentes
+  (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2, `OldTargetApi` 1),
+  **0 bajo `app/src`**.
+- Vectores concretos comprobados: sin referencia (o con el interruptor apagado o bytes vacíos) = **una**
+  petición a `/images/generations` con el cuerpo de la fase 2 (`model=image`, `prompt`, `size=1024x1024`);
+  con referencia = **una** petición multipart a `/images/edits` (URL, `POST`, `Authorization: Bearer`,
+  `Content-Type` multipart con boundary, y en el cuerpo exactamente cuatro partes: `model=image-edit`,
+  `prompt` idéntico, `size=1024x1024` y `image` con `name`/`filename="dish-style-reference.jpg"`/
+  `Content-Type: image/jpeg` y los bytes de la referencia byte a byte; sin `cacheKey`/`recipeId`);
+  respaldo con **exactamente dos** peticiones ante `400/404/405/413/415/422` y ante `200` inutilizable
+  (JSON inválido, `{}`, `data` vacía, `b64_json` vacío/base64 inválido o reductor que devuelve `null`);
+  `null` con **una** petición ante `SocketTimeoutException`/`HttpRequestTimeoutException`/`IOException` y
+  ante `401/403/408/429/500`; sin cadena de un tercer intento; `apiKey` en blanco + referencia = **0**
+  peticiones; `CancellationException` relanzada en la fase de ajuste y en el respaldo.
+- Inspección de alcance y pureza: `import android` solo en `AndroidDishImageReducer.kt` (códec,
+  `android.graphics`) y `AssetDishImageStyleReference.kt` (`android.content.Context`); **0** `Log`,
+  `filesDir`, `getDatabasePath`; `git status` = solo los ficheros previstos (4 `main` + 1 `MainActivity`,
+  2 tests ampliados + 2 nuevos, 3 docs, `feature_list.json`, `PROGRESS.md`); `domain/image/**`,
+  `data/image/**`, `ui/**`, `app/src/main/assets/**`, build, `init.sh`, `scripts/**`, `AndroidManifest.xml`
+  y `RecipePhotoAssets.kt` **sin diff**; `DishImageCacheKey.VERSION` sigue `dish-image-v1`;
+  `docs/design/concepts/dish-style-reference` **no** existe; sin dependencias nuevas.
+- Hallazgo (no bloqueante, transparencia): el grep del plan `"Recipe|Taxonomy|DishImagePrompt|
+  DishImageCacheKey" → 0` delata 4 coincidencias de `Recipe` que son la **convención de assets
+  `RecipePhotoAssets`** (`import`, `ASSET_BASE = "${RecipePhotoAssets.ROOT}/...")`, `EXTENSIONS =` y una
+  referencia en KDoc) — precisamente la **reutilización que el propio plan manda** en su Apartado 3 —;
+  **no** hay ningún tipo del dominio `Recipe`/`Taxonomy`, ni `DishImagePrompt` ni `DishImageCacheKey`.
+  Se registra porque la expectativa "0" del plan es imprecisa con su propio diseño.
+- Riesgos/incógnitas registrados (no bloqueantes): soporte real de `/images/edits` por el proveedor
+  (alias `image-edit`, multipart, `1024x1024`, `b64_json`) no verificado en código, mitigado por el
+  respaldo por texto, el interruptor `STYLE_REFERENCE_ENABLED` y la prueba real **opcional** (~2 % de
+  cuota, **no ejecutada**: no es puerta de aceptación); si el proveedor rechazara siempre el ajuste, cada
+  imagen costaría una llamada desechada (≤2 por `generate`, una unidad del tope por sesión); estilo mixto
+  transitorio de la caché mientras la LRU no evicta las imágenes previas (Decisión 3, `VERSION` no sube).
+- Completado (rol **validator**, contexto limpio): la feature queda **`accepted`**. Veredicto
+  **`accept`**. Re-ejecutó `bash init.sh` (exit 0; al salir `UP-TO-DATE` forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` 4m09s y `bash scripts/gradle.sh lint
+  --rerun-tasks` 3m14s, ambos `BUILD SUCCESSFUL`) y parseó por su cuenta los XML (**88 suites / 643
+  tests / 0 fallos / 0 errores / 0 saltados**) y el SARIF (**0 errores, 13 warnings** preexistentes, 0
+  bajo `app/src`); re-derivó la baseline (**86 suites / 619 tests**) ⇒ **+2 suites / +24 tests**.
+  Confirmó los 13 escenarios, el contrato `/images/edits` (multipart de 4 partes, respaldo con
+  exactamente 2 peticiones, `null` sin respaldo ante transporte/timeout y `401/403/429/5xx`, sin tercer
+  intento, clave en blanco = 0 peticiones, `CancellationException` relanzada), la referencia como asset
+  versionado `img/recipes/default.jpg` sin diff de assets, la pureza/alcance y la ausencia de
+  commit/push/PR. Sin hallazgos Critical/High/Medium; **1 Low** informativo no bloqueante (el grep de
+  alcance de la spec `Recipe|… → 0` es contradictorio con su propio diseño que manda reutilizar
+  `RecipePhotoAssets`; imprecisión de redacción de la spec, no del código). Detalle en
+  `docs/validations/dish-style-reference.md`.
+- Aceptación persistida por el orquestador de `feature-flow`: `feature_list.json` pasa a `accepted` con
+  la evidencia del validador y se crea el commit local de la rama `feature/dish-style-reference`
+  (**sin push ni PR**; publica `github-flow`).
+- Siguiente paso: en el plan queda la fase 7 (`dish-image-seed`) y, como seguimiento no bloqueante
+  previo, `dish-visual-descriptor-wiring`. La publicación del PR de `dish-style-reference` la hace el
+  orquestador de `github-flow`.
