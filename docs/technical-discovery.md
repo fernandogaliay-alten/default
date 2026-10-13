@@ -37,7 +37,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
-| Iconos e imágenes de receta | **Fotos de plato empaquetadas** como assets versionados en `app/src/main/assets/img/recipes/` (12 `seed/`, 18 `category/cat-`, 1 `default`), resueltas por `data.RecipePhotoAssets` y decodificadas por `data.AssetRecipePhotoSource`; el placeholder dibujado `ui.artwork.RecipeArtwork` (glifo por categoría, acento por cocina) queda como **último recurso** | Determinista, offline, sin red en runtime, sin dependencias nuevas |
+| Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` pasa a ser el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retira** con `retire-recipe-photos` (ADR 0006) | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
@@ -226,31 +226,40 @@ DI) y lo encadena por `SazonApp` y `MainShell` hasta `GeneratorFlow`. Testeado e
 caso negativo obligatorio del `build-brief`: una receta insegura no llega a `accepted`. Ver
 `docs/specs/generation-flow-with-validation.md`.
 
-La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) combina **fotos
-empaquetadas** y el **placeholder dibujado** de `recipe-artwork`. La resolucion de la foto es **pura** y
-testeable en JVM (`com.sazon.app.data.RecipePhotoAssets`, sin Compose ni Android: `ROOT = img/recipes`,
-`EXTENSIONS = webp|jpg|png`, `CATEGORY_IDS` con las 18 `recipeCategories` reales, `candidates` y
-`resolve(recipeId, categoryId, exists)`), con la **cadena de respaldo determinista** foto propia de la
-receta semilla (`seed/<id>.<ext>`) -> foto de su categoria (`category/cat-<categoryId>.<ext>`) -> foto
-generica (`default.<ext>`) -> `null` (glifo). Un `categoryId` nulo/vacio/desconocido **no** produce
-candidato de categoria (nunca `cat-no-existe`) y cae al `default`; la resolucion es determinista y no
-lanza. La lectura/decodificacion es una **costura Android** en `com.sazon.app.data.AssetRecipePhotoSource`
-(`context.assets.open` + `BitmapFactory` en `Dispatchers.IO`, `LRU` propia de 16 bitmaps, `null` sin
-excepcion) y devuelve `android.graphics.Bitmap`, asi que `data` sigue sin depender de `ui`. El seam
-Compose es `ui.artwork.RecipePhotoSource` (`fun interface` + `LocalRecipePhotoSource`, cuyo valor por
-defecto devuelve `null`), y `MainActivity` lo provee con `CompositionLocalProvider`; el mapeo puro
-`RecipeArtworkStyle` (sin Compose ni Android: `RecipeGlyph` con 18 miembros ↔ 18 `recipeCategories`,
-`RecipeAccent` con 10 acentos + `DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback total
-`null`/vacio/desconocido -> `PLATE` + `DEFAULT`) **no cambia** y sigue siendo el **ultimo recurso**. La
-capa Compose es el unico componente delgado, `RecipeArtwork(recipe, modifier, glyphSize)`: pinta la foto
-con `Image(ContentScale.Crop)` y, si no hay, el bloque con degradado por **roles del tema**
-(`primaryContainer`, `secondaryContainer`, `tertiaryContainer`, `surfaceVariant`) y el glifo de linea con
-primitivas de `Canvas`. El llamante aporta el ratio/tamaño/recorte, asi que se conservan el 16:10 de las
-tarjetas (glifo 48 en `RecipeCard`, 56 en `ResultRecipeCard`), el 96x96 y el alto 96 de Favoritos (40) y
-el hero de 240 del Detalle (72). Los 31 assets viven versionados (no ignorados) en
-`app/src/main/assets/img/recipes/` (≤8 MB) y los empaqueta `scripts/fetch-recipe-photos.sh`, una
-herramienta de una sola vez **fuera** del gate. Ver `docs/specs/recipe-photos.md`,
-`docs/adr/0004-recipe-photos-as-assets.md` y `docs/specs/recipe-artwork.md`.
+La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) es, desde el **ADR 0006**,
+una **ficha tipográfica** y **no una foto por defecto**: el `RecipeCard` pinta la categoría en versalitas,
+el título, los tres ingredientes principales con cantidad y un filete de cocina (`RecipeAccent`).
+`ui.artwork.RecipeArtwork` **cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser el
+**proveedor de la capa de fondo** del hueco, con la ficha tipográfica como **capa base** y la imagen
+superpuesta con el crossfade de 250 ms ya existente (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, variante
+**L2**: imagen 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), sin
+salto de layout ni frame en blanco. La geometría aceptada de los 5 puntos de uso no cambia (16:10 de las
+tarjetas, 96x96 y alto 96 de Favoritos y hero de 240 del Detalle).
+
+La **cadena local de fotos queda retirada** con la feature `retire-recipe-photos` (ADR 0006): **30 de
+los 31 assets** (12 `seed/<id>.<ext>` y 18 `category/cat-<categoryId>.<ext>`, ~**6,2 MiB**) de
+`app/src/main/assets/img/recipes/` — se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de la
+fase 6, sin mostrarse en ninguna pantalla —, su resolución pura (`com.sazon.app.data.RecipePhotoAssets`, sin
+Compose ni Android) y su costura de lectura `data.AssetRecipePhotoSource` **salen del APK**, porque la foto
+de categoría es la que **no corresponde al plato** de las recetas `ai-*`. El seam Compose
+`ui.artwork.RecipePhotoSource` (`fun interface` + `LocalRecipePhotoSource`) se retira con esa cadena. El
+mapeo puro **`RecipeArtworkStyle`** (sin Compose ni Android: `RecipeGlyph` con 18 miembros ↔ 18
+`recipeCategories`, `RecipeAccent` con 10 acentos + `DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback
+total `null`/vacío/desconocido -> `PLATE` + `DEFAULT`) **sigue vigente**: el glifo es la **marca de agua**
+de la ficha y el **último recurso** (bloque con degradado por **roles del tema** —`primaryContainer`,
+`secondaryContainer`, `tertiaryContainer`, `surfaceVariant`— y glifo de línea con primitivas de `Canvas`),
+y el acento por cocina es el **filete** de la tarjeta. La capa Compose `RecipeArtwork(recipe, modifier,
+glyphSize)` conserva su firma. El nivel **generado** y su crossfade (fase 4, ADR 0005) se superponen a esa
+base tipográfica. Ver `docs/adr/0006-typographic-recipe-cards.md`,
+`docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y `docs/specs/recipe-artwork.md`.
+
+**Capturas pendientes (desviación, ADR 0006):** esta dirección se decidió sobre **prototipos HTML
+locales**, versionados en `docs/design/concepts/typographic-cards/`, **no** sobre un export de Stitch. Las
+capturas `.png` por pantalla en `docs/design/concepts/<feature-id>/<pantalla>/` están **pendientes**
+(features `card-typographic-tokens-and-design`, `recipe-card-typographic`,
+`recipe-detail-typographic-header` y `dish-artwork-as-card-background`) y son una **desviación de la
+política de capturas** (que parte de export de Stitch) **pendiente de autorización** de la persona; hasta
+entonces esas features quedan `blocked`.
 
 La **pantalla de Resultados** vive en `com.sazon.app.ui.results`, con logica **pura** testeable en JVM
 (sin Compose ni Android) y una capa Compose delgada. `MatchScore.of(recipe, preferences, taxonomy,
@@ -454,7 +463,11 @@ los roles sobrescritos, sin purple/pink por defecto), `Type.kt` (`SazonTypograph
 Manrope/Inter), `Shape.kt` (formas 16/24 + pildora) y `Spacing.kt` (espaciado 12/16/24 y metricas de
 componentes). `SazonTheme` elige la variante clara/oscura con `isSystemInDarkTheme()` y **no** usa
 color dinamico de Material You: ninguna ruta lee el fondo de pantalla, por lo que los colores no
-cambian con el. El **modo oscuro entra en el MVP** (pregunta abierta 3 de `DESIGN.md`, resuelta). Las
+cambian con el. El **modo oscuro entra en el MVP** (pregunta abierta 3 de `DESIGN.md`, resuelta). Con el
+**ADR 0006** el modo oscuro gana **dos tokens de tarjeta** —`darkCardSurface` `#3A2E26` y
+`darkCardOutline` `#7D6A5C`— que dan **3,26:1** con `darkBackground` (cumple el **3:1** de WCAG 1.4.11,
+frente al 1,15:1 anterior); son tokens **de tarjeta** y **no** alteran `darkSurface` ni el navegador, las
+hojas o el resto de pantallas. Las
 fuentes OFL Manrope/Inter se empaquetan en `app/src/main/res/font/` (instancias estaticas de los pesos
 600/700 y 400/500, generadas con `fontTools` de las fuentes variables oficiales; licencias en
 `docs/licenses/`) y no se descargan por red. El fondo de ventana del sistema se alinea con
@@ -782,7 +795,9 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Tests unitarios de dominio en JVM** (obligatorios): integridad de la Taxonomía, `PromptBuilder`,
   parsing y validación de la respuesta, descarte por Restricciones duras, firma de preferencias y
   política de caché, escalado de raciones.
-- **Tests JVM de la imagen de receta** (`recipe-photos`): `RecipePhotoAssetsTest` cubre la **cadena de
+- **Tests JVM de la imagen de receta** (`recipe-photos`; **cadena retirada por ADR 0006** — este bloque
+  describe el código vigente hasta que aterrice `retire-recipe-photos`): `RecipePhotoAssetsTest` cubre la
+  **cadena de
   respaldo pura** (semilla → categoría → `default` → `null`), el respaldo parcial (fallo del primer
   candidato), la categoría desconocida/`null` que cae a `default`, el determinismo y los casos negativos
   (`cat-no-existe` nunca es candidato); además, la **exhaustividad de assets** itera la Taxonomía real
@@ -966,11 +981,13 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   peticiones hasta el reset) → la política cache-first y el modo semilla protegen el coste.
 - **Red intermitente**: solo la Búsqueda con IA necesita red; el Lote de sugerencias, "Tus recetas" y
   Favoritos deben funcionar sin conexión.
-- **Tamaño del APK**: las **31 fotos** de receta viajan empaquetadas en `app/src/main/assets/img/recipes/`
-  y suman al APK; el presupuesto de esa carpeta es **≤ 8 MB** y conviene **WebP q80** con ancho máximo
-  **960 px** cuando la máquina del implementer tiene `cwebp`/ImageMagick (`scripts/fetch-recipe-photos.sh`;
-  si no hay herramienta, conserva el original y lo registra). Cada receta semilla nueva implica añadir su
-  foto (ver `docs/adr/0004-recipe-photos-as-assets.md`).
+- **Tamaño del APK**: el presupuesto de `app/src/main/assets/img/recipes/` (**≤ 8 MB**, WebP q80 a
+  ≤ 960 px, `scripts/fetch-recipe-photos.sh`) deja de aplicar al **retirarse la cadena local de fotos** con
+  la feature `retire-recipe-photos` (ADR 0006): **30 de los 31 assets (~6,2 MiB)** **salen del APK**, de
+  modo que el APK deja de llevar fotos de receta visibles; se conserva la foto neutra `default.<ext>`
+  (~136 KB, sin mostrarse) como **referencia de estilo** de `dish-style-reference` (ADR 0005, fase 6). Se conservan los **assets semilla de imagen de plato**
+  (fase 7, presupuesto propio ≤ 2 MiB en `app/src/main/assets/img/dishes/seed/`). Ver
+  `docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y `docs/adr/0006-typographic-recipe-cards.md`.
 - **OkHttp frente a `compileSdk`**: Ktor 3.6.0 trae OkHttp 5.5.0, cuyo artefacto Android
   (`okhttp-android`) declara `minCompileSdk=37`; con `compileSdk` 36.1 la verificación del AAR
   (`checkDebugAarMetadata`) falla. El build **fuerza OkHttp 5.4.0** en `app/build.gradle.kts` (la

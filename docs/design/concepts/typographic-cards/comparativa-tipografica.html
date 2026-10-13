@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sazón · C, cinco maneras de hacerla buena (tipográfica)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#D9552B; --on-primary:#FFFFFF; --primary-container:#FFDCCF;
+  --secondary:#5F7A3D; --secondary-container:#DCE8CC;
+  --accent:#F2A93B;   --tertiary-container:#FCE3B8;
+  --background:#FFF8F0; --surface:#FFFFFF;
+  --text:#2B2118; --outline:#E8DDD3;
+  --surface-variant:#F2E8DE; --on-surface-variant:#5A4B40;
+  --card-radius:24px; --shadow:0 4px 16px rgba(0,0,0,.06);
+  --hairline:#E8DDD3;
+}
+.dark{
+  --background:#241C16; --surface:#312720; --text:#FFF8F0; --outline:#5A4B40;
+  --surface-variant:#3D3129; --on-surface-variant:#E8DDD3;
+  --primary-container:#6E2C15; --secondary-container:#2F3D1E; --tertiary-container:#4A3413;
+  --hairline:#5A4B40;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--text);font-family:Inter,sans-serif;font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:Manrope,sans-serif;margin:0}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:20px;font-weight:700}
+h3{font-size:15px;font-weight:600}
+p{margin:.4em 0}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 96px}
+.hero{border-bottom:1px solid var(--hairline);padding-bottom:20px;margin-bottom:8px}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--on-surface-variant)}
+.note{background:var(--primary-container);border-radius:16px;padding:14px 16px;margin:18px 0}
+.note.warn{background:var(--tertiary-container)}
+.note ul{margin:.4em 0 0 1.2em;padding:0}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0}
+button{font:inherit;font-weight:600;border:1px solid var(--outline);background:transparent;color:var(--text);border-radius:999px;padding:9px 18px;cursor:pointer}
+button.on{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+
+.variant{background:var(--surface);border-radius:var(--card-radius);box-shadow:var(--shadow);padding:22px;margin:22px 0}
+.variant > header{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:var(--primary-container);color:var(--text)}
+.tag.plain{background:var(--surface-variant);color:var(--on-surface-variant)}
+.facts{font-size:13px;color:var(--on-surface-variant);margin:8px 0 20px}
+.facts b{color:var(--text)}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.geom{font-size:12px;color:var(--on-surface-variant);margin-bottom:8px}
+
+/* ====== geometrías ====== */
+.card{width:300px;border-radius:var(--card-radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.card.flat{box-shadow:none;border:1px solid var(--hairline)}
+.slot{position:relative;aspect-ratio:16/10;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:14px}
+.slot.white{background:var(--surface)}
+.slot.tint{background:var(--surface-variant)}
+.slot .cat{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-surface-variant)}
+.slot .t{font-family:Manrope,sans-serif;font-weight:800;font-size:21px;line-height:1.16;letter-spacing:-.02em}
+.badge{position:absolute;top:12px;right:12px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;font-variant-numeric:tabular-nums}
+.heart{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;background:rgba(255,255,255,.92);display:grid;place-items:center;color:#2B2118;font-size:14px}
+.rule-left{border-left:5px solid var(--primary)}
+.rule-secondary{border-left-color:var(--secondary)}
+.band{height:8px}
+.b-ember{background:linear-gradient(90deg,var(--surface-variant),var(--primary-container))}
+.b-rose{background:linear-gradient(90deg,var(--secondary-container),var(--tertiary-container))}
+.b-curry{background:linear-gradient(90deg,var(--tertiary-container),var(--secondary-container))}
+.g-ember{background:linear-gradient(160deg,var(--surface-variant),var(--primary-container))}
+.g-rose{background:linear-gradient(160deg,var(--secondary-container),var(--tertiary-container))}
+.g-curry{background:linear-gradient(160deg,var(--tertiary-container),var(--secondary-container))}
+.ing{font-size:12.5px;color:var(--on-surface-variant);display:grid;gap:3px}
+.ing span{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--hairline);padding-bottom:2px}
+.ing b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.card .body{padding:12px}
+.card .bt{font-family:Manrope,sans-serif;font-weight:700;font-size:16px;line-height:1.25}
+.card .meta{font-size:12px;color:var(--on-surface-variant);margin-top:8px;font-variant-numeric:tabular-nums}
+.wm{position:absolute;right:-14px;bottom:-18px;color:var(--on-surface-variant);opacity:.13;stroke:currentColor;fill:none;stroke-width:2.2}
+.glyph{color:var(--on-surface-variant);stroke:currentColor;fill:none;stroke-width:2.40;stroke-linecap:round;stroke-linejoin:round}
+
+/* miniatura Favoritos 96 */
+.thumb{width:96px;height:96px;border-radius:var(--card-radius);overflow:hidden;display:grid;place-items:center;position:relative;flex:0 0 auto}
+.thumb.white{background:var(--surface-variant)}
+.mono{font-family:Manrope,sans-serif;font-weight:800;font-size:30px;letter-spacing:-.04em;color:var(--on-surface-variant)}
+.mono.sm{font-size:22px}
+.listcard{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:16px;padding:10px;box-shadow:var(--shadow);width:340px}
+.tiles{display:flex;gap:14px}
+.tile{width:170px;border-radius:var(--card-radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.tile .b{height:110px;display:flex;flex-direction:column;justify-content:space-between;padding:12px}
+.tile .f{padding:10px 12px}
+.tile .tt{font-family:Manrope,sans-serif;font-weight:700;font-size:14px;line-height:1.2}
+.tile .cc{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--on-surface-variant)}
+
+/* hero detalle */
+.hero-art{width:420px;max-width:100%;border-radius:0 0 var(--card-radius) var(--card-radius);overflow:hidden;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:18px;height:240px;box-shadow:var(--shadow)}
+.hero-art .cat{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-surface-variant)}
+.hero-art .t{font-family:Manrope,sans-serif;font-weight:800;font-size:30px;line-height:1.1;letter-spacing:-.025em}
+.metastrip{max-width:420px;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-radius:0 0 var(--card-radius) var(--card-radius);padding:14px 8px;box-shadow:var(--shadow)}
+.metastrip div{text-align:center;border-right:1px solid var(--hairline)}
+.metastrip div:last-child{border-right:0}
+.metastrip .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-variant)}
+.metastrip .v{font-family:Manrope,sans-serif;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:12px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--hairline);vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant)}
+code{background:var(--surface-variant);padding:1px 6px;border-radius:6px;font-size:12px}
+footer{margin-top:40px;font-size:12px;color:var(--on-surface-variant);border-top:1px solid var(--hairline);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="kicker">Sazón · C, cinco versiones</div>
+    <h1>La tarjeta tipográfica, bien hecha</h1>
+    <p>Misma receta, mismo hueco 16:10, cinco tratamientos. Los tokens, los degradados de
+      <code>RecipeAccent</code> y la geometría (16:10 · 96×96 · hero 240) son los reales.</p>
+  </div>
+  <div class="controls">
+    <button id="t-light" class="on">Modo claro</button>
+    <button id="t-dark">Modo oscuro</button>
+    <span class="facts" style="margin:0">El modo oscuro es donde más se ve si la tarjeta aguanta.</span>
+  </div>
+
+  <div class="note">
+    <b>Por qué la C "básica" no emociona:</b> un bloque de color con texto encima se lee como una
+    <b>imagen rota</b>, no como una decisión. Las cinco versiones de abajo atacan eso: dar
+    <b>estructura editorial</b> (reglas, versalitas, columnas), usar el color como <b>acento</b> y no como
+    relleno, y meter <b>información verdadera</b> (ingredientes y cantidades).
+  </div>
+
+  <!-- ================= C1 ================= -->
+  <div class="variant">
+    <header><span class="tag plain">C1 · lo que viste</span><h2>Bloque de color + texto</h2></header>
+    <div class="facts">Sin estructura. Es la que parece un fallo de carga.</div>
+    <div class="row">
+      <div><div class="geom">RecipeCard · 16:10</div>
+        <div class="card"><div class="slot g-rose">
+          <div class="cat" style="color:var(--text);opacity:.7">Arroz</div>
+          <div class="t">Arroz con pollo criollo</div>
+        </div>
+        <div class="body"><div class="meta">30 min · Media · 2 pers.</div></div></div></div>
+      <div><div class="geom">Favoritos · 96×96</div>
+        <div class="thumb g-rose"><span class="mono sm">AC</span></div></div>
+    </div>
+  </div>
+
+  <!-- ================= C2 ================= -->
+  <div class="variant">
+    <header><span class="tag">C2 · ficha editorial</span><h2>Superficie blanca, regla de color, cantidades</h2></header>
+    <div class="facts">
+      El color deja de rellenar y pasa a ser <b>un filete de 5 px</b> a la izquierda (marca de libro de
+      cocina). Dentro, todo blanco: categoría en versalitas, título grande y <b>3 ingredientes con
+      cantidad</b> en cifras tabulares. Parece una <b>ficha de receta</b>, no una imagen que falló — y
+      además te dice algo cierto del plato. Sin assets, sin red.
+    </div>
+    <div class="row">
+      <div><div class="geom">RecipeCard · 16:10</div>
+        <div class="card"><div class="slot white rule-left">
+          <div><div class="cat">Arroz · Latina</div>
+            <div class="t" style="margin-top:4px">Arroz con pollo criollo</div></div>
+          <div class="ing">
+            <span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Zanahoria <b>1</b></span>
+          </div>
+          <span class="badge">92%</span>
+        </div>
+        <div class="body"><div class="meta">30 min · Media · 2 pers.</div></div></div></div>
+      <div><div class="geom">Favoritos · 96×96</div>
+        <div class="thumb white rule-left"><span class="mono">AC</span></div></div>
+      <div><div class="geom">Favoritos · fila</div>
+        <div class="listcard">
+          <div class="thumb white rule-left"><span class="mono sm">AC</span></div>
+          <div><div class="bt">Arroz con pollo criollo</div>
+            <div class="meta" style="font-size:12px;color:var(--on-surface-variant)">30 min · Media · 2 pers.</div></div>
+          <div style="margin-left:auto;color:var(--primary)">♥</div>
+        </div></div>
+    </div>
+  </div>
+
+  <!-- ================= C3 ================= -->
+  <div class="variant">
+    <header><span class="tag">C3 · carta de restaurante</span><h2>Protagonismo tipográfico fuerte</h2></header>
+    <div class="facts">
+      El hueco entero es <b>composición tipográfica</b>: categoría en versalitas, título a 26–30 px con
+      interlineado apretado, y abajo una <b>línea fina con el tiempo y la dificultad</b>. El color solo
+      como <b>filete inferior</b>. Es lo más cercano a "libro de cocina moderno" y lo que mejor se ve en
+      un carrusel, donde hay 3 tarjetas a la vez y la tipografía se lee mejor que cualquier miniatura.
+    </div>
+    <div class="row">
+      <div><div class="geom">RecipeCard · 16:10</div>
+        <div class="card"><div class="slot white">
+          <div><div class="cat">De la cocina latina</div>
+            <div class="t" style="font-size:27px;margin-top:6px">Arroz con<br>pollo criollo</div></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--hairline);padding-top:8px">
+            <span class="ing" style="font-size:12px">30 min · Media</span>
+            <span class="t" style="font-size:15px;color:var(--primary)">92%</span>
+          </div>
+          <div class="band b-rose" style="position:absolute;left:0;right:0;bottom:0;height:6px"></div>
+        </div>
+        <div class="body"><div class="meta">2 pers. · 480 kcal</div></div></div></div>
+      <div><div class="geom">RecipeCard · curry (mismo molde)</div>
+        <div class="card"><div class="slot white">
+          <div><div class="cat">De la cocina india</div>
+            <div class="t" style="font-size:27px;margin-top:6px">Curry de<br>garbanzos</div></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--hairline);padding-top:8px">
+            <span class="ing" style="font-size:12px">35 min · Media</span>
+            <span class="t" style="font-size:15px;color:var(--primary)">88%</span>
+          </div>
+          <div class="band b-curry" style="position:absolute;left:0;right:0;bottom:0;height:6px"></div>
+        </div>
+        <div class="body"><div class="meta">3 pers. · 410 kcal</div></div></div></div>
+      <div><div class="geom">Favoritos · 96×96</div>
+        <div class="thumb white rule-left"><span class="mono">AC</span></div></div>
+    </div>
+  </div>
+
+  <!-- ================= C4 ================= -->
+  <div class="variant">
+    <header><span class="tag">C4 · híbrido con marca de agua</span><h2>Tipográfica + glifo de categoría muy tenue</h2></header>
+    <div class="facts">
+      Es C3 más el <b>glifo de la categoría</b> dibujado grande y al 13 % detrás del texto: da textura y
+      hace que dos recetas de la misma categoría/cocina no se vean idénticas. Sigue sin haber foto y sin
+      afirmar nada del plato.
+    </div>
+    <div class="row">
+      <div><div class="geom">RecipeCard · 16:10</div>
+        <div class="card"><div class="slot white rule-left">
+          <svg class="wm" width="150" height="150" viewBox="0 0 100 100"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+          <div><div class="cat">Arroz · Latina</div>
+            <div class="t" style="margin-top:4px">Arroz con pollo criollo</div></div>
+          <div class="ing"><span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span></div>
+        </div>
+        <div class="body"><div class="meta">30 min · Media · 2 pers.</div></div></div></div>
+      <div><div class="geom">Detalle · hero 240 + tira de metadatos</div>
+        <div class="hero-art white rule-left" style="justify-content:flex-end">
+          <svg class="wm" width="230" height="230" viewBox="0 0 100 100" style="right:-30px;bottom:-40px"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+          <div><div class="cat">De la cocina latina</div>
+            <div class="t">Arroz con pollo criollo</div></div>
+          <div class="band b-rose" style="position:absolute;left:0;right:0;bottom:0;height:6px"></div>
+        </div>
+        <div class="metastrip">
+          <div><div class="k">Tiempo</div><div class="v">30 min</div></div>
+          <div><div class="k">Dificultad</div><div class="v">Media</div></div>
+          <div><div class="k">Comensales</div><div class="v">2</div></div>
+          <div><div class="k">Calorías</div><div class="v">480</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= C5 ================= -->
+  <div class="variant">
+    <header><span class="tag">C5 · conserva el hueco de color</span><h2>Cabecera de color fina + resto editorial</h2></header>
+    <div class="facts">
+      Mantiene <b>algo de color apetitoso</b> (la franja superior, con el degradado real de la cocina) y el
+      resto es ficha blanca. Es el compromiso: no renuncia del todo al "cromo cálido" que pide
+      <code>DESIGN.md</code> y sigue siendo honesto. En modo oscuro la franja se oscurece con el tema.
+    </div>
+    <div class="row">
+      <div><div class="geom">RecipeCard · 16:10</div>
+        <div class="card"><div class="slot white" style="padding:0">
+          <div class="band b-rose" style="height:52px;width:100%"></div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:0 14px 14px">
+            <div><div class="cat">Arroz · Latina · 92%</div>
+              <div class="t" style="margin-top:4px">Arroz con pollo criollo</div></div>
+            <div class="ing"><span>Pollo <b>400 g</b></span><span>Arroz <b>300 g</b></span><span>Pimiento <b>1</b></span></div>
+          </div>
+        </div>
+        <div class="body"><div class="meta">30 min · Media · 2 pers.</div></div></div></div>
+      <div><div class="geom">Home · carrusel (así se comparan)</div>
+        <div style="display:flex;gap:14px">
+          <div style="width:150px"><div class="band b-ember" style="height:34px;border-radius:16px 16px 0 0"></div>
+            <div class="slot white" style="aspect-ratio:auto;height:106px;padding:10px;border-radius:0 0 16px 16px">
+              <div><div class="cat" style="font-size:9px">Desayuno</div><div class="t" style="font-size:15px">Tortilla de patatas</div></div>
+              <div class="ing" style="font-size:11px"><span>Huevo <b>4</b></span></div></div></div>
+          <div style="width:150px"><div class="band b-rose" style="height:34px;border-radius:16px 16px 0 0"></div>
+            <div class="slot white" style="aspect-ratio:auto;height:106px;padding:10px;border-radius:0 0 16px 16px">
+              <div><div class="cat" style="font-size:9px">Arroz</div><div class="t" style="font-size:15px">Arroz con pollo</div></div>
+              <div class="ing" style="font-size:11px"><span>Pollo <b>400 g</b></span></div></div></div>
+          <div style="width:150px"><div class="band b-curry" style="height:34px;border-radius:16px 16px 0 0"></div>
+            <div class="slot white" style="aspect-ratio:auto;height:106px;padding:10px;border-radius:0 0 16px 16px">
+              <div><div class="cat" style="font-size:9px">Legumbres</div><div class="t" style="font-size:15px">Curry de garbanzos</div></div>
+              <div class="ing" style="font-size:11px"><span>Garbanzos <b>300 g</b></span></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= coste ================= -->
+  <h2 style="margin-top:40px">Lo que cambia con C (en cualquiera de sus versiones)</h2>
+  <table>
+    <tr><th>Qué</th><th>Antes</th><th>Con C</th></tr>
+    <tr><td>RecipeCard / RecipeListCard</td><td>Imagen 16:10 y miniatura 96×96</td><td>Ficha tipográfica; la miniatura pasa a <b>monograma</b> sobre regla de color</td></tr>
+    <tr><td>Detalle</td><td>Hero 240 + <b>tarjeta blanca que sube encima</b></td><td>Hero tipográfico + tira de metadatos; <b>se pierde el solape</b>: hay que sustituir ese recurso (la franja de color hace de bisagra)</td></tr>
+    <tr><td>Tarjetas de Home / Resultados / Favoritos</td><td>Geometría y sombra actuales</td><td>Misma geometría; cambia el contenido del hueco</td></tr>
+    <tr><td><code>DESIGN.md</code></td><td>"la comida y las fotos mandan"; hero con foto</td><td>Hay que reescribir <b>Imagery</b>, <b>Product Feel</b>, <b>RecipeCard</b>, <b>Detalle</b> y la OQ4</td></tr>
+    <tr><td>APK</td><td>6,4 MiB de fotos</td><td><b>−6,4 MiB</b> (las fotos se retiran del todo)</td></tr>
+    <tr><td>Capturas de referencia</td><td>Ya existen</td><td><b>Obligatorias nuevas</b>: es cambio de layout, no cambio de fuente (no vale la excepción)</td></tr>
+  </table>
+
+  <div class="note warn">
+    <b>Aviso honesto:</b> C es la alternativa más <b>elegante</b> y la más <b>barata de mantener</b>, pero
+    renuncia a lo que hace que alguien quiera cocinar: <b>el hambre</b>. Un patrón que funciona en apps
+    reales es <b>C + una sola foto o ilustración "de casa"</b> (por ejemplo, solo en el Detalle, donde el
+    usuario ya está convencido), y tipografía pura en las listas. Si te interesa, te lo boceto.
+  </div>
+
+  <footer>
+    Bocetos de comparación. No son assets del producto: la dirección visual aprobada sigue siendo
+    <code>DESIGN.md</code>. Fichero fuera de control de versiones (<code>preview/</code>).
+  </footer>
+</div>
+
+<script>
+  const light=document.getElementById('t-light'), dark=document.getElementById('t-dark');
+  light.onclick=()=>{document.body.classList.remove('dark');light.classList.add('on');dark.classList.remove('on')};
+  dark.onclick=()=>{document.body.classList.add('dark');dark.classList.add('on');light.classList.remove('on')};
+</script>
+</body>
+</html>

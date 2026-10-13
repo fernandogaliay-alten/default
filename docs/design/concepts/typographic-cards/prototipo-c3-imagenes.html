@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sazón · C3 v2 — contraste en oscuro y tarjeta con imagen de IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,sans-serif;background:#EFE7DE;color:#2B2118;font-size:15px;line-height:1.5}
+h1,h2,h3,h4{font-family:Manrope,sans-serif;margin:0}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:20px;font-weight:700;margin-top:40px}
+p{margin:.4em 0}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 120px}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5A4B40}
+.note{background:#FFDCCF;border-radius:16px;padding:14px 16px;margin:16px 0}
+.note.warn{background:#FCE3B8}
+.note.ok{background:#DCE8CC}
+.note ul{margin:.4em 0 0 1.2em;padding:0}
+code{background:#F2E8DE;padding:1px 6px;border-radius:6px;font-size:12px;color:#2B2118}
+.caption{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.caption .t{font-family:Manrope;font-weight:700;font-size:17px}
+.caption .s{font-size:13px;color:#5A4B40}
+.cap{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A4B40;margin-bottom:8px}
+.board{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:10px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #E8DDD3;vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5A4B40}
+.panel{border-radius:24px;padding:22px;background:#FFF;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.panel.dark{background:#241C16}
+
+/* ====== tokens claros / oscuros ====== */
+.th{--background:#FFF8F0;--surface:#FFFFFF;--text:#2B2118;--on-surface-variant:#5A4B40;--surface-variant:#F2E8DE;
+    --primary:#D9552B;--primary-container:#FFDCCF;--secondary-container:#DCE8CC;--tertiary-container:#FCE3B8;
+    --hairline:#E8DDD3;--shadow:0 4px 16px rgba(0,0,0,.06);--scrim:linear-gradient(to top,rgba(20,12,8,.78),rgba(20,12,8,.18) 52%,rgba(20,12,8,.42))}
+.td{--background:#241C16;--surface:#312720;--text:#FFF8F0;--on-surface-variant:#E8DDD3;--surface-variant:#3D3129;
+    --primary:#D9552B;--primary-container:#6E2C15;--secondary-container:#2F3D1E;--tertiary-container:#4A3413;
+    --hairline:#5A4B40;--shadow:0 4px 16px rgba(0,0,0,.35);--scrim:linear-gradient(to top,rgba(10,6,4,.82),rgba(10,6,4,.22) 52%,rgba(10,6,4,.5))}
+.swatch{background:var(--background);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+
+/* ====== tarjeta C3 ====== */
+.ncard{background:var(--surface);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;color:var(--text)}
+.ncard .art{position:relative;aspect-ratio:16/10;display:flex;flex-direction:column;justify-content:space-between;padding:13px;overflow:hidden}
+.ncard.wide .art{padding:16px}
+.ncard .cat{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--on-surface-variant)}
+.ncard .t{font-family:Manrope;font-weight:800;font-size:21px;line-height:1.13;letter-spacing:-.02em;margin-top:3px}
+.ncard.wide .t{font-size:26px}
+.ncard .ing1{font-size:11.5px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ing3{display:grid;gap:3px;font-size:12px;color:var(--on-surface-variant)}
+.ing3 span{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--hairline);padding-bottom:2px}
+.ing3 b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.ncard .foot{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid var(--hairline);padding-top:7px;font-size:11.5px;color:var(--on-surface-variant);font-variant-numeric:tabular-nums}
+.ncard .match{font-family:Manrope;font-weight:800;font-size:13px;color:var(--primary)}
+.filete{position:absolute;left:0;right:0;bottom:0;height:6px;z-index:3}
+.wm{position:absolute;right:-16px;bottom:16px;color:var(--on-surface-variant);opacity:.12;stroke:currentColor;fill:none;stroke-width:2.2}
+
+/* sobre imagen: scrim + tipografía clara */
+.ncard .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.ncard .scrim{position:absolute;inset:0;background:var(--scrim);z-index:1}
+.ncard.onimg .art > :not(.bgimg):not(.scrim):not(.filete){position:relative;z-index:2}
+.ncard.onimg .art{--text:#FFFFFF;--on-surface-variant:rgba(255,255,255,.86);--hairline:rgba(255,255,255,.32)}
+.ncard.onimg .art .foot{border-top-color:rgba(255,255,255,.32)}
+.ncard.onimg .art .match{color:#fff;background:var(--primary);padding:2px 8px;border-radius:999px}
+/* ingredientes sobre imagen: pastilla traslúcida */
+.ncard.onimg .ing3{background:rgba(12,8,5,.38);backdrop-filter:blur(2px);border-radius:12px;padding:7px 9px}
+.ncard.onimg .ing3 span{border-bottom-color:rgba(255,255,255,.24)}
+.ncard.onimg .ing3 b{color:#fff}
+.ncard.onimg .ing1{color:rgba(255,255,255,.9)}
+/* variante L2: imagen arriba, texto/ingredientes en banda sólida */
+.ncard.l2 .ingband{padding:11px 13px 13px;background:var(--surface)}
+.ncard.l2{--text:#2B2118}
+.td .ncard.l2{--text:#FFF8F0}
+
+/* opciones de oscuro */
+.opts{display:flex;gap:22px;flex-wrap:wrap}
+.opt{width:330px}
+.ratio{font-size:12px;color:#5A4B40;margin-top:8px}
+.ratio b{font-variant-numeric:tabular-nums}
+.bad{color:#B3261E;font-weight:700}
+.good{color:#4C7A34;font-weight:700}
+.g-rose{background:linear-gradient(160deg,var(--secondary-container),var(--tertiary-container))}
+.b-rose{background:linear-gradient(90deg,var(--secondary-container),var(--tertiary-container))}
+.b-ember{background:linear-gradient(90deg,var(--surface-variant),var(--primary-container))}
+.b-curry{background:linear-gradient(90deg,var(--tertiary-container),var(--secondary-container))}
+.tint{border-radius:24px;overflow:hidden}
+.tint::before{content:"";display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Sazón · C3 v2 · dos ajustes</div>
+  <h1>Contraste en oscuro y la imagen de IA dentro de la tarjeta</h1>
+  <p>Dos cosas que pediste: que las tarjetas destaquen sobre el fondo en modo oscuro, y que el
+    interruptor de imágenes por IA haga que la imagen <b>aparezca en la tarjeta</b>.</p>
+
+  <!-- ============================================================ -->
+  <h2>1 · Modo oscuro: por qué la tarjeta no destaca (con números)</h2>
+  <div class="note warn">
+    Con los tokens actuales el contraste <b>tarjeta/fondo</b> es de <b>1,15:1</b>
+    (<code>#312720</code> sobre <code>#241C16</code>). El mínimo que pide WCAG para distinguir límites de
+    interfaz es <b>3:1</b>: hoy la tarjeta no se distingue, y el efecto <b>empeora</b> con el filete de
+    color, porque tampoco hay sombra visible en fondo oscuro.
+  </div>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="cap">Opción A · mínima (solo borde)</div>
+      <div class="panel dark td" style="padding:16px">
+        <div class="swatch" style="gap:14px">
+          <div class="ncard" style="border:1px solid #5A4B40">
+            <div class="art">
+              <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+              <div class="ing1">pollo · arroz · zanahoria</div>
+              <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+              <div class="filete b-rose"></div>
+            </div>
+          </div>
+          <div class="ncard" style="border:1px solid #5A4B40">
+            <div class="art">
+              <div><div class="cat">Desayuno · Española</div><div class="t">Tortilla<br>de patatas</div></div>
+              <div class="ing1">huevo · patata · cebolla</div>
+              <div class="foot"><span>25 min · Fácil</span><span class="match">98%</span></div>
+              <div class="filete b-ember"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">Tarjeta/fondo <b>1,15:1</b> · borde/fondo <b>2,0:1</b>
+        → <span class="bad">por debajo de 3:1</span>. Cambio de una línea, pero sigue justo.</div>
+    </div>
+
+    <div class="opt">
+      <div class="cap">Opción B · borde claro (recomendada)</div>
+      <div class="panel dark td" style="padding:16px">
+        <div class="swatch" style="gap:14px">
+          <div class="ncard" style="background:#3A2E26;border:1px solid #7D6A5C">
+            <div class="art">
+              <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+              <div class="ing1">pollo · arroz · zanahoria</div>
+              <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+              <div class="filete b-rose"></div>
+            </div>
+          </div>
+          <div class="ncard" style="background:#3A2E26;border:1px solid #7D6A5C">
+            <div class="art">
+              <div><div class="cat">Desayuno · Española</div><div class="t">Tortilla<br>de patatas</div></div>
+              <div class="ing1">huevo · patata · cebolla</div>
+              <div class="foot"><span>25 min · Fácil</span><span class="match">98%</span></div>
+              <div class="filete b-ember"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">Superficie subida a <code>#3A2E26</code> · borde/fondo <b>3,26:1</b>
+        → <span class="good">cumple 3:1</span>. Es <b>borde de tarjeta</b>, no token global:
+        no toca navegador, hojas ni pantallas.</div>
+    </div>
+
+    <div class="opt">
+      <div class="cap">Opción C · tinte cálido por cocina</div>
+      <div class="panel dark td" style="padding:16px">
+        <div class="swatch" style="gap:14px">
+          <div class="ncard" style="border:1px solid #5A4B40">
+            <div class="art" style="background:linear-gradient(160deg,#3A2E26,#4A2A22)">
+              <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+              <div class="ing1">pollo · arroz · zanahoria</div>
+              <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+              <div class="filete b-rose"></div>
+            </div>
+          </div>
+          <div class="ncard" style="border:1px solid #5A4B40">
+            <div class="art" style="background:linear-gradient(160deg,#3A2E26,#453215)">
+              <div><div class="cat">Legumbres · India</div><div class="t">Curry de<br>garbanzos</div></div>
+              <div class="ing1">garbanzos · tomate · coco</div>
+              <div class="foot"><span>35 min · Media</span><span class="match">88%</span></div>
+              <div class="filete b-curry"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">El degradado de la <b>cocina</b> al 12–16 % sobre la superficie: separa por
+        <b>color</b>, refuerza identidad y además anticipa la imagen. La luminancia no cambia.</div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>Mi recomendación: B + C juntas.</b> Borde claro (3,26:1, cumple el mínimo) más el tinte cálido de la
+    cocina, que ya existe en el filete. Todo a nivel de <b>tarjeta</b>: no hay que cambiar
+    <code>darkSurface</code> en <code>DESIGN.md</code>/<code>Color.kt</code>, así que no se mueven el
+    navegador, las hojas, el Perfil ni las otras pantallas. Si prefieres el cambio global
+    (<code>darkSurface</code> más claro), es una línea, pero afecta a <b>todas</b> las superficies.
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>2 · La imagen de IA dentro de la tarjeta</h2>
+  <div class="note">
+    Con el interruptor <b>apagado</b> la tarjeta es tipográfica (lo que ya viste). Con el interruptor
+    <b>encendido</b> y una imagen disponible, la imagen pasa a ser <b>capa de fondo</b> del hueco y la
+    tipografía se queda encima con el <b>scrim</b> que <code>DESIGN.md</code> ya exige para el contraste
+    sobre fotografía. Dos formas de colocarla:
+    <ul>
+      <li><b>L1 · a sangre:</b> la imagen llena el 16:10 y el texto va encima (ingredientes en pastilla traslúcida). Máximo impacto, mínimo sitio para las 3 filas.</li>
+      <li><b>L2 · banda sólida:</b> la imagen arriba con categoría y título; los ingredientes con cantidad bajan a una banda de superficie. Contraste perfecto y las cifras tabulares se leen sin ruido.</li>
+    </ul>
+  </div>
+
+  <div class="board">
+    <div>
+      <div class="cap">Interruptor OFF · tipográfica (claro)</div>
+      <div class="panel th" style="padding:16px">
+        <div class="ncard" style="width:300px;background:var(--surface)">
+          <div class="art">
+            <svg class="wm" width="150" height="150" viewBox="0 0 100 100"><path d="M18 48h64a32 26 0 0 1-64 0z"/><path d="M32 26c0 8 6 10 6 18M50 22c0 8 6 10 6 18M68 26c0 8 6 10 6 18"/></svg>
+            <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+            <div class="ing1">pollo · arroz · zanahoria</div>
+            <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+            <div class="filete b-rose"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">Cero red. Cero cuota. Nunca miente.</div>
+    </div>
+
+    <div>
+      <div class="cap">Interruptor ON · L1 a sangre (claro)</div>
+      <div class="panel th" style="padding:16px">
+        <div class="ncard onimg" style="width:300px">
+          <div class="art">
+            <img class="bgimg" src="../../../../app/src/main/assets/img/recipes/category/cat-rice.jpg" alt="">
+            <div class="scrim"></div>
+            <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+            <div class="ing1">pollo · arroz · zanahoria</div>
+            <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+            <div class="filete b-rose"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">La imagen entra con el <b>crossfade de 250 ms</b> ya implementado: la tipografía
+        es la capa base, así que <b>no hay salto de layout</b>.</div>
+    </div>
+
+    <div>
+      <div class="cap">Interruptor ON · L1 a sangre (oscuro)</div>
+      <div class="panel dark td" style="padding:16px">
+        <div class="ncard onimg" style="width:300px;border:1px solid #7D6A5C">
+          <div class="art">
+            <img class="bgimg" src="../../../../app/src/main/assets/img/recipes/category/cat-rice.jpg" alt="">
+            <div class="scrim"></div>
+            <div><div class="cat">Arroz · Latina</div><div class="t">Arroz con<br>pollo criollo</div></div>
+            <div class="ing1">pollo · arroz · zanahoria</div>
+            <div class="foot"><span>30 min · Media</span><span class="match">92%</span></div>
+            <div class="filete b-rose"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">En oscuro el scrim va más cerrado. La tarjeta con imagen se separa sola del fondo.</div>
+    </div>
+
+    <div>
+      <div class="cap">Interruptor ON · L2 banda sólida (claro)</div>
+      <div class="panel th" style="padding:16px">
+        <div class="ncard l2 wide" style="width:300px">
+          <div class="art" style="aspect-ratio:16/9">
+            <img class="bgimg" src="../../../../app/src/main/assets/img/recipes/seed/seed-pollo-al-ajillo.jpg" alt="">
+            <div class="scrim"></div>
+            <div style="position:relative;z-index:2"><div class="cat">Pollo · Española</div><div class="t" style="font-size:22px">Pollo al ajillo</div></div>
+            <div class="filete b-ember"></div>
+          </div>
+          <div class="ingband">
+            <div class="ing3">
+              <span style="border-bottom:1px solid var(--hairline);color:var(--on-surface-variant)">Pollo <b>4 muslos</b></span>
+              <span style="border-bottom:1px solid var(--hairline);color:var(--on-surface-variant)">Ajo <b>6 dientes</b></span>
+              <span style="border-bottom:0;color:var(--on-surface-variant)">Vino blanco <b>100 ml</b></span>
+            </div>
+            <div class="foot" style="margin-top:6px"><span>40 min · Fácil · 4 pers.</span><span class="match">95%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ratio">El hueco con imagen es 16:9 y la banda de ingredientes va en superficie:
+        <b>contraste garantizado</b> y las cantidades tabulares limpias.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>3 · Cómo se comporta el interruptor (y por qué esto te quita la imprecisión)</h2>
+  <table>
+    <tr><th>Estado</th><th>Qué hace la tarjeta</th><th>Cuota / red</th></tr>
+    <tr><td><b>OFF</b> (lo que quieres)</td><td>Tipográfica + marca de agua del glifo + tinte de cocina + filete</td><td>0</td></tr>
+    <tr><td><b>ON</b>, imagen disponible</td><td>Imagen de fondo (L1 o L2) con scrim y tipografía encima</td><td>1 generación, cacheada después</td></tr>
+    <tr><td><b>ON</b>, aún no ha llegado</td><td>Tipográfica; la imagen entra con crossfade. <b>Sin hueco ni salto</b></td><td>0 extra</td></tr>
+    <tr><td><b>ON</b>, falla / timeout / tope agotado</td><td>Se queda tipográfica, <b>en silencio</b></td><td>0</td></tr>
+    <tr><td>Semilla (assets)</td><td>Fuera de la tarjeta: ya no hace falta foto de categoría</td><td>−6,4 MiB de APK</td></tr>
+  </table>
+
+  <div class="note ok">
+    <b>Lo importante:</b> con C3 desaparece el nivel de <b>foto de categoría</b> en la tarjeta. Si no hay
+    imagen generada, no cae en una foto genérica que no corresponde al plato: cae en <b>tipografía
+    honesta</b>. Es decir, esta dirección <b>arregla el problema 2</b> que me planteaste al principio
+    (imagen preestablecida imprecisa) y a la vez <b>deja el problema 1</b> (cuota) como algo que solo
+    ocurre si el usuario enciende el interruptor, con tope por sesión y caché ya implementados.
+  </div>
+
+  <div class="note warn">
+    <b>Dos consecuencias técnicas que habrá que reflejar en la spec:</b>
+    <ul>
+      <li><code>RecipeArtwork</code> deja de ser «la imagen de la receta» y pasa a ser <b>el proveedor de la capa de fondo</b> (con crossfade), mientras la tarjeta aporta la tipografía. Misma firma, otro rol: los 5 puntos de uso se revisan.</li>
+      <li>Si el interruptor está OFF, la cadena local de <code>recipe-photos</code> <b>no se consulta</b>: confirmar si se retira del todo (y con ella los 6,4 MiB) o se conserva solo para el Detalle.</li>
+    </ul>
+  </div>
+
+  <h2>4 · Qué falta en la spec</h2>
+  <table>
+    <tr><th>Decisión</th><th>Opciones</th></tr>
+    <tr><td>Contraste en oscuro</td><td>A · solo borde · B · borde claro (3,26:1) · C · tinte de cocina · <b>recomendada B+C</b></td></tr>
+    <tr><td>Colocación de la imagen</td><td>L1 a sangre · <b>L2 banda sólida</b> · L2 solo en Detalle</td></tr>
+    <tr><td>Ingredientes en el carrusel</td><td>1 línea (16:10) · subir la tarjeta a 3:2 con las 3 filas</td></tr>
+    <tr><td>Assets locales</td><td>retirar los 6,4 MiB · conservarlos solo para el Detalle</td></tr>
+    <tr><td>Sombra en oscuro</td><td>sombra actual (casi invisible) · <b>borde</b> como elevación</td></tr>
+  </table>
+
+  <p style="font-size:12.5px;color:#5A4B40;margin-top:24px">
+    Bocetos generados en local; no son assets del producto ni una spec. Las imágenes de las tarjetas
+    «ON» son las fotos reales del APK, usadas solo para ver cómo lee la tipografía encima. La dirección
+    visual aprobada sigue siendo <code>DESIGN.md</code>. Fichero fuera de control de versiones
+    (<code>preview/</code>).
+  </p>
+</div>
+</body>
+</html>

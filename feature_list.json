@@ -1225,6 +1225,85 @@
       "Validacion independiente (validator, sesion 100, contexto limpio): veredicto 'accept'. Re-ejecuto bash init.sh (exit 0; al salir test/lint UP-TO-DATE por la config cache forzo bash scripts/gradle.sh testDebugUnitTest --rerun-tasks 5m13s/34 tareas y bash scripts/gradle.sh lint --rerun-tasks 4m31s/30 tareas, ambos BUILD SUCCESSFUL) y parseo por su cuenta los XML frescos (93 suites / 687 tests / 0 fallos / 0 errores / 0 saltados) y el SARIF (0 errores, 13 warnings preexistentes, 0 bajo app/src); re-derivo la baseline en HEAD (92 ficheros con @Test / 673) => +1 suite / +14 tests, coincidente. Confirmo los 12 escenarios y los negativos, el vector exacto del prompt v2, la degradacion titulo->categoria->plato casero, MAX_KEY_INGREDIENTS y la omision sin residuos, DishImageCacheKey.VERSION == dish-image-v2 con 0 referencias a 'dish-image-v1' en app/src + docs + scripts, los 6 assets semilla renombrados a dish-image-v2-*.webp con md5 identicos (449844 B <= 2 MiB), el diagnostico GENERATED/SEED/CATEGORY/GLYPH solo bajo BuildConfig.DEBUG (release no-op, log limitado a origin+id+title, sin datos sensibles) sin cambiar el pintado, la pureza (domain/image 0 android/io.ktor/java.net/Log; data/image solo AndroidDishImageCache.kt) y la disciplina de alcance (diff = Expected File Changes; sin dependencias nuevas; docs/design/concepts/dish-image-prompt-v2 NO existe) y que el implementer no hizo commit/push/PR. Sin hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes (L1: la plantilla ilustrativa de la spec muestra ': ' entre identidad y detalle aunque su regla normativa une segmentos con ', ', que es lo implementado y lo exigido por los escenarios; reparacion de redaccion opcional; L2: el eje ui.artwork -> data.image de originOf/DishImageOriginDiagnostics es decision explicita de la spec, nota de arquitectura). Sin hallazgos de seguridad. Detalle en docs/validations/dish-image-prompt-v2.md."
     ],
     "notes": "Correctiva pedida por la persona (2026-10-13) tras probar: imágenes que no cuadran con el plato y una repetida 3 veces. Causa probable del segundo síntoma: fallback a la foto de CATEGORÍA cuando la generación devuelve null (timeout/429/tope de 12 por sesión), hoy indistinguible en el logcat. Alcance: (1) DishImagePrompt v2 — incluir SIEMPRE el título como identidad + la descripción del descriptor como detalle + ingredientes clave, con composición (ración completa, primer plano, fondo neutro) y negativos más fuertes; ajustar el contrato de PromptBuilder para pedir un imagePrompt más rico; (2) subir DishImageCacheKey.VERSION a dish-image-v2 (obligatorio por ADR 0005 al cambiar el prompt); (3) diagnóstico del origen de la imagen (solo debug). Pendiente separado, a decidir tras confirmar el fallback: revisar el tope de 12 por sesión / manejo de 429 (otra correctiva). Ver docs/ai-dish-images-proposal.md."
+  },
+  {
+    "id": "card-typographic-tokens-and-design",
+    "area": "ui",
+    "title": "Tokens de la tarjeta tipográfica y DESIGN.md como fuente de verdad",
+    "user_visible_behavior": "En modo oscuro las tarjetas se distinguen del fondo (superficie y borde propios, contraste >= 3:1) y el color de la cocina tiñe la tarjeta; DESIGN.md describe la ficha tipográfica como imagen de una receta y la fotografía como capa de fondo opcional.",
+    "depends_on": ["design-tokens-and-theme"],
+    "status": "not_started",
+    "verification": [
+      "Los roles nuevos de tema (darkCardSurface y darkCardOutline) están declarados en DESIGN.md y en ui/theme/Color.kt, sin hex sueltos en pantallas",
+      "'./gradlew test' cubre el contraste de la tarjeta sobre darkBackground y falla si baja de 3:1 (WCAG 1.4.11), y el test de tokens existente sigue verde",
+      "Capturas de referencia obligatorias en docs/design/concepts/card-typographic-tokens-and-design/tarjeta-oscura/ (.png en claro y oscuro) antes de implementar",
+      "'bash init.sh' verde; sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva y extensión de design-tokens-and-theme (y de recipe-artwork) pedida por la persona (2026-10-13). Motivo: en modo oscuro el contraste tarjeta/fondo era 1,15:1 (darkSurface #312720 sobre darkBackground #241C16), por debajo del 3:1 de WCAG 1.4.11. Decisión B+C: superficie #3A2E26 + borde #7D6A5C (3,26:1) + tinte cálido de la cocina, todo a nivel de tarjeta (NO se cambia darkSurface, para no alterar navegador, hojas ni el resto de pantallas). Es la primera de las cinco features del ADR 0006 y la base de las demás. Capturas aportadas (docs/design/concepts/card-typographic-tokens-and-design/tarjeta-oscura/, 2026-10-14; claro y oscuro, renderizadas del prototipo local con Chrome headless). Desviacion de la politica de capturas autorizada por la persona (2026-10-13) para las cuatro features de UI. Ver docs/adr/0006-typographic-recipe-cards.md y docs/design/concepts/typographic-cards/."
+  },
+  {
+    "id": "recipe-card-typographic",
+    "area": "ui",
+    "title": "RecipeCard tipográfica con los tres ingredientes principales y monograma en Favoritos",
+    "user_visible_behavior": "En Inicio, Resultados y Favoritos cada receta se lee como una ficha (categoría, título y los tres ingredientes principales con su cantidad, metadatos y coincidencia) sin ninguna foto; la miniatura 96x96 de Favoritos es un monograma de iniciales con la regla de color de la cocina a la izquierda.",
+    "depends_on": ["card-typographic-tokens-and-design"],
+    "status": "not_started",
+    "verification": [
+      "Tests JVM de la tarjeta: selección determinista de los tres ingredientes principales (nombre y cantidad en cifras tabulares) y del monograma, sin Android y sin red",
+      "RecipeCard, RecipeListCard y la rejilla de Favoritos comparten contenido; el 16:10 se mantiene con los ingredientes en una línea cuando la tarjeta es estrecha y en tres filas cuando hay ancho",
+      "Capturas de referencia obligatorias en docs/design/concepts/recipe-card-typographic/{recipe-card,favoritos-lista,favoritos-rejilla}/ (.png en claro y oscuro) antes de implementar",
+      "'bash init.sh' verde; sin assets nuevos, sin dependencias nuevas y sin tocar el Detalle (otra feature)"
+    ],
+    "evidence": [],
+    "notes": "Feature del ADR 0006 (dirección C3 'carta de restaurante' más los tres ingredientes principales, elegida por la persona sobre preview/prototipo-c3.html). Correctiva de home-offline-blocks, results-screen y favorites en lo que toca a la tarjeta: la imagen de receta se sustituye por la ficha tipográfica y el filete de 6px reutiliza RecipeAccent, con el RecipeGlyph como marca de agua al 12 % (sin assets nuevos). Abierto (DESIGN.md, OQ6): si el carrusel de la Home sube a 3:2 para tener las tres filas siempre. Capturas aportadas (docs/design/concepts/<feature-id>/<pantalla>/, 2026-10-14; claro y oscuro, renderizadas de los prototipos locales con Chrome headless a 390x844 y 2x). Desviacion de la politica de capturas autorizada por la persona (2026-10-13)."
+  },
+  {
+    "id": "recipe-detail-typographic-header",
+    "area": "ui",
+    "title": "Hero tipográfico del Detalle con tira de metadatos",
+    "user_visible_behavior": "El Detalle abre con un hero tipográfico (categoría, título y los tres ingredientes con cantidad, marca de agua del glifo y filete de la cocina) seguido de la tira de metadatos; ya no hay tarjeta blanca superpuesta sobre la foto.",
+    "depends_on": ["recipe-card-typographic"],
+    "status": "not_started",
+    "verification": [
+      "Tests JVM/Robolectric de estado del Detalle: el hero conserva su geometría y la tira de metadatos sus cuatro valores, sin foto",
+      "El escalado de raciones, las pestañas y la barra inferior (Guardar / Empezar a cocinar) no cambian",
+      "Capturas de referencia obligatorias en docs/design/concepts/recipe-detail-typographic-header/detalle-receta/ (.png en claro y oscuro) antes de implementar",
+      "'bash init.sh' verde; sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Feature del ADR 0006. Correctiva de recipe-detail-screen: desaparece el recurso de la tarjeta superpuesta sobre la foto (DESIGN.md -> Shapes y Core Screens 5) y se sustituye por hero tipográfico más tira de metadatos. La capa de fondo opcional llega en dish-artwork-as-card-background. Capturas aportadas (docs/design/concepts/<feature-id>/<pantalla>/, 2026-10-14; claro y oscuro, renderizadas de los prototipos locales con Chrome headless a 390x844 y 2x). Desviacion de la politica de capturas autorizada por la persona (2026-10-13)."
+  },
+  {
+    "id": "dish-artwork-as-card-background",
+    "area": "integration",
+    "title": "La imagen generada pasa a capa de fondo de la tarjeta y del hero (L2)",
+    "user_visible_behavior": "Con el ajuste 'Generar imágenes del plato' encendido y una imagen disponible, esa imagen aparece como fondo del hueco (16:9) con un scrim de contraste y la categoría y el título encima, mientras los ingredientes con cantidad y los metadatos quedan en una banda sólida; entra con un fundido y sin mover nada del layout. Apagado, no se consulta la caché ni el generador.",
+    "depends_on": ["recipe-card-typographic", "recipe-detail-typographic-header"],
+    "status": "not_started",
+    "verification": [
+      "Tests JVM de la precedencia y del gate: apagado = sin fondo y sin tocar caché, set semilla ni generador; encendido = fondo cuando el resolver devuelve imagen y ficha tipográfica cuando falla, tarda, se cancela o se agota el tope por sesión",
+      "La geometría no cambia al aparecer la imagen (sin salto de layout) y el fundido se mantiene en DishImageArtworkPolicy.CROSSFADE_MILLIS",
+      "RecipeArtwork conserva firma y geometría; los cinco puntos de uso siguen compilando con el mismo contrato",
+      "Capturas de referencia obligatorias en docs/design/concepts/dish-artwork-as-card-background/{tarjeta-con-imagen,detalle-con-imagen}/ (.png en claro y oscuro) antes de implementar",
+      "'bash init.sh' verde; sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Feature del ADR 0006 (variante L2 elegida por la persona; ver preview/prototipo-c3-imagenes.html). Continuación de dish-image-progressive-ui y dish-image-settings-toggle: RecipeArtwork deja de ser 'la imagen de la receta' y pasa a ser el proveedor de la capa de fondo; el interruptor y el tope por sesión ya existen y se respetan tal cual. Capturas aportadas (docs/design/concepts/<feature-id>/<pantalla>/, 2026-10-14; claro y oscuro, renderizadas de los prototipos locales con Chrome headless a 390x844 y 2x). Desviacion de la politica de capturas autorizada por la persona (2026-10-13)."
+  },
+  {
+    "id": "retire-recipe-photos",
+    "area": "data",
+    "title": "Retirada de las fotos locales y de la cadena de assets",
+    "user_visible_behavior": "La app deja de empaquetar y de consultar las fotos locales: ninguna pantalla muestra una foto de categoría y el APK baja unos 6,4 MiB.",
+    "depends_on": ["dish-artwork-as-card-background"],
+    "status": "not_started",
+    "verification": [
+      "El APK de depuración ya no contiene app/src/main/assets/img/recipes/** y el inventario de assets queda vacío",
+      "Se retiran o reescriben los tests que fijaban la cadena local (RecipePhotoAssetsTest y los que inventariaban las 31 fotos) y los scripts de preparación quedan sin uso",
+      "'bash init.sh' verde; sin dependencias nuevas; sin UI nueva (sin capturas)"
+    ],
+    "evidence": [],
+    "notes": "Feature del ADR 0006. Revierte la ampliación del MVP de recipe-photos (issue #83) y ajusta el ADR 0004. Debe confirmar en la spec si quedan referencias residuales (docs, spec de la cadena, scripts/fetch-recipe-photos.sh) y si se limpia también el set semilla de imágenes (app/src/main/assets/img/dishes/seed/, ADR 0005 fase 7), que queda sin uso con el interruptor apagado. Decisión de la persona (2026-10-13): se conserva `img/recipes/default.<ext>` (~136 KB) como ancla de estilo de `dish-style-reference` (ADR 0005, fase 6), sin mostrarse en ninguna pantalla; salen del APK los otros 30 assets (~6,2 MiB). Depende de que la capa de fondo (L2) ya esté integrada para no dejar ninguna pantalla sin imagen ni ficha."
   }
-
 ]

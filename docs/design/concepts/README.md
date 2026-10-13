@@ -24,6 +24,16 @@ pantalla/visual) debe tener sus **capturas de referencia** antes de implementars
 - La spec de la feature nombra esas pantallas en su sección "Visual Design Impact".
 - Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
 
+**Dirección tipográfica (ADR 0006, desviación autorizada).** La dirección "tarjeta tipográfica" se
+decidió sobre **prototipos HTML locales**, no sobre un export de Stitch. Los prototipos que la sostienen
+están versionados en `docs/design/concepts/typographic-cards/` y sus `.png` por pantalla van en
+`docs/design/concepts/<feature-id>/<pantalla>/` (en claro y oscuro). Es una **desviación de la política de
+capturas** (que parte de export de Stitch) **autorizada por la persona** (2026-10-13, sesión 101). Las
+cuatro features de UI (`card-typographic-tokens-and-design`, `recipe-card-typographic`,
+`recipe-detail-typographic-header` y `dish-artwork-as-card-background`) están `not_started` con sus
+capturas ya aportadas (2026-10-14): siete pantallas, en claro y oscuro, renderizadas de los prototipos con
+Chrome headless a 390×844 y 2×.
+
 ## Qué tomar de Stitch y qué no
 
 De Stitch te llevas la **dirección**: el layout de las pantallas, la jerarquía, la hoja "Design System"
