@@ -1061,6 +1061,21 @@
     "notes": "Fase 5, variante B de docs/ai-dish-images-proposal.md §4.1. Campo opcional en el wire (dishKey + imagePrompt), ignorado por RecipeValidator. Coherencia del mismo plato (p. ej. 'arroz con pollo' frente a 'arroz con pollo fácil') que la fase 1 deja como frontera tipográfica. Sin llamada extra."
   },
   {
+    "id": "dish-visual-descriptor-wiring",
+    "area": "integration",
+    "title": "Cablear el descriptor visual del plato en runtime",
+    "user_visible_behavior": "El dishKey que emite el modelo se usa como clave canónica compartida y el imagePrompt como prompt de imagen, de modo que dos variantes del mismo plato (p. ej. 'arroz con pollo' y 'arroz con pollo fácil') reutilizan la misma imagen sin gastar cuota extra.",
+    "depends_on": ["dish-visual-descriptor"],
+    "status": "not_started",
+    "verification": [
+      "'./gradlew test' cubre que el descriptor que devuelve el decode (AiDecodeResult.descriptors) se propaga hasta DishImageRequest.of (cacheKey y prompt) y que, sin descriptor, la composición es exactamente la de la fase 1",
+      "MainActivity compone DishImageRequest.of(taxonomy, recipe, descriptor) con el descriptor de la respuesta; dos variantes del mismo dishKey comparten clave canónica (test JVM)",
+      "Sin cambios en Recipe, RecipeValidator ni AiRecipeIds (los id ai-<sha256> no cambian), sin capturas y sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Seguimiento no bloqueante recomendado por la fase 5 (dish-visual-descriptor, sesión 094). Hoy AiDecodeResult.descriptors no tiene consumidor: MainActivity compone DishImageRequest.of(taxonomy, recipe) sin descriptor, así que la ventaja de la clave compartida por dishKey no se materializa y la app usa el respaldo por título. Esta feature conecta el descriptor al runtime. area: integration, sin capturas (cambia la clave/prompt, no el layout). Encajan aquí los hallazgos Low de la fase 5 (guard de pureza y duplicación de singleLine)."
+  },
+  {
     "id": "dish-style-reference",
     "area": "integration",
     "title": "Estilo homogéneo con referencia (image-edit)",
