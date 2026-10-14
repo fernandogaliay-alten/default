@@ -790,15 +790,16 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   delegado cuando está agotado; los aciertos de memoria/disco/semilla no lo consumen). `MainShell` reparte
   el interruptor como `imageBackground` a `HomeScreen`, `ResultsScreen`, `FavoritesScreen` y al Detalle
   (default `false` = ficha/hero aceptados). Las constantes viven en un único sitio
-  (`DishImageSettingsPolicy`: `DEFAULT_ENABLED = true`, `MAX_GENERATIONS_PER_SESSION = 12`) y el estado
+  (`DishImageSettingsPolicy`: `DEFAULT_ENABLED = false`, `MAX_GENERATIONS_PER_SESSION = 12`) y el estado
   observable (`DishImageSettings.state`, un `StateFlow`) alimenta la sección "Imágenes del plato" del
-  Perfil. El ajuste es **de sesión** (vida del proceso, sin persistir): al reiniciar vuelve a activado
-  y el contador a 12. Ver `docs/specs/dish-image-progressive-ui.md`,
+  Perfil. El ajuste es **de sesión** (vida del proceso, sin persistir) y **opt-in**: al reiniciar vuelve
+  a **apagado** (el estado de partida no lee caché, no genera ni gasta cuota) y el contador a 12. Ver
+  `docs/specs/dish-image-settings-default-off.md`, `docs/specs/dish-image-progressive-ui.md`,
   `docs/specs/dish-image-settings-toggle.md` y `docs/specs/dish-artwork-as-card-background.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
-  `Authorization: Bearer <clave>` y, con el interruptor activo (por defecto),
+  `Authorization: Bearer <clave>` y, con `AiProviderPolicy.RESPONSE_FORMAT_ENABLED` activo (por defecto),
   `"response_format":{"type":"json_object"}` (forma; **no** `json_schema`; sin `stream`, `temperature`
   ni `max_tokens`, ADR 0003), mapea `choices[0].message.content` y lo decodifica de forma **tolerante** con
   `AiRecipePayload`: DTO del wire `AiRecipeDraft` (contrato §4, **sin `id`/`source`**; los

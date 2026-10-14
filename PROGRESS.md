@@ -50,6 +50,19 @@
   respetan sin cambios) a la espera de **validación independiente**. Segunda y tercera
   (`recipe-card-typographic` y `recipe-detail-typographic-header`) ya `accepted`; queda **`not_started`**
   la quinta, `retire-recipe-photos` (depende de esta).
+- Correctiva de diseño **`accepted`** (sesión 124): **`dish-image-settings-default-off`**
+  (`area: ui`) queda **`accepted`** en su worktree `feature/dish-image-settings-default-off`
+  con validación independiente (veredicto **`accept`**, sesión 124; la implementación y
+  autoverificación las hizo el `implementer` en la sesión 124 y el commit local lo crea el
+  orquestador de `feature-flow`, **sin** commit/push/PR del implementer).
+  (`DishImageSettingsPolicy.DEFAULT_ENABLED` `true` → **`false`**: el interruptor "Generar imágenes del
+  plato" del Perfil arranca **apagado** —opt-in—, sin leer caché, sin generar y sin consumir tope, con
+  el resumen desactivado y el contador en 12 de 12; encender restaura el mecanismo aceptado; tests JVM
+  actualizados con `enabled = true` explícito + caso nuevo del default apagado; docs durables
+  reconciliadas). Gate: `bash init.sh` exit 0, **98 suites / 738 tests / 0 fallos / 0 errores /
+  0 saltados** (baseline en `HEAD` 7661f6e 98/737; delta **+1 test / 0 suites**), lint 0 errores y
+  13 warnings preexistentes (0 bajo `app/src`). Queda para revisión manual de la persona tras el merge
+  el acabado visual del arranque en emulador (interruptor apagado + resumen desactivado, claro/oscuro).
 - Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
   quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
   local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. Después se
@@ -5435,6 +5448,105 @@
   **otra** correctiva. En `dish-image-settings-default-off`, al ser un ajuste de sesión, tras reiniciar
   la app vuelve a **apagado** (opt-in no recordado); persistirlo sería otra feature (dominio + Room).
 
+### Sesión 124
+
+- Fecha: 2026-10-14
+- Objetivo: implementar (`implementer`) la feature **`dish-image-settings-default-off`** (correctiva de
+  diseño, `area: ui`, depende de **`dish-image-settings-toggle`** `accepted`) en el worktree
+  `dish-image-settings-default-off`, rama `feature/dish-image-settings-default-off`. Spec:
+  `docs/specs/dish-image-settings-default-off.md`. Ciclo `feature-flow`; **sin commit/push/PR** (el
+  commit local lo crea el orquestador de `feature-flow` y publica `github-flow`).
+- Cambios (implementer, `passing`):
+  - `app/src/main/java/com/sazon/app/data/image/DishImageSettings.kt` — **único** fichero de
+    `app/src/main` que cambia: `DishImageSettingsPolicy.DEFAULT_ENABLED` `true` → **`false`** y su KDoc
+    reescrito a opt-in ("la generación viene **apagada**… no se lee caché, no se genera ni se consume
+    tope (ADR 0006)"); el KDoc de `DishImageSettings` aclara que al morir el proceso el interruptor
+    vuelve a `DEFAULT_ENABLED` (apagado). `MAX_GENERATIONS_PER_SESSION = 12` **intacta**; ninguna firma
+    ni el cuerpo de `setEnabled`/`tryAcquireGeneration`/`generatedIfEnabled`/`GatedDishImageGenerator`
+    cambian. `MainActivity` (línea 145), `MainShell` (`imageBackground`), `DishImageSettingsCopy`,
+    `DishImageSettingsSection` y `ProfileScreen` adoptan el nuevo default **sin edición**.
+  - `app/src/test/java/com/sazon/app/data/image/DishImageSettingsTest.kt` — los **11** tests que
+    asumían el default encendido pasan a `enabled = true` **explícito**; el test del estado inicial se
+    invierte a `el_estado_inicial_es_apagado_sin_consumo_y_con_el_tope_de_la_politica` (espera
+    `(false, 0, 12)`, `remaining = 12`, `exhausted = false`); `assertTrue(DEFAULT_ENABLED)` →
+    `assertFalse` en `la_constante_del_tope_vive_en_un_unico_sitio` (12 intacta); y se **añade**
+    `el_estado_inicial_es_apagado_y_no_pide_imagenes` (`DishImageSettings()` sin argumentos → estado
+    `(false, 0, 12)`, `generatedIfEnabled { }` → `null` con **0** invocaciones y
+    `tryAcquireGeneration()` → `false` con `used == 0`), un caso negativo que no pasa en vacío.
+    `RecipeBackgroundGateTest`, `DishImageSettingsCopyTest` y `DishImageGenerationBudgetTest` quedan
+    **sin diff** (no dependen del default).
+  - Docs durables: `DESIGN.md` ("Cuándo hay imagen", sección "Ajuste de imagen de plato" y Core Screen 7:
+    el interruptor aparece **apagado** al arrancar, opt-in, con el resumen desactivado y 12 de 12);
+    `docs/adr/0005-ai-dish-images.md` (fase 4: `DEFAULT_ENABLED = false` y el motivo opt-in);
+    `docs/technical-discovery.md` (cadena en runtime: `false` y "al reiniciar vuelve a **apagado**"; y
+    se aclara que el "interruptor activo (por defecto)" del wire es
+    `AiProviderPolicy.RESPONSE_FORMAT_ENABLED`, otra feature); `docs/risks-and-open-questions.md` (el
+    gasto de cuota opt-in pasa a ser el **default del arranque**, no solo "de facto").
+- Verificación (evidencia medida): `bash init.sh` **exit 0** (`./gradlew test` + `./gradlew lint` vía
+  `scripts/gradle.sh`, 2m46s; sin procesos largos; `init.sh` intacto; **sin** `./gradlew` directo ni
+  `--stop`). Tirada focal previa
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.image.*" --tests
+  "com.sazon.app.ui.profile.*" --tests "com.sazon.app.ui.artwork.*"` → `BUILD SUCCESSFUL`
+  (**19 suites / 142 tests / 0/0/0**). Parseo propio de los XML
+  (`app/build/test-results/testDebugUnitTest/TEST-*.xml`): **98 suites / 738 tests / 0 fallos / 0
+  errores / 0 saltados**; `DishImageSettingsTest` **17/0/0/0** (16 + el caso nuevo), y
+  `RecipeBackgroundGateTest` 6, `DishImageSettingsCopyTest` 8 y `DishImageGenerationBudgetTest` 7, todos
+  en verde. Baseline re-derivada en `HEAD` (`7661f6e`): 98 suites / 737 tests (`git ls-tree` +
+  `git grep -c '@Test'`) ⇒ delta **+1 test / 0 suites nuevas**. Lint (SARIF): **0 errores y 13 warnings
+  preexistentes** (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2,
+  `OldTargetApi` 1), **0 bajo `app/src`**.
+- Ficheros actualizados: `data/image/DishImageSettings.kt`, `data/image/DishImageSettingsTest.kt`,
+  `DESIGN.md`, `docs/adr/0005-ai-dish-images.md`, `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`, `feature_list.json` (a `passing` con evidencia, `verification`
+  **intacto**) y este registro. Greps de alcance: `grep -rn "DEFAULT_ENABLED = true" app/src` → **0**;
+  `git diff --name-only` solo con los ficheros previstos; sin cambios en `MainActivity.kt`, `ui/**`,
+  `domain/**`, `data/ai/image/**`, build/lockfile, `init.sh` ni `scripts/**`; **sin dependencias nuevas**.
+- Riesgo o incógnita abierta: el **acabado visual del arranque** (interruptor apagado + resumen
+  "Desactivado: las recetas se muestran sin imagen." + contador 12 de 12, claro y oscuro) lo revisa la
+  persona en el emulador tras el merge contra `DESIGN.md`; no es automatizable desde WSL y un defecto
+  visual se corrige con una **feature correctiva**. El opt-in **no se recuerda entre reinicios**
+  (ajuste de sesión): persistirlo sería otra feature (dominio + Room).
+- Siguiente paso: el orquestador de `feature-flow` crea el **commit local** de
+  `feature/dish-image-settings-default-off` y `github-flow` **publica** (push + PR contra `main` con
+  `Closes #<n>`; el merge lo hace la persona). Queda la **validación independiente** (`validator`).
+
+### Sesión 125
+
+- Fecha: 2026-10-14
+- Objetivo: cerrar `feature-flow` para **`dish-image-settings-default-off`** (worktree
+  `dish-image-settings-default-off`, rama `feature/dish-image-settings-default-off`): ejecutar la
+  **validación independiente** (`validator`, contexto limpio) sobre la implementación de la sesión 124 y,
+  tras el `accept`, **persistir la aceptación** y crear el **commit local**. Solo hasta-aceptación: **sin
+  push ni PR** (publica el orquestador de `github-flow`).
+- Completado:
+  - Veredicto **`accept`** del `validator`. La primera pasada de `bash init.sh` salió `UP-TO-DATE`, así
+    que **forzó** `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34 tareas,
+    4m49s) y `bash scripts/gradle.sh lint --rerun-tasks` (BUILD SUCCESSFUL, 30 tareas, 4m19s) y parseó
+    por su cuenta los XML y el SARIF frescos. Confirmó los 5 escenarios de la spec, el alcance y la
+    coherencia de las docs durables; **sin** hallazgos Critical/High/Medium y 1 Low informativo no
+    bloqueante (`DESIGN.md` describe "12 de 12" como lectura de estado, no como contador visible).
+  - `feature_list.json`: `dish-image-settings-default-off` pasa de `passing` a **`accepted`** con la
+    evidencia de la validación independiente (el `verification` de la feature queda **intacto**).
+  - `PROGRESS.md`: estado actualizado a `accepted` y este registro.
+- Verificación ejecutada por el validador (independiente): XML **98 suites / 738 tests / 0 fallos / 0
+  errores / 0 saltados** (`DishImageSettingsTest` 17, `RecipeBackgroundGateTest` 6,
+  `DishImageSettingsCopyTest` 8, `DishImageGenerationBudgetTest` 7); baseline re-derivada en `HEAD`
+  `7661f6e` **98 suites / 737 tests** ⇒ delta **+1 test / 0 suites nuevas**; lint (SARIF) **0 errores y 13
+  warnings preexistentes, 0 bajo `app/src`**. Comprobó `DEFAULT_ENABLED = false`, el caso negativo del
+  arranque (`generatedIfEnabled` → `null` con 0 invocaciones; `tryAcquireGeneration()` → `false` con
+  `used == 0`), el resumen `DISABLED_SUMMARY`, que encender restaura el tope, la propagación sin editar
+  llamantes y que el implementer no hizo commit/push/PR.
+- Ficheros actualizados: `feature_list.json` y este registro (más los 6 ficheros de la implementación de
+  la sesión 124, que entran en el **commit local**).
+- Commit local creado por el orquestador de `feature-flow` (rama `feature/dish-image-settings-default-off`):
+  `feat: complete dish-image-settings-default-off`. **No** hubo push ni PR.
+- Riesgo o incógnita abierta: la **revisión visual** del arranque (interruptor apagado + resumen
+  desactivado, claro y oscuro) la hace la persona en el emulador tras el merge contra `DESIGN.md`; no es
+  automatizable desde WSL y un defecto visual se corrige con una **feature correctiva**. El opt-in **no**
+  se recuerda entre reinicios (ajuste de sesión).
+- Siguiente paso: `github-flow` **publica** (push de la rama + PR contra `main` con **`Closes #<n>`**;
+  el merge lo hace la persona). Otras features no aceptadas pendientes:
+  `detail-hero-square-bottom` (`not_started`) y `seed-catalog-50` (`blocked`).
 ### Sesión 124 (implementer, `detail-hero-square-bottom`)
 
 - Fecha: 2026-10-14

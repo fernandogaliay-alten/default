@@ -366,7 +366,9 @@ nada lo es.
     idénticas.
   - **Cuándo hay imagen**: solo si el ajuste **"Generar imágenes del plato"** está encendido y el
     resolver devuelve una (memoria → disco → semilla → generador). Apagado = `null`, sin leer caché, sin
-    red y sin cuota. Degradación **silenciosa**: si falla, tarda, se cancela o se agota el tope por
+    red y sin cuota. El ajuste **arranca apagado** (opt-in, `DEFAULT_ENABLED = false`), así que el
+    estado de partida de toda receta es la **ficha tipográfica**. Degradación **silenciosa**: si falla,
+    tarda, se cancela o se agota el tope por
     sesión, se queda la tipografía, sin microcopy ni estado de error.
   - La imagen entra con el **crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`) sobre la
     tipografía: **nunca hay hueco, frame en blanco ni salto de layout**.
@@ -454,7 +456,11 @@ nada lo es.
   (título `titleMedium`; fila label `bodyLarge` + resumen `bodyMedium`/`onSurfaceVariant` + helper
   `labelSmall`; `SazonSpacing.md`; ≥48dp). Interruptor **"Generar imágenes del plato"** (`Switch` de
   `material3`) en una fila `toggleable` con `role = Role.Switch`, de modo que la fila entera es el
-  control y el `Switch` solo refleja el estado (no depende solo del color). El resumen del **tope por
+  control y el `Switch` solo refleja el estado (no depende solo del color). El interruptor **aparece
+  apagado al arrancar** (opt-in, `DishImageSettingsPolicy.DEFAULT_ENABLED = false`; feature
+  `dish-image-settings-default-off`): el resumen inicial es el desactivado y el contador de sesión sigue
+  en **12 de 12** sin consumo; hasta que la persona lo encienda no se lee caché, no se genera nada ni se
+  gasta cuota. El resumen del **tope por
   sesión** sale de un objeto puro (`DishImageSettingsCopy`): "Quedan N de 12 imágenes en esta sesión.",
   "Queda 1 de 12 imágenes en esta sesión." (singular), "Tope de esta sesión alcanzado (12 de 12). Se
   reanudará al reiniciar la app." y "Desactivado: las recetas se muestran sin imagen."; helper "Las imágenes
@@ -518,7 +524,8 @@ nada lo es.
    habituales, tarjeta ámbar de alérgenos, bloque de cifras titulado **"Estadísticas"** (recetas
    generadas y favoritas, informativas y **no navegables**), acción "Actualizar sugerencias" con la
    fecha del último refresco, y al final la sección **"Imágenes del plato"**: interruptor **"Generar
-   imágenes del plato"** con el tope **por sesión** visible ("Quedan N de 12 imágenes en esta sesión.")
+   imágenes del plato"** (**apagado** al arrancar: opt-in, `DEFAULT_ENABLED = false`) con el tope **por
+   sesión** visible ("Quedan N de 12 imágenes en esta sesión.")
    y el helper de cuota. No es una preferencia culinaria: es un ajuste de app, colocado al final para
    no reordenar las secciones aceptadas.
 
