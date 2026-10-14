@@ -109,7 +109,7 @@ la **barra de navegacion inferior** de tres destinos (Inicio · Favoritos · Per
 de `DESIGN.md` (el bloque 2, Búsqueda con IA, es de `ai-search`): cabecera con saludo por franja
 horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas" con su
 estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com.sazon.app.ui.home`
-(`HomeGreeting`, `HomeIdentity`, `HomeSuggestions`, `HomeRecipes`, `RecipeCardFormat`) y en
+(`HomeGreeting`, `HomeIdentity`, `HomeSuggestions`, `HomeRecipes`, `RecipeCardFormat`, `RecipeMonogram`) y en
 `com.sazon.app.ui.navigation` (`MainTab`, `PushedScreen`, `MainNavigationState`, navegacion sin
 libreria: el `Saver` de `rememberSaveable` vive en la capa Compose). `MainActivity` compone a mano
 (sin DI) `SuggestionBatchDatabase` + `RoomSuggestionBatchRepository` + `SuggestionBatchService`
@@ -229,12 +229,26 @@ caso negativo obligatorio del `build-brief`: una receta insegura no llega a `acc
 La **imagen de receta** (compartida por Home, Resultados, Favoritos y Detalle) es, desde el **ADR 0006**,
 una **ficha tipográfica** y **no una foto por defecto**: el `RecipeCard` pinta la categoría en versalitas,
 el título, los tres ingredientes principales con cantidad y un filete de cocina (`RecipeAccent`).
+**Implementada** la ficha en las tres tarjetas con `recipe-card-typographic` (2026-10-14): el contenido
+compartido vive en `ui/home/RecipeFicha.kt` (sobre `LocalSazonCardColors`, con la superficie/borde/tinte
+de la tarjeta oscura) y lo consumen `RecipeCard` (Home, estrecha: ingredientes en **una línea**),
+`ResultRecipeCard` (Resultados, ancha: **tres filas** con la cantidad a la derecha en cifras tabulares) y
+la rejilla de `FavoriteRecipeTile`; la miniatura 96×96 de la **lista** de Favoritos es un **monograma** de
+iniciales sobre `surfaceVariant` con la **regla terracota de 5px** a la izquierda (ADR 0006 §6). Ninguna
+tarjeta pinta ya imagen alguna: la **marca de agua** es el glifo de categoría al 12 % y el **filete de
+6px** el degradado por cocina. La lógica **pura** (JVM, sin Compose ni Android) es `ui/home/RecipeCardFormat`
+(`categoryLine`, `mainIngredients` —excluye `isPantry` y completa hasta 3—, `matchBadge(compact)` y
+`ingredientsLine`) y `ui/home/RecipeMonogram`, y las primitivas de dibujo se comparten desde
+`ui/artwork` (`RecipeGlyphArtwork`, `recipeAccentColors`, `recipeAccentBrush`, extraídas de
+`RecipeArtwork`, que **conserva firma y comportamiento**).
 `ui.artwork.RecipeArtwork` **cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser el
 **proveedor de la capa de fondo** del hueco, con la ficha tipográfica como **capa base** y la imagen
 superpuesta con el crossfade de 250 ms ya existente (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, variante
 **L2**: imagen 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), sin
-salto de layout ni frame en blanco. La geometría aceptada de los 5 puntos de uso no cambia (16:10 de las
-tarjetas, 96x96 y alto 96 de Favoritos y hero de 240 del Detalle).
+salto de layout ni frame en blanco; **esa capa de fondo no entra en esta feature** (es
+`dish-artwork-as-card-background`) y tras ella el único punto de uso que le queda es el hero del Detalle.
+La geometría aceptada de los puntos de uso no cambia (16:10 de las tarjetas, 96x96 de Favoritos y hero de
+240 del Detalle).
 
 La **cadena local de fotos queda retirada** con la feature `retire-recipe-photos` (ADR 0006): **30 de
 los 31 assets** (12 `seed/<id>.<ext>` y 18 `category/cat-<categoryId>.<ext>`, ~**6,2 MiB**) de
@@ -253,13 +267,15 @@ glyphSize)` conserva su firma. El nivel **generado** y su crossfade (fase 4, ADR
 base tipográfica. Ver `docs/adr/0006-typographic-recipe-cards.md`,
 `docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y `docs/specs/recipe-artwork.md`.
 
-**Capturas pendientes (desviación, ADR 0006):** esta dirección se decidió sobre **prototipos HTML
-locales**, versionados en `docs/design/concepts/typographic-cards/`, **no** sobre un export de Stitch. Las
-capturas `.png` por pantalla en `docs/design/concepts/<feature-id>/<pantalla>/` están **pendientes**
-(features `card-typographic-tokens-and-design`, `recipe-card-typographic`,
-`recipe-detail-typographic-header` y `dish-artwork-as-card-background`) y son una **desviación de la
-política de capturas** (que parte de export de Stitch) **pendiente de autorización** de la persona; hasta
-entonces esas features quedan `blocked`.
+**Capturas de la dirección tipográfica (desviación autorizada, ADR 0006):** esta dirección se decidió
+sobre **prototipos HTML locales**, versionados en `docs/design/concepts/typographic-cards/`, **no** sobre
+un export de Stitch. Las capturas `.png` por pantalla en `docs/design/concepts/<feature-id>/<pantalla>/`
+están **aportadas** (2026-10-14, renderizadas de esos prototipos con Chrome headless a 390×844 y 2×) para
+las cuatro features de la dirección: `card-typographic-tokens-and-design` (`tarjeta-oscura`),
+`recipe-card-typographic` (`recipe-card` —Inicio y Resultados—, `favoritos-lista`, `favoritos-rejilla`),
+`recipe-detail-typographic-header` (`detalle-receta`) y `dish-artwork-as-card-background`
+(`tarjeta-con-imagen`, `detalle-con-imagen`). Es una **desviación de la política de capturas** (que parte
+de export de Stitch) **autorizada por la persona** (2026-10-13, sesión 101).
 
 La **pantalla de Resultados** vive en `com.sazon.app.ui.results`, con logica **pura** testeable en JVM
 (sin Compose ni Android) y una capa Compose delgada. `MatchScore.of(recipe, preferences, taxonomy,

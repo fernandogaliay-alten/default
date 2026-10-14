@@ -3,12 +3,16 @@
 ## Estado
 
 **Aceptado** (2026-10-13, decisión de la persona tras revisar los prototipos locales de `preview/`).
-**Implementada** la primera de las cinco features: `card-typographic-tokens-and-design` (2026-10-14:
-tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
+**Implementadas** la primera y la segunda de las cinco features: `card-typographic-tokens-and-design`
+(2026-10-14: tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
 `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` + tinte cálido en `ui/theme/CardTokens.kt`,
-cableado en `SazonTheme` y tests JVM de contraste y tinte). **Implementación pendiente** de las otras
-cuatro: `recipe-card-typographic`, `recipe-detail-typographic-header`, `dish-artwork-as-card-background`
-y `retire-recipe-photos`.
+cableado en `SazonTheme` y tests JVM de contraste y tinte; **`accepted`**) y `recipe-card-typographic`
+(2026-10-14: la ficha tipográfica de `RecipeCard`/`ResultRecipeCard` y de la rejilla de Favoritos —sin
+ninguna foto—, el monograma 96×96 de la miniatura de la lista de Favoritos, la lógica pura
+`RecipeCardFormat`/`RecipeMonogram` y las primitivas compartidas `RecipeGlyphArtwork`/
+`recipeAccentBrush`/`recipeAccentColors` en `ui/artwork`; implementada y **autoverificada**, pendiente
+de validación independiente). **Implementación pendiente** de las otras tres:
+`recipe-detail-typographic-header`, `dish-artwork-as-card-background` y `retire-recipe-photos`.
 
 Ajusta:
 - **ADR 0004** (fotos empaquetadas como assets): la foto deja de ser la **imagen principal**; la cadena
@@ -67,10 +71,17 @@ Decisiones de la persona sobre los prototipos:
    3,26:1, cumple WCAG 1.4.11 — más el tinte cálido de la cocina. Son tokens **de tarjeta**, no un
    cambio de `darkSurface`: no alteran navegador, hojas ni el resto de pantallas.
 6. **Favoritos**: la miniatura de 96×96 pasa a **monograma** de iniciales sobre `surfaceVariant` con la
-   regla de color de la cocina a la izquierda.
+   **regla terracota** (`primary`) **de 5px a la izquierda** (`DESIGN.md` →
+   `components.recipe-tile-favorites.accentRule`). **No** es la regla por cocina: a 5px los pares suaves
+   de `RecipeAccent` no se perciben, así que la variación por cocina vive **solo** en el **filete de
+   6px** del borde inferior de las tarjetas tipográficas (decisión 1). *(Redacción previa de este punto:
+   "la regla de color de la cocina a la izquierda"; reconciliada a terracota con la feature
+   `recipe-card-typographic`.)*
 7. **`RecipeArtwork` cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser **el proveedor
    de la capa de fondo** (con crossfade y degradación silenciosa). Conserva firma y geometría; los 5
-   puntos de uso se revisan.
+   puntos de uso se revisan. *(Tras `recipe-card-typographic` las tres tarjetas —Inicio, Resultados y
+   Favoritos— y la miniatura de la lista **ya no lo consumen** (ficha tipográfica y monograma): su único
+   punto de uso hoy es el hero del Detalle, que es de `recipe-detail-typographic-header`.)*
 
 ## Consecuencias
 

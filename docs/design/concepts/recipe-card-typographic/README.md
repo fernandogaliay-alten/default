@@ -26,8 +26,11 @@ oscuro), el `.html` de referencia y un `design.md`:
   la marca de agua del glifo al 12 %. Fuente: `prototipo-c3.html` (Inicio, Resultados y hoja de
   componentes).
 - `favoritos-lista/` — Favoritos en lista: miniatura **96×96 con monograma** sobre `surfaceVariant` con
-  la regla de color de la cocina a la izquierda, texto a la derecha y corazón. Fuente:
-  `prototipo-c3.html` (Favoritos lista).
+  la **regla terracota de 5px** (`primary`, no por cocina: a 5px los pares suaves de `RecipeAccent` no se
+  perciben) a la izquierda, texto a la derecha y corazón. La variación por cocina vive en el **filete de
+  6px** de las tarjetas tipográficas. Fuente: `prototipo-c3.html` (Favoritos lista). *(Frase previa
+  "regla de color de la cocina" reconciliada a terracota con `recipe-card-typographic`; mandan
+  `DESIGN.md` y el ADR 0006 §6.)*
 - `favoritos-rejilla/` — Favoritos en rejilla: tarjetas tipográficas en dos columnas con los
   ingredientes en una línea. Fuente: `prototipo-c3.html` (Favoritos rejilla).
 

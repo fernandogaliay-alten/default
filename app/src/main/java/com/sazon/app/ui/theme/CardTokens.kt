@@ -29,8 +29,10 @@ data class SazonCardColors(
  * En oscuro, superficie `darkCardSurface` `#3A2E26` + borde `darkCardOutline` `#7D6A5C` dan
  * **3,26:1** con `darkBackground` `#241C16` (≥ 3:1 de WCAG 1.4.11; el `darkSurface` anterior daba
  * 1,15:1 y el relleno nuevo solo 1,28:1, por eso el límite es el **borde**). `LocalSazonCardColors`
- * lo publica a las pantallas a traves de `SazonTheme`; en esta feature **no hay consumidores**: los
- * tokens nacen para `recipe-card-typographic` (igual que `domain.image` nació antes de su UI).
+ * lo publica a las pantallas a traves de `SazonTheme`. Sus consumidores son la ficha tipografica de
+ * `recipe-card-typographic` (`ui/home/RecipeFicha.kt`, en Inicio, Resultados y la rejilla de Favoritos)
+ * y la miniatura de la lista de Favoritos; antes de esa feature nacieron sin consumidores, igual que
+ * `domain.image` nació antes de su UI.
  */
 object SazonCardTokens {
 
@@ -61,8 +63,8 @@ object SazonCardTokens {
 
     /**
      * Relleno teñido por la **cocina**: composición **pura** y determinista del [accent] sobre
-     * [surface] por componente en sRGB (`lerp`), sin Android, sin reloj y sin `Random`. Dos llamadas
-     * iguales devuelven el mismo color.
+     * [surface] con el `lerp` de Compose (interpolación en **Oklab**, no por componente en sRGB), sin
+     * Android, sin reloj y sin `Random`. Dos llamadas iguales devuelven el mismo color.
      */
     fun tintedSurface(surface: Color, accent: Color, alpha: Float = TINT_ALPHA): Color =
         lerp(surface, accent, alpha)
