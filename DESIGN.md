@@ -258,7 +258,7 @@ persona revisa el acabado en el emulador tras el merge:
 - `favorites-tile-contrast` es una **correctiva de color** de la miniatura (fondo `primary` + monograma
   `onPrimary`) → captura: `favorites/favoritos` y la sección `Components` de este documento.
 
-Las cuatro quedan **`not_started`** (listas para implementar) y **no** se crea
+Las cuatro **no** generan capturas nuevas y **no** se crea
 `docs/design/concepts/<feature-id>/`.
 
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
@@ -346,7 +346,9 @@ nada lo es.
   `darkCardOutline` (3,26:1) + tinte cálido de la cocina.
 - **RecipeListCard** (horizontal): **miniatura 96x96 con el monograma** de iniciales sobre `primary`
   (`onPrimary` para las iniciales; 96x96, esquina 24) para que **resalte** del fondo de la fila en claro
-  y en oscuro (≈3,97:1 / ≈3,31:1), texto a la derecha, corazón a la derecha.
+  y en oscuro (≈3,97:1 / ≈3,31:1), texto a la derecha, corazón a la derecha. La antigua regla terracota
+  de **5px a la izquierda** se **retiró** (`favorites-tile-contrast`, issue #130): sobre `primary` medía
+  1,00:1 (invisible) y quedaba como código muerto.
 - **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork`, `recipe-photos`,
   `dish-image-*` y `dish-artwork-as-card-background`): la **capa base es la ficha tipográfica** del
   `RecipeCard`/hero, no una foto. `RecipeArtwork` es el **proveedor de la capa de fondo** del hueco y del
@@ -532,6 +534,12 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 - **Contraste de las tarjetas sobre el fondo en modo oscuro ≥ 3:1** (WCAG 1.4.11): con
   `darkCardSurface` `#3A2E26` y borde `#7D6A5C` el ratio es **3,26:1**. Los tokens anteriores daban
   1,15:1 (el defecto que corrige el ADR 0006).
+- **Contraste de la miniatura de la lista de Favoritos ≥ 3:1** (WCAG 1.4.11, elementos no textuales):
+  con `primary` `#D9552B` sobre la superficie de la tarjeta el ratio es **3,97:1** en claro (`#FFFFFF`)
+  y **3,31:1** en oscuro (`#3A2E26`). El fondo anterior (`surfaceVariant` `#F2E8DE` / `darkSurfaceVariant`
+  `#3D3129`) daba 1,21:1 / 1,04:1 (el defecto que corrige `favorites-tile-contrast`, issue #130).
+- **Contraste del monograma de la miniatura ≥ 3:1**: `onPrimary` `#FFFFFF` sobre `primary` `#D9552B` da
+  **3,97:1**; es texto **grande** (Manrope Bold 30sp), así que le aplica el umbral de texto grande (3:1).
 - No depender solo del color para transmitir estado (los alérgenos llevan icono y etiqueta, no solo
   ámbar).
 - Soporte de tipografía dinámica de Android.

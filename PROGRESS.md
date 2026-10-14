@@ -732,6 +732,24 @@
   `docs/validations/recipe-card-l2-unified.md`. **WIP = 0.** Quedan `not_started` las otras tres
   features de la revisión de diseño (`favorites-tile-contrast`, `home-tus-recetas-ver-todas`,
   `detail-hero-full-bleed`).
+- Segunda de las cuatro features de la revisión de diseño **`accepted`**: **`favorites-tile-contrast`**
+  (issue #130, `area: ui`) — implementada y autoverificada (**`passing`**) en la **sesión 121** y
+  **`accepted`** en la **sesión 121** (validación independiente, veredicto `accept`, rama
+  `feature/favorites-tile-contrast`; el commit local lo crea el orquestador de `feature-flow` y la
+  publicación queda para `github-flow`, **sin** commit/push/PR del implementer). La miniatura 96×96 de
+  la **lista** de Favoritos pasa de fondo `surfaceVariant` + filete terracota de 5 px (invisible,
+  1,00:1) a **fondo `primary`** (`#D9552B`) con el **monograma en `onPrimary`** (`#FFFFFF`), así que
+  resalta del fondo de la tarjeta en claro y oscuro (**3,97:1** / **3,31:1**, ≥3:1 de WCAG 1.4.11)
+  frente al 1,21:1 / 1,04:1 anterior. Se retira `TILE_ACCENT_RULE` y su `Box`; geometría (96×96,
+  esquina 24), tipografía (Manrope Bold 30sp) y el resto de la fila (título, meta, corazón, swipe,
+  `Surface`) **intactos**; sin tokens nuevos. Test JVM nuevo `ui/theme/FavoriteTileContrastTest` (4
+  tests, incluidos dos negativos que documentan el fondo anterior). Gate: `bash init.sh` exit 0, **98
+  suites / 737 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD` 97/733; delta **+1
+  suite / +4 tests**), lint 0 errores y 13 warnings preexistentes (0 bajo `app/src`). Exención de
+  capturas autorizada (issue #130, registrada en `DESIGN.md`): **no** se crea
+  `docs/design/concepts/favorites-tile-contrast/`. Docs durables: `DESIGN.md`,
+  `docs/technical-discovery.md` y `docs/adr/0006` §6. **WIP = 0.** Quedan `not_started`
+  `home-tus-recetas-ver-todas` y `detail-hero-full-bleed`.
 - Tercera de las cuatro features de la revisión de diseño implementada y autoverificada (**`passing`**)
   en la **sesión 119**: **`detail-hero-full-bleed`** (issue #132, `area: ui`) en su worktree
   `feature/detail-hero-full-bleed` — el **hero** (nombre + ingredientes principales) y la **tira de
@@ -5215,3 +5233,67 @@
   oscuro × ajuste de imágenes encendido/apagado; borde a borde, esquinas inferiores de 24 limpias y
   alineadas, "Atrás"/corazón legibles y pulsables, y el resto del Detalle sin moverse), **contra
   `DESIGN.md`** y no contra las capturas antiguas (L1); no automatizable desde WSL.
+
+### Sesión 121
+
+- Fecha: 2026-10-14
+- Objetivo: implementar (`implementer`) y validar de forma **independiente** (`validator`) la feature
+  **`favorites-tile-contrast`** (issue #130, `area: ui`), segunda de la revisión de diseño, en el
+  worktree `favorites-tile-contrast`, rama `feature/favorites-tile-contrast` desde `origin/main`
+  (`804f009`, merge del PR #133). Ciclo `feature-flow` hasta-aceptación; **sin push ni PR** (publica
+  `github-flow`). Spec: `docs/specs/favorites-tile-contrast.md` (creada por el `planner`).
+- Cambios (implementer, `passing`, **sin commit/push/PR**):
+  - `ui/favorites/FavoriteRecipeCard.kt` (`RecipeMonogramTile`): fondo `scheme.primary` (antes
+    `scheme.surfaceVariant`) y monograma `scheme.onPrimary` (antes `scheme.onSurfaceVariant`); se
+    **retira** `TILE_ACCENT_RULE` (5 px) y su `Box` (sobre `primary` medía 1,00:1, invisible) y se
+    ajusta el import (`fillMaxHeight` fuera; `width`/`fillMaxWidth` se conservan); KDoc de
+    `MONOGRAM_STYLE` y del tile reconciliados. Geometría (`TILE_SIZE` 96.dp, `SazonShapes.medium` = 24,
+    `MONOGRAM_STYLE` 30sp/34sp) intacta; sin tokens nuevos; sin tocar el resto de la fila, la rejilla
+    (`FavoriteRecipeTile`), el estado vacío de `FavoritesScreen.kt`, `HeartButton` ni `DismissBackground`.
+  - Test JVM nuevo `app/src/test/java/com/sazon/app/ui/theme/FavoriteTileContrastTest.kt` (paquete
+    `ui.theme`, helpers WCAG privados de fichero; `CardTokensTest` intacto), **4 tests**: miniatura vs
+    superficie de tarjeta **3,9738** claro / **3,3056** oscuro (≥3,0, exacto ±0,05); monograma
+    `onPrimary`/`primary` **3,9738** (≥3,0, texto grande); negativos `surfaceVariant` **1,2088** y
+    `darkSurfaceVariant` **1,0445** (<3,0); roles del tema del tile (`LightColorScheme`/`DarkColorScheme`
+    `.primary == SazonPrimary` `#D9552B`, `.onPrimary == SazonOnPrimary` `#FFFFFF`,
+    `SazonPrimary != SazonSurfaceVariant`).
+  - Docs durables: `DESIGN.md` (`Components` → RecipeListCard, `Accessibility Baseline` con el ≥3:1 de
+    la miniatura y del monograma, limpieza de la coletilla de estado del bloque de excepción; el
+    frontmatter `components.recipe-tile-favorites` ya declaraba `primary`/`onPrimary`),
+    `docs/technical-discovery.md` (el párrafo de la miniatura ya no cita `surfaceVariant` ni la regla de
+    5 px) y `docs/adr/0006` §6 (nota de reconciliación).
+- Verificación (evidencia medida): `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`; sin
+  procesos largos; `init.sh` intacto; nota de entorno: un SIGSEGV transitorio del daemon de Gradle en
+  `lint` en la 1ª pasada, sin relación con el código; la 2ª pasada en verde). Parseo propio de los XML:
+  **98 suites / 737 tests / 0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD`
+  `804f009` = 97/733 ⇒ delta **+1 suite / +4 tests**). Lint (SARIF): **0 errores, 13 warnings**
+  preexistentes, **0 bajo `app/src`**. Greps de alcance/pureza: `TILE_ACCENT_RULE` en `app/src` → **0**;
+  0 `surfaceVariant` dentro de `RecipeMonogramTile`; 0 hex en `ui/favorites`; `git diff --name-only` =
+  ficheros esperados + `feature_list.json` + la spec; sin diff en `ui/theme/**`, `RecipeMonogram.kt`,
+  `FavoritesScreen.kt`, la rejilla, `data/**`, `domain/**`, `assets/**`, build/lockfile, `init.sh`,
+  `scripts/**` ni `docs/design/concepts/**`; sin dependencias nuevas.
+- Validación independiente (validator, contexto limpio): **veredicto `accept`**. Re-ejecutó
+  `bash init.sh` (exit 0, pero `UP-TO-DATE`) y forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**4m14s, 34/34 tareas**) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (**4m42s, 30/30 tareas**); parseó por su cuenta los XML
+  frescos (**98/737/0/0/0**; `FavoriteTileContrastTest` 4/0/0/0) y el SARIF (**13 resultados, 0 errores,
+  0 bajo `app/src`**); re-derivó la baseline (`97/733` ⇒ **+1 suite / +4 tests**); **recalculó** los
+  ratios WCAG (**3,9738 / 3,3056 / 3,9738 / 1,2088 / 1,0445**; regla retirada **1,0000**) y los roles
+  del tema; rehizo los greps de alcance/pureza y confirmó los escenarios 1-7, la geometría intacta y que
+  el implementer **no** hizo commit/push/PR. Sin hallazgos Critical/High/Medium ni de seguridad; 3 Low +
+  1 Info informativos no bloqueantes (registro de sesión pendiente del orquestador; `verification[2]`
+  reconciliada al persistir el `accept`; Scenario 3 verificado por inspección como manda la spec; flake
+  transitorio del daemon de Gradle, sin restos en el repo).
+- Capturas: **no** existe `docs/design/concepts/favorites-tile-contrast/` y `docs/design/concepts/**`
+  queda limpio (exención autorizada de la issue #130, registrada en `DESIGN.md`).
+- Ficheros actualizados: `feature_list.json` (entrada a `accepted` con evidencia, `verification[2]`
+  reconciliada), `docs/specs/favorites-tile-contrast.md` (planner), el código/test/docs de la feature,
+  este registro y el commit local de la rama. Sin cambios de código tras el veredicto.
+- Riesgo o incógnita abierta: queda la **revisión manual** de la persona en el emulador tras el merge
+  (Favoritos en lista, claro y oscuro: la miniatura terracota resalta, el monograma se lee, no hay filete
+  de 5 px, título/meta/corazón no se han movido y una receta sin iniciales muestra el cuadrado sólido sin
+  texto), no automatizable desde WSL; un defecto visual se corrige con una feature correctiva. Quedan
+  `not_started` `home-tus-recetas-ver-todas` y `detail-hero-full-bleed`.
+- Siguiente paso: el orquestador de `feature-flow` crea el **commit local** de
+  `feature/favorites-tile-contrast` y `github-flow` **publica** (push + PR `feature/favorites-tile-contrast`
+  → `main` con `Closes #130`; el merge lo hace la persona).
