@@ -324,11 +324,13 @@ nada lo es.
 - Tarjetas e imágenes: 24px. Inputs: 16px. Chips y botones: píldora completa.
 - Sombras solo suaves y de baja opacidad; nunca bordes duros para separar tarjetas.
 - Superficies superpuestas **con el contenedor de fondo** (el apilado **hero + tira de metadatos** del
-  Detalle: hero tipográfico de 240 con esquinas inferiores de 24 y, debajo, la tira de metadatos con las
-  mismas esquinas y solo la sombra suave) para dar profundidad sin sombras fuertes. Ya **no** hay tarjeta
+  Detalle: hero tipográfico de 240 que termina en **bordes rectos** y, debajo, la tira de metadatos con
+  esquinas inferiores de 24 —es la tira quien cierra el bloque— y solo la sombra suave) para dar
+  profundidad sin sombras fuertes. Ya **no** hay tarjeta
   blanca que suba sobre la foto del Detalle (ADR 0006). El hero y la tira de metadatos van **de borde a
   borde** (sin padding lateral de 16dp) desde la revisión de diseño del 2026-10-14
-  (`detail-hero-full-bleed`).
+  (`detail-hero-full-bleed`) y, en esa misma fecha, el hero **dejó de redondear** su borde inferior para
+  encajar a ras con la tira (`detail-hero-square-bottom`).
 
 ## Components
 
@@ -510,7 +512,9 @@ nada lo es.
    **capa de fondo** de ese hero; tira de metadatos (Tiempo · Dificultad · Comensales · Calorías),
    pestañas Ingredientes · Pasos · Notas, barra inferior con "Guardar" y "Empezar a cocinar". Ya **no
    hay** tarjeta blanca superpuesta sobre la foto: el hero y la tira de metadatos ocupan su lugar, y
-   desde la revisión de diseño del 2026-10-14 (`detail-hero-full-bleed`) van **de borde a borde**.
+   desde la revisión de diseño del 2026-10-14 (`detail-hero-full-bleed`) van **de borde a borde**; en esa
+   misma revisión (`detail-hero-square-bottom`) el hero termina en **bordes rectos** (sin esquinas
+   inferiores redondeadas) para encajar a ras con la tira, que **conserva** las suyas de 24 y su sombra.
 6. **Favoritos**: búsqueda, orden (chip por defecto **"Recientes"**) con el toggle lista/rejilla
    icónico, lista con **miniaturas de monograma** (96x96 sobre `primary`, con las iniciales en
    `onPrimary`, para que resalten del fondo), rejilla con las tarjetas tipográficas (L2), estado
