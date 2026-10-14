@@ -4766,9 +4766,11 @@
   lo hace la persona). Con esta feature, el **plan del ADR 0006 queda completo** y **no hay features
   `not_started`** en el plan.
 
-### Sesión 113
+### Sesión 114
 
 - Fecha: 2026-10-14
+- Nota: se numera **114** (no 113) porque las notas de la persona del 14-10 ya usan "sesión 113" en
+  `feature_list.json` para su revisión de diseño.
 - Objetivo: revertir el **lanzador sin espera** de la sesión 107 (commit `c3410d5`) y **corregir el
   diagnóstico** de por qué fallaron sesiones anteriores. Rama `chore/revert-launcher-blocking`
   (worktree `chore-revert-launcher-blocking`), desde `origin/main` (`43ecb94`); PR propio (no es una
