@@ -238,16 +238,28 @@ dirección visual aplicable es el **backfill pendiente** de `home-offline-blocks
 Screens** (Home, arriba) y `Components`, contra las que se revisa el acabado en el emulador tras el
 merge.
 
-**Capturas obligatorias nuevas (revisión de diseño de la persona, 2026-10-14):** cuatro features de UI
-`not_started` (`recipe-card-l2-unified`, `favorites-tile-contrast`, `home-tus-recetas-ver-todas` y
-`detail-hero-full-bleed`) abren **carpeta de petición** en su worktree
-(`docs/design/concepts/<feature-id>/` con `README.md` + `stitch-prompt.md`) y quedan `blocked` hasta
-que la persona deje las capturas. Son **cambios de layout** (no microcopy), así que **no** aplica la
-excepción de capturas de las correctivas menores: cada una necesita su dirección visual antes de
-implementarse. Pantallas por feature: `recipe-card-l2-unified` (`recipe-card` —Inicio—, `resultados`,
-`favoritos-rejilla`), `favorites-tile-contrast` (`favoritos-lista`),
-`home-tus-recetas-ver-todas` (`home-tus-recetas`) y `detail-hero-full-bleed` (`detalle-receta`), en
-claro y oscuro.
+**Excepción de capturas (desviación documentada, issues #129–#132):** las cuatro features de la
+**revisión de diseño** del 2026-10-14 (`recipe-card-l2-unified`, `favorites-tile-contrast`,
+`home-tus-recetas-ver-todas` y `detail-hero-full-bleed`) **no** generan capturas nuevas ni carpeta
+`docs/design/concepts/<feature-id>/`. Autorización de la persona: **no hay diseño nuevo que revisar**;
+son la aplicación de un diseño **ya aceptado** o la retirada de lo no usado, más una correctiva de
+color. La dirección visual aplicable son las capturas ya aceptadas más este documento, contra los que la
+persona revisa el acabado en el emulador tras el merge:
+- `recipe-card-l2-unified` **aplica** la variante **L2** ya aceptada (`dish-artwork-as-card-background`)
+  y **retira** la estructura no usada (el hueco 16:10 sin ajuste) → capturas de referencia:
+  `recipe-card-typographic/{recipe-card,resultados,favoritos-rejilla}` y
+  `dish-artwork-as-card-background/{tarjeta-con-imagen}`.
+- `detail-hero-full-bleed` **reutiliza** el hero ya aceptado (`recipe-detail-typographic-header`) y solo
+  lo lleva **de borde a borde** → capturas: `recipe-detail-typographic-header/detalle-receta` y
+  `dish-artwork-as-card-background/detalle-con-imagen`.
+- `home-tus-recetas-ver-todas` es una **correctiva** del bloque "Tus recetas" (quita los chips, deja las
+  6 últimas y un botón "Ver todas") → captura: `favorites/favoritos` y la Home del backfill de
+  `home-offline-blocks`.
+- `favorites-tile-contrast` es una **correctiva de color** de la miniatura (fondo `primary` + monograma
+  `onPrimary`) → captura: `favorites/favoritos` y la sección `Components` de este documento.
+
+Las cuatro quedan **`not_started`** (listas para implementar) y **no** se crea
+`docs/design/concepts/<feature-id>/`.
 
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).

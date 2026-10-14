@@ -4843,3 +4843,12 @@
   (copia derivada de `docs/design/stitch/`); el checkout base **no** queda sucio (solo `preview/` sin
   seguimiento). `feature_list.json` marca las cuatro como `blocked`. Reanudar con
   `github-flow execute <feature-id>` (o `--captures <ruta>`) cuando la persona deje las capturas.
+- **Desbloqueo (misma sesión 113):** la persona aclara que **no hay diseño nuevo** que revisar:
+  `recipe-card-l2-unified` **aplica** el diseño **L2 ya aceptado** y **retira** la estructura no usada
+  (hueco 16:10 sin ajuste), `detail-hero-full-bleed` **reutiliza** el **hero ya aceptado** y solo lo
+  lleva de borde a borde, y las otras dos son **correctivas** (microcopy y color). Se registra la
+  **exención de capturas autorizada** en `DESIGN.md` (bloque *Excepción de capturas*, issues #129–#132)
+  y en las notas de `feature_list.json`; las cuatro pasan de `blocked` a **`not_started`** y se
+  **retiran** las carpetas de petición de los worktrees (la exención establece que no se crean). Los
+  worktrees se **sincronizan** con `origin/main` (`scripts/sync-worktree.sh`) para que lleven las docs de
+  la exención. **No** se lanza ninguna sesión (lo hace la persona con `github-flow execute <id>`).

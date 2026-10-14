@@ -1355,14 +1355,14 @@
     "title": "Tarjetas de receta con la estructura L2 unificada (con o sin imagen)",
     "user_visible_behavior": "Las tarjetas de receta de Inicio (Sugeridas para ti y Guardadas), Resultados y la rejilla de Favoritos se ven con la misma estructura tanto con el ajuste de imágenes encendido como apagado: hueco 16:9 con categoría y título encima y banda sólida con los ingredientes y los metadatos; sin imagen solo desaparece la capa de fondo.",
     "depends_on": ["recipe-card-typographic", "dish-artwork-as-card-background"],
-    "status": "blocked",
+    "status": "not_started",
     "verification": [
       "Las tres variantes de RecipeFicha (estrecha, ancha y compacta) usan siempre el hueco 16:9 + banda sólida (L2), con el ajuste de imágenes encendido o apagado; sin imagen solo desaparece la capa de fondo y el layout no cambia",
       "El layout sin imagen deja de ser el hueco 16:10 con los ingredientes dentro del hueco; se conservan el filete de 6px, la marca de agua del glifo, la tipografía y la geometría del hueco L2",
       "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/recipe-card-l2-unified/ respetadas"
     ],
     "evidence": [],
-    "notes": "Correctiva de diseño pedida por la persona tras revisar la app (2026-10-14, sesion 113). Unifica las dos estructuras de RecipeFicha (el hueco tipografico 16:10 sin ajuste frente al hueco L2 16:9 + banda solida con ajuste) en una sola (L2 siempre): con el ajuste apagado la base es la superficie de la tarjeta y el hueco queda con categoria, titulo y marca de agua; los ingredientes y los metadatos pasan siempre a la banda solida. Afecta a Inicio (RecipeCard), Resultados (ResultRecipeCard) y la rejilla de Favoritos (FavoriteRecipeTile). Capturas obligatorias antes de implementar (politica de capturas de UI): docs/design/concepts/recipe-card-l2-unified/. Area: ui. **Blocked** (2026-10-14, provisioning de github-flow): issue #129, worktree `../Default-Project-worktrees/recipe-card-l2-unified` (rama `feature/recipe-card-l2-unified`), carpeta de peticion `docs/design/concepts/recipe-card-l2-unified/` con `README.md` + `stitch-prompt.md`; reanudar con `github-flow execute recipe-card-l2-unified` (o `--captures <ruta>`)."
+    "notes": "Correctiva de diseño pedida por la persona tras revisar la app (2026-10-14, sesion 113). Unifica las dos estructuras de RecipeFicha (el hueco tipografico 16:10 sin ajuste frente al hueco L2 16:9 + banda solida con ajuste) en una sola (L2 siempre): con el ajuste apagado la base es la superficie de la tarjeta y el hueco queda con categoria, titulo y marca de agua; los ingredientes y los metadatos pasan siempre a la banda solida. Afecta a Inicio (RecipeCard), Resultados (ResultRecipeCard) y la rejilla de Favoritos (FavoriteRecipeTile). Area: ui. **Exencion de capturas autorizada por la persona** (2026-10-14, issue #129; misma clase que #77/#85/#86/#91/#98/#101/#110): la feature **aplica** el diseno **L2 ya aceptado** y **retira** la estructura no usada (hueco 16:10 sin ajuste), asi que **no** genera capturas nuevas ni se crea `docs/design/concepts/recipe-card-l2-unified/`. Lista para implementar (worktree `../Default-Project-worktrees/recipe-card-l2-unified`, rama `feature/recipe-card-l2-unified`)."
   },
   {
     "id": "favorites-tile-contrast",
@@ -1370,14 +1370,14 @@
     "title": "La miniatura de la lista de Favoritos resalta del fondo",
     "user_visible_behavior": "En Favoritos, la miniatura cuadrada de la izquierda de cada fila se distingue claramente del fondo de la tarjeta, tanto en claro como en oscuro.",
     "depends_on": ["favorites", "recipe-card-typographic"],
-    "status": "blocked",
+    "status": "not_started",
     "verification": [
       "La miniatura pasa a fondo primary con el monograma en onPrimary; el contraste de la miniatura contra la superficie de la tarjeta es >= 3:1 en claro y en oscuro (WCAG 1.4.11), con un test JVM de contraste como CardTokensTest",
       "La geometria de la miniatura (96x96, esquina 24) y el resto de la fila (titulo, meta, corazon) no cambian; sin dependencias nuevas",
       "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/favorites-tile-contrast/ respetadas"
     ],
     "evidence": [],
-    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): el surfaceVariant de la miniatura era casi indistinguible de la fila de Favoritos (1,22:1 en claro; ~1,0:1 en oscuro). Decision de la persona delegada al agente, teniendo en cuenta el modo oscuro; se elige fondo primary (terracota) + monograma onPrimary, que da ~3,97:1 en claro y ~3,31:1 en oscuro (>= 3:1). Actualiza DESIGN.md (components.recipe-tile-favorites) y el test de contraste de tarjeta. Capturas obligatorias: docs/design/concepts/favorites-tile-contrast/. Area: ui. **Blocked** (2026-10-14, provisioning de github-flow): issue #130, worktree `../Default-Project-worktrees/favorites-tile-contrast` (rama `feature/favorites-tile-contrast`), carpeta de peticion `docs/design/concepts/favorites-tile-contrast/` con `README.md` + `stitch-prompt.md`; reanudar con `github-flow execute favorites-tile-contrast` (o `--captures <ruta>`)."
+    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): el surfaceVariant de la miniatura era casi indistinguible de la fila de Favoritos (1,22:1 en claro; ~1,0:1 en oscuro). Decision de la persona delegada al agente, teniendo en cuenta el modo oscuro; se elige fondo primary (terracota) + monograma onPrimary, que da ~3,97:1 en claro y ~3,31:1 en oscuro (>= 3:1). Actualiza DESIGN.md (components.recipe-tile-favorites) y el test de contraste de tarjeta. Area: ui. **Exencion de capturas autorizada por la persona** (2026-10-14, issue #130; misma clase que #77/#85/#86/#91/#98/#101/#110): es una **correctiva de color** contra `DESIGN.md` y la captura aceptada `favorites/favoritos`, asi que **no** genera capturas nuevas ni se crea `docs/design/concepts/favorites-tile-contrast/`. Lista para implementar (worktree `../Default-Project-worktrees/favorites-tile-contrast`, rama `feature/favorites-tile-contrast`)."
   },
   {
     "id": "home-tus-recetas-ver-todas",
@@ -1385,14 +1385,14 @@
     "title": "Tus recetas: las ultimas guardadas y boton 'Ver todas'",
     "user_visible_behavior": "El bloque 'Tus recetas' de la Home deja de mostrar los chips de filtro, ensena las 6 ultimas recetas guardadas y un boton 'Ver todas' que lleva a la pestana Favoritos.",
     "depends_on": ["home-offline-blocks", "favorites", "local-result-filters"],
-    "status": "blocked",
+    "status": "not_started",
     "verification": [
       "El bloque 'Tus recetas' no pinta la fila de filtros locales; muestra como maximo 6 guardadas, las mas recientes (orden de Favoritos), y un boton 'Ver todas' que navega a la pestana Favoritos (MainTab.FAVORITES)",
       "El filtro local se conserva en Resultados (ResultFilterRow/LocalResultFilters siguen en uso) y la Home deja de mantener el estado de filtro",
       "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/home-tus-recetas-ver-todas/ respetadas"
     ],
     "evidence": [],
-    "notes": "Ampliacion/correctiva pedida por la persona (2026-10-14, sesion 113): los chips que filtran las recetas guardadas en la Home no tienen sentido. Tope 6 (coincide con HomeSuggestions.MAX_VISIBLE) y microcopy del boton 'Ver todas' (la persona eligio esa etiqueta, no 'Todas tus recetas'). Requiere una costura onOpenFavorites en HomeScreen cableada por MainShell a navigation.selectTab(MainTab.FAVORITES). Capturas obligatorias: docs/design/concepts/home-tus-recetas-ver-todas/. Area: ui. **Blocked** (2026-10-14, provisioning de github-flow): issue #131, worktree `../Default-Project-worktrees/home-tus-recetas-ver-todas` (rama `feature/home-tus-recetas-ver-todas`), carpeta de peticion `docs/design/concepts/home-tus-recetas-ver-todas/` con `README.md` + `stitch-prompt.md`; reanudar con `github-flow execute home-tus-recetas-ver-todas` (o `--captures <ruta>`)."
+    "notes": "Ampliacion/correctiva pedida por la persona (2026-10-14, sesion 113): los chips que filtran las recetas guardadas en la Home no tienen sentido. Tope 6 (coincide con HomeSuggestions.MAX_VISIBLE) y microcopy del boton 'Ver todas' (la persona eligio esa etiqueta, no 'Todas tus recetas'). Requiere una costura onOpenFavorites en HomeScreen cableada por MainShell a navigation.selectTab(MainTab.FAVORITES). Area: ui. **Exencion de capturas autorizada por la persona** (2026-10-14, issue #131; misma clase que #77/#85/#86/#91/#98/#101/#110): es una **correctiva** del bloque 'Tus recetas' contra `DESIGN.md` y la captura aceptada de la Home, asi que **no** genera capturas nuevas ni se crea `docs/design/concepts/home-tus-recetas-ver-todas/`. Lista para implementar (worktree `../Default-Project-worktrees/home-tus-recetas-ver-todas`, rama `feature/home-tus-recetas-ver-todas`)."
   },
   {
     "id": "detail-hero-full-bleed",
@@ -1400,13 +1400,13 @@
     "title": "Cabecera del Detalle a todo el ancho",
     "user_visible_behavior": "En el Detalle de receta, la cabecera (nombre de la receta y los ingredientes principales) y la tira de metadatos ocupan todo el ancho de la pantalla, de borde a borde.",
     "depends_on": ["recipe-detail-typographic-header", "dish-artwork-as-card-background"],
-    "status": "blocked",
+    "status": "not_started",
     "verification": [
       "El hero y la tira de metadatos pierden el padding horizontal de 16dp y ocupan todo el ancho; la geometria interna (alto 240, filete de 6px, esquinas inferiores de 24, marca de agua de 190) y el contenido no cambian",
       "Sigue funcionando con el ajuste de imagenes encendido (imagen como capa de fondo del hero) y apagado, y los controles flotantes 'Atras' y corazon siguen legibles y pulsables",
       "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/detail-hero-full-bleed/ respetadas"
     ],
     "evidence": [],
-    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): la cabecera con el nombre y los ingredientes principales del Detalle estaba embutida por el padding lateral de 16dp. Hero y MetaStrip pasan a bleed (borde a borde); hay que revisar el recorte de las esquinas inferiores de 24 y la posicion de la pildora 'Atras' y del corazon flotantes. Capturas obligatorias: docs/design/concepts/detail-hero-full-bleed/. Area: ui. **Blocked** (2026-10-14, provisioning de github-flow): issue #132, worktree `../Default-Project-worktrees/detail-hero-full-bleed` (rama `feature/detail-hero-full-bleed`), carpeta de peticion `docs/design/concepts/detail-hero-full-bleed/` con `README.md` + `stitch-prompt.md`; reanudar con `github-flow execute detail-hero-full-bleed` (o `--captures <ruta>`)."
+    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): la cabecera con el nombre y los ingredientes principales del Detalle estaba embutida por el padding lateral de 16dp. Hero y MetaStrip pasan a bleed (borde a borde); hay que revisar el recorte de las esquinas inferiores de 24 y la posicion de la pildora 'Atras' y del corazon flotantes. Area: ui. **Exencion de capturas autorizada por la persona** (2026-10-14, issue #132; misma clase que #77/#85/#86/#91/#98/#101/#110): la feature **reutiliza** el hero **ya aceptado** (`recipe-detail-typographic-header`) y solo lo lleva de borde a borde, asi que **no** genera capturas nuevas ni se crea `docs/design/concepts/detail-hero-full-bleed/`. Lista para implementar (worktree `../Default-Project-worktrees/detail-hero-full-bleed`, rama `feature/detail-hero-full-bleed`)."
   }
 ]
