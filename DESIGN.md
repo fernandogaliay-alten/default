@@ -137,12 +137,15 @@ Capturas aceptadas (dirección visual, no especificación pixel-perfect):
 - `recipe-photos`: `fotos-semillas`, `fotos-categorias`
 
 **Capturas de `recipe-photos` (2026-10-13, issue #83):** no son pantallas de la app sino **láminas de
-fotos** (una imagen `screen.png` + `code.html` + `DESIGN.md` por lote) y son a la vez la **fuente** de los
+fotos** (una imagen `screen.png` + `code.html` + `DESIGN.md` por lote) y fueron a la vez la **fuente** de los
 31 assets y la **dirección visual** del acabado. `fotos-semillas` expone las 12 fotos de las recetas
 semilla **en el orden** del `README.md` (el `alt` no es la clave: la clave va en el comentario
 `<!-- NN. <clave> -->`); `fotos-categorias` expone las 18 `cat-<categoryId>` **más** `default`. La
 procedencia, el mapeo y el procedimiento de descarga viven en
-`docs/design/concepts/recipe-photos/README.md` (v2) y el prompt en `stitch-prompt.md`.
+`docs/design/concepts/recipe-photos/README.md` (v2) y el prompt en `stitch-prompt.md`. **Retirada
+(2026-10-14, `retire-recipe-photos`, ADR 0006):** los 30 assets de `seed/` y `category/` salieron del
+APK y `scripts/fetch-recipe-photos.sh` se eliminó; las capturas se conservan **solo como procedencia**
+del ancla de estilo `img/recipes/default.jpg` (137.359 B), que no se muestra en ninguna pantalla.
 
 Backfill pendiente:
 
@@ -337,16 +340,17 @@ nada lo es.
     `ui/artwork/DishImageArtworkOverlay`.
 
   > Los apartados siguientes conservan la referencia de la **identidad visual** (glifo + acento) y de la
-  > cadena de imagen; con ADR 0006 la **cadena local de fotos se retira** (`retire-recipe-photos`) y, desde
-  > `dish-artwork-as-card-background`, la tarjeta y el hero **ya no la leen**.
-  - **Cadena de respaldo local (sin lectores, ADR 0006)**: `data.RecipePhotoAssets` resolvía foto propia de
+  > cadena de imagen; la **cadena local de fotos se retiró por completo** con `retire-recipe-photos`
+  > (ADR 0006).
+  - **Cadena de respaldo local (retirada, ADR 0006)**: `data.RecipePhotoAssets` resolvía foto propia de
     la receta semilla (`seed/<id>.<ext>`) → foto de su categoría (`category/cat-<categoryId>.<ext>`) →
-    foto genérica (`default.<ext>`) → glifo. Con `retire-recipe-photos` esa cadena **desaparece**: la
-    foto de categoría es la que no corresponde al plato, y salen del APK **30 de los 31 assets**
-    (~6,2 MiB): se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de `dish-style-reference`,
-    que no se muestra en ninguna pantalla (OQ7). Desde `dish-artwork-as-card-background` la tarjeta y el
-    hero **dejan de leerla**; el proveedor `LocalRecipePhotoSource` se conserva en `MainActivity` solo
-    hasta su retirada.
+    foto genérica (`default.<ext>`) → glifo. Con `retire-recipe-photos` (2026-10-14) esa cadena
+    **desapareció** y con ella el seam Compose `LocalRecipePhotoSource`, la costura Android
+    `data.AssetRecipePhotoSource` y los 30 assets de `seed/` y `category/` (**5.954.912 B ≈ 5,68 MiB**),
+    porque la foto de categoría es la que no corresponde al plato. Se **conserva** `default.<ext>`
+    (`img/recipes/default.jpg`, 137.359 B) como ancla de estilo de `dish-style-reference`, que no se
+    muestra en ninguna pantalla (OQ7). `data.RecipePhotoAssets` queda solo con `ROOT`/`DEFAULT_KEY`/
+    `EXTENSIONS` (el ancla y el orden de extensiones que comparten las cadenas de assets vivas).
   - La **imagen** se recorta con `ContentScale.Crop` y conserva la geometría aceptada (16:9 del hueco L2,
     hero de 240 del Detalle); no cambian esquinas ni tamaños. La imagen
     es **decorativa** (`contentDescription = null`): el título de la receta ya se anuncia.
@@ -380,8 +384,8 @@ nada lo es.
       **150 dp** en la tarjeta y **190 dp** en el hero (desbordando por la esquina inferior derecha,
       recortada por el `clip`); el filete de 6 px va al pie del hueco y del hero.
   - La imagen se inyecta por el seam `LocalGeneratedRecipeArtworkSource`, así que los llamantes no conocen
-    ni el asset ni Android; la **foto local** deja de leerse (el proveedor `LocalRecipePhotoSource` se
-    conserva en `MainActivity` hasta `retire-recipe-photos`). Ver
+    ni el asset ni Android; es la **única** fuente de imagen de una receta (el seam de la foto local se
+    retiró con `retire-recipe-photos`). Ver
     `docs/adr/0004-recipe-photos-as-assets.md` y `docs/technical-discovery.md`.
   - **Carga progresiva y crossfade estándar** (fase 4, `dish-image-progressive-ui`): `RecipeArtwork` lee
     el seam de la **imagen generada** (`LocalGeneratedRecipeArtworkSource`; por defecto no produce imagen),
@@ -397,9 +401,10 @@ nada lo es.
     `DishImageArtworkLoader` (límite de **2** resoluciones en vuelo y LRU de **16** imágenes
     decodificadas) → `data.image.DishImageResolver` → `FileDishImageCache` (80 MiB en
     `cacheDir/dish-images`) / `MemoryDishImageCache` / **assets semilla** /
-    `data.ai.image.DevExpertDishImageGenerator`; la cadena local
-    `LocalRecipePhotoSource` → `data.AssetRecipePhotoSource` **ya no es un respaldo de la imagen de
-    receta** (la tarjeta y el hero no la leen). El proveedor del seam (en `MainActivity`) **gatea
+    `data.ai.image.DevExpertDishImageGenerator`. La cadena local
+    (`LocalRecipePhotoSource` → `data.AssetRecipePhotoSource`) **ya no existe** (retirada por
+    `retire-recipe-photos`): la ficha tipográfica es el único respaldo sin imagen. El proveedor del seam
+    (en `MainActivity`) **gatea
     el interruptor** (`DishImageSettings.generatedIfEnabled`: apagado = `null` sin leer caché ni
     generar) y el generador real va envuelto por `GatedDishImageGenerator`, que impone el **tope por
     sesión** (`DishImageSettingsPolicy.MAX_GENERATIONS_PER_SESSION`) en el borde de generación:
@@ -413,7 +418,7 @@ nada lo es.
   control y el `Switch` solo refleja el estado (no depende solo del color). El resumen del **tope por
   sesión** sale de un objeto puro (`DishImageSettingsCopy`): "Quedan N de 12 imágenes en esta sesión.",
   "Queda 1 de 12 imágenes en esta sesión." (singular), "Tope de esta sesión alcanzado (12 de 12). Se
-  reanudará al reiniciar la app." y "Desactivado: se usa solo la foto local."; helper "Las imágenes
+  reanudará al reiniciar la app." y "Desactivado: las recetas se muestran sin imagen."; helper "Las imágenes
   nuevas se generan con IA y consumen cuota; las que ya existen se reutilizan.".
 - **FilterChip**: fila desplazable; seleccionado relleno de terracota. En Favoritos el chip de orden
   por defecto se lee **"Recientes"** (microcopy corto, sin recorte; feature `favorites-sort-controls`).
@@ -522,16 +527,19 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
    La fotografía queda como **capa de fondo opcional** (variante L2), supeditada al ajuste **"Generar
    imágenes del plato"**. Resoluciones anteriores, sustituidas: `recipe-artwork` (2026-10-12) fijó el
    glifo + acento por cocina y `recipe-photos` (issue #83) las 31 fotos empaquetadas; esa cadena local
-   **se retira**. Ver **Imagen de receta** en `Components`, `docs/adr/0006-typographic-recipe-cards.md` y
+   **se retiró** con `retire-recipe-photos` (2026-10-14). Ver **Imagen de receta** en `Components`,
+   `docs/adr/0006-typographic-recipe-cards.md` y
    `docs/adr/0004-recipe-photos-as-assets.md` / `0005-ai-dish-images.md` (ajustados).
 5. ¿La ilustración de los estados vacíos es un estilo definido (línea, color plano) o se improvisa?
 6. **Abierto:** ¿el carrusel de "Sugeridas para ti" sube a **3:2** para que quepan las tres filas de
    ingredientes, o mantiene el 16:10 con los ingredientes en una línea? Hoy el prototipo usa 16:10 con
    una línea en las tarjetas estrechas y tres filas en las anchas (Resultados y Detalle).
-7. **Parcialmente resuelto (2026-10-13, sesión 101):** se retiran los assets `seed/` y `category/` junto
-   con la cadena local, y **se conserva `img/recipes/default.<ext>`** (~136 KB) como **ancla de estilo**
+7. **Resuelto (2026-10-14, `retire-recipe-photos`):** los assets `seed/` y `category/` de
+   `img/recipes/` y la cadena local **salieron** del APK y del runtime (30 assets, ≈5,68 MiB), y
+   **se conserva `img/recipes/default.jpg`** (137.359 B) como **ancla de estilo**
    de `dish-style-reference` (ADR 0005, fase 6): no se muestra en ninguna pantalla, así que no
-   reintroduce ninguna imagen imprecisa ni ninguna ficha. **Sigue abierto** si, además, el set `seed/`
-   se conserva para el hero del Detalle o si el hero se queda siempre tipográfico.
+   reintroduce ninguna imagen imprecisa ni ninguna ficha. El set `img/dishes/seed/**` de
+   `dish-image-seed` (ADR 0005, fase 7) se conserva: no alimenta el hero, sino la capa de fondo
+   generada, y el hero se queda siempre tipográfico.
 8. **Abierto:** ¿la marca de agua del glifo (12 % de opacidad) es suficiente para distinguir dos recetas
    de la misma categoría y cocina, o conviene el monograma del título también en la tarjeta?

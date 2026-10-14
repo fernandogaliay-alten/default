@@ -12,8 +12,8 @@ import kotlinx.coroutines.sync.withPermit
  * Es una pieza **generica y JVM-testable**: no importa Compose ni Android (la decodificacion entra
  * por [decode]) y toda la politica (concurrencia, tope del LRU) viene de
  * [DishImageArtworkPolicy]. La resolucion real la aporta `data.image.DishImageResolver`
- * (memoria -> disco -> generador, fase 3) por [resolve]; el loader **no** conoce la red ni el
- * proveedor.
+ * (memoria -> disco -> semilla -> generador, fases 3 y 7) por [resolve]; el loader **no** conoce la red
+ * ni el proveedor.
  *
  * Contrato (vinculante):
  *
@@ -24,9 +24,9 @@ import kotlinx.coroutines.sync.withPermit
  * 2. La resolucion corre bajo un [Semaphore] de [maxConcurrent] permisos: nunca hay mas de ese numero
  *    de resoluciones en vuelo (la `Mutex` por clave de la fase 3 sigue evitando pagar dos veces el
  *    mismo plato).
- * 3. `null` o array vacio de [resolve] -> `null` **sin cachear** nada (la UI conserva la foto local).
- * 4. `decode` -> `null` (codec roto) -> `null` **sin cachear**; un fichero corrupto degrada a la
- *    cadena local.
+ * 3. `null` o array vacio de [resolve] -> `null` **sin cachear** nada (la UI deja la ficha tipografica).
+ * 4. `decode` -> `null` (codec roto) -> `null` **sin cachear**; un fichero corrupto degrada a la ficha
+ *    tipografica.
  * 5. Exito -> se guarda por **clave canonica** (`request.cacheKey`, de modo que dos titulos
  *    equivalentes comparten imagen) y se devuelve; `CancellationException` **se propaga** (no se
  *    convierte en `null`).
@@ -41,8 +41,8 @@ class DishImageArtworkLoader<T : Any>(
 
     private val semaphore = Semaphore(maxConcurrent.coerceAtLeast(1))
 
-    // LinkedHashMap en modo acceso (el mas reciente al final) con eviccion del mas antiguo: el
-    // precedente aceptado de `AssetRecipePhotoSource`, aqui para las imagenes decodificadas
+    // LinkedHashMap en modo acceso (el mas reciente al final) con eviccion del mas antiguo: el mismo
+    // patron que `DishImageCachePolicy.MAX_MEMORY_ENTRIES`, aqui para las imagenes decodificadas
     // generadas. El acceso va bajo `synchronized` porque varias corrutinas pueden resolver a la vez.
     private val decoded = object : LinkedHashMap<String, T>(maxDecoded.coerceAtLeast(1), 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, T>): Boolean =
@@ -52,7 +52,7 @@ class DishImageArtworkLoader<T : Any>(
     /** Numero de imagenes decodificadas retenidas; nunca supera [maxDecoded] (seam de test). */
     val decodedCount: Int get() = synchronized(decoded) { decoded.size }
 
-    /** Imagen generada de [recipe], o `null` si no esta disponible (degrada a la cadena local). */
+    /** Imagen generada de [recipe], o `null` si no esta disponible (degrada a la ficha tipografica). */
     suspend fun imageFor(recipe: Recipe): T? {
         val request = requestFor(recipe)
         cached(request.cacheKey)?.let { return it }

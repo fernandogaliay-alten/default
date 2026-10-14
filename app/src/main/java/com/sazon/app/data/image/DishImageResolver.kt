@@ -13,8 +13,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * Resolutor de la imagen de plato: orquesta **memoria -> disco -> semilla -> generador real ->
- * persistir** por la clave canonica del peticion. Es el nivel que la fase 4
- * (`dish-image-progressive-ui`) inserta delante de la cadena de `recipe-photos`.
+ * persistir** por la clave canonica del peticion. Es la **unica** cadena de resolucion de la imagen de
+ * una receta desde que `retire-recipe-photos` retiro las fotos locales; sin imagen, la UI deja visible
+ * la **ficha tipografica** (ADR 0006).
  *
  * Orden y garantias:
  *

@@ -37,7 +37,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
-| Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` pasa a ser el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retira** con `retire-recipe-photos` (ADR 0006) | Determinista, offline, sin red en runtime, sin dependencias nuevas |
+| Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` es el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retiró** con `retire-recipe-photos` (ADR 0006); solo queda `img/recipes/default.jpg` como ancla de estilo | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
 | Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
@@ -256,13 +256,15 @@ en `ui/theme/CardImageOverlay.kt` (único sitio, 0 hex en `ui/artwork`); la deci
 de agua la pinta el llamante dentro del slot de contenido, que recibe la capa resuelta).
 La geometría aceptada de los puntos de uso no cambia (16:10 de la ficha apagada, hero de 240 del Detalle).
 
-La **cadena local de fotos queda retirada** con la feature `retire-recipe-photos` (ADR 0006): **30 de
-los 31 assets** (12 `seed/<id>.<ext>` y 18 `category/cat-<categoryId>.<ext>`, ~**6,2 MiB**) de
-`app/src/main/assets/img/recipes/` — se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de la
-fase 6, sin mostrarse en ninguna pantalla —, su resolución pura (`com.sazon.app.data.RecipePhotoAssets`, sin
-Compose ni Android) y su costura de lectura `data.AssetRecipePhotoSource` **salen del APK**, porque la foto
-de categoría es la que **no corresponde al plato** de las recetas `ai-*`. El seam Compose
-`ui.artwork.RecipePhotoSource` (`fun interface` + `LocalRecipePhotoSource`) se retira con esa cadena. El
+La **cadena local de fotos quedó retirada** con la feature `retire-recipe-photos` (ADR 0006,
+2026-10-14): **30 de los 31 assets** (12 `seed/<id>.jpg` y 18 `category/cat-<categoryId>.jpg`,
+**5.954.912 B ≈ 5,68 MiB**) de `app/src/main/assets/img/recipes/` — se **conserva**
+`default.jpg` (**137.359 B**) como ancla de estilo de la fase 6, sin mostrarse en ninguna pantalla —,
+la resolución pura (`com.sazon.app.data.RecipePhotoAssets`, sin Compose ni Android, hoy solo
+`ROOT`/`DEFAULT_KEY`/`EXTENSIONS`) y la costura de lectura `data.AssetRecipePhotoSource` **salieron del
+APK y del runtime**, porque la foto de categoría es la que **no corresponde al plato** de las recetas
+`ai-*`. El seam Compose `ui.artwork.RecipePhotoSource` (`fun interface` + `LocalRecipePhotoSource`) y el
+script de empaquetado `scripts/fetch-recipe-photos.sh` también se retiraron. El
 mapeo puro **`RecipeArtworkStyle`** (sin Compose ni Android: `RecipeGlyph` con 18 miembros ↔ 18
 `recipeCategories`, `RecipeAccent` con 10 acentos + `DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback
 total `null`/vacío/desconocido -> `PLATE` + `DEFAULT`) **sigue vigente**: el glifo es la **marca de agua**
@@ -632,8 +634,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   composición es la de siempre.
   La **caché** de la fase 3 ya existe (`data.image`, ver el bullet de más abajo) y el adaptador real de
   la fase 2 también; desde la fase 4 (`dish-image-progressive-ui`) el puerto **sí tiene consumidor**: el
-  nivel generado entra por delante de la cadena de `recipe-photos` (assets offline), que pasa a ser el
-  **respaldo** (ver el bullet de la fase 4).
+  nivel generado es la **única** imagen de una receta (la cadena local de fotos se retiró con
+  `retire-recipe-photos`; ver el bullet de la fase 4).
 - **Adaptador real de la imagen de plato (fase 2)**: `com.sazon.app.data.ai.image` implementa el puerto
   anterior con **Ktor Client** (la misma capa `data.ai`, única que conoce la red): `POST
   /images/generations` sobre la base del proveedor con `Authorization: Bearer <clave>`, cuerpo
@@ -660,7 +662,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   **rechazo definitivo** del ajuste o una carga `2xx` inutilizable; un transporte/timeout o
   `401/403/429/5xx` devuelven `null` **sin** segunda llamada (misma disciplina que `MAX_ATTEMPTS = 1`),
   así que hay **como mucho dos llamadas** por `generate`. La **referencia** es un asset **empaquetado y
-  versionado** (la foto neutra `img/recipes/default.<ext>` de `recipe-photos`, resuelta por extensiones
+  versionado** (el ancla de estilo `img/recipes/default.jpg`, conservada por `retire-recipe-photos`,
+  resuelta por extensiones
   con la política pura `DishImageStyleReferencePolicy` y leída por la costura Android
   `AssetDishImageStyleReference`; `null` sin lanzar → camino de texto), **nunca** una subida del usuario
   (sin permisos, galería, cámara, `mask`, `n`, `response_format` ni persistencia). `MainActivity` carga
@@ -704,8 +707,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   produce ruta fuera de la raiz—), la lectura real de los assets es la costura Android
   `com.sazon.app.data.AssetDishImageSeedSource` (`Dispatchers.IO`; `null` **sin lanzar** si el asset
   falta, es ilegible o esta vacio) y el seam funcional `DishImageSeedSource` permite una fuente falsa
-  en JVM. La semilla queda **detras del mismo gate** del interruptor de la fase 4 (apagado = solo la
-  foto local) y la fase 7 **no** subio `DishImageCacheKey.VERSION` (solo anadio un origen de bytes); el
+  en JVM. La semilla queda **detras del mismo gate** del interruptor de la fase 4 (apagado = sin imagen:
+  queda la ficha tipografica) y la fase 7 **no** subio `DishImageCacheKey.VERSION` (solo anadio un origen de bytes); el
   bump a `dish-image-v2` de `dish-image-prompt-v2` (cambio de plantilla) obliga a **renombrar** los 6
   assets del set a `dish-image-v2-*.webp` (bytes identicos, sin cuota; no se regenera nada). La
   preparacion es una **herramienta de una sola
@@ -731,8 +734,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   dependencias nuevas y sin UI. Ver `docs/specs/dish-image-seed.md`.
 - **Diagnostico del origen de la imagen de plato (solo debug, `dish-image-prompt-v2`)**: responde a "de
   donde salio esta imagen" sin cambiar el pintado. `data.image.DishImageOrigin` es el vocabulario puro
-  (`GENERATED` / `SEED` / `CATEGORY` / `GLYPH`; `CATEGORY` agrupa la cadena local —propia, categoria o
-  por defecto— porque `RecipePhotoSource` no expone cual gano) y `data.image.DishImageOriginSink` es un
+  (`GENERATED` / `SEED` / `GLYPH`; el valor `CATEGORY`, que agrupaba la cadena local, se retiro con
+  `retire-recipe-photos`) y `data.image.DishImageOriginSink` es un
   sumidero **de sesion** (JDK puro, `ConcurrentHashMap`, sin persistencia; ignora ids en blanco y gana
   el ultimo). `DishImageResolver` gana un parametro **nuevo al final con default** no-op
   (`onResolved: (DishImageRequest, DishImageOrigin) -> Unit`) que reporta `SEED` al servir el set semilla
@@ -767,9 +770,9 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `ui.artwork` con `android.graphics`) y mantiene una **LRU de `ImageBitmap`** por clave canónica.
   `MainActivity` compone la cadena reutilizando el `aiClient` compartido (los timeouts de imagen se
   aplican por petición) y la caché de la fase 3. La **cadena en runtime** es
-  `ui.artwork` → `data.image` → `data.ai.image`; la **cadena local** (`RecipePhotoSource`/
-  `AssetRecipePhotoSource`) **ya no la lee la tarjeta/hero** (su provider se conserva en `MainActivity`
-  hasta `retire-recipe-photos`). El **ajuste de sesión** de la fase 4 (`dish-image-settings-toggle`) se
+  `ui.artwork` → `data.image` → `data.ai.image`, y es la **única** fuente de imagen de una receta: la
+  cadena local (`RecipePhotoSource`/`AssetRecipePhotoSource`) se **retiro** con
+  `retire-recipe-photos` (2026-10-14). El **ajuste de sesión** de la fase 4 (`dish-image-settings-toggle`) se
   gobierna en **dos puntos**: el proveedor del seam gatea el **interruptor**
   (`DishImageSettings.generatedIfEnabled`; apagado = `null` **sin leer caché, semilla ni generar**) y el
   generador real va envuelto por `GatedDishImageGenerator`, que impone el **tope de generaciones por
@@ -839,17 +842,18 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Tests unitarios de dominio en JVM** (obligatorios): integridad de la Taxonomía, `PromptBuilder`,
   parsing y validación de la respuesta, descarte por Restricciones duras, firma de preferencias y
   política de caché, escalado de raciones.
-- **Tests JVM de la imagen de receta** (`recipe-photos`; **cadena retirada por ADR 0006** — este bloque
-  describe el código vigente hasta que aterrice `retire-recipe-photos`): `RecipePhotoAssetsTest` cubre la
-  **cadena de
-  respaldo pura** (semilla → categoría → `default` → `null`), el respaldo parcial (fallo del primer
-  candidato), la categoría desconocida/`null` que cae a `default`, el determinismo y los casos negativos
-  (`cat-no-existe` nunca es candidato); además, la **exhaustividad de assets** itera la Taxonomía real
-  (`taxonomy.asset.path`) y el catálogo semilla real (`seed.recipes.asset.path`) y afirma que las **12
-  recetas semilla**, las **18 `recipeCategories`** y `default` resuelven un fichero existente y no vacío
-  bajo `app/src/main/assets/img/recipes/` (propiedad `recipe.photos.assets.dir` publicada por
-  `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios (el glifo es el último
-  recurso).
+- **Tests JVM de la imagen de receta** (`recipe-photos`, **retirados** con `retire-recipe-photos`, ADR
+  0006): el test de la cadena de respaldo pura (`RecipePhotoAssetsTest`) **se borró** junto con la cadena
+  (los 30 assets, `data.AssetRecipePhotoSource`, el seam `ui.artwork.RecipePhotoSource` y la propiedad
+  `recipe.photos.assets.dir` de `app/build.gradle.kts`). `RecipeArtworkStyleTest` sigue verde sin cambios
+  (el glifo es la marca de agua y el último recurso): su mapeo `RecipeGlyph`/`RecipeAccent` es puro y no
+  dependía de la cadena local.
+- **Tests JVM del ancla de estilo y del set semilla** (fases 6-7): `DishImageStyleReferenceTest`
+  comprueba que la referencia apunta a `img/recipes/default` con el orden de extensiones
+  `[webp, jpg, png]`, que sin asset no hay referencia, el orden de prueba por extensión, que una base
+  inexistente resuelve `null` y el media type y nombre de fichero derivados (`AssetDishImageStyleReferenceTest`
+  en Robolectric lee el asset real); `DishImageSeedAssetsTest` valida la clave canónica -> asset real de
+  `app/src/main/assets/img/dishes/seed/`.
 - **Tests JVM de la política de imagen de plato (fases 1, 5 y v2, `domain.image`)**: `DishImagePromptTest`
   (determinismo con dos `Taxonomy` parseadas aparte, prefijo + identidad (título) + cocina real +
   ingredientes clave + `COMPOSITION` + `STYLE_SUFFIX` exactamente una vez + `NEGATIVES`, colapso de
@@ -1032,11 +1036,14 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Red intermitente**: solo la Búsqueda con IA necesita red; el Lote de sugerencias, "Tus recetas" y
   Favoritos deben funcionar sin conexión.
 - **Tamaño del APK**: el presupuesto de `app/src/main/assets/img/recipes/` (**≤ 8 MB**, WebP q80 a
-  ≤ 960 px, `scripts/fetch-recipe-photos.sh`) deja de aplicar al **retirarse la cadena local de fotos** con
-  la feature `retire-recipe-photos` (ADR 0006): **30 de los 31 assets (~6,2 MiB)** **salen del APK**, de
-  modo que el APK deja de llevar fotos de receta visibles; se conserva la foto neutra `default.<ext>`
-  (~136 KB, sin mostrarse) como **referencia de estilo** de `dish-style-reference` (ADR 0005, fase 6). Se conservan los **assets semilla de imagen de plato**
-  (fase 7, presupuesto propio ≤ 2 MiB en `app/src/main/assets/img/dishes/seed/`). Ver
+  ≤ 960 px, `scripts/fetch-recipe-photos.sh`, ya **eliminado**) **dejó de aplicar** al **retirarse la
+  cadena local de fotos** con
+  la feature `retire-recipe-photos` (ADR 0006, 2026-10-14): **30 de los 31 assets** (12 `seed/` + 18
+  `category/`, **5.954.912 B ≈ 5,68 MiB**) **salieron del APK**, de
+  modo que el APK deja de llevar fotos de receta visibles; se conserva la foto neutra
+  `img/recipes/default.jpg` (**137.359 B**, sin mostrarse) como **referencia de estilo** de
+  `dish-style-reference` (ADR 0005, fase 6). Se conservan los **assets semilla de imagen de plato**
+  (fase 7, presupuesto propio ≤ 2 MiB en `app/src/main/assets/img/dishes/seed/`, **449.844 B**). Ver
   `docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y `docs/adr/0006-typographic-recipe-cards.md`.
 - **OkHttp frente a `compileSdk`**: Ktor 3.6.0 trae OkHttp 5.5.0, cuyo artefacto Android
   (`okhttp-android`) declara `minCompileSdk=37`; con `compileSdk` 36.1 la verificación del AAR

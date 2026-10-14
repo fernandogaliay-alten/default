@@ -5,7 +5,7 @@ package com.sazon.app.data.image
  * `docs/ai-dish-images-proposal.md` y `docs/adr/0005-ai-dish-images.md`): subdirectorio, extension,
  * tope de disco, tope de memoria, nombre de fichero y seleccion de victimas de la eviccion. Sin
  * Android, sin I/O y sin estado: la misma entrada produce siempre la misma salida (mismo patron que
- * `data.ai.image.DishImagePolicy` y que la logica pura de las fotos de plato).
+ * `data.ai.image.DishImagePolicy` y que la logica pura de `DishImageSeedAssets`).
  *
  * La clave canonica de la fase 1 **es** el nombre de fichero: su alfabeto
  * (`[a-z0-9-]`, versionado `dish-image-v2-...`) ya es apto, de modo que dos titulos equivalentes

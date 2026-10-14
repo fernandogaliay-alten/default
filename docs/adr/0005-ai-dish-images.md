@@ -31,8 +31,18 @@ mantiene mientras la cadena local exista (**retirada por ADR 0006**). Se **conse
 **Ajustado por `docs/adr/0006-typographic-recipe-cards.md`** (2026-10-13): la imagen generada **pasa a ser
 capa de fondo** del hueco (deja de ser "la imagen de la receta"), supeditada al ajuste del usuario; el
 **interruptor** ("Generar imágenes del plato") y el **tope por sesión** se mantienen. La **cadena local**
-de fotos que le servía de respaldo **se retira** con `retire-recipe-photos`, así que la **capa base** pasa
-a ser la **ficha tipográfica**.
+de fotos que le servía de respaldo **se retiró** con `retire-recipe-photos` (2026-10-14), así que la
+**capa base** pasa a ser la **ficha tipográfica**.
+
+**Retirada aplicada (2026-10-14, `retire-recipe-photos`)**: la cadena local **ya no existe** y la cadena
+generada (memoria → disco → semilla → generador) es la **única** fuente de imagen de una receta; sin
+imagen, la base es la ficha tipográfica (ADR 0006). El valor `CATEGORY` sale del vocabulario de
+diagnóstico `data.image.DishImageOrigin`, que queda `GENERATED`/`SEED`/`GLYPH`. Los 30 assets de
+`img/recipes/{seed,category}/**` (**5.954.912 B ≈ 5,68 MiB**) y `scripts/fetch-recipe-photos.sh` salieron
+del APK y del repo; se **conserva** el asset neutro `img/recipes/default.jpg` (**137.359 B**) como
+**ancla de estilo** de la fase 6 (OQ7 de `DESIGN.md`, resuelta el 2026-10-13): no se muestra en ninguna
+pantalla. No cambian el puerto, el transporte, la caché, el tope, el interruptor ni la clave canónica
+(`DishImageCacheKey.VERSION` sigue `dish-image-v2`).
 
 ## Contexto
 
@@ -242,10 +252,11 @@ es la costura Android `data.AssetDishImageSeedSource` (`Dispatchers.IO`, `null` 
 asset falta o está vacío; **único** fichero nuevo con `android.*`) y el seam funcional
 `data.DishImageSeedSource` permite una fuente falsa en JVM sin red ni cuota. `MainActivity` gana **una
 línea** (`seed = AssetDishImageSeedSource(applicationContext)`), detrás del **mismo gate** del
-interruptor de la fase 4 (apagado = solo la foto local, tampoco las semilla) y **sin** consumir el tope
+interruptor de la fase 4 (apagado = sin imagen: queda la ficha tipográfica, tampoco las semilla) y **sin** consumir el tope
 por sesión (la semilla nunca llega al borde de generación). Restricciones: `DishImageCacheKey.VERSION`
 **no** sube (ni la normalización ni la plantilla cambian; el asset solo **añade** un origen de bytes) y
-**ningún** plato con foto propia (las 12 recetas semilla, `img/recipes/seed/<recipeId>.<ext>`) recibe
+**ningún** plato con foto propia (las 12 recetas semilla tenían la suya en
+`img/recipes/seed/<recipeId>.<ext>`, hoy **retirada** con `retire-recipe-photos`) recibe
 asset semilla, porque pisaría su foto propia. El set se prepara con
 `scripts/prepare-dish-image-seed.sh`, **herramienta de una sola vez fuera de `init.sh` y de runtime**
 (nadie la invoca), idempotente (`--force` para regenerar), con lista exacta de claves ordenadas y
@@ -347,9 +358,11 @@ capturas (`area: integration`). Ver `docs/specs/dish-image-prompt-v2.md`.
   sistema lo vacía, un acierto falla y solo se regenera, volviendo a gastar cuota: comportamiento
   esperado). Subir `DishImageCacheKey.VERSION` deja huérfanos los `.webp` de la versión anterior hasta que la
   LRU los evicte (acotado por el tope; una feature posterior puede borrar por prefijo de versión).
-- **La cadena de `recipe-photos` pasa a respaldo**: la imagen generada se inserta *delante* y degrada en
+- **La cadena de `recipe-photos` fue el respaldo hasta su retirada**: la imagen generada se inserta
+  *delante* y degrada en
   silencio (fallo, lentitud, cancelación o sin red), así que el offline-first no se rompe: sin red se ve
-  exactamente lo de hoy (foto local o degradado + glifo).
+  la **ficha tipográfica** (antes de ADR 0006, la foto local o el degradado + glifo; hoy la cadena local
+  **ya no existe**).
 - **Adaptador real, caché y costura de UI, con consumidor**: la fase 4 conecta el puerto y su caché en
   `MainActivity`/`ui.artwork`, de modo que la app **sí** puede gastar cuota y sustituir la imagen
   visualmente; el gasto queda acotado por la concurrencia (2), la clave compartida y la caché persistente.

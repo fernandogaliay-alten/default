@@ -27,9 +27,9 @@ import kotlinx.coroutines.CancellationException
  * Ktor. La clave llega por constructor y solo viaja en la cabecera `Authorization`: no aparece en el
  * cuerpo, ni en logs (el adaptador **no registra nada**) ni en el arbol versionado.
  *
- * Contrato de fallo (ADR 0005): **fallo o latencia = `null`, nunca excepcion** (la app conserva su
- * foto local y no muestra error por imagen); la **cancelacion** de la corrutina si se propaga en las
- * dos fases. Se hace **una sola** peticion por camino ([DishImagePolicy.MAX_ATTEMPTS] = 1). Con
+ * Contrato de fallo (ADR 0005): **fallo o latencia = `null`, nunca excepcion** (la app deja visible la
+ * ficha tipografica y no muestra error por imagen); la **cancelacion** de la corrutina si se propaga en
+ * las dos fases. Se hace **una sola** peticion por camino ([DishImagePolicy.MAX_ATTEMPTS] = 1). Con
  * referencia, el respaldo por texto solo se dispara ante un **rechazo definitivo** del ajuste
  * ([DishImagePolicy.editFailureRequiresTextFallback]) o una carga `2xx` inutilizable; un fallo de
  * transporte/timeout o un `401/403/429/5xx` devuelven `null` **sin** segunda llamada (el respaldo

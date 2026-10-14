@@ -49,9 +49,10 @@ Explícitamente **fuera del MVP**. Son evolutivos (backlog post-MVP), no se desc
   en la **foto de su categoría**, que **no corresponde al plato** (el síntoma de `dish-image-prompt-v2`).
   Con `docs/adr/0006-typographic-recipe-cards.md` la **imagen base de una receta es una ficha
   tipográfica** (categoría, título y los tres ingredientes principales con cantidad, más el filete de
-  cocina) y la **cadena local de fotos se retira** con la feature **`retire-recipe-photos`** (los 31
-  assets salen del APK; ~6,2 MiB, porque se **conserva** solo la foto neutra `default.<ext>` como ancla
-  de estilo, que no se muestra). La foto generada por IA se conserva **como capa de fondo** del hueco,
+  cocina) y la **cadena local de fotos se retiró** con la feature **`retire-recipe-photos`**
+  (2026-10-14): los **30 assets** de `seed/` y `category/` (**5.954.912 B ≈ 5,68 MiB**) salieron del APK
+  y se **conserva** solo la foto neutra `img/recipes/default.jpg` (**137.359 B**) como ancla
+  de estilo, que no se muestra. La foto generada por IA se conserva **como capa de fondo** del hueco,
   **opt-in** con el interruptor "Generar imágenes del plato" y tope por sesión. Ver
   `docs/adr/0006-typographic-recipe-cards.md`, `docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y
   `docs/adr/0005-ai-dish-images.md` (ajustado).

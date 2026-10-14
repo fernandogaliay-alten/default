@@ -5,6 +5,12 @@
 > retomar la implementación en una fase posterior sin rehacer el análisis. Se documenta el enfoque
 > **A + C + B** (texto→imagen sin base, ajuste de estilo con `image-edit`, y descriptor de plato
 > emitido por el propio modelo) como dirección recomendada.
+>
+> **Nota de estado (2026-10-14):** el §1 describe el punto de partida de la propuesta (la cadena local de
+> `recipe-photos` como resolución de la imagen). Esa cadena **se retiró** con la feature
+> `retire-recipe-photos` (ADR 0006): la imagen de una receta es hoy la **generada** (fases 1-7 de este
+> documento) como **capa de fondo** sobre la ficha tipográfica, con `img/recipes/default.jpg` conservado
+> solo como ancla de estilo. El resto del documento (fases, contrato, riesgos) sigue vigente.
 
 ## 1. Encuadre
 

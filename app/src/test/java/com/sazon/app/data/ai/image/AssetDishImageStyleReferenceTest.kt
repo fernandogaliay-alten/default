@@ -13,7 +13,8 @@ import org.robolectric.annotation.Config
 
 /**
  * Escenario 10 (costura Android) de `docs/specs/dish-style-reference.md`: el cargador lee el asset
- * **versionado** de `recipe-photos` (`img/recipes/default.<ext>`, hoy `default.jpg`) y deriva su media
+ * **versionado** que es el **ancla de estilo** de la casa (`img/recipes/default.jpg`, conservado por
+ * `retire-recipe-photos`) y deriva su media
  * type y nombre de fichero; una base inexistente devuelve `null` **sin lanzar**. Robolectric lee los
  * assets reales del modulo; no hay subida del usuario ni I/O fuera de `assets/`.
  */

@@ -46,9 +46,9 @@ data class DishImageRequest(
  * **nadie consume el puerto**.
  *
  * Contrato de fallo: `null` = imagen no disponible, **no** excepcion (misma disciplina que
- * `data.RecipePhotoAssets.resolve` y `RecipeGenerator`): la app conserva la cadena local de
- * `recipe-photos` y nunca muestra un error por imagen. La **cancelacion** de la corrutina si se
- * propaga, porque la fase 4 cancela al salir de pantalla o al hacer scroll.
+ * `RecipeGenerator`): la app deja visible la **ficha tipografica** (ADR 0006) y nunca muestra un error
+ * por imagen. La **cancelacion** de la corrutina si se propaga, porque la fase 4 cancela al salir de
+ * pantalla o al hacer scroll.
  *
  * El **formato** de los bytes (WebP reducido y su extension) lo deciden el adaptador de la fase 2 y la
  * cache de la fase 3: el dominio no modela codecs.

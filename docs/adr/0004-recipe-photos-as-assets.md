@@ -10,6 +10,14 @@ la feature `retire-recipe-photos` (la imagen de una receta es **tipográfica** y
 **capa de fondo** del hueco). Se conserva únicamente `img/recipes/default.<ext>` (~136 KB) como **ancla
 de estilo** de `dish-style-reference` (ADR 0005, fase 6), que no se muestra en ninguna pantalla.
 
+**Retirada aplicada (2026-10-14, `retire-recipe-photos`)**: la cadena local **ya no existe**. Salieron
+del APK y del runtime los **30 assets** de `img/recipes/{seed,category}/**` (**5.954.912 B ≈ 5,68 MiB**),
+`data.AssetRecipePhotoSource`, el seam `ui.artwork.RecipePhotoSource`/`LocalRecipePhotoSource`, el test
+`RecipePhotoAssetsTest` y `scripts/fetch-recipe-photos.sh`; `data.RecipePhotoAssets` queda reducido a
+`ROOT`/`DEFAULT_KEY`/`EXTENSIONS` (el ancla y el orden de extensiones que comparten las cadenas vivas) y
+se conserva `img/recipes/default.jpg` (**137.359 B**, el ancla de estilo, sin mostrarse). El historial de
+la decisión original se conserva abajo tal cual.
+
 ## Contexto
 
 El MVP resolvía la imagen de una receta con un **placeholder dibujado**: un bloque con degradado
@@ -44,16 +52,16 @@ referencia versionadas, con la clave de cada foto expuesta en el `code.html` del
   JVM (fichero en disco) y a la app (lectura de assets).
 - La extensión **no** se asume: se prueban `webp`, `jpg` y `png` en ese orden, así que migrar a WebP no
   requiere cambios de Kotlin.
-- La lectura y decodificación viven en `data.AssetRecipePhotoSource` (`AssetManager` +
-  `BitmapFactory`, `Dispatchers.IO`, caché LRU de 16 bitmaps) y se inyectan en Compose por
-  `LocalRecipePhotoSource` (con default nulo: cualquier host sin proveedor sigue pintando el
+- La lectura y decodificación vivían en `data.AssetRecipePhotoSource` (`AssetManager` +
+  `BitmapFactory`, `Dispatchers.IO`, caché LRU de 16 bitmaps) y se inyectaban en Compose por
+  `LocalRecipePhotoSource` (con default nulo: cualquier host sin proveedor seguía pintando el
   placeholder). `RecipeArtwork` conserva su firma y su geometría (16:10, 96x96, alto 96, hero 240) y
-  pinta la foto con `ContentScale.Crop`.
-- El empaquetado lo hace `scripts/fetch-recipe-photos.sh`, **herramienta de una sola vez** (necesita
-  red) que **no** entra en `init.sh`: el gate sigue siendo offline y no bloqueante. Descarga cada `src`
-  de las láminas con el sufijo `=s0`, valida que las claves son exactamente las 12/19 esperadas (orden
-  incluido en las semillas) y falla con código ≠ 0 ante cualquier descarte: nunca un empaquetado
-  parcial silencioso.
+  pinta la foto con `ContentScale.Crop`. *(Ambos se **retiraron** con `retire-recipe-photos`.)*
+- El empaquetado lo hacía `scripts/fetch-recipe-photos.sh`, **herramienta de una sola vez** (necesitaba
+  red) que **no** entraba en `init.sh`: el gate sigue siendo offline y no bloqueante. Descargaba cada `src`
+  de las láminas con el sufijo `=s0`, validaba que las claves eran exactamente las 12/19 esperadas (orden
+  incluido en las semillas) y fallaba con código ≠ 0 ante cualquier descarte: nunca un empaquetado
+  parcial silencioso. *(El script se **eliminó** con `retire-recipe-photos`.)*
 
 ## Alternativas consideradas
 

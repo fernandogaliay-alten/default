@@ -6,9 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.asImageBitmap
 import com.sazon.app.data.AssetDishImageSeedSource
-import com.sazon.app.data.AssetRecipePhotoSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
 import com.sazon.app.data.NetworkStatusSource
@@ -48,9 +46,7 @@ import com.sazon.app.ui.artwork.DishImageOriginDiagnostics
 import com.sazon.app.ui.artwork.GeneratedRecipeArtworkSource
 import com.sazon.app.ui.artwork.LocalDishImageOriginDiagnostics
 import com.sazon.app.ui.artwork.LocalGeneratedRecipeArtworkSource
-import com.sazon.app.ui.artwork.LocalRecipePhotoSource
 import com.sazon.app.ui.artwork.NoDishImageOriginDiagnostics
-import com.sazon.app.ui.artwork.RecipePhotoSource
 import com.sazon.app.ui.theme.SazonTheme
 
 class MainActivity : ComponentActivity() {
@@ -138,13 +134,10 @@ class MainActivity : ComponentActivity() {
         val favoritesDatabase = FavoritesDatabase.build(applicationContext)
         val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
         val favoriteService = FavoriteService(favoriteRepository)
-        // Fotos de plato empaquetadas como assets offline; se inyectan en el arbol de composicion por
-        // el seam `LocalRecipePhotoSource` (composicion explicita, sin DI, como el resto).
-        val recipePhotoSource = AssetRecipePhotoSource(applicationContext)
         // Imagen de plato generada (fases 2-4): reutiliza el `aiClient` compartido (los timeouts de
         // imagen se aplican por peticion, ADR 0005; no se crea un segundo motor HTTP) y la cache de la
-        // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como un nivel por delante de la
-        // cadena local; sin red ni I/O en el arranque (la cache solo se toca al resolver).
+        // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como **capa de fondo opcional**
+        // sobre la ficha tipografica; sin red ni I/O en el arranque (la cache solo se toca al resolver).
         // El ajuste de sesion (interruptor + tope por sesion) se gobierna en DOS puntos: el decorador
         // impone el tope en el borde de generacion (donde se gasta cuota) y el proveedor del seam
         // gatea el interruptor (apagado = no se pide nada: ni cache ni generacion). Uno por proceso =
@@ -209,12 +202,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             SazonTheme {
                 CompositionLocalProvider(
-                    LocalRecipePhotoSource provides RecipePhotoSource { recipe ->
-                        recipePhotoSource.bitmapFor(recipe)?.asImageBitmap()
-                    },
                     LocalGeneratedRecipeArtworkSource provides GeneratedRecipeArtworkSource { recipe ->
-                        // Interruptor apagado = no se pide nada (ni cache ni generacion): solo la foto
-                        // local. El tope lo impone el decorador en el borde de generacion.
+                        // Interruptor apagado = no se pide nada (ni cache ni generacion): queda la ficha
+                        // tipografica. El tope lo impone el decorador en el borde de generacion.
                         dishImageSettings.generatedIfEnabled { dishImageLoader.imageFor(recipe) }
                     },
                     // Solo con `BuildConfig.DEBUG` hay diagnostico real; en release, no-op.

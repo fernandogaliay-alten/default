@@ -659,6 +659,32 @@
   mientras el alfa anima; la revisión visual de la persona (variantes estrecha y compacta, extrapoladas sin
   captura, y contraste del título sobre una foto arbitraria) sigue pendiente tras el merge. La quinta feature
   del ADR 0006, **`retire-recipe-photos`** (`area: data`), queda desbloqueada y es la siguiente del plan.
+- Quinta y **última** feature del ADR 0006 implementada, autoverificada y **`accepted`**: **`retire-recipe-photos`**
+  (`area: data`) — implementada y autoverificada en la **sesión 111** y aceptada por **validación
+  independiente** en la **sesión 112** (veredicto `accept`, rama `feature/retire-recipe-photos`; el commit
+  local lo crea el orquestador de `feature-flow` y publica `github-flow`, **sin** commit/push/PR del
+  implementer) — y es **WIP = 0**. Retira la cadena local de fotos completa: `git rm` de los **30 assets**
+  (12 `img/recipes/seed/*.jpg` + 18 `img/recipes/category/*.jpg`, **5.954.912 B ≈ 5,68 MiB**),
+  `data.AssetRecipePhotoSource.kt`, el seam `ui/artwork/RecipePhotoSource.kt`
+  (`RecipePhotoSource` + `LocalRecipePhotoSource`), `data/RecipePhotoAssetsTest.kt` y
+  `scripts/fetch-recipe-photos.sh`; se **conservan** `img/recipes/default.jpg` (**137.359 B**, ancla de
+  estilo de `dish-style-reference`) e `img/dishes/seed/**` (6 WebP, **449.844 B**, ADR 0005 fase 7).
+  `data.RecipePhotoAssets` queda con `ROOT`/`DEFAULT_KEY`/`EXTENSIONS`; `MainActivity` pierde el seam y su
+  provider; `app/build.gradle.kts` pierde `recipe.photos.assets.dir`; `RecipeCategory` pierde `image` y
+  `docs/domain/taxonomy.json` las 18 claves `image` + `imageResolution`; `DishImageOrigin` pierde
+  `CATEGORY` (`GENERATED`/`SEED`/`GLYPH`) y `DishImageSettingsCopy.DISABLED_SUMMARY` pasa a
+  `"Desactivado: las recetas se muestran sin imagen."`. Gate: `bash init.sh` exit 0, **97 suites / 731
+  tests / 0 fallos / 0 errores / 0 saltados** (baseline 98/742; delta **−1 suite / −11 tests** =
+  `RecipePhotoAssetsTest`), lint **0 errores / 13 warnings** preexistentes (0 bajo `app/src`);
+  `assembleDebug` + inspección del APK: solo `assets/img/recipes/default.jpg` y los 6
+  `assets/img/dishes/seed/*.webp` (0 entradas de `seed/` y `category/`). **Validada de forma independiente**
+  (sesión 112, veredicto `accept`): re-ejecutó el gate forzando `testDebugUnitTest`/`lint --rerun-tasks`,
+  parseó por su cuenta los XML (**97 suites / 731 tests / 0 fallos / 0 errores / 0 saltados**), re-derivó la
+  baseline en `HEAD` (98/742 ⇒ delta −1 suite / −11 tests = `RecipePhotoAssetsTest`), inspeccionó el APK (0
+  `seed|category`, `default.jpg` 137.359 B + 6 semilla 449.844 B) y los greps de alcance (0), y contrastó
+  los 10 escenarios y la disciplina de alcance. Detalle en `docs/validations/retire-recipe-photos.md`. Con
+  esto, el **plan del ADR 0006 queda completo** (cinco features `accepted`) y **toda** entrada de
+  `feature_list.json` está `accepted`.
 
 ## Registro de sesiones
 
@@ -4602,3 +4628,140 @@
 - Siguiente paso: el orquestador de `github-flow` publica (push de `feature/dish-artwork-as-card-background`
   + PR contra `main`, reutilizando la issue si existe, con `Closes #<n>`). Después, la siguiente feature del
   plan es **`retire-recipe-photos`** (`area: data`, ya desbloqueada): rol **planner** (spec).
+
+### Sesión 111
+
+- Fecha: 2026-10-14
+- Objetivo: implementar y autoverificar `retire-recipe-photos` (`area: data`, quinta y última feature del
+  ADR 0006) según `docs/specs/retire-recipe-photos.md`, en el worktree
+  `feature/retire-recipe-photos` partiendo de `main` (`ddafe9e`, merge de
+  `dish-artwork-as-card-background`). Solo implementer: **sin commit, sin push y sin PR** (el commit lo
+  crea el orquestador de `feature-flow` tras el `accept`; publica `github-flow`).
+- Completado:
+  - `git rm` de los **30 assets** retirados (12 `app/src/main/assets/img/recipes/seed/*.jpg` + 18
+    `.../category/*.jpg`, **5.954.912 B ≈ 5,68 MiB**) y de `data/AssetRecipePhotoSource.kt`,
+    `ui/artwork/RecipePhotoSource.kt` (`fun interface RecipePhotoSource` + `LocalRecipePhotoSource`),
+    `data/RecipePhotoAssetsTest.kt` y `scripts/fetch-recipe-photos.sh`. Se **conservan**
+    `img/recipes/default.jpg` (**137.359 B**) e `img/dishes/seed/**` (6 WebP, **449.844 B**).
+  - `RecipePhotoAssets.kt` adelgazado a `ROOT`/`DEFAULT_KEY`/`EXTENSIONS` con KDoc nuevo (ancla de estilo
+    + orden de extensiones compartido por `DishImageSeedAssets` y `DishImageStyleReferencePolicy`, que
+    siguen verdes). `MainActivity`: fuera los 3 imports del seam, **el import de `asImageBitmap`** (quedó
+    sin uso al retirar el provider; 4º import no listado en la spec), `val recipePhotoSource`, el argumento
+    `LocalRecipePhotoSource provides …` y los comentarios de la cadena. `app/build.gradle.kts`: fuera
+    `recipePhotosDir`, su comentario y la `systemProperty("recipe.photos.assets.dir", …)`.
+  - Taxonomía: `RecipeCategory` sin `image`; `docs/domain/taxonomy.json` sin las 18 claves `"image"` ni
+    `"imageResolution"` y con `recipeCategories.purpose` reescrito (sin lectores en Kotlin, como ya
+    documentaba `docs/domain/taxonomy.md` §3).
+  - `DishImageOrigin` sin `CATEGORY` (`GENERATED`/`SEED`/`GLYPH`) con KDoc propio y el de
+    `RecipeArtworkImagePrecedence.originOf` ajustados; `DishImageSettingsCopy.DISABLED_SUMMARY` =
+    `"Desactivado: las recetas se muestran sin imagen."`; barrido de KDoc/comentarios residuales (la foto
+    local ya no es un nivel ni el respaldo: la base sin imagen es la **ficha tipográfica**) en
+    `data/image/{DishImageSettings,DishImageCachePolicy,DishImageResolver}.kt`,
+    `data/{DishImageSeedAssets,AssetDishImageSeedSource}.kt`,
+    `data/ai/image/{DishImageStyleReference,AssetDishImageStyleReference,DevExpertDishImageGenerator}.kt`,
+    `domain/image/DishImageGenerator.kt` y
+    `ui/artwork/{GeneratedRecipeArtworkSource,DishImageArtworkLoader,DishImageArtworkPolicy,AndroidRecipeImageDecoder,RecipeArtwork}.kt`.
+  - Tests: `RecipePhotoAssetsTest` borrado; `DishImageOriginSinkTest` sustituye `CATEGORY` por `GLYPH`;
+    `RecipeArtworkImagePrecedenceTest` quita el assert de `CATEGORY`;
+    `DishImageSettingsCopyTest` con el literal nuevo (y el nombre del caso renombrado);
+    `DishImageStyleReferenceTest` quita el assert contra `RecipePhotoAssets.EXTENSIONS` y deja el literal
+    (la constante sigue cubierta por `DishImageSeedAssetsTest`); solo comentarios en
+    `AssetDishImageStyleReferenceTest`, `GeneratedRecipeArtworkSourceTest` y `DishImageSeedAssetsTest`.
+  - Docs durables en pasado/retirada con las mediciones reales: `docs/adr/0004` (nota de retirada aplicada
+    + marcadores inline en Decisión), `docs/adr/0005` (cadena retirada; `CATEGORY` fuera del vocabulario y
+    `DishImageCacheKey.VERSION` intacta), `docs/adr/0006` (quinta feature implementada), `DESIGN.md`
+    (registro de capturas, §Imagen de receta, microcopy, OQ4/OQ7 resueltos),
+    `docs/technical-discovery.md` (§ tabla, § cadena local, tests JVM y presupuesto de APK),
+    `docs/domain/taxonomy.md` §3/§6, `docs/build-brief.md`, `docs/risks-and-open-questions.md`,
+    `CONTEXT.md` (glosario "Categoría de receta"), nota de superación en `docs/specs/recipe-photos.md`,
+    nota de estado en `docs/ai-dish-images-proposal.md` y nota de retirada en
+    `docs/design/concepts/recipe-photos/README.md`. Las estimaciones "~6,2/~6,4 MiB" se sustituyen por
+    **5.954.912 B ≈ 5,68 MiB**. Sin capturas nuevas (no es UI).
+- Verificación ejecutada:
+  - Tirada focal temprana `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.*" --tests
+    "com.sazon.app.ui.artwork.*" --tests "com.sazon.app.ui.profile.*" --tests
+    "com.sazon.app.domain.taxonomy.*" --rerun-tasks` → BUILD SUCCESSFUL (3m25s, 34/34 tareas).
+  - Gate `bash init.sh` → **exit 0** (test + lint vía `scripts/gradle.sh`, sin procesos largos; `init.sh`
+    intacto). Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **97 suites / 731
+    tests / 0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` (`ddafe9e`):
+    `git grep -c '@Test' HEAD -- 'app/src/test/**'` = **98 ficheros / 742 anotaciones** ⇒ delta **−1 suite
+    / −11 tests** = `RecipePhotoAssetsTest` (único delta). SARIF
+    `app/build/reports/lint-results-debug.sarif`: **0 errores / 13 warnings** preexistentes
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+    `app/src`**.
+  - `bash scripts/gradle.sh assembleDebug` → BUILD SUCCESSFUL (37s); `unzip -l` del APK: solo
+    `assets/img/recipes/default.jpg` (**137.359 B**) y los 6
+    `assets/img/dishes/seed/dish-image-v2-*.webp` (**449.844 B**); `grep -c` de
+    `assets/img/recipes/seed/` = **0** y de `.../category/` = **0**. Inventario en disco:
+    `find app/src/main/assets/img/recipes -type f` = **1**; `img/dishes` = **6**.
+  - Greps de alcance a 0 en `app/src`: `AssetRecipePhotoSource`, `LocalRecipePhotoSource`,
+    `RecipePhotoSource`, `RecipePhotoAssets.resolve`, `RecipePhotoAssets.candidates`,
+    `RecipePhotoAssets.CATEGORY_IDS`, `DishImageOrigin.CATEGORY`, `recipe.photos.assets.dir` y
+    `RecipePhotoAssetsTest`; `test ! -e scripts/fetch-recipe-photos.sh` OK.
+- Ficheros creados/cambiados/eliminados: **eliminados** 30 assets + `data/AssetRecipePhotoSource.kt` +
+  `ui/artwork/RecipePhotoSource.kt` + `data/RecipePhotoAssetsTest.kt` + `scripts/fetch-recipe-photos.sh`;
+  **modificados (código/build)** `data/RecipePhotoAssets.kt`, `MainActivity.kt`, `app/build.gradle.kts`,
+  `domain/taxonomy/Taxonomy.kt`, `data/image/{DishImageOrigin,DishImageSettings,DishImageCachePolicy,DishImageResolver}.kt`,
+  `data/{DishImageSeedAssets,AssetDishImageSeedSource}.kt`,
+  `data/ai/image/{DishImageStyleReference,AssetDishImageStyleReference,DevExpertDishImageGenerator}.kt`,
+  `domain/image/DishImageGenerator.kt`, `ui/profile/DishImageSettingsCopy.kt`,
+  `ui/artwork/{RecipeArtworkImagePrecedence,GeneratedRecipeArtworkSource,DishImageArtworkLoader,DishImageArtworkPolicy,AndroidRecipeImageDecoder,RecipeArtwork}.kt`;
+  **tests** `DishImageOriginSinkTest`, `RecipeArtworkImagePrecedenceTest`, `DishImageSettingsCopyTest`,
+  `DishImageStyleReferenceTest`, `AssetDishImageStyleReferenceTest`, `GeneratedRecipeArtworkSourceTest`,
+  `DishImageSeedAssetsTest`; **docs** los 14 ficheros listados arriba; `feature_list.json` (solo la
+  entrada elegida, a `passing` con evidencia) y este registro. Sin dependencias nuevas, sin `ui/theme` ni
+  geometría, sin `init.sh`/`scripts/gradle.sh`, sin `docs/design/concepts/**` salvo la nota del README de
+  `recipe-photos`.
+- Hallazgos relevantes: (a) al retirar el provider del seam, el import
+  `androidx.compose.ui.graphics.asImageBitmap` de `MainActivity` quedaba huérfano y también se retiró (la
+  spec nombraba "los 3 imports" del seam); (b) `RecipePhotoAssets.EXTENSIONS` sigue existiendo y sigue
+  alimentando `DishImageStyleReferencePolicy.EXTENSIONS` y `DishImageSeedAssets.EXTENSIONS`, así que el
+  único test que se relajó es el assert redundante contra esa constante en `DishImageStyleReferenceTest`
+  (el literal y la cobertura del set semilla se mantienen).
+- Riesgo o incógnita abierta: ninguno bloqueante. Queda la **revisión manual de la persona** en el
+  emulador tras el merge (con el interruptor apagado el resumen del Perfil dice el texto nuevo y ninguna
+  tarjeta ni el Detalle muestra foto de categoría; encendido, la imagen generada sigue apareciendo como
+  capa de fondo), no automatizable desde WSL.
+- Siguiente paso: **validación independiente** de `retire-recipe-photos` (rol `validator`) contra su spec.
+  Con el `accept`, el orquestador de `feature-flow` crea el commit local y `github-flow` publica (push +
+  PR con `Closes #<n>`). No hay más features `not_started` en el plan del ADR 0006.
+
+### Sesión 112
+
+- Fecha: 2026-10-14
+- Objetivo: validar de forma independiente `retire-recipe-photos` (quinta y última feature del ADR 0006)
+  y persistir la aceptación. Ejecutada por el orquestador de `feature-flow` en la rama/worktree
+  `feature/retire-recipe-photos`, en modo hasta-aceptación y **sin push ni PR** (publica `github-flow`).
+- Completado:
+  - Rol `planner`: especificada `retire-recipe-photos` en `docs/specs/retire-recipe-photos.md` (sesión
+    111b; la implementación y la autoverificación fueron la sesión 111). Feature no-UI, sin capturas.
+  - Rol `validator`: veredicto **`accept`** (contexto limpio, sesión 112). Persistida la aceptación en
+    `feature_list.json` (`passing` → `accepted`) con evidencia que nombra la validación independiente y
+    alineando el campo descriptivo `user_visible_behavior` (era "~6,4 MiB"; medición real ≈ 5,68 MiB).
+    Sin cambios de código tras la validación.
+- Verificación ejecutada (por el validator, re-ejecutada y no fiándose del resumen del implementer):
+  `bash init.sh` exit 0 (test/lint `UP-TO-DATE`), `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  (BUILD SUCCESSFUL 5m03s, 34/34 tareas) y `bash scripts/gradle.sh lint --rerun-tasks` (BUILD SUCCESSFUL
+  9m57s, 30/30 tareas). Parseo propio de los XML: **97 suites / 731 tests / 0 fallos / 0 errores / 0
+  saltados**; baseline re-derivada en `HEAD` (`ddafe9e`) = **98 ficheros / 742 anotaciones** ⇒ delta **−1
+  suite / −11 tests** = `RecipePhotoAssetsTest`. SARIF: **13 resultados, todos `warning`, 0 error**, 0 bajo
+  `app/src`. `assembleDebug` + `unzip -l`: `assets/img/recipes/` = solo `default.jpg` (137.359 B), 0 de
+  `recipes/seed/` y `recipes/category/`, y los 6 WebP de `img/dishes/seed/` (449.844 B). Greps de alcance a
+  0 en `app/src` y `scripts/fetch-recipe-photos.sh` ausente.
+- Ficheros actualizados: `feature_list.json` (entrada `retire-recipe-photos` a `accepted` con evidencia),
+  `docs/validations/retire-recipe-photos.md` (nuevo, registro de la validación), este registro y el commit
+  local de la feature. Sin cambios de código tras el veredicto.
+- Hallazgos del validator (2 Low informativos, no bloqueantes): el §Consecuencias del ADR 0004 conserva dos
+  viñetas en imperativo sin marcador inline, cubiertas por el banner de retirada; y el campo
+  `user_visible_behavior` de `feature_list.json` decía "~6,4 MiB" (alineado a ≈ 5,68 MiB al persistir el
+  `accept`). Sin hallazgos Critical/High/Medium ni de seguridad (el diff en `data/image`, `data/ai/image` y
+  `ui/artwork` es comentarios + el valor de enum `CATEGORY` sin productor; interruptor, tope, caché, clave
+  canónica, transporte y red intactos; log `SazonDishImage` solo en debug).
+- Riesgo o incógnita abierta: ninguno bloqueante. Queda la **revisión manual de la persona** en el emulador
+  tras el merge (con el interruptor apagado, el resumen del Perfil dice el texto nuevo y ninguna tarjeta ni
+  el Detalle muestra foto de categoría; encendido, la imagen generada sigue apareciendo como capa de fondo),
+  no automatizable desde WSL.
+- Siguiente paso: el orquestador de `feature-flow` crea el **commit local** de `feature/retire-recipe-photos`
+  y `github-flow` **publica** (push + PR `feature/retire-recipe-photos` → `main` con `Closes #<n>`; el merge
+  lo hace la persona). Con esta feature, el **plan del ADR 0006 queda completo** y **no hay features
+  `not_started`** en el plan.

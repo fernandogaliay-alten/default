@@ -32,7 +32,7 @@ object DishImageSettingsPolicy {
  * `DishImageCachePolicy.evictionVictims`): la misma entrada produce siempre la misma salida.
  */
 data class DishImageSettingsState(
-    /** Interruptor visible: `true` permite pedir imagenes, `false` usa solo la foto local. */
+    /** Interruptor visible: `true` permite pedir imagenes, `false` deja la ficha tipografica. */
     val enabled: Boolean,
     /** Unidades de tope ya consumidas en la sesion. */
     val used: Int,
@@ -57,8 +57,8 @@ data class DishImageSettingsState(
  * Se gobierna en dos puntos (Decision 1 del spec):
  *
  * 1. **Punto de inyeccion** (proveedor del seam en `MainActivity`): [generatedIfEnabled] corta en
- *    seco con el interruptor apagado, de modo que no se lee cache ni se genera nada (solo la foto
- *    local). Apagado **no** reserva tope.
+ *    seco con el interruptor apagado, de modo que no se lee cache ni se genera nada (queda la ficha
+ *    tipografica). Apagado **no** reserva tope.
  * 2. **Borde de generacion** ([GatedDishImageGenerator]): la reserva y el tope, donde se gasta cuota;
  *    los aciertos de memoria/disco **no** pasan por ahi.
  *
@@ -108,7 +108,7 @@ class DishImageSettings(
 /**
  * **Decorador** del puerto [DishImageGenerator]: reserva una unidad **antes** de invocar al delegado y
  * devuelve `null` **sin invocarlo** si el interruptor esta apagado o el tope agotado (degradacion
- * silenciosa: la UI conserva la foto local).
+ * silenciosa: la UI muestra la ficha tipografica).
  *
  * Recibe el [DishImageSettings] completo (no un contador suelto) para que el estado observable que
  * pinta Ajustes y el tope aplicado sean la misma fuente (Decision 6). **No** captura excepciones: un

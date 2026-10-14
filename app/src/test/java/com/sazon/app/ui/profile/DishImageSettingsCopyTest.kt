@@ -49,9 +49,9 @@ class DishImageSettingsCopyTest {
     }
 
     @Test
-    fun con_el_interruptor_apagado_indica_que_se_usa_solo_la_foto_local() {
+    fun con_el_interruptor_apagado_indica_que_las_recetas_se_muestran_sin_imagen() {
         assertEquals(
-            "Desactivado: se usa solo la foto local.",
+            "Desactivado: las recetas se muestran sin imagen.",
             DishImageSettingsCopy.summary(state(enabled = false, used = 0)),
         )
     }

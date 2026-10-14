@@ -84,7 +84,6 @@ data class Ingredient(
 data class RecipeCategory(
     val id: String,
     val label: String,
-    val image: String,
 )
 
 class Taxonomy(
