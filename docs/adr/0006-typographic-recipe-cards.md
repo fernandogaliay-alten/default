@@ -100,7 +100,10 @@ Decisiones de la persona sobre los prototipos:
    de `RecipeAccent` no se perciben, así que la variación por cocina vive **solo** en el **filete de
    6px** del borde inferior de las tarjetas tipográficas (decisión 1). *(Redacción previa de este punto:
    "la regla de color de la cocina a la izquierda"; reconciliada a terracota con la feature
-   `recipe-card-typographic`.)*
+   `recipe-card-typographic`.)* **(Reconciliación 2026-10-14, issue #130, `favorites-tile-contrast`):** el
+   fondo de la miniatura pasa a **`primary`** con el monograma en **`onPrimary`** (≈3,97:1 claro /
+   ≈3,31:1 oscuro, WCAG 1.4.11) y la **regla terracota de 5px se retira** (sobre `primary` medía 1,00:1,
+   invisible); la referencia a `components.recipe-tile-favorites.accentRule` **deja de aplicar**.
 7. **`RecipeArtwork` cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser **el proveedor
    de la capa de fondo** (con crossfade y degradación silenciosa). Conserva firma y geometría; los 5
    puntos de uso se revisan. *(Tras `recipe-card-typographic` las tres tarjetas —Inicio, Resultados y

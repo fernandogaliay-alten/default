@@ -234,7 +234,8 @@ compartido vive en `ui/home/RecipeFicha.kt` (sobre `LocalSazonCardColors`, con l
 de la tarjeta oscura) y lo consumen `RecipeCard` (Home, estrecha: ingredientes en **una línea**),
 `ResultRecipeCard` (Resultados, ancha: **tres filas** con la cantidad a la derecha en cifras tabulares) y
 la rejilla de `FavoriteRecipeTile`; la miniatura 96×96 de la **lista** de Favoritos es un **monograma** de
-iniciales sobre `surfaceVariant` con la **regla terracota de 5px** a la izquierda (ADR 0006 §6). Ninguna
+iniciales sobre `primary` con el texto en `onPrimary` (≈3,97:1 claro / ≈3,31:1 oscuro, WCAG 1.4.11) y
+**sin** la regla terracota de 5px (retirada con `favorites-tile-contrast`, issue #130; ADR 0006 §6). Ninguna
 tarjeta pinta ya imagen alguna: la **marca de agua** es el glifo de categoría al 12 % y el **filete de
 6px** el degradado por cocina. La lógica **pura** (JVM, sin Compose ni Android) es `ui/home/RecipeCardFormat`
 (`categoryLine`, `mainIngredients` —excluye `isPantry` y completa hasta 3—, `matchBadge(compact)` y

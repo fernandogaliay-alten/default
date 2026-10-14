@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -52,10 +51,7 @@ private const val TABULAR_FIGURES = "tnum"
 /** Lado de la miniatura de la lista (`DESIGN.md` → `recipe-tile-favorites.size`). */
 private val TILE_SIZE = 96.dp
 
-/** Regla terracota de la miniatura (`DESIGN.md` → `accentRule`): 5px a la izquierda. */
-private val TILE_ACCENT_RULE = 5.dp
-
-/** Monograma del plato: Manrope Bold 30sp sobre `surfaceVariant` (prototipo C3, `.mono`). */
+/** Monograma del plato: Manrope Bold 30sp sobre `primary` (prototipo C3, `.mono`; 3,97:1). */
 private val MONOGRAM_STYLE = TextStyle(
     fontFamily = SazonFontFamilies.Display,
     fontWeight = FontWeight.Bold,
@@ -164,10 +160,12 @@ fun FavoriteRecipeTile(
 }
 
 /**
- * Miniatura 96x96 de la lista de Favoritos (`DESIGN.md` → `recipe-tile-favorites`): superficie
- * `surfaceVariant`, esquina 24 y la **regla terracota de 5px a la izquierda** (`primary`, **no** por
- * cocina: a 5px los pares suaves de `RecipeAccent` no se perciben). El contenido es el **monograma**
- * de iniciales del plato ([RecipeMonogram]); una receta sin palabras significativas no pinta monograma.
+ * Miniatura 96x96 de la lista de Favoritos (`DESIGN.md` → `recipe-tile-favorites`): fondo `primary` y
+ * esquina 24, para que **resalte** del fondo de la tarjeta en claro (3,97:1) y en oscuro (3,31:1)
+ * (WCAG 1.4.11, `favorites-tile-contrast`). El contenido es el **monograma** de iniciales del plato
+ * ([RecipeMonogram]) en `onPrimary`; una receta sin palabras significativas no pinta monograma y el
+ * cuadrado queda sólido. La antigua regla terracota de 5px a la izquierda se retiró: sobre `primary`
+ * medía 1,00:1 (invisible).
  */
 @Composable
 private fun RecipeMonogramTile(recipe: Recipe) {
@@ -176,21 +174,14 @@ private fun RecipeMonogramTile(recipe: Recipe) {
         modifier = Modifier
             .size(TILE_SIZE)
             .clip(SazonShapes.medium)
-            .background(scheme.surfaceVariant),
+            .background(scheme.primary),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(TILE_ACCENT_RULE)
-                .fillMaxHeight()
-                .background(scheme.primary),
-        )
         RecipeMonogram.of(recipe.title)?.let { initials ->
             Text(
                 text = initials,
                 style = MONOGRAM_STYLE,
-                color = scheme.onSurfaceVariant,
+                color = scheme.onPrimary,
             )
         }
     }
