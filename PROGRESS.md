@@ -4165,3 +4165,56 @@
   `feature/card-typographic-tokens-and-design`. **Sin** push ni PR (los hace `github-flow`).
   `recipe-card-typographic` queda como siguiente feature del ADR 0006 (consume estos tokens) y sigue
   `not_started`.
+
+### Sesión 104
+
+- Feature **`recipe-card-typographic`** (`area: ui`, segunda de las cinco del ADR 0006, depende de
+  `card-typographic-tokens-and-design`, ya `accepted`): planificada, implementada, autoverificada y
+  **`accepted`** en esta misma sesión con validación independiente (veredicto `accept`, rama
+  `feature/recipe-card-typographic`). Ciclo completo de `feature-flow` en el worktree de la feature,
+  **sin** commit/push/PR del implementer; el commit local lo crea el orquestador y la publicación queda
+  para `github-flow`.
+- **Gate UI**: capturas obligatorias ya aportadas y revisadas en
+  `docs/design/concepts/recipe-card-typographic/{recipe-card,favoritos-lista,favoritos-rejilla}/`
+  (`screen.png`/`screen-dark.png`; `recipe-card` además `screen-resultados.png`/`screen-resultados-dark.png`).
+- La tarjeta de receta es ya una **ficha tipográfica sin foto** en Inicio, Resultados y Favoritos:
+  **lógica pura JVM** `ui.home.RecipeCardFormat` (`categoryLine`, `mainIngredients`/`MainIngredient` con
+  `isPantry` excluido, orden de declaración y completado hasta 3 con despensa; `quantityLabel` vía
+  `ui.detail.IngredientFormat`; `matchBadge(score, compact)`; `ingredientsLine`) y `ui.home.RecipeMonogram`
+  (`of(title)`: conectores saltados, 1–2 iniciales, `null` si vacío). **Contenido compartido**
+  `ui.home.RecipeFicha` (hueco 16:10 sin imagen, categoría en versalitas, título **Manrope local** —
+  el tema solo overridea 4 estilos y `titleMedium`/`titleSmall` caen a Roboto —, ingredientes en **una
+  línea** cuando es estrecha o en **tres filas con cifras tabulares** cuando es ancha, fila de metadatos,
+  coincidencia en terracota, **filete de 6px** con `RecipeAccent` por cocina y **marca de agua** del
+  glifo al 12 %), consumido por `RecipeCard` (Home), `ResultRecipeCard` (Resultados) y la rejilla de
+  `FavoriteRecipeTile`; la **lista** de Favoritos pasa a **miniatura 96×96 de monograma** sobre
+  `surfaceVariant` con la **regla terracota de 5px** a la izquierda. Cromo desde `LocalSazonCardColors`
+  (oscuro `#3A2E26` + borde `#7D6A5C` 1 dp en lugar de sombra + superficie teñida; claro `#FFFFFF` sin
+  borde). Primitivas extraídas a `ui/artwork/RecipeArtworkPrimitives.kt` (`RecipeGlyphArtwork`,
+  `recipeAccentColors`, `recipeAccentBrush`); `RecipeArtwork` conserva firma y comportamiento y su único
+  punto de uso es el Detalle (otra feature). Sin assets nuevos, sin dependencias nuevas, sin tocar el
+  Detalle ni `DESIGN.md`.
+- **Nota de coherencia resuelta** (mandato de la persona; manda `DESIGN.md`): la regla de 5px de la
+  miniatura de Favoritos es **terracota** (`primary`) y la variación por cocina vive en el **filete de
+  6px** de las tarjetas. Redacciones previas reconciliadas: `user_visible_behavior` de esta entrada en
+  `feature_list.json` (orquestador), `docs/adr/0006` §6 y el `README.md` de capturas (implementer).
+- **Gate**: `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`, sin procesos largos). Tests
+  **95 suites / 720 tests / 0 fallos / 0 errores / 0 saltados** (baseline derivada en `HEAD` 94/704;
+  delta **+1 suite / +16 tests**: `RecipeCardFormatTest` 4→13, `RecipeMonogramTest` 7 nuevos). Lint
+  SARIF: 0 errores, 13 warnings preexistentes de entorno y **0 bajo `app/src`**. El validador re-ejecutó
+  el gate y forzó `--rerun-tasks` (test y lint) obteniendo los mismos conteos.
+- **Dos desviaciones de spec evaluadas por el validador**: (1) el Escenario 5 se reconcilió a
+  **primera + última palabra significativa**, la única lectura que reproduce los cinco vectores de las
+  capturas (`TP/AC/GA/CG/PT`; "dos primeras" daba `AP` en `Arroz con pollo criollo`); (2) la celda de
+  rejilla a 16:10 omite la fila de metadatos por ser fiel al `code.html` de `favoritos-rejilla` (subir a
+  3:2 es **OQ6**, que sigue **abierto**). Hallazgos: ninguno Critical/High/Medium; 1 Low (KDoc de
+  `SazonCardTokens` decía "no hay consumidores"; corregido por el orquestador, **solo comentario**) y
+  1 Low/Info (la captura estrecha abrevia la fila de metadatos y se sigue `DESIGN.md`) + 3 Info. Se
+  corrigió aquí el **I1** diferido del KDoc de `tintedSurface` (sRGB→Oklab). Detalle en
+  `docs/validations/recipe-card-typographic.md`.
+- **Pendiente para la persona**: revisión visual fina en el emulador (Home, Resultados, Favoritos lista
+  y rejilla, en claro y oscuro) del filete por cocina, la marca de agua, la tipografía Manrope y el
+  monograma terracota; no automatizable desde WSL.
+- **WIP = 1 → 0** al cerrar. Siguiente feature del ADR 0006 en orden de lista:
+  **`recipe-detail-typographic-header`** (`not_started`, `depends_on: recipe-card-typographic`) → toca
+  `feature-spec` (planner) y exige capturas de referencia antes de implementar.
