@@ -1182,14 +1182,14 @@
     "title": "Ampliar el catalogo semilla de 12 a 50 recetas",
     "user_visible_behavior": "La app lleva 50 recetas semilla empaquetadas (frente a 12): aparecen con su foto propia en el carrusel y en los respaldos offline, cumpliendo las reglas de integridad del catalogo (ids, taxonomia, alergenos y coherencia de tiempos).",
     "depends_on": ["home-suggestions-personalized", "recipe-photos"],
-    "status": "not_started",
+    "status": "blocked",
     "verification": [
       "'./gradlew test' (via 'bash init.sh') sigue verde y SeedRecipeCatalogTest valida las 50 recetas (ids unicos, ids de taxonomia validos, declaredAllergens completos, coherencia de tiempos y diversidad minima)",
       "RecipePhotoAssetsTest actualizado: cada una de las 50 semillas resuelve su foto propia existente y no vacia, y el inventario (50 seed + 18 categorias + 1 default) cabe en el presupuesto de tamano, o el presupuesto se ajusta con la persona",
       "Prueba manual en emulador: las recetas semilla nuevas aparecen con foto propia"
     ],
     "evidence": [],
-    "notes": "Ampliacion pedida por la persona (2026-10-13). Es contenido, no solo codigo: autorar 38 recetas nuevas en app/src/main/assets/seed-recipes.json (reglas de violations() de SeedRecipeCatalogTest) y aportar 38 fotos propias en app/src/main/assets/img/recipes/seed/ (material de la persona; script scripts/fetch-recipe-photos.sh). Actualizar los tres '12' de RecipePhotoAssetsTest (lineas 37, 117 y 161) y el inventario/presupuesto (hoy 8 MB; con 50 fotos a ~190 KB son ~9,5 MB, asi que hay que convertir a WebP o subir el tope). Actualizar docs/risks-and-open-questions.md (hoy dice 'Empezar con 12 recetas') y el inventario de assets citado en docs. Exencion de capturas a confirmar por la persona (mismo diseno visual). Debe ir DESPUES de home-suggestions-personalized para que el carrusel ya aplique filtro y tope. Ver docs/specs/seed-catalog-50.md."
+    "notes": "Estado 'blocked' (borrador) marcado a peticion de la persona (2026-10-14): es contenido, no solo codigo, y necesita su material (38 recetas nuevas + 38 fotos propias) y la confirmacion de la exencion de capturas antes de planificarse. Sus dependencias (home-suggestions-personalized, recipe-photos) ya estan accepted y todavia no tiene spec. Ampliacion pedida por la persona (2026-10-13). Es contenido, no solo codigo: autorar 38 recetas nuevas en app/src/main/assets/seed-recipes.json (reglas de violations() de SeedRecipeCatalogTest) y aportar 38 fotos propias en app/src/main/assets/img/recipes/seed/ (material de la persona; script scripts/fetch-recipe-photos.sh). Actualizar los tres '12' de RecipePhotoAssetsTest (lineas 37, 117 y 161) y el inventario/presupuesto (hoy 8 MB; con 50 fotos a ~190 KB son ~9,5 MB, asi que hay que convertir a WebP o subir el tope). Actualizar docs/risks-and-open-questions.md (hoy dice 'Empezar con 12 recetas') y el inventario de assets citado en docs. Exencion de capturas a confirmar por la persona (mismo diseno visual). Debe ir DESPUES de home-suggestions-personalized para que el carrusel ya aplique filtro y tope. Ver docs/specs/seed-catalog-50.md."
   },
   {
     "id": "dish-image-prompt-v2",

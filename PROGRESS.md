@@ -4374,3 +4374,19 @@
 - Siguiente paso: `github-flow` publica (push + PR) esta rama; después podrá arrancar
   `dish-artwork-as-card-background` (L2), que recupera `RecipeArtwork` como capa de fondo y exige
   capturas ya aportadas.
+
+### Sesión 107
+
+- Fecha: 2026-10-14
+- Cierre de la publicación: la persona **mergeó** el PR #120 (`recipe-detail-typographic-header`,
+  merge commit `7e4f1c3`) y la issue #119 quedó **cerrada**. El `feature-flow` de la sesión 106 dejó el
+  commit local (`a50fd90`); la publicación (push + PR) la hizo el orquestador de `github-flow`, **sin**
+  merge por su parte.
+- Limpieza (`github-flow prune`): se retiraron el worktree y la rama local de
+  `recipe-card-typographic` (PR #118) y de `recipe-detail-typographic-header` (PR #120), ambas
+  `accepted`, con PR mergeado y rama contenida en `origin/main`.
+- Estado de features: **`seed-catalog-50`** pasa a **`blocked`** (borrador) a petición de la persona
+  (2026-10-14): es contenido, no solo código, y necesita su material (38 recetas nuevas + 38 fotos
+  propias) y la confirmación de la exención de capturas antes de planificarse. Sus dependencias
+  (`home-suggestions-personalized`, `recipe-photos`) ya están `accepted`; todavía no tiene spec.
+  Registrado en `feature_list.json` (rama `chore/seed-catalog-50-blocked`).
