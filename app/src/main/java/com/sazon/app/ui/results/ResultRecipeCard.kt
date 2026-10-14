@@ -10,13 +10,14 @@ import com.sazon.app.ui.home.RecipeFicha
 /**
  * Tarjeta de una receta en la pantalla de Resultados (a ancho completo).
  *
- * Es la **ficha tipografica** de [RecipeFicha] en su variante **ancha** (ADR 0006): los **tres
- * ingredientes principales** se muestran en **tres filas** (nombre a la izquierda, **cantidad a la
- * derecha en cifras tabulares** y hairline entre filas), titulo a 26sp, la fila de metadatos y el
- * **porcentaje de coincidencia** en terracota. Debajo del hueco 16:10 se conserva la **descripcion**
- * (1 linea) dentro de la misma tarjeta. Con el ajuste de imagenes apagado (default) **sin ninguna
- * imagen**; con [imageBackground] `true` usa la estructura **L2** (imagen generada como capa de fondo
- * del hueco 16:9 y banda solida con los ingredientes y los metadatos).
+ * Es la **ficha tipografica** de [RecipeFicha] en su variante **ancha** (ADR 0006, estructura **L2
+ * unificada**): los **tres ingredientes principales** se muestran en **tres filas** (nombre a la
+ * izquierda, **cantidad a la derecha en cifras tabulares** y hairline entre filas), titulo a 26sp, la
+ * fila de metadatos y el **porcentaje de coincidencia** en terracota; todo dentro del hueco **16:9** (con
+ * el filete de 6px y la marca de agua del glifo) y la banda solida. Debajo de la banda se conserva la
+ * **descripcion** (1 linea) dentro de la misma tarjeta. La geometria la aporta [RecipeFicha]. Con el
+ * ajuste de imagenes apagado (default) **sin** capa de fondo; con [imageBackground] `true` la imagen
+ * generada es la capa de fondo del hueco (misma geometria).
  *
  * **Sin corazon** (favoritos es de `favorites`); el click opcional abre el Detalle
  * (`recipe-detail-screen`).

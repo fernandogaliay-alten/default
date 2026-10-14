@@ -14,9 +14,6 @@ object SazonComponents {
     val buttonHeight = 52.dp
     val bottomNavHeight = 80.dp
 
-    /** Relación de aspecto de la imagen de `RecipeCard` (`16:10`). */
-    const val recipeCardImageRatio = 16f / 10f
-
     /** Color inactivo de la barra inferior (`bottom-nav.inactiveColor`). */
     val bottomNavInactive = SazonBottomNavInactive
 }

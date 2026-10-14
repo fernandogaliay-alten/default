@@ -33,8 +33,10 @@ import androidx.compose.ui.unit.sp
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.artwork.DishImageArtworkOverlay
+import com.sazon.app.ui.artwork.FichaBandLayout
 import com.sazon.app.ui.artwork.RecipeAccent
 import com.sazon.app.ui.artwork.RecipeArtwork
+import com.sazon.app.ui.artwork.RecipeArtworkImageLayer
 import com.sazon.app.ui.artwork.RecipeArtworkStyle
 import com.sazon.app.ui.artwork.RecipeGlyphArtwork
 import com.sazon.app.ui.artwork.RecipeStyle
@@ -42,7 +44,6 @@ import com.sazon.app.ui.artwork.recipeAccentColors
 import com.sazon.app.ui.theme.CardImageOverlay
 import com.sazon.app.ui.theme.LocalSazonCardColors
 import com.sazon.app.ui.theme.SazonCardTokens
-import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonFontFamilies
 import com.sazon.app.ui.theme.SazonShapes
 import com.sazon.app.ui.theme.SazonSpacing
@@ -84,30 +85,30 @@ private const val TABULAR_FIGURES = "tnum"
  * **compartido** que consumen `RecipeCard` (Inicio, estrecha), `ResultRecipeCard` (Resultados, ancha) y
  * la rejilla de Favoritos (compacta).
  *
- * Con [imageBackground] `false` (por defecto) la ficha es **exactamente** la aceptada: dentro del hueco
- * **16:10** (`SazonComponents.recipeCardImageRatio`), sin ninguna imagen, la **categoria en versalitas**
- * y el **titulo** en Manrope Bold, los **tres ingredientes principales** (una linea con `·` si
- * `wide == false`, o tres filas con la cantidad a la derecha en cifras tabulares si `wide == true`), la
- * fila `tiempo · dificultad · comensales` con la coincidencia en terracota (salvo en [compact]) y el
- * **filete de 6px** con el degradado de la cocina. El cromo sale de [LocalSazonCardColors].
+ * Es la estructura **L2 unificada** (`recipe-card-l2-unified`): **siempre** el hueco **16:9**
+ * ([DishImageArtworkOverlay.HOLE_RATIO]) con la **categoria en versalitas** y el **titulo**, la **marca
+ * de agua** del glifo al 12 % y el **filete de 6px** con el degradado de la cocina al pie; **debajo**,
+ * la **banda solida** con los **tres ingredientes principales** con cantidad (una linea o tres filas
+ * segun [DishImageArtworkOverlay.bandLayout]) y la fila `tiempo · dificultad · comensales` con la
+ * coincidencia en terracota (salvo en [compact]). El cromo sale de [LocalSazonCardColors].
  *
- * Con [imageBackground] `true` la tarjeta usa la estructura **L2** del ADR 0006 (imagen generada como
- * capa de fondo): el hueco pasa a **16:9** ([DishImageArtworkOverlay.HOLE_RATIO]) con la **capa de
- * fondo** ([RecipeArtwork]) y, debajo, una **banda solida** con los ingredientes con cantidad y los
- * metadatos. La estructura es **la misma** con imagen o sin ella (solo cambia el alfa de la capa de
- * fondo), asi que no hay salto de layout. La marca de agua y el tratamiento tipografico (sobre imagen o
- * sobre superficie) los decide la **capa resuelta**.
+ * Con [imageBackground] `false` (por defecto) **no** se compone [RecipeArtwork]: el contenido del hueco
+ * se pinta directamente sobre la superficie de la tarjeta con la capa sintetica
+ * [RecipeArtworkImageLayer.TYPOGRAPHIC] (0 lecturas de cache/semilla/generador). Con `true`,
+ * [RecipeArtwork] aporta la **capa de fondo** (imagen + `scrim` + crossfade) y la **unica** diferencia es
+ * esa capa (la categoria y el titulo pasan al tratamiento sobre imagen y la marca de agua desaparece).
+ * La geometria es **la misma** con imagen o sin ella: no hay salto de layout.
  *
- * @param wide `true` para la tarjeta ancha de Resultados (tres filas, titulo a 26sp y descripcion
- *   debajo del hueco).
+ * @param wide `true` para la tarjeta ancha de Resultados (banda a tres filas, titulo a 26sp y
+ *   descripcion debajo de la banda).
  * @param compact `true` para la celda de la rejilla de Favoritos (dos columnas): titulo a 16sp,
- *   ingredientes a 10,5sp y **sin** fila de metadatos, la unica combinacion que cabe en una celda de
- *   ~172dp sin subir la tarjeta a 3:2 (OQ6, abierta). Nunca junto con [wide].
- * @param description texto opcional que se pinta **debajo del hueco** dentro de la misma tarjeta (la
+ *   ingredientes a 10,5sp y **sin** fila de metadatos (contenido aceptado de la celda compacta). La
+ *   banda es siempre de **una linea**; manda sobre [wide].
+ * @param description texto opcional que se pinta **debajo de la banda** dentro de la misma tarjeta (la
  *   descripcion de una linea de Resultados); `null` en la tarjeta estrecha.
  * @param overlay contenido superpuesto a la tarjeta (el corazon de la rejilla de Favoritos).
- * @param imageBackground `true` con el ajuste "Generar imagenes del plato" encendido: la imagen
- *   generada es la capa de fondo del hueco y los ingredientes pasan a la banda solida (L2).
+ * @param imageBackground `true` con el ajuste "Generar imagenes del plato" encendido: la imagen generada
+ *   es la **capa de fondo** del hueco. Apagado (default) la estructura es identica, sin capa de fondo.
  */
 @Composable
 fun RecipeFicha(
@@ -141,29 +142,20 @@ fun RecipeFicha(
     ) {
         Box {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (imageBackground) {
-                    ImageBackgroundHole(
-                        recipe = recipe,
-                        taxonomy = taxonomy,
-                        style = style,
-                        wide = wide,
-                        compact = compact,
-                    )
-                    SolidBand(
-                        recipe = recipe,
-                        taxonomy = taxonomy,
-                        wide = wide,
-                        compact = compact,
-                    )
-                } else {
-                    TypographicHole(
-                        recipe = recipe,
-                        taxonomy = taxonomy,
-                        style = style,
-                        wide = wide,
-                        compact = compact,
-                    )
-                }
+                Hole(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    style = style,
+                    wide = wide,
+                    compact = compact,
+                    imageBackground = imageBackground,
+                )
+                SolidBand(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    wide = wide,
+                    compact = compact,
+                )
                 if (!description.isNullOrBlank()) {
                     Text(
                         text = description,
@@ -188,116 +180,101 @@ fun RecipeFicha(
 }
 
 /**
- * Hueco **16:10** de la ficha sin el ajuste de imagenes (comportamiento aceptado): marca de agua del
- * glifo al 12 %, contenido completo dentro del hueco y filete al pie. **Sin** `RecipeArtwork`.
+ * Hueco **16:9** de la estructura **L2 unificada**: la **ficha tipografica** (categoria + titulo, y la
+ * marca de agua del glifo) es la capa base y el **filete** va encima, al pie. Con [imageBackground]
+ * `true` [RecipeArtwork] aporta la **capa de fondo** (imagen + `scrim` + crossfade); con `false` el
+ * contenido del hueco se pinta directamente con la capa sintetica
+ * [RecipeArtworkImageLayer.TYPOGRAPHIC], **sin** componer [RecipeArtwork].
  */
 @Composable
-private fun TypographicHole(
+private fun Hole(
     recipe: Recipe,
     taxonomy: Taxonomy,
     style: RecipeStyle,
     wide: Boolean,
     compact: Boolean,
+    imageBackground: Boolean,
 ) {
-    val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(SazonComponents.recipeCardImageRatio),
+            .aspectRatio(DishImageArtworkOverlay.HOLE_RATIO),
     ) {
-        RecipeGlyphArtwork(
-            glyph = style.glyph,
-            tint = scheme.onSurfaceVariant.copy(alpha = WATERMARK_ALPHA),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = WATERMARK_OFFSET_X, y = -WATERMARK_OFFSET_Y)
-                .size(WATERMARK_SIZE),
-        )
+        if (imageBackground) {
+            RecipeArtwork(
+                recipe = recipe,
+                modifier = Modifier.matchParentSize(),
+            ) { layer ->
+                HoleHeading(
+                    recipe = recipe,
+                    taxonomy = taxonomy,
+                    style = style,
+                    wide = wide,
+                    compact = compact,
+                    layer = layer,
+                )
+            }
+        } else {
+            HoleHeading(
+                recipe = recipe,
+                taxonomy = taxonomy,
+                style = style,
+                wide = wide,
+                compact = compact,
+                layer = RecipeArtworkImageLayer.TYPOGRAPHIC,
+            )
+        }
+        AccentFillet(accent = style.accent, modifier = Modifier.align(Alignment.BottomStart))
+    }
+}
+
+/**
+ * Contenido del hueco para la **capa resuelta** [layer]: la **marca de agua** del glifo solo sin imagen
+ * ([DishImageArtworkOverlay.watermarkVisible]) y la categoria y el titulo con el tratamiento sobre imagen
+ * o sobre superficie ([DishImageArtworkOverlay.headingOnImage]).
+ */
+@Composable
+private fun HoleHeading(
+    recipe: Recipe,
+    taxonomy: Taxonomy,
+    style: RecipeStyle,
+    wide: Boolean,
+    compact: Boolean,
+    layer: RecipeArtworkImageLayer,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (DishImageArtworkOverlay.watermarkVisible(layer)) {
+            RecipeGlyphArtwork(
+                glyph = style.glyph,
+                tint = scheme.onSurfaceVariant.copy(alpha = WATERMARK_ALPHA),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = WATERMARK_OFFSET_X, y = -WATERMARK_OFFSET_Y)
+                    .size(WATERMARK_SIZE),
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(if (wide) WIDE_PADDING else NARROW_PADDING),
-            verticalArrangement = Arrangement.SpaceBetween,
         ) {
             FichaHeading(
                 category = RecipeCardFormat.categoryLine(taxonomy, recipe),
                 title = recipe.title,
                 wide = wide,
                 compact = compact,
-                onImage = false,
+                onImage = DishImageArtworkOverlay.headingOnImage(layer),
             )
-            FichaIngredients(recipe = recipe, wide = wide, compact = compact)
-            if (!compact) {
-                FichaFoot(
-                    taxonomy = taxonomy,
-                    recipe = recipe,
-                    compactMatch = !wide,
-                )
-            }
         }
-        AccentFillet(accent = style.accent, modifier = Modifier.align(Alignment.BottomStart))
     }
 }
 
 /**
- * Hueco **16:9** de la variante **L2** (imagen como capa de fondo): la **ficha tipografica** es la capa
- * base y [RecipeArtwork] aporta la imagen con su `scrim` y el fundido; el contenido del slot pinta la
- * marca de agua (solo sin imagen) y la categoria y el titulo con el tratamiento de la capa resuelta. El
- * filete va encima, al pie del hueco.
- */
-@Composable
-private fun ImageBackgroundHole(
-    recipe: Recipe,
-    taxonomy: Taxonomy,
-    style: RecipeStyle,
-    wide: Boolean,
-    compact: Boolean,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(DishImageArtworkOverlay.HOLE_RATIO),
-    ) {
-        RecipeArtwork(
-            recipe = recipe,
-            modifier = Modifier.matchParentSize(),
-        ) { layer ->
-            val onImage = DishImageArtworkOverlay.headingOnImage(layer)
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (DishImageArtworkOverlay.watermarkVisible(layer)) {
-                    RecipeGlyphArtwork(
-                        glyph = style.glyph,
-                        tint = scheme.onSurfaceVariant.copy(alpha = WATERMARK_ALPHA),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = WATERMARK_OFFSET_X, y = -WATERMARK_OFFSET_Y)
-                            .size(WATERMARK_SIZE),
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(if (wide) WIDE_PADDING else NARROW_PADDING),
-                ) {
-                    FichaHeading(
-                        category = RecipeCardFormat.categoryLine(taxonomy, recipe),
-                        title = recipe.title,
-                        wide = wide,
-                        compact = compact,
-                        onImage = onImage,
-                    )
-                }
-            }
-        }
-        AccentFillet(accent = style.accent, modifier = Modifier.align(Alignment.BottomStart))
-    }
-}
-
-/**
- * **Banda solida** de la variante L2, debajo del hueco: la superficie de la tarjeta con los
- * ingredientes con cantidad (tres filas con cifras tabulares; una linea en la celda [compact]) y la fila
- * de metadatos con la coincidencia (la celda [compact] no la pinta).
+ * **Banda solida** de la estructura L2, **siempre** debajo del hueco: la superficie de la tarjeta con
+ * los ingredientes con cantidad, repartidos por [DishImageArtworkOverlay.bandLayout] (una linea si
+ * [FichaBandLayout.ONE_LINE]; tres filas con cifras tabulares si [FichaBandLayout.THREE_ROWS]), y la
+ * fila de metadatos con la coincidencia (la celda [compact] no la pinta).
  */
 @Composable
 private fun SolidBand(
@@ -316,10 +293,14 @@ private fun SolidBand(
                 bottom = NARROW_PADDING,
             ),
     ) {
-        if (compact) {
-            FichaIngredients(recipe = recipe, wide = false, compact = true)
-        } else {
-            FichaIngredients(recipe = recipe, wide = true, compact = false)
+        when (DishImageArtworkOverlay.bandLayout(wide, compact)) {
+            FichaBandLayout.THREE_ROWS ->
+                FichaIngredients(recipe = recipe, wide = true, compact = false)
+
+            FichaBandLayout.ONE_LINE ->
+                FichaIngredients(recipe = recipe, wide = false, compact = compact)
+        }
+        if (!compact) {
             FichaFoot(taxonomy = taxonomy, recipe = recipe, compactMatch = !wide)
         }
     }
