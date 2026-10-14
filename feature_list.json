@@ -1348,5 +1348,65 @@
       "Validacion independiente (validator, sesion 112, contexto limpio): veredicto accept. No se fio de la evidencia del implementer: bash init.sh salio exit 0 con test/lint UP-TO-DATE, asi que forzo bash scripts/gradle.sh testDebugUnitTest --rerun-tasks (BUILD SUCCESSFUL 5m03s, 34/34 tareas) y bash scripts/gradle.sh lint --rerun-tasks (BUILD SUCCESSFUL 9m57s, 30/30) y parseo por su cuenta los XML frescos: 97 suites / 731 tests / 0 fallos / 0 errores / 0 saltados y el SARIF (13 resultados, 0 errores, 0 bajo app/src). Re-derivo la baseline en HEAD (98 ficheros / 742 anotaciones) => delta -1 suite / -11 tests = RecipePhotoAssetsTest. assembleDebug + unzip: assets/img/recipes = solo default.jpg (137.359 B), 0 de seed/ y category/; img/dishes/seed = 6 WebP (449.844 B); inventario en disco 1 y 6. Greps de alcance a 0 en app/src (AssetRecipePhotoSource, LocalRecipePhotoSource, RecipePhotoSource, RecipePhotoAssets.resolve/candidates/CATEGORY_IDS, DishImageOrigin.CATEGORY, recipe.photos.assets.dir, RecipePhotoAssetsTest) y scripts/fetch-recipe-photos.sh ausente. Contrato los 10 escenarios de la spec (assets fuera; sin lectores; ancla viva con DishImageStyleReferencePolicy intacta y null sin lanzar; RecipePhotoAssets solo con ROOT/DEFAULT_KEY/EXTENSIONS; DishImageOrigin GENERATED/SEED/GLYPH; microcopy nueva; RecipeCategory sin image y taxonomy.json sin image/imageResolution; docs en pasado sin reescribir historia; gate 97/731; sin dependencias nuevas) y la disciplina de alcance (gradle/libs.versions.toml 0 diff, app/build.gradle.kts -4 lineas, init.sh/AGENTS.md intactos, docs/design/concepts sin capturas nuevas, evidencia historica no reescrita). Sin hallazgos Critical/High/Medium; 2 Low informativos no bloqueantes (L1: dos vinetas de las Consecuencias del ADR 0004 siguen en imperativo sin marcador inline, cubiertas por el banner de retirada; L2: el campo user_visible_behavior decia ~6,4 MiB cuando la medicion real es 5,68 MiB, alineado al persistir el accept). Sin hallazgos de seguridad (el diff en data/image, data/ai/image y ui/artwork es comentarios + el valor de enum sin productor; interruptor, tope, cache, clave canonica, transporte y red intactos; log SazonDishImage solo debug). Detalle en docs/validations/retire-recipe-photos.md."
     ],
     "notes": "Estado accepted: implementada y autoverificada por el implementer en la sesion 111 y aceptada por validacion independiente en la sesion 112 (veredicto accept, rama feature/retire-recipe-photos; el commit local lo crea el orquestador de feature-flow y publica github-flow, sin commit/push/PR del implementer). Feature del ADR 0006. Revierte la ampliacion del MVP de recipe-photos (issue #83) y ajusta el ADR 0004: salen del APK/runtime los 30 assets de seed/ y category/ (5.954.912 B ≈ 5,68 MiB), data.AssetRecipePhotoSource, el seam ui.artwork.RecipePhotoSource, RecipePhotoAssetsTest y scripts/fetch-recipe-photos.sh; RecipePhotoAssets queda con ROOT/DEFAULT_KEY/EXTENSIONS y se conserva img/recipes/default.jpg (137.359 B) como ancla de estilo de dish-style-reference (ADR 0005 fase 6) e img/dishes/seed/** (449.844 B, ADR 0005 fase 7). DishImageOrigin pierde CATEGORY (GENERATED/SEED/GLYPH); microcopy nueva en DishImageSettingsCopy; RecipeCategory pierde image y taxonomy.json pierde image/imageResolution. Sin dependencias nuevas, sin UI nueva y sin capturas."
+  },
+  {
+    "id": "recipe-card-l2-unified",
+    "area": "ui",
+    "title": "Tarjetas de receta con la estructura L2 unificada (con o sin imagen)",
+    "user_visible_behavior": "Las tarjetas de receta de Inicio (Sugeridas para ti y Guardadas), Resultados y la rejilla de Favoritos se ven con la misma estructura tanto con el ajuste de imágenes encendido como apagado: hueco 16:9 con categoría y título encima y banda sólida con los ingredientes y los metadatos; sin imagen solo desaparece la capa de fondo.",
+    "depends_on": ["recipe-card-typographic", "dish-artwork-as-card-background"],
+    "status": "not_started",
+    "verification": [
+      "Las tres variantes de RecipeFicha (estrecha, ancha y compacta) usan siempre el hueco 16:9 + banda sólida (L2), con el ajuste de imágenes encendido o apagado; sin imagen solo desaparece la capa de fondo y el layout no cambia",
+      "El layout sin imagen deja de ser el hueco 16:10 con los ingredientes dentro del hueco; se conservan el filete de 6px, la marca de agua del glifo, la tipografía y la geometría del hueco L2",
+      "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/recipe-card-l2-unified/ respetadas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva de diseño pedida por la persona tras revisar la app (2026-10-14, sesion 113). Unifica las dos estructuras de RecipeFicha (el hueco tipografico 16:10 sin ajuste frente al hueco L2 16:9 + banda solida con ajuste) en una sola (L2 siempre): con el ajuste apagado la base es la superficie de la tarjeta y el hueco queda con categoria, titulo y marca de agua; los ingredientes y los metadatos pasan siempre a la banda solida. Afecta a Inicio (RecipeCard), Resultados (ResultRecipeCard) y la rejilla de Favoritos (FavoriteRecipeTile). Capturas obligatorias antes de implementar (politica de capturas de UI): docs/design/concepts/recipe-card-l2-unified/. Area: ui."
+  },
+  {
+    "id": "favorites-tile-contrast",
+    "area": "ui",
+    "title": "La miniatura de la lista de Favoritos resalta del fondo",
+    "user_visible_behavior": "En Favoritos, la miniatura cuadrada de la izquierda de cada fila se distingue claramente del fondo de la tarjeta, tanto en claro como en oscuro.",
+    "depends_on": ["favorites", "recipe-card-typographic"],
+    "status": "not_started",
+    "verification": [
+      "La miniatura pasa a fondo primary con el monograma en onPrimary; el contraste de la miniatura contra la superficie de la tarjeta es >= 3:1 en claro y en oscuro (WCAG 1.4.11), con un test JVM de contraste como CardTokensTest",
+      "La geometria de la miniatura (96x96, esquina 24) y el resto de la fila (titulo, meta, corazon) no cambian; sin dependencias nuevas",
+      "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/favorites-tile-contrast/ respetadas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): el surfaceVariant de la miniatura era casi indistinguible de la fila de Favoritos (1,22:1 en claro; ~1,0:1 en oscuro). Decision de la persona delegada al agente, teniendo en cuenta el modo oscuro; se elige fondo primary (terracota) + monograma onPrimary, que da ~3,97:1 en claro y ~3,31:1 en oscuro (>= 3:1). Actualiza DESIGN.md (components.recipe-tile-favorites) y el test de contraste de tarjeta. Capturas obligatorias: docs/design/concepts/favorites-tile-contrast/. Area: ui."
+  },
+  {
+    "id": "home-tus-recetas-ver-todas",
+    "area": "ui",
+    "title": "Tus recetas: las ultimas guardadas y boton 'Ver todas'",
+    "user_visible_behavior": "El bloque 'Tus recetas' de la Home deja de mostrar los chips de filtro, ensena las 6 ultimas recetas guardadas y un boton 'Ver todas' que lleva a la pestana Favoritos.",
+    "depends_on": ["home-offline-blocks", "favorites", "local-result-filters"],
+    "status": "not_started",
+    "verification": [
+      "El bloque 'Tus recetas' no pinta la fila de filtros locales; muestra como maximo 6 guardadas, las mas recientes (orden de Favoritos), y un boton 'Ver todas' que navega a la pestana Favoritos (MainTab.FAVORITES)",
+      "El filtro local se conserva en Resultados (ResultFilterRow/LocalResultFilters siguen en uso) y la Home deja de mantener el estado de filtro",
+      "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/home-tus-recetas-ver-todas/ respetadas"
+    ],
+    "evidence": [],
+    "notes": "Ampliacion/correctiva pedida por la persona (2026-10-14, sesion 113): los chips que filtran las recetas guardadas en la Home no tienen sentido. Tope 6 (coincide con HomeSuggestions.MAX_VISIBLE) y microcopy del boton 'Ver todas' (la persona eligio esa etiqueta, no 'Todas tus recetas'). Requiere una costura onOpenFavorites en HomeScreen cableada por MainShell a navigation.selectTab(MainTab.FAVORITES). Capturas obligatorias: docs/design/concepts/home-tus-recetas-ver-todas/. Area: ui."
+  },
+  {
+    "id": "detail-hero-full-bleed",
+    "area": "ui",
+    "title": "Cabecera del Detalle a todo el ancho",
+    "user_visible_behavior": "En el Detalle de receta, la cabecera (nombre de la receta y los ingredientes principales) y la tira de metadatos ocupan todo el ancho de la pantalla, de borde a borde.",
+    "depends_on": ["recipe-detail-typographic-header", "dish-artwork-as-card-background"],
+    "status": "not_started",
+    "verification": [
+      "El hero y la tira de metadatos pierden el padding horizontal de 16dp y ocupan todo el ancho; la geometria interna (alto 240, filete de 6px, esquinas inferiores de 24, marca de agua de 190) y el contenido no cambian",
+      "Sigue funcionando con el ajuste de imagenes encendido (imagen como capa de fondo del hero) y apagado, y los controles flotantes 'Atras' y corazon siguen legibles y pulsables",
+      "'bash init.sh' verde (test + lint) y las capturas de referencia de docs/design/concepts/detail-hero-full-bleed/ respetadas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva de diseno pedida por la persona (2026-10-14, sesion 113): la cabecera con el nombre y los ingredientes principales del Detalle estaba embutida por el padding lateral de 16dp. Hero y MetaStrip pasan a bleed (borde a borde); hay que revisar el recorte de las esquinas inferiores de 24 y la posicion de la pildora 'Atras' y del corazon flotantes. Capturas obligatorias: docs/design/concepts/detail-hero-full-bleed/. Area: ui."
   }
 ]

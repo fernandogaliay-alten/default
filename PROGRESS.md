@@ -685,6 +685,28 @@
   los 10 escenarios y la disciplina de alcance. Detalle en `docs/validations/retire-recipe-photos.md`. Con
   esto, el **plan del ADR 0006 queda completo** (cinco features `accepted`) y **toda** entrada de
   `feature_list.json` está `accepted`.
+- Revisión de diseño de la persona (2026-10-14, sesión 113): tras revisar la app con el cambio del ADR
+  0006, se dan de alta **cuatro features de UI** `not_started` para corregir cuatro puntos. Ninguna
+  implementada (**WIP = 0**).
+  - **`recipe-card-l2-unified`** (`area: ui`): las tarjetas de receta usan **siempre** la estructura
+    **L2** (hueco 16:9 + banda sólida), con el ajuste de imágenes encendido **o** apagado; sin imagen solo
+    desaparece la capa de fondo. Afecta a Inicio, Resultados y la rejilla de Favoritos. Retira la
+    dualidad 16:10/16:9 (OQ6 de `DESIGN.md` pasa a resuelta).
+  - **`favorites-tile-contrast`** (`area: ui`): la miniatura de la lista de Favoritos pasa a fondo
+    `primary` con el monograma en `onPrimary` (≈3,97:1 en claro y ≈3,31:1 en oscuro, ≥3:1 de WCAG 1.4.11)
+    frente al `surfaceVariant` actual (1,22:1 en claro; ~1,0:1 en oscuro). Decisión delegada al agente por
+    la persona, teniendo en cuenta el modo oscuro.
+  - **`home-tus-recetas-ver-todas`** (`area: ui`): el bloque "Tus recetas" de la Home quita los chips de
+    filtro, muestra las **6 últimas** guardadas y un botón **"Ver todas"** que abre la pestaña Favoritos.
+    El filtro local se conserva en Resultados.
+  - **`detail-hero-full-bleed`** (`area: ui`): el hero (nombre + ingredientes principales) y la tira de
+    metadatos del Detalle pasan a ocupar **todo el ancho** (sin padding lateral de 16dp).
+  Las cuatro son **cambios de layout** (no microcopy), así que **no** aplica la excepción de capturas de
+  las correctivas menores: se provisionan con `github-flow execute` (issue + rama `feature/<id>` +
+  worktree + carpeta de petición `docs/design/concepts/<feature-id>/` con `README.md` +
+  `stitch-prompt.md`, **sin** lanzar sesión) y quedan `blocked` hasta que la persona deje las capturas
+  (claro y oscuro) y reanude con `github-flow execute <feature-id>`. `DESIGN.md` registra las cuatro
+  decisiones.
 
 ## Registro de sesiones
 
@@ -4765,3 +4787,44 @@
   y `github-flow` **publica** (push + PR `feature/retire-recipe-photos` → `main` con `Closes #<n>`; el merge
   lo hace la persona). Con esta feature, el **plan del ADR 0006 queda completo** y **no hay features
   `not_started`** en el plan.
+
+### Sesión 113
+
+- Fecha: 2026-10-14
+- Objetivo: alta y provisioning de las **cuatro features de UI** de la **revisión de diseño** de la
+  persona tras probar la app con el cambio del ADR 0006 (tarea `github-flow`, modo `execute`). Son
+  cambios de layout, así que exigen **capturas de referencia** antes de implementar.
+- Petición de la persona (4 puntos): (1) unificar el diseño de las tarjetas de "Sugeridas para ti" y
+  "Guardadas" con el de la variante L2 (imagen de IA encendida) también cuando el ajuste está apagado;
+  (2) que la miniatura izquierda de la fila de Favoritos **resalte** (su fondo era casi indistinguible);
+  (3) quitar los chips de filtro de "Tus recetas" en la Home, mostrar las últimas guardadas y un botón a
+  Favoritos; (4) que la cabecera del Detalle (nombre + ingredientes principales) ocupe **todo el ancho**.
+- Decisiones cerradas con la persona (preguntas): unificación L2 en **todas** las tarjetas (Inicio,
+  Resultados y rejilla de Favoritos); tratamiento de la miniatura **delegado al agente** (se elige
+  `primary` + `onPrimary` por contraste en claro y oscuro); "Tus recetas" con **6 últimas** + botón
+  **"Ver todas"**; y hero **y** tira de metadatos **a sangre** (de borde a borde).
+- Completado:
+  - `feature_list.json`: alta de `recipe-card-l2-unified`, `favorites-tile-contrast`,
+    `home-tus-recetas-ver-todas` y `detail-hero-full-bleed` (`area: ui`, `not_started`, dependencias ya
+    `accepted`), cada una con su `verification` y su `notes`; total **60 entradas**.
+  - `DESIGN.md`: primera variante de tarjeta **L2 siempre** (Overview, `recipe-card-image.ratio`, sección
+    `Components` → RecipeCard), miniatura de Favoritos `primary`/`onPrimary` (`recipe-tile-favorites` y
+    RecipeListCard), bloque "Tus recetas" con las 6 últimas + "Ver todas" (Core Screens) y hero/tira de
+    metadatos a sangre (Shapes y Core Screens); OQ6 pasa a **resuelta** (nada de 3:2: hueco siempre 16:9).
+  - Capturas obligatorias: se registra en `DESIGN.md` que las cuatro abren **carpeta de petición** en el
+    worktree (`docs/design/concepts/<feature-id>/` con `README.md` + `stitch-prompt.md`) y quedan
+    `blocked` hasta que la persona deje las capturas (claro y oscuro).
+- Verificación ejecutada: cambio **solo documental y de `feature_list.json`** (ningún fichero Kotlin,
+  recurso ni gradle), por lo que el gate `init.sh` no aplica; revisión manual de `feature_list.json`
+  (JSON válido, 60 entradas) y de `git diff`. El provisioning de los worktrees/carpetas de petición lo
+  ejecuta `github-flow` (sin lanzar sesión, porque faltan las capturas).
+- Ficheros actualizados: `feature_list.json` (4 entradas nuevas), `DESIGN.md` y este registro.
+- Hallazgos relevantes: el punto 1 retira la dualidad 16:10/16:9 del ADR 0006 y con ella la OQ6; el punto
+  2 confirma que `surfaceVariant` no cumple el 3:1 sobre la tarjeta ni en claro ni en oscuro, de ahí el
+  paso a `primary`. Las cuatro features tocan pantallas ya aceptadas y por eso necesitan capturas nuevas
+  (no vale la excepción de microcopy).
+- Riesgo o incógnita abierta: las cuatro quedan **bloqueadas por capturas**; la persona las aportará
+  (Stitch o renders locales) y se reanudan con `github-flow execute <feature-id>`. En `detail-hero-full-bleed`
+  queda por revisar el recorte de las esquinas inferiores de 24 y la posición de "Atrás"/corazón flotantes.
+- Siguiente paso: `github-flow execute` de las cuatro ids para provisionar issue + worktree + rama +
+  carpeta de petición (estado `provisioned`, sin sesión).
