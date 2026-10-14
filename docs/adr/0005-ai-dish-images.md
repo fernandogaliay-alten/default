@@ -166,7 +166,9 @@ puntos**: el proveedor de `LocalGeneratedRecipeArtworkSource` en `MainActivity` 
 generación (una unidad por petición al proveedor; `null` **sin invocar** al delegado cuando está
 agotado; los aciertos de memoria/disco **no** lo consumen). `DishImageGenerationBudget` es un contador
 atómico de reserva estricta (la concurrencia es 2) y `DishImageSettingsPolicy` deja las constantes en un
-único sitio (`DEFAULT_ENABLED = true`, `MAX_GENERATIONS_PER_SESSION = 12`, patrón
+único sitio (`DEFAULT_ENABLED = false` —opt-in: el interruptor arranca **apagado** y no se paga cuota
+hasta que la persona lo encienda, feature `dish-image-settings-default-off`, 2026-10-14—,
+`MAX_GENERATIONS_PER_SESSION = 12`, patrón
 `AiProviderPolicy.RESPONSE_FORMAT_ENABLED`). Semántica **conservadora**: un **fallo** del proveedor
 consume la unidad (es donde se paga) y una generación **cancelada** también (la reserva precede a la
 llamada); apagar/encender **no** reinicia el tope. Degradación silenciosa intacta: apagado, agotado o

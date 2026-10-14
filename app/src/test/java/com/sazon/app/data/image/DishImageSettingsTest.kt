@@ -23,6 +23,10 @@ import org.junit.rules.TemporaryFolder
  * sin consumo. Todo en JVM: sin red, sin clave, sin cuota y sin emulador; los generadores son
  * **falsos** que cuentan invocaciones y la cache de disco es real sobre un directorio temporal, de
  * modo que las aserciones no pasan en vacio.
+ *
+ * El **arranque** del ajuste es apagado (`DEFAULT_ENABLED = false`, opt-in, feature
+ * `dish-image-settings-default-off`): el caso del default sin peticiones se cubre aqui y el resto de
+ * tests fijan `enabled = true` **explicito** para seguir probando el mecanismo encendido.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class DishImageSettingsTest {
@@ -31,6 +35,23 @@ class DishImageSettingsTest {
     val temporaryFolder = TemporaryFolder()
 
     // --- Escenario 1: interruptor apagado -> 0 peticiones y sin consumo ---
+
+    @Test
+    fun el_estado_inicial_es_apagado_y_no_pide_imagenes() = runTest {
+        val settings = DishImageSettings()
+        var producerCalls = 0
+
+        val result = settings.generatedIfEnabled {
+            producerCalls += 1
+            "imagen"
+        }
+
+        assertEquals(DishImageSettingsState(enabled = false, used = 0, max = 12), settings.state.value)
+        assertNull("El arranque apagado no produce", result)
+        assertEquals("No se lee cache ni se genera: 0 invocaciones", 0, producerCalls)
+        assertFalse("El arranque apagado no reserva tope", settings.tryAcquireGeneration())
+        assertEquals("El tope de la sesion sigue intacto", 0, settings.state.value.used)
+    }
 
     @Test
     fun interruptor_apagado_no_pide_ninguna_imagen_ni_consume_tope() = runTest {
@@ -64,7 +85,7 @@ class DishImageSettingsTest {
 
     @Test
     fun apagar_el_interruptor_tras_producir_corta_la_siguiente_peticion() = runTest {
-        val settings = DishImageSettings()
+        val settings = DishImageSettings(enabled = true)
         var producerCalls = 0
         settings.generatedIfEnabled { producerCalls += 1; "a" }
 
@@ -95,6 +116,7 @@ class DishImageSettingsTest {
     @Test
     fun apagar_y_encender_no_reinicia_el_tope_agotado() {
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 1),
         )
         assertTrue(settings.tryAcquireGeneration())
@@ -111,17 +133,17 @@ class DishImageSettingsTest {
     // --- Escenario 5: estado observable (determinista) ---
 
     @Test
-    fun el_estado_inicial_es_activado_sin_consumo_y_con_el_tope_de_la_politica() {
+    fun el_estado_inicial_es_apagado_sin_consumo_y_con_el_tope_de_la_politica() {
         val settings = DishImageSettings()
 
-        assertEquals(DishImageSettingsState(enabled = true, used = 0, max = 12), settings.state.value)
+        assertEquals(DishImageSettingsState(enabled = false, used = 0, max = 12), settings.state.value)
         assertEquals(12, settings.state.value.remaining)
         assertFalse(settings.state.value.exhausted)
     }
 
     @Test
     fun una_reserva_re_emite_el_estado_con_el_consumo_actualizado() {
-        val settings = DishImageSettings()
+        val settings = DishImageSettings(enabled = true)
 
         assertTrue(settings.tryAcquireGeneration())
 
@@ -132,7 +154,7 @@ class DishImageSettingsTest {
 
     @Test
     fun el_estado_es_un_state_flow_observable() = runTest {
-        val settings = DishImageSettings()
+        val settings = DishImageSettings(enabled = true)
         val seen = mutableListOf<DishImageSettingsState>()
         val job = launch(UnconfinedTestDispatcher(testScheduler)) {
             settings.state.collect { seen += it }
@@ -152,6 +174,7 @@ class DishImageSettingsTest {
     @Test
     fun el_decorador_agotado_no_invoca_al_delegado() = runTest {
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 2),
         )
         val delegate = CountingDishImageGenerator()
@@ -182,7 +205,7 @@ class DishImageSettingsTest {
     @Test
     fun la_constante_del_tope_vive_en_un_unico_sitio() {
         assertEquals(12, DishImageSettingsPolicy.MAX_GENERATIONS_PER_SESSION)
-        assertTrue(DishImageSettingsPolicy.DEFAULT_ENABLED)
+        assertFalse(DishImageSettingsPolicy.DEFAULT_ENABLED)
     }
 
     // --- Escenario 6: un acierto de cache no consume tope ---
@@ -190,6 +213,7 @@ class DishImageSettingsTest {
     @Test
     fun un_acierto_de_cache_no_consume_tope() = runTest {
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 5),
         )
         val delegate = CountingDishImageGenerator()
@@ -211,6 +235,7 @@ class DishImageSettingsTest {
     fun un_acierto_de_disco_tampoco_consume_tope() = runTest {
         val root = File(temporaryFolder.root, "dish-images")
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 5),
         )
         resolver(settings, CountingDishImageGenerator(), root = root).imageFor(request(KEY))
@@ -228,6 +253,7 @@ class DishImageSettingsTest {
     @Test
     fun un_fallo_del_proveedor_degrada_a_null_y_consume_la_unidad() = runTest {
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 5),
         )
         val delegate = CountingDishImageGenerator {
@@ -243,6 +269,7 @@ class DishImageSettingsTest {
     @Test
     fun la_cancelacion_del_generador_se_propaga_y_consume_la_unidad() = runTest {
         val settings = DishImageSettings(
+            enabled = true,
             budget = DishImageGenerationBudget(maxGenerations = 5),
         )
         val delegate = CountingDishImageGenerator {
@@ -262,7 +289,7 @@ class DishImageSettingsTest {
 
     @Test
     fun el_decorador_no_convierte_la_cancelacion_en_null() = runTest {
-        val settings = DishImageSettings()
+        val settings = DishImageSettings(enabled = true)
         val gated = GatedDishImageGenerator(
             CountingDishImageGenerator { throw CancellationException("cancelado") },
             settings,

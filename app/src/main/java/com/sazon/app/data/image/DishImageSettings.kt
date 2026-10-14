@@ -15,8 +15,12 @@ import kotlinx.coroutines.flow.update
  */
 object DishImageSettingsPolicy {
 
-    /** Estado inicial del interruptor: la generacion viene activada (comportamiento actual). */
-    const val DEFAULT_ENABLED = true
+    /**
+     * Estado inicial del interruptor: la generacion viene **apagada** (opt-in). Hasta que el usuario
+     * lo encienda no se lee cache, no se genera ni se consume tope (ADR 0006: sin red ni cuota por
+     * defecto); encenderlo restaura el comportamiento de `dish-image-settings-toggle`.
+     */
+    const val DEFAULT_ENABLED = false
 
     /**
      * Tope de **generaciones por sesion**. Cubre dos pantallas de Resultados (6 + 6) sin exponer la
@@ -50,7 +54,8 @@ data class DishImageSettingsState(
  * Ajuste de sesion de la imagen de plato: **interruptor** + **tope por sesion**, en memoria.
  *
  * Uno por **proceso** = una sesion (se crea una vez en `MainActivity`); al morir el proceso el
- * contador vuelve a cero y el interruptor a [DishImageSettingsPolicy.DEFAULT_ENABLED]. **No** se
+ * contador vuelve a cero y el interruptor vuelve a [DishImageSettingsPolicy.DEFAULT_ENABLED]
+ * (**apagado**: la generacion es opt-in y el arranque no gasta cuota ni reserva tope). **No** se
  * persiste (Decision 2 del spec): el ajuste no es una preferencia culinaria y no entra en
  * `UserProfile`.
  *
