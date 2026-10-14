@@ -127,11 +127,12 @@ fun FavoriteRecipeCard(
 /**
  * Version compacta en rejilla del Favorito (dos columnas): la **ficha tipografica compacta** de
  * `RecipeFicha` (categoria, titulo a 2 lineas, ingredientes en una linea, filete por cocina y marca de
- * agua), con el **corazon** superpuesto en la esquina superior derecha. La celda omite la fila de
- * metadatos: a 16:10 y ~172dp de ancho es lo unico que cabe sin subir la tarjeta a 3:2 (OQ6, abierta),
- * y es exactamente lo que muestra la captura `docs/design/concepts/recipe-card-typographic/
- * favoritos-rejilla/`. Comparte la logica de [FavoriteRecipeCard]; con el ajuste apagado (default)
- * **sin** imagen; con [imageBackground] `true` usa la estructura L2 (fondo 16:9 + banda solida).
+ * agua), con el **corazon** superpuesto en la esquina superior derecha, dentro de la estructura **L2
+ * unificada** (hueco **16:9** + banda solida). La celda omite la fila de metadatos: a ~172dp de ancho es
+ * lo unico que cabe sin subir la tarjeta a 3:2, y es exactamente lo que muestra la captura
+ * `docs/design/concepts/recipe-card-typographic/favoritos-rejilla/`. Comparte la logica de
+ * [FavoriteRecipeCard]; con el ajuste apagado (default) **sin** capa de fondo; con [imageBackground]
+ * `true` la imagen generada es la capa de fondo del hueco (misma geometria).
  */
 @Composable
 fun FavoriteRecipeTile(

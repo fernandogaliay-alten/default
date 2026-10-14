@@ -251,10 +251,17 @@ Detalle; el ajuste encendido los activa con `imageBackground = true` (parámetro
 `false` = ficha/hero aceptados). Los tokens del `scrim` (claro `rgba(20,12,8,.42/.18/.78)`, oscuro
 `rgba(10,6,4,.5/.22/.82)`) y del texto **sobre imagen** (`#FFFFFF` y blanco al 86 %, hairline 32 %) viven
 en `ui/theme/CardImageOverlay.kt` (único sitio, 0 hex en `ui/artwork`); la decisión **pura** del hueco
-(ratio 16:9, `headingOnImage`, `watermarkVisible`, alfa derivado) es `ui/artwork/DishImageArtworkOverlay`.
+(ratio 16:9, `headingOnImage`, `watermarkVisible`, alfa derivado) y el reparto de la **banda sólida**
+(`FichaBandLayout` + `bandLayout(wide, compact)`: una línea en la estrecha/compacta, tres filas en la
+ancha) es `ui/artwork/DishImageArtworkOverlay`.
 `RecipeArtwork` ya **no** lee `LocalRecipePhotoSource` ni pinta el degradado + glifo de respaldo (la marca
 de agua la pinta el llamante dentro del slot de contenido, que recibe la capa resuelta).
-La geometría aceptada de los puntos de uso no cambia (16:10 de la ficha apagada, hero de 240 del Detalle).
+La **estructura L2 quedó unificada** con `recipe-card-l2-unified` (2026-10-14, issue #129): `RecipeFicha`
+tiene **una sola** forma —hueco **16:9** + banda sólida **siempre**, con la categoría y el título dentro
+del hueco— y ya **no** hay ficha apagada 16:10 con los ingredientes dentro del hueco. El ajuste de
+imágenes solo cambia la **capa de fondo** (0 lecturas de caché/semilla/generador con el ajuste apagado:
+el camino apagado **no** compone `RecipeArtwork`), así que "encendido sin imagen" es idéntico a "apagado"
+y no hay salto de layout. La geometría de los demás puntos de uso no cambia (hero de 240 del Detalle).
 
 La **cadena local de fotos quedó retirada** con la feature `retire-recipe-photos` (ADR 0006,
 2026-10-14): **30 de los 31 assets** (12 `seed/<id>.jpg` y 18 `category/cat-<categoryId>.jpg`,

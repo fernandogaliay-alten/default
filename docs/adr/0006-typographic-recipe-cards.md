@@ -3,7 +3,7 @@
 ## Estado
 
 **Aceptado** (2026-10-13, decisión de la persona tras revisar los prototipos locales de `preview/`).
-**Implementadas** las cinco features:
+**Implementadas** las seis features:
 `card-typographic-tokens-and-design`
 (2026-10-14: tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
 `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` + tinte cálido en `ui/theme/CardTokens.kt`,
@@ -28,6 +28,14 @@ hueco; el interruptor y el tope por sesión se respetan sin cambios; **`accepted
 La última, `retire-recipe-photos` (2026-10-14), **retiró** la cadena local de fotos (30 assets,
 ≈5,68 MiB, el seam Compose y la costura Android) y dejó `img/recipes/default.jpg` como ancla de estilo;
 implementada y **autoverificada**, pendiente de validación independiente.
+`recipe-card-l2-unified` (2026-10-14, issue #129, revisión de diseño de la persona): **unifica** la
+estructura de la tarjeta en la **L2** —hueco **16:9** con categoría y título dentro + banda sólida
+siempre— y **retira** la dualidad **16:10/16:9**: desaparece la **ficha apagada 16:10** (los
+ingredientes y los metadatos dejan de ir dentro del hueco) y `SazonComponents.recipeCardImageRatio`
+queda **retirada** por no tener lectores. El ajuste de imágenes solo cambia la **capa de fondo** (el
+camino apagado **no** compone `RecipeArtwork`), el reparto de la banda es una **regla pura** nueva
+(`DishImageArtworkOverlay.bandLayout`: una línea en la estrecha/compacta, tres filas en la ancha, OQ6
+resuelta) y queda **autoverificada**, pendiente de validación independiente.
 
 Ajusta:
 - **ADR 0004** (fotos empaquetadas como assets): la foto deja de ser la **imagen principal**; la cadena

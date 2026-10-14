@@ -6,16 +6,45 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Escenario 6 de `docs/specs/dish-artwork-as-card-background.md`: la geometria del hueco L2 (ratio
- * 16:9) y las decisiones tipograficas derivadas de la capa son **puras** y deterministas (JVM, sin
- * Android ni Compose). No hay caso vacio: las dos capas y los dos valores de alfa se afirman.
+ * Escenario 6 de `docs/specs/dish-artwork-as-card-background.md` y de
+ * `docs/specs/recipe-card-l2-unified.md`: la geometria del hueco L2 (ratio 16:9), las decisiones
+ * tipograficas derivadas de la capa y el reparto de la banda solida son **puros** y deterministas (JVM,
+ * sin Android ni Compose). No hay caso vacio: las dos capas, los dos valores de alfa y los cuatro
+ * vectores de la banda se afirman.
  */
 class DishImageArtworkOverlayTest {
 
     @Test
     fun el_hueco_l2_es_dieciseis_nueve() {
         assertEquals(16f / 9f, DishImageArtworkOverlay.HOLE_RATIO, 0f)
-        assertTrue("Es mas ancho que el 16:10 de la ficha apagada", DishImageArtworkOverlay.HOLE_RATIO > 16f / 10f)
+        assertTrue("Es mas ancho que alto", DishImageArtworkOverlay.HOLE_RATIO > 1f)
+    }
+
+    @Test
+    fun la_banda_es_una_linea_salvo_en_la_tarjeta_ancha() {
+        // Estrecha (RecipeCard): una linea.
+        assertEquals(
+            FichaBandLayout.ONE_LINE,
+            DishImageArtworkOverlay.bandLayout(wide = false, compact = false),
+        )
+        // Ancha (ResultRecipeCard): tres filas.
+        assertEquals(
+            FichaBandLayout.THREE_ROWS,
+            DishImageArtworkOverlay.bandLayout(wide = true, compact = false),
+        )
+    }
+
+    @Test
+    fun la_banda_compacta_es_siempre_una_linea_y_manda_sobre_wide() {
+        assertEquals(
+            FichaBandLayout.ONE_LINE,
+            DishImageArtworkOverlay.bandLayout(wide = false, compact = true),
+        )
+        // Caso imposible `wide && compact`: manda `compact`, determinista y sin excepcion.
+        assertEquals(
+            FichaBandLayout.ONE_LINE,
+            DishImageArtworkOverlay.bandLayout(wide = true, compact = true),
+        )
     }
 
     @Test

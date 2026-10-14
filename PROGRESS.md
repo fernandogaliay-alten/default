@@ -707,6 +707,31 @@
   `stitch-prompt.md`, **sin** lanzar sesión) y quedan `blocked` hasta que la persona deje las capturas
   (claro y oscuro) y reanude con `github-flow execute <feature-id>`. `DESIGN.md` registra las cuatro
   decisiones.
+- Primera de las cuatro features de la revisión de diseño **`accepted`**: **`recipe-card-l2-unified`**
+  (issue #129, `area: ui`) — implementada y autoverificada (**`passing`**) en la **sesión 115** y
+  **`accepted`** en la **sesión 116** (validación independiente, veredicto `accept`, rama
+  `feature/recipe-card-l2-unified`; el commit local lo crea el orquestador de `feature-flow` y la
+  publicación queda para `github-flow`, **sin** commit/push/PR del implementer). Unifica las **dos**
+  estructuras de `RecipeFicha` en **una sola** (variante **L2** del ADR 0006): hueco **16:9** +
+  **banda sólida** siempre, con el ajuste de imágenes encendido o apagado; sin imagen solo desaparece
+  la capa de fondo. Se eliminan `TypographicHole` (16:10) e `ImageBackgroundHole`, el contenido del
+  hueco se factoriza en `HoleHeading` y con `imageBackground == false` **no** se compone
+  `RecipeArtwork` (capa sintética `TYPOGRAPHIC` → 0 lecturas de caché/semilla/generador);
+  `DishImageArtworkOverlay` gana la regla pura `FichaBandLayout`/`bandLayout(wide, compact)` (una
+  línea en estrecha/compacta, tres filas en la ancha, `compact` manda) y `ui/theme/Spacing.kt` retira
+  la constante muerta `SazonComponents.recipeCardImageRatio` (16:10). KDoc-only en `RecipeCard`,
+  `ResultRecipeCard` y `FavoriteRecipeTile`. Con esto la dualidad 16:10/16:9 desaparece y la **OQ6**
+  queda cerrada. Gate: `bash init.sh` exit 0, **97 suites / 733 tests / 0 fallos / 0 errores / 0
+  saltados** (baseline en `HEAD` 97/731; delta **+2 tests / 0 suites**, `DishImageArtworkOverlayTest`
+  5 → 7), lint 0 errores y 13 warnings preexistentes (0 bajo `app/src`). Exención de capturas
+  autorizada (issue #129, registrada en `DESIGN.md`): **no** se crea
+  `docs/design/concepts/recipe-card-l2-unified/`. Sin dependencias nuevas; sin diff en `data/**`,
+  `domain/**`, `assets/**`, build/lockfile, `init.sh`, `scripts/**`, `DESIGN.md` ni
+  `docs/design/concepts/**`. Docs durables: `docs/technical-discovery.md` y
+  `docs/adr/0006-typographic-recipe-cards.md`. Detalle en
+  `docs/validations/recipe-card-l2-unified.md`. **WIP = 0.** Quedan `not_started` las otras tres
+  features de la revisión de diseño (`favorites-tile-contrast`, `home-tus-recetas-ver-todas`,
+  `detail-hero-full-bleed`).
 
 ## Registro de sesiones
 
@@ -4896,3 +4921,97 @@
   `.opencode/skills/github-flow/SKILL.md` y este registro.
 - Siguiente paso: el orquestador de `github-flow` publica (push + PR
   `chore/revert-launcher-blocking` → `main`); el merge lo hace la persona.
+
+### Sesión 115
+
+- Fecha: 2026-10-14
+- Objetivo: implementar (implementer) la feature **`recipe-card-l2-unified`** (issue #129, `area: ui`)
+  en el worktree `recipe-card-l2-unified`, rama `feature/recipe-card-l2-unified` desde `origin/main`
+  (`0f454f7`). Spec: `docs/specs/recipe-card-l2-unified.md`. Implementada y autoverificada
+  (**`passing`**), **sin commit/push/PR del implementer** (el commit lo crea el orquestador de
+  `feature-flow` y publica `github-flow`); pendiente de validación independiente.
+- Cambios:
+  - `ui/home/RecipeFicha.kt`: **una sola estructura L2**. Se eliminan `TypographicHole` (hueco 16:10)
+    e `ImageBackgroundHole`; el hueco lo pinta un único `Hole` (16:9) con el contenido factorizado en
+    `HoleHeading` (marca de agua condicionada por `watermarkVisible(layer)`, categoría y título con
+    `headingOnImage(layer)`) y el filete de 6 px encima. Con `imageBackground == false` **no** se
+    compone `RecipeArtwork` (se pinta la capa sintética `RecipeArtworkImageLayer.TYPOGRAPHIC`: 0
+    lecturas de caché/semilla/generador); con `true`, `RecipeArtwork` aporta la capa de fondo como hoy.
+    `SolidBand` pasa a repartir los ingredientes por `DishImageArtworkOverlay.bandLayout` y se conserva
+    `FichaFoot` salvo en `compact`. Constantes de geometría y `FichaTypography` intactas.
+  - `ui/artwork/DishImageArtworkOverlay.kt` (puro): `enum FichaBandLayout { ONE_LINE, THREE_ROWS }` y
+    `bandLayout(wide, compact)` (compact manda; ancha → tres filas; `wide && compact` → `ONE_LINE`),
+    `HOLE_RATIO == 16f / 9f` y KDoc reconciliado (ya no cita la "ficha apagada 16:10").
+  - `ui/theme/Spacing.kt`: se **retira** la constante muerta `SazonComponents.recipeCardImageRatio`
+    (16:10; su único lector era `TypographicHole`).
+  - KDoc de `ui/home/RecipeCard.kt`, `ui/results/ResultRecipeCard.kt` y
+    `ui/favorites/FavoriteRecipeCard.kt` reconciliado a 16:9 siempre (solo KDoc; sin cambio funcional).
+  - `ui/artwork/DishImageArtworkOverlayTest.kt`: vectores de `bandLayout` (4) y aserción del ratio sin
+    la frase del 16:10; **5 → 7 tests**.
+- Verificación (evidencia medida):
+  - `bash init.sh` **exit 0** (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`; sin
+    procesos largos; `init.sh` intacto). Tirada focal previa
+    `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.*" --rerun-tasks` → BUILD
+    SUCCESSFUL (34/34 tareas).
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **97 suites / 733 tests /
+    0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` (`0f454f7`): `git grep -c
+    '@Test'` = **97 ficheros / 731 anotaciones** → **delta +2 tests / 0 suites**
+    (`DishImageArtworkOverlayTest` 5 → 7). `RecipeBackgroundGateTest` 6, `RecipeCardFormatTest` 13,
+    `RecipeMonogramTest` 7 y `RecipeArtworkImagePrecedenceTest` 5 verdes **sin cambios**.
+  - Lint (SARIF): **0 errores, 13 warnings** preexistentes (GradleDependency 7, NewerVersionAvailable
+    3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`**.
+  - Greps de alcance/pureza: `recipeCardImageRatio|16f / 10f` en `app/src` → **0**; `import
+    android|import androidx` en `DishImageArtworkOverlay.kt` → **0**; 0 hex nuevos en `ui/home` y
+    `ui/artwork`; `RecipeArtwork(` → definición + **2** consumidores (hueco de `RecipeFicha` y hero del
+    Detalle); `TypographicHole|ImageBackgroundHole` → **0**. `git diff --name-only` = Expected File
+    Changes; sin diff en `data/**`, `domain/**`, `assets/**`, build/lockfile, `init.sh`, `scripts/**`,
+    `DESIGN.md` ni `docs/design/concepts/**`; sin dependencias nuevas.
+  - Capturas: **no** existe `docs/design/concepts/recipe-card-l2-unified/` y `docs/design/concepts`
+    está limpio (exención autorizada de la issue #129, registrada en `DESIGN.md`).
+- Docs durables: `docs/technical-discovery.md` (estructura L2 única + regla pura `bandLayout` +
+  retirada de la ficha apagada 16:10) y `docs/adr/0006-typographic-recipe-cards.md` (Estado:
+  "Implementadas las seis features" + nota de la unificación 16:9 del 2026-10-14). `DESIGN.md` no
+  cambia (ya declaraba la estructura L2 siempre, el ratio 16:9 y la OQ6 resuelta).
+- Siguiente paso: validación independiente (`validator`). Tras el merge, revisión manual de la persona
+  en el emulador (Inicio, Resultados y rejilla de Favoritos en claro y oscuro, con el ajuste apagado y
+  encendido; la única diferencia perceptible es la banda de la tarjeta estrecha, ahora en una línea,
+  `DESIGN.md`/OQ6), no automatizable desde WSL.
+
+### Sesión 116
+
+- Fecha: 2026-10-14
+- Objetivo: validar de forma **independiente** `recipe-card-l2-unified` y persistir la aceptación.
+  Sesión del orquestador de `feature-flow` en la rama `feature/recipe-card-l2-unified` (worktree),
+  modo hasta-aceptación; **sin push ni PR** (publica `github-flow`).
+- Completado:
+  - Veredicto **`accept`** del subagente `validator` (agente con contexto limpio). `feature_list.json`
+    pasa a **`accepted`** con la evidencia que nombra la validación independiente; se reconcilia
+    `verification[2]` con la exención de capturas (#129).
+  - Commit local de la rama (lo crea el orquestador); la publicación queda para `github-flow`.
+- Verificación ejecutada: el validador re-ejecutó `bash init.sh` (**exit 0**, pero `UP-TO-DATE`) y forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**5m44s, 34/34 tareas**) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (**5m22s, 30/30 tareas**); parseó por su cuenta los XML
+  frescos (**97 suites / 733 tests / 0 fallos / 0 errores / 0 saltados**) y el SARIF (**13 resultados,
+  0 errores, 0 bajo `app/src`**); re-derivó la baseline en `HEAD` (**97 ficheros / 731 anotaciones** →
+  delta **+2 tests / 0 suites**) y corrió un **verificador propio fuera del repo** (`/tmp`, reflexión
+  sobre el bytecode real: **13/13 checks**, `HOLE_RATIO == 16f/9f`, 4 vectores de `bandLayout` incl.
+  `wide && compact` → `ONE_LINE`, determinismo, exclusión mutua `headingOnImage ⇔ !watermarkVisible`).
+- Evidencia capturada: greps de alcance/pureza rehechos por el validador (0 referencias a 16:10,
+  `RecipeArtwork(` → definición + 2 consumidores, 0 imports Android/Compose en `DishImageArtworkOverlay`,
+  0 hex nuevos fuera de `ui/theme`), `git diff --name-only` acotado a los 9 ficheros esperados +
+  `feature_list.json` + `PROGRESS.md` + la spec, y capturas intactas (`test ! -e
+  docs/design/concepts/recipe-card-l2-unified` OK, `git status docs/design/concepts` limpio). Sin
+  hallazgos Critical/High/Medium ni de seguridad; 6 Low/Info informativos no bloqueantes.
+- Ficheros actualizados: `feature_list.json` (`accepted` + evidencia), `docs/validations/recipe-card-l2-unified.md`
+  (nuevo) y este registro.
+- Hallazgos relevantes: el validador confirma la fidelidad al prototipo L2 aceptado
+  (`typographic-cards/prototipo-c3-imagenes.html`) y a `DESIGN.md`; la única diferencia perceptible es
+  la banda de la tarjeta estrecha, ahora en una línea (regla de `DESIGN.md`/OQ6), que normaliza la
+  extrapolación previa de tres filas sin captura.
+- Riesgo o incógnita abierta: queda la **revisión manual** de la persona en el emulador tras el merge
+  (no automatizable desde WSL; un defecto visual se corrige con una feature correctiva). Quedan
+  `not_started` `favorites-tile-contrast`, `home-tus-recetas-ver-todas` y `detail-hero-full-bleed`.
+- Siguiente paso: commit local de la rama `feature/recipe-card-l2-unified` (hecho por el orquestador de
+  `feature-flow`) y publicación por `github-flow` (push + PR; nunca merge por agente). Como siguiente
+  feature en paralelo, `favorites-tile-contrast` (depende de `favorites` y `recipe-card-typographic`,
+  ambas `accepted`).
