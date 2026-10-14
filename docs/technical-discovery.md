@@ -326,17 +326,22 @@ escala las cantidades con **redondeo por unidad** (no lineal): `g`/`ml` a multip
 a medios (half-up, minimo el paso si `quantity > 0`), `unit = null` ("al gusto") **no se escala** y
 `factor == 1` devuelve las cantidades originales intactas (sin division por cero con `recipe.servings = 0`).
 `IngredientFormat` resuelve las etiquetas (`"½"`, `"4½ ud"`, `"300 g"`, `"Al gusto"`), `RecipeDetailFormat`
-los cuatro pares del hero (Tiempo/Dificultad/Comensales/Calorias, sin `matchScore`) y `RecipeDetailState`
+los cuatro pares del hero (Tiempo/Dificultad/Comensales/Calorias, sin `matchScore`), `RecipeDetailHeroFormat`
+la **geometria y el contenido del hero tipografico** (240 dp, filete 6 px, marca de agua 190 dp al 12 %,
+categoria · cocina y los tres ingredientes principales con su cantidad, reutilizando `RecipeCardFormat`) y
+`RecipeDetailState`
 los comensales (acotados a `taxonomy.servings`) y la pestana activa. `RecipeDetailScreen` es la capa
-Compose: hero con la imagen de receta (`ui.artwork.RecipeArtwork`, 240 dp) + "Atras" y corazon, tarjeta
-superpuesta con la meta, pestanas
+Compose: hero **tipografico** (degradado de la cocina, marca de agua del glifo al 12 % y filete de 6 px;
+**sin** foto: con ADR 0006 el Detalle deja de consumir `ui.artwork.RecipeArtwork`) + "Atras" y corazon,
+**tira de metadatos** como bloque propio bajo el hero (los cuatro pares, sin la tarjeta superpuesta ni el
+`offset` de antes), pestanas
 Ingredientes/Pasos/Notas (timeline con pildora ambar de duracion y nutricion opcional), el `ServingsStepper`
 reutilizado **sin cambios** y barra inferior ("Guardar"/"Empezar a cocinar": "Guardar" sigue siendo la
 costura no-op de `favorites` y "Empezar a cocinar" ya se cablea desde `MainShell` al modo cocina). El
 detalle se hospeda como **overlay** en `MainShell`
 (`var detailRecipe by remember`), de modo que se pinta **encima** de la Home o del Generador **sin
 desmontarlos** (se conservan el resultado y el borrador); abre desde las tarjetas de Resultados y de la
-Home. Ver `docs/specs/recipe-detail-screen.md`.
+Home. Ver `docs/specs/recipe-detail-typographic-header.md` (correctiva de `docs/specs/recipe-detail-screen.md`).
 
 El **Modo cocina** (ampliacion del MVP, issue #76) vive en `com.sazon.app.ui.cooking`, con logica
 **pura** testeable en JVM (sin Compose ni Android) y capa Compose delgada. `CookingTimerState` es la
