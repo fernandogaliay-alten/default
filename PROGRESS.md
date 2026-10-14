@@ -732,6 +732,19 @@
   `docs/validations/recipe-card-l2-unified.md`. **WIP = 0.** Quedan `not_started` las otras tres
   features de la revisión de diseño (`favorites-tile-contrast`, `home-tus-recetas-ver-todas`,
   `detail-hero-full-bleed`).
+- Tercera de las cuatro features de la revisión de diseño implementada y autoverificada (**`passing`**)
+  en la **sesión 119**: **`detail-hero-full-bleed`** (issue #132, `area: ui`) en su worktree
+  `feature/detail-hero-full-bleed` — el **hero** (nombre + ingredientes principales) y la **tira de
+  metadatos** del Detalle pasan a **de borde a borde** retirando solo los dos
+  `.padding(horizontal = SazonSpacing.md)` de `RecipeDetailScreen.kt`; geometría (240/6/190/0,12f/3),
+  contenido, controles flotantes ("Atrás" + corazón, ≥48 dp, ahora íntegramente sobre el hero),
+  pestañas, cuerpo, comodines y barra inferior intactos, y la capa de imagen/`scrim` sigue recortada
+  por el mismo `clip` a ancho completo. Gate: `bash init.sh` exit 0, **97 suites / 733 tests / 0 fallos
+  / 0 errores / 0 saltados** (delta **0** vs baseline `HEAD` 804f009, sin tests nuevos), lint 0 errores
+  y 13 warnings preexistentes (0 bajo `app/src`). Exención de capturas autorizada (issue #132): **no** se
+  crea `docs/design/concepts/detail-hero-full-bleed/`; las cuatro capturas aceptadas se revisaron y
+  respetan (sin commit/push/PR del implementer). **Pendiente de validación independiente.** Quedan
+  `not_started` `favorites-tile-contrast` y `home-tus-recetas-ver-todas`.
 
 ## Registro de sesiones
 
@@ -5113,3 +5126,92 @@
 - Siguiente paso: publicación por `github-flow` (push de `feature/home-tus-recetas-ver-todas` + PR con
   `Closes #131`) y, tras el merge, revisión manual de la persona en el emulador. Como features en
   paralelo siguen `not_started` `favorites-tile-contrast` y `detail-hero-full-bleed`.
+
+### Sesión 119
+
+- Fecha: 2026-10-14
+- Objetivo: implementar y **autoverificar** `detail-hero-full-bleed` (issue #132, `area: ui`) según
+  `docs/specs/detail-hero-full-bleed.md`, en su worktree `../Default-Project-worktrees/detail-hero-full-bleed`
+  (rama `feature/detail-hero-full-bleed`); **sin commit, sin push y sin PR** (esos pasos son del
+  orquestador de `feature-flow`/`github-flow`).
+- Completado:
+  - El **hero** y la **tira de metadatos** del Detalle pasan a **de borde a borde**: se retira
+    únicamente `.padding(horizontal = SazonSpacing.md)` de la cadena del `Box` de `DetailHero` y del
+    `modifier` de la `Surface` de `MetaStrip` (`RecipeDetailScreen.kt`), dejando el resto del bloque
+    intacto (`clip(HeroBottomShape)` con las esquinas inferiores de 24 dp, `background(recipeAccentBrush)`,
+    `height(240)`, filete de 6 dp, `HERO_PADDING = 18`, marca de agua de 190 dp al 12 % con sus offsets,
+    `HeroTypography`, `hero`/`tira` con `fillMaxWidth()` y `HeroBottomShape` compartida → esquinas
+    inferiores **alineadas en x**; en la tira, `surface` + `shadowElevation = 4.dp` y su fila interna
+    (`vertical = sm`, `horizontal = 4.dp`) con los cuatro pares de `RecipeDetailFormat.metaEntries` y sus
+    hairlines).
+  - **Controles flotantes sin cambios** (solo verificados): el `Row` flotante conserva
+    `.padding(SazonSpacing.md)` (16 dp), la píldora "Atrás" (`Surface` + `TextButton`, `color = surface`)
+    y el corazón (`Surface` circular de 48 dp, `HeartGlyph` de 22 dp), ahora **íntegramente sobre el
+    hero** y con ≥48 dp de objetivo táctil (se mantiene la desviación declarada frente a los 34 px/14 px
+    del prototipo por `Accessibility Baseline`). `RecipeArtwork` sigue con `matchParentSize()` **dentro**
+    del `Box` recortado, así que la imagen (`ContentScale.Crop`) y el `scrim` heredan el `clip` a ancho
+    completo sin tocar `ui/artwork`.
+  - **KDoc** actualizado (encabezado de `RecipeDetailScreen`, `DetailHero` y `MetaStrip`): borde a borde
+    y alineación de la tira con el hero (`DESIGN.md` → `Shapes`, revisión 2026-10-14). Único cambio no
+    funcional.
+- Verificación ejecutada: tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.detail.*" --rerun-tasks` →
+  **BUILD SUCCESSFUL** (34/34 tareas) y gate `bash init.sh` → **exit 0** (`./gradlew test` +
+  `./gradlew lint` vía `scripts/gradle.sh`; sin procesos largos). Parseo propio de los XML:
+  **97 suites / 733 tests / 0 fallos / 0 errores / 0 saltados** (las cinco suites de `ui.detail` verdes y
+  sin diff: 10/4/8/5/5), **delta 0 suites / 0 tests** vs la baseline re-derivada en `HEAD` (`804f009`,
+  `git grep -c '@Test'` = 97 ficheros / 733 anotaciones, esta feature no añade tests). Lint (SARIF):
+  **13 resultados, todos warning, 0 errores y 0 bajo `app/src`**. Greps de inspección:
+  `horizontal = SazonSpacing.md` → **0**; `padding(horizontal` solo en cuerpo/pestañas; `HeroBottomShape`
+  definido una vez y usado en hero y tira; `test ! -e docs/design/concepts/detail-hero-full-bleed` →
+  **OK** (exención #132) y `docs/design/concepts` limpio. Las **cuatro capturas aceptadas**
+  (`recipe-detail-typographic-header/detalle-receta` y `dish-artwork-as-card-background/detalle-con-imagen`)
+  existen, pero son **previas** a esta revisión y **aún muestran el inset de 16 px**
+  (`code.html` envuelve `.herowrap` en `<div style="padding:0 16px">`): son dirección visual histórica,
+  **no** prueba del borde a borde; manda `DESIGN.md` (`Shapes`, 2026-10-14).
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt` (2 líneas de
+  código retiradas + KDoc; **único** fichero de código) y `feature_list.json` (estado a `passing` +
+  evidencia). La spec `docs/specs/detail-hero-full-bleed.md` sigue **sin trackear** (la crea el planner).
+  Sin diff en `RecipeDetailHeroFormat`/`RecipeDetailFormat`/`RecipeDetailState`/`ServingScaler`/
+  `IngredientFormat`, `ui/artwork/**`, `ui/theme/**`, `ui/MainShell.kt`, `domain/**`, `data/**`,
+  `assets/**`, build/lockfile, `init.sh`, `scripts/**`, `DESIGN.md`, el ADR 0006 ni
+  `docs/design/concepts/**`; sin dependencias nuevas y sin tests nuevos.
+- Hallazgos relevantes: el único defecto era el margen lateral de 16 dp, que contradecía `DESIGN.md`
+  (`Shapes`); retirarlo alinea la app con la dirección vigente y deja los
+  controles flotantes enteramente sobre el hero. Incógnita anotada (no bloqueante): con el ajuste de
+  imágenes encendido, `ContentScale.Crop` muestra un encuadre algo más ancho (358×240 → 390×240).
+- Riesgo o incógnita abierta: queda la **revisión manual** de la persona en el emulador tras el merge
+  (claro/oscuro × ajuste encendido/apagado; borde a borde, esquinas limpias y alineadas, controles
+  legibles y pulsables, resto del Detalle sin moverse), no automatizable desde WSL; un defecto visual se
+  corrige con una feature correctiva. Quedan `not_started` `favorites-tile-contrast` y
+  `home-tus-recetas-ver-todas`.
+- Siguiente paso: **validación independiente** de `detail-hero-full-bleed` (subagente `validator`) y,
+  tras el `accept`, commit local por el orquestador y publicación por `github-flow`.
+
+### Sesión 120 (validación independiente y aceptación)
+
+- Fecha: 2026-10-14
+- Objetivo: validar de forma **independiente** `detail-hero-full-bleed` y persistir la aceptación.
+- Completado: el subagente `validator` devolvió **`accept`** (ver
+  `docs/validations/detail-hero-full-bleed.md`). Re-ejecutó `bash init.sh` (exit 0; `:app:testDebugUnitTest`
+  y `lint` vía `scripts/gradle.sh`), parseó por su cuenta los XML (**97 suites / 733 tests / 0 fallos /
+  0 errores / 0 saltados**) y el SARIF de lint (**0 errores, 13 warnings** preexistentes, 0 bajo
+  `app/src`), re-derivó la baseline en `HEAD` `804f009` (`97 ficheros / 733 anotaciones` → delta 0),
+  confirmó el diff mínimo (solo `RecipeDetailScreen.kt`: 2 líneas de `padding` retiradas + 3 hunks de
+  KDoc; `grep -c 'horizontal = SazonSpacing.md'` = 0), la disciplina de alcance, 0 tests/dependencias
+  nuevos y `test ! -e docs/design/concepts/detail-hero-full-bleed` (exención #132). Sin hallazgos
+  Critical/High/Medium; **4 Low no bloqueantes**: L1 (la evidencia afirmaba que las capturas aceptadas ya
+  mostraban el hero a sangre; son previas y aún con inset de 16 px → **corregido** en la spec,
+  `feature_list.json` y este `PROGRESS.md`), L2 (`verification[2]` apuntaba a la carpeta de capturas
+  inexistente → **reconciliado** con la exención #132), L3 (un `hs_err_pid50454.log` sin trackear →
+  **eliminado** antes del commit) y L4 (dos observaciones informativas preexistentes: deriva previa de
+  `docs/technical-discovery.md` sobre los consumidores de `RecipeArtwork` y la rationale (b) de la spec).
+- Estado: `detail-hero-full-bleed` → **`accepted`** (feature_list.json), commit local en
+  `feature/detail-hero-full-bleed` por el orquestador de `feature-flow`; **sin** push ni PR (los publica
+  `github-flow`).
+- Siguiente paso: ninguna feature obligada en esta sesión; quedan `not_started` `favorites-tile-contrast`,
+  `home-tus-recetas-ver-todas` y `seed-catalog-50` (todas dependency-ready con sus dependencias
+  `accepted`). Queda pendiente la **revisión manual de la persona** en el emulador tras el merge (claro y
+  oscuro × ajuste de imágenes encendido/apagado; borde a borde, esquinas inferiores de 24 limpias y
+  alineadas, "Atrás"/corazón legibles y pulsables, y el resto del Detalle sin moverse), **contra
+  `DESIGN.md`** y no contra las capturas antiguas (L1); no automatizable desde WSL.

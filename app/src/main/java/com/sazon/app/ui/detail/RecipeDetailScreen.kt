@@ -103,14 +103,16 @@ private val HAIRLINE = 1.dp
  * ([ServingScaler], [IngredientFormat], [RecipeDetailFormat], [RecipeDetailState]).
  *
  * Estructura (direccion de `docs/design/concepts/recipe-detail-typographic-header/detalle-receta/`):
- * - **Hero** ([RecipeDetailHeroFormat]): 240 dp, categoría en versalitas, título en Manrope,
- *   los **tres ingredientes principales con cantidad** (cifras tabulares), marca de agua del glifo al
- *   12 % y filete de 6 px con el degradado de la cocina. Con el ajuste de imágenes apagado **sin
+ * - **Hero** ([RecipeDetailHeroFormat]): 240 dp **de borde a borde** (sin padding lateral de 16 dp),
+ *   categoría en versalitas, título en Manrope, los **tres ingredientes principales con cantidad**
+ *   (cifras tabulares), marca de agua del glifo al 12 % y filete de 6 px con el degradado de la cocina.
+ *   Con el ajuste de imágenes apagado **sin
  *   ninguna foto** (ADR 0006); con `imageBackground` la imagen generada es la **capa de fondo** del hero
  *   y la tipografía pasa al tratamiento sobre imagen (sin mover la geometría). "Atras" y el
  *   corazon/guardar siguen flotando encima.
- * - **Tira de metadatos**: bloque propio justo debajo del hero (los cuatro pares de [RecipeDetailFormat]),
- *   sin tarjeta superpuesta ni desplazamiento.
+ * - **Tira de metadatos**: bloque propio **de borde a borde** justo debajo del hero (los cuatro pares de
+ *   [RecipeDetailFormat]) y con las **mismas** esquinas inferiores de 24 dp que él (`HeroBottomShape`), sin
+ *   tarjeta superpuesta ni desplazamiento.
  * - **Pestanas** Ingredientes · Pasos · Notas (activa terracota).
  * - Cuerpo por pestana: ajustador de comensales ([ServingsStepper] reutilizado **sin cambios**) con la
  *   caption "Cantidades ajustadas automaticamente" + filas nombre/cantidad; timeline de pasos con
@@ -188,8 +190,10 @@ fun RecipeDetailScreen(
 }
 
 /**
- * Hero del Detalle, **240 dp** ([RecipeDetailHeroFormat.HERO_HEIGHT_DP], geometria intacta): degradado
- * de la cocina, marca de agua del glifo al 12 %, categoria en versalitas, titulo en Manrope y los tres
+ * Hero del Detalle, **240 dp** ([RecipeDetailHeroFormat.HERO_HEIGHT_DP], geometria intacta) y **de borde
+ * a borde** (sin padding lateral; `DESIGN.md` → `Shapes`, revision 2026-10-14,
+ * `detail-hero-full-bleed`): degradado de la cocina, marca de agua del glifo al 12 %, categoria en
+ * versalitas, titulo en Manrope y los tres
  * ingredientes con cantidad en cifras tabulares; el filete de 6 px al pie. Con [imageBackground] `true`
  * la **imagen generada** es la **capa de fondo** ([RecipeArtwork]) y la tipografia pasa al tratamiento
  * **sobre imagen**; la marca de agua se pinta **solo** sin imagen. "Atras" (pildora) y el
@@ -212,7 +216,6 @@ private fun DetailHero(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SazonSpacing.md)
                 .clip(HeroBottomShape)
                 .background(recipeAccentBrush(style.accent))
                 .height(RecipeDetailHeroFormat.HERO_HEIGHT_DP.dp),
@@ -382,8 +385,10 @@ private fun HeroIngredients(ingredients: List<MainIngredient>, onImage: Boolean)
 }
 
 /**
- * Tira de metadatos: bloque propio (`surface`, esquinas inferiores 24 dp, mismo ancho que el hero) con
- * los **cuatro pares** de [RecipeDetailFormat.metaEntries] en columnas iguales separadas por un hairline
+ * Tira de metadatos: bloque propio **de borde a borde** (`surface`, esquinas inferiores 24 dp via
+ * `HeroBottomShape`, por lo que quedan **alineadas en x** con las del hero; `DESIGN.md` → `Shapes`,
+ * revision 2026-10-14, `detail-hero-full-bleed`) con los **cuatro pares** de
+ * [RecipeDetailFormat.metaEntries] en columnas iguales separadas por un hairline
  * vertical (no tras la ultima), etiqueta en versalitas y valor en Manrope tabular.
  */
 @Composable
@@ -394,9 +399,7 @@ private fun MetaStrip(
     val scheme = MaterialTheme.colorScheme
     val entries = RecipeDetailFormat.metaEntries(taxonomy, recipe)
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = SazonSpacing.md),
+        modifier = Modifier.fillMaxWidth(),
         shape = HeroBottomShape,
         color = scheme.surface,
         shadowElevation = 4.dp,
