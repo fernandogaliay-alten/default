@@ -26,6 +26,13 @@ val SazonError = Color(0xFFB3261E)
 val SazonOnError = Color(0xFFFFFFFF)
 val SazonDarkBackground = Color(0xFF241C16)
 val SazonDarkSurface = Color(0xFF312720)
+
+// --- Tokens **de tarjeta** del modo oscuro (ADR 0006, frontmatter de `DESIGN.md`) ---
+// No son un cambio de `darkSurface`: solo la ficha de receta los usa (superficie + borde), de modo que
+// el navegador inferior, las hojas y el resto de pantallas siguen exactamente igual. El borde es el
+// límite que cumple el 3:1 de WCAG 1.4.11; se materializan para el contrato de `CardTokens.kt`.
+val SazonDarkCardSurface = Color(0xFF3A2E26)
+val SazonDarkCardOutline = Color(0xFF7D6A5C)
 val SazonBottomNavInactive = Color(0xFF9A8C7F)
 
 // --- Roles derivados del modo claro (no fijados por DESIGN.md) ---

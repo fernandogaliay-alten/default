@@ -467,14 +467,24 @@ cambian con el. El **modo oscuro entra en el MVP** (pregunta abierta 3 de `DESIG
 **ADR 0006** el modo oscuro gana **dos tokens de tarjeta** —`darkCardSurface` `#3A2E26` y
 `darkCardOutline` `#7D6A5C`— que dan **3,26:1** con `darkBackground` (cumple el **3:1** de WCAG 1.4.11,
 frente al 1,15:1 anterior); son tokens **de tarjeta** y **no** alteran `darkSurface` ni el navegador, las
-hojas o el resto de pantallas. Las
+hojas o el resto de pantallas. `ui/theme/CardTokens.kt` publica el **contrato de tarjeta** que
+`MaterialTheme.colorScheme` no cubre: `SazonCardColors` (`surface` + `boundary` + `boundaryWidth`),
+`SazonCardTokens.light` (blanco, sin borde) / `dark` (`#3A2E26` + borde `#7D6A5C` de 1 dp) / `of(dark)`,
+el **tinte cálido de la cocina** como función pura y determinista
+`tintedSurface(surface, accent, alpha)` con `TINT_ALPHA` = **14 %** (banda 12–16 %) y el
+`CompositionLocal` `LocalSazonCardColors`, que `SazonTheme` provee según `darkTheme` (su default es la
+variante clara). Las
 fuentes OFL Manrope/Inter se empaquetan en `app/src/main/res/font/` (instancias estaticas de los pesos
 600/700 y 400/500, generadas con `fontTools` de las fuentes variables oficiales; licencias en
 `docs/licenses/`) y no se descargan por red. El fondo de ventana del sistema se alinea con
 `background`/`darkBackground` (`values/colors.xml`, `values-night/colors.xml`, `themes.xml` y
 `values-night/themes.xml`) y fija `android:forceDarkAllowed=false`. `DesignTokensTest` (JVM) compara
 los tokens expuestos con el frontmatter YAML de `DESIGN.md` (con caso negativo) leyendo la ruta por la
-propiedad de sistema `design.tokens.path`. Ver `docs/specs/design-tokens-and-theme.md`.
+propiedad de sistema `design.tokens.path` e incluye los dos tokens de tarjeta y la invariante de que
+`darkSurface` no cambia; `CardTokensTest` (JVM) mide el **contraste WCAG** del límite de la tarjeta
+(3,26:1 ≥ 3:1, con 1,15:1 y 1,28:1 como caso negativo no vacuo) y el tinte de los cuatro acentos oscuros
+(`primaryContainer`, `secondaryContainer`, `tertiaryContainer`, `surfaceVariant`). Ver
+`docs/specs/design-tokens-and-theme.md` y `docs/specs/card-typographic-tokens-and-design.md`.
 
 El punto de entrada real de la app vive en `com.sazon.app.ui`: `SazonApp` compone la raíz y la
 **puerta de primer arranque**, que en esta feature es la **presencia de Perfil** en Room

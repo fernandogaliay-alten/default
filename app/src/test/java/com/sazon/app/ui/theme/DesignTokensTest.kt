@@ -45,6 +45,40 @@ class DesignTokensTest {
     }
 
     @Test
+    fun los_tokens_de_tarjeta_del_modo_oscuro_coinciden_con_design_md() {
+        val colors = frontmatterSectionMap(markdown, "colors")
+
+        assertEquals("darkCardSurface", colors["darkCardSurface"], SazonDarkCardSurface.toHex())
+        assertEquals("darkCardOutline", colors["darkCardOutline"], SazonDarkCardOutline.toHex())
+        assertEquals("darkCardSurface", colors["darkCardSurface"], SazonCardTokens.dark.surface.toHex())
+        assertEquals("darkCardOutline", colors["darkCardOutline"], SazonCardTokens.dark.boundary.toHex())
+    }
+
+    @Test
+    fun dark_surface_no_cambia_y_los_tokens_de_tarjeta_son_otros() {
+        val colors = frontmatterSectionMap(markdown, "colors")
+
+        assertEquals("darkSurface en el frontmatter", "#312720", colors["darkSurface"])
+        assertEquals("darkSurface en el esquema oscuro", colors["darkSurface"], DarkColorScheme.surface.toHex())
+        assertEquals("SazonDarkSurface", "#312720", SazonDarkSurface.toHex())
+        assertNotEquals(
+            "La superficie de la tarjeta no puede ser `darkSurface`",
+            SazonDarkSurface.toHex(),
+            SazonCardTokens.dark.surface.toHex(),
+        )
+        assertNotEquals(
+            "El borde de la tarjeta no puede ser `darkSurface`",
+            SazonDarkSurface.toHex(),
+            SazonCardTokens.dark.boundary.toHex(),
+        )
+        assertEquals(
+            "En claro la tarjeta sigue siendo la `surface` del tema",
+            LightColorScheme.surface.toHex(),
+            SazonCardTokens.light.surface.toHex(),
+        )
+    }
+
+    @Test
     fun la_escala_tipografica_coincide_con_design_md() {
         val typography = frontmatterTypographyMap(markdown)
         assertTypography("display", SazonTypography.displayLarge, typography)

@@ -36,6 +36,11 @@
   features nuevas en `feature_list.json`, todas `not_started`, y sus capturas de referencia ya **aportadas**
   (2026-10-14, renderizadas de los prototipos locales con Chrome headless; desviación de la política de
   capturas autorizada por la persona).
+- Primera feature del ADR 0006 implementada y autoverificada (sesión 103): **`card-typographic-tokens-and-design`**
+  queda **`passing`** en su worktree `feature/card-typographic-tokens-and-design` (tokens de tarjeta en
+  `ui/theme`, contrato `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` con el tinte cálido y
+  tests JVM de contraste WCAG; **ninguna** pantalla la consume todavía) a la espera de **validación
+  independiente**. Las otras cuatro features del ADR 0006 siguen `not_started`.
 - Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
   quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
   local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. Después se
@@ -4063,3 +4068,100 @@
   contra `main` (el agente **no** mergea: lo mergea la persona; permiso de push permanente). Con el
   PR mergeado, arranca `github-flow execute card-typographic-tokens-and-design`. La limpieza previa de
   `execute` borrará el worktree y la rama de `home-suggestions-personalized` (PR #112 ya mergeado).
+
+### Sesión 103
+
+- Fecha: 2026-10-14
+- Objetivo: **implementar** (rol `implementer`, contexto limpio, worktree
+  `feature/card-typographic-tokens-and-design`) la primera de las cinco features del ADR 0006,
+  **`card-typographic-tokens-and-design`** (`area: ui`), según
+  `docs/specs/card-typographic-tokens-and-design.md`. No es orquestación: no hay commit/push/PR.
+- Completado:
+  - **Tokens de color** en `ui/theme/Color.kt`: `SazonDarkCardSurface = Color(0xFF3A2E26)` y
+    `SazonDarkCardOutline = Color(0xFF7D6A5C)` en el bloque de paleta de `DESIGN.md`, con KDoc que cita
+    el ADR 0006 y su ámbito (tarjeta). `LightColorScheme`/`DarkColorScheme` **intactos**: `darkSurface`
+    sigue `#312720` y el navegador, las hojas y el resto de pantallas no cambian.
+  - **Contrato de tarjeta** nuevo en `ui/theme/CardTokens.kt`: `SazonCardColors` (`surface`,
+    `boundary`, `boundaryWidth`), `SazonCardTokens` (`light` = `SazonSurface` + transparente + `0.dp`;
+    `dark` = `#3A2E26` + `#7D6A5C` + `1.dp`; `of(dark)`), `TINT_ALPHA = 0.14f` (banda documentada
+    12–16 %) y `tintedSurface(surface, accent, alpha)` **puro y determinista** (`lerp` de Compose, sin
+    Android ni reloj), más `LocalSazonCardColors` (`staticCompositionLocalOf`, default la variante
+    clara). El borde sustituye a la sombra como elevación en oscuro.
+  - **Cableado** en `Theme.kt`: `SazonTheme` envuelve el `content` de `MaterialTheme` en
+    `CompositionLocalProvider(LocalSazonCardColors provides SazonCardTokens.of(darkTheme))`.
+  - **Tests JVM**: `DesignTokensTest` pasa de 6 a **8** casos (frontmatter ↔ `Color.kt` de los dos
+    tokens de tarjeta; `darkSurface` intacto en frontmatter y esquema, con los tokens de tarjeta
+    distintos de él y la tarjeta clara igual a la `surface` del tema) y **`CardTokensTest`** nuevo con
+    **5** casos (escenarios 2-5 de la spec) y helpers privados `relativeLuminance`/`contrastRatio`
+    (fórmula WCAG) y comparación de hex con ±1 por canal.
+  - **Docs durables**: `docs/technical-discovery.md` (el párrafo del Tema gana el contrato de tarjeta y
+    el de Testing nombra `CardTokensTest` y el `DesignTokensTest` ampliado) y
+    `docs/adr/0006-typographic-recipe-cards.md` (`Estado`: esta feature implementada; las otras cuatro
+    siguen pendientes). `DESIGN.md` **no** se toca (ya declaraba tokens, tinte y 3,26:1).
+- Ratios medidos (fórmula WCAG, test `CardTokensTest`): borde `#7D6A5C` vs `darkBackground` `#241C16`
+  = **3,263 ≥ 3,0** (ADR: 3,26); negativo no vacuo: `darkSurface` `#312720` = **1,151** y relleno nuevo
+  `#3A2E26` = **1,276**, ambos **< 3,0** (el límite es el **borde**, no el relleno); tinte a 14 % de los
+  cuatro roles de acento oscuro (`primaryContainer` `#6E2C15`, `secondaryContainer` `#2F3D1E`,
+  `tertiaryContainer` `#4A3413`, `surfaceVariant` `#3D3129`): relleno teñido vs fondo **1,28–1,31**
+  (< 2,0) y relleno vs borde **2,49–2,56** (≥ 2,0). Vectores del prototipo C3 comprobados:
+  `primaryContainer` al 12 % → `#402E24` y `secondaryContainer` al 16 % → `#383025`.
+- Verificación ejecutada: baseline derivada en `HEAD` con `bash scripts/gradle.sh testDebugUnitTest`
+  = **93 suites / 697 tests / 0 fallos / 0 errores / 0 saltados**; tirada focal
+  `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.theme.*" --rerun-tasks` →
+  `BUILD SUCCESSFUL` (2m36s, 34 tareas; `CardTokensTest` 5/5 y `DesignTokensTest` 8/8); gate completo
+  **`bash init.sh` → exit 0** (test + lint; `lint` `BUILD SUCCESSFUL` 2m12s). Parseo propio de
+  `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **94 suites / 704 tests / 0 fallos / 0 errores
+  / 0 saltados** (delta **+1 suite / +7 tests**). SARIF
+  `app/build/reports/lint-results-debug.sarif`: **0 errores**, 13 warnings preexistentes de entorno
+  (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2, `OldTargetApi` 1) y
+  **0 bajo `app/src`**.
+- Disciplina de alcance (grep): `grep -rn "3A2E26\|7D6A5C" app/src` solo aparece en `ui/theme`
+  (`Color.kt`, el KDoc de `CardTokens.kt` y `CardTokensTest.kt`); **0** consumidores de
+  `LocalSazonCardColors`/`SazonCardTokens`/`tintedSurface` fuera de `ui/theme` (deliberado: los tokens
+  nacen para `recipe-card-typographic`, como `domain.image` en su día); `git diff --name-only` = los
+  `Expected File Changes` (más la spec del planner, `feature_list.json` y `PROGRESS.md`); **sin** diff en
+  pantallas, `ui/artwork/**`, `app/build.gradle.kts`, `gradle/**`, `init.sh`, `scripts/**`, `DESIGN.md`
+  ni `docs/design/**`; sin dependencias nuevas. Capturas obligatorias
+  `docs/design/concepts/card-typographic-tokens-and-design/tarjeta-oscura/{screen.png,screen-dark.png}`
+  revisadas (superficie `#3A2E26` + borde `#7D6A5C` visibles, sin sombra, tinte cálido sutil) y el
+  contrato de tokens las reproduce.
+- Ficheros creados/cambiados: `ui/theme/CardTokens.kt` y
+  `app/src/test/java/com/sazon/app/ui/theme/CardTokensTest.kt` (nuevos); `ui/theme/Color.kt`,
+  `ui/theme/Theme.kt`, `app/src/test/java/com/sazon/app/ui/theme/DesignTokensTest.kt`,
+  `docs/technical-discovery.md` y `docs/adr/0006-typographic-recipe-cards.md` (modificados);
+  `feature_list.json` (`card-typographic-tokens-and-design` → **`passing`** con evidencia) y este
+  registro. **Sin** commit, push ni PR: el trabajo queda en disco para el validador independiente.
+- Hallazgos: el compilador de Kotlin atrapó un *shadowing* real — `fun of(dark: Boolean)` con las
+  propiedades `light`/`dark` homónimas devolvía `Any`; se resuelve con `this.dark` (el parámetro
+  conserva el nombre `dark` del contrato de la spec). El 3:1 lo da el **borde**, no el relleno (ya
+  recogido en la spec): un test que exigiera ≥ 3:1 al relleno fallaría; el test lo documenta como caso
+  negativo no vacuo. `surfaceVariant` no se tiñe (es el mismo color que la superficie), así que su
+  vector de relleno es idéntico al relleno sin tinte.
+- Siguiente paso: **validación independiente** (`feature-validator`, contexto limpio) de
+  `docs/specs/card-typographic-tokens-and-design.md`; si devuelve `accept`, el orquestador de
+  `feature-flow` persiste `accepted` y crea el **commit local** en
+  `feature/card-typographic-tokens-and-design`, y `github-flow` publica (push + PR). Después podrá
+  arrancar `recipe-card-typographic`, que consume estos tokens.
+- Validación independiente (misma sesión 103, rol `validator`, contexto limpio): **veredicto `accept`**.
+  Re-ejecutó `bash init.sh` (exit 0) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+  (`BUILD SUCCESSFUL` 3m41s, 34/34 tareas) y `bash scripts/gradle.sh lint --rerun-tasks`
+  (`BUILD SUCCESSFUL` 3m1s, 30/30 tareas); parseó sus propios XML (**94 suites / 704 tests / 0 fallos /
+  0 errores / 0 saltados**) y el SARIF (**0 errores**, 13 warnings de entorno, **0 bajo `app/src`**);
+  re-derivó la baseline en `HEAD` (93 ficheros con `@Test` / 697 ⇒ +1 suite / +7 tests) y recalculó los
+  ratios WCAG de forma independiente (borde **3,263** ≥ 3,0; `darkSurface` `#312720` **1,151** y relleno
+  `#3A2E26` **1,276**, ambos < 3,0 como negativo no vacuo; tinte 14 % vs fondo < 2,0 y vs borde ≥ 2,0).
+  Confirmó los 5 escenarios, la ausencia de hex sueltos y de consumidores fuera de `ui/theme`,
+  `darkSurface`/esquemas intactos, las capturas obligatorias, la disciplina de alcance y que el
+  implementer no hizo commit/push/PR. Sin hallazgos Critical/High/Medium; **1 Low** no bloqueante (el
+  KDoc de `tintedSurface` dice "por componente en sRGB" cuando el `lerp` de Compose interpola en
+  **Oklab**; el comportamiento cumple la spec, corrección diferida a `recipe-card-typographic`) y
+  1 Info (los rangos de ratio de la evidencia son orientativos en sRGB; las cotas duras sí están
+  aseveradas). Nota preexistente no imputable: `DESIGN.md` "nunca bordes duros" vs el borde de tarjeta
+  en oscuro, a reconciliar al aplicar los tokens. Sin hallazgos de seguridad. Detalle en
+  `docs/validations/card-typographic-tokens-and-design.md`.
+- Cierre (agente principal, orquestador de `feature-flow`): aceptación **persistida** en
+  `feature_list.json` (`card-typographic-tokens-and-design` → `accepted` con la evidencia del validador)
+  y **commit local** `feat: complete card-typographic-tokens-and-design` en
+  `feature/card-typographic-tokens-and-design`. **Sin** push ni PR (los hace `github-flow`).
+  `recipe-card-typographic` queda como siguiente feature del ADR 0006 (consume estos tokens) y sigue
+  `not_started`.

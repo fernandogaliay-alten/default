@@ -3,8 +3,12 @@
 ## Estado
 
 **Aceptado** (2026-10-13, decisión de la persona tras revisar los prototipos locales de `preview/`).
-**Implementación pendiente**: features `card-typographic-tokens-and-design`, `recipe-card-typographic`,
-`recipe-detail-typographic-header`, `dish-artwork-as-card-background` y `retire-recipe-photos`.
+**Implementada** la primera de las cinco features: `card-typographic-tokens-and-design` (2026-10-14:
+tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
+`SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` + tinte cálido en `ui/theme/CardTokens.kt`,
+cableado en `SazonTheme` y tests JVM de contraste y tinte). **Implementación pendiente** de las otras
+cuatro: `recipe-card-typographic`, `recipe-detail-typographic-header`, `dish-artwork-as-card-background`
+y `retire-recipe-photos`.
 
 Ajusta:
 - **ADR 0004** (fotos empaquetadas como assets): la foto deja de ser la **imagen principal**; la cadena
