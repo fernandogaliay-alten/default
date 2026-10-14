@@ -91,7 +91,9 @@ aceptación.
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
   **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
-  (con `bash scripts/launch-feature-session.sh <feature-id>`, que fija el cwd del worktree) y delega el ciclo de cada feature a `feature-flow`.
+  (con `bash scripts/launch-feature-session.sh <feature-id>`, que arranca la sesión en el worktree y
+  devuelve el control en segundos; deja su id en `<worktrees-root>/.sazon-sessions/<feature-id>`) y
+  delega el ciclo de cada feature a `feature-flow`.
   `github-flow` **nunca** hace merge.
 - Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
   sin él, la skill correspondiente selecciona la siguiente feature.

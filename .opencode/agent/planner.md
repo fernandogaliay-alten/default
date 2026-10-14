@@ -3,15 +3,15 @@ description: Especifica UNA feature de Sazón creando su spec en docs/specs. Lan
 mode: subagent
 color: info
 temperature: 0.2
-permission:
+permissions:
   edit:
     "**": deny
     "docs/specs/*": allow
     "docs/specs/**": allow
     "**/docs/specs/*": allow
     "**/docs/specs/**": allow
-  bash: deny
-  task: deny
+  shell: deny
+  subagent: deny
   webfetch: deny
   todowrite: allow
   question: allow
