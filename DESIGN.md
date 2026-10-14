@@ -73,7 +73,7 @@ components:
     shadow: "y=4 blur=16 alpha=6%"
   recipe-card-image:
     position: "capa de fondo del hueco, solo con el ajuste de imágenes encendido"
-    ratio: "16:10 (tarjeta completa) y 16:9 (héroe y tarjeta L2)"
+    ratio: "16:9 (tarjeta y héroe; estructura L2 unificada con el ajuste encendido o apagado)"
     rounded: "{rounded.md}"
     scrim: "degradado de contraste bajo el texto blanco (claro rgba(20,12,8,.42/.18/.78), oscuro rgba(10,6,4,.5/.22/.82))"
     overImageText: "#FFFFFF"
@@ -81,8 +81,8 @@ components:
     overImageHairline: "rgba(255,255,255,.32)"
   recipe-tile-favorites:
     size: "96x96"
-    backgroundColor: "{colors.surfaceVariant}"
-    accentRule: "5px a la izquierda, terracota (primary)"
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.onPrimary}"
     content: "monograma de iniciales del plato"
   bottom-nav:
     backgroundColor: "{colors.surface}"
@@ -105,6 +105,14 @@ color por cocina. Nunca una foto por defecto que no corresponda al plato. Si el 
 imágenes del plato"** está encendido y hay imagen disponible, esa imagen es la **capa de fondo** del
 hueco (variante **L2**) y la tipografía se queda encima. La dirección anterior —"la foto del plato como
 protagonista"— queda **sustituida**; ver ADR 0006.
+
+**Estructura de tarjeta unificada (2026-10-14, revisión de la persona).** La variante **L2** deja de
+estar supeditada al ajuste de imágenes: la tarjeta usa **siempre** el hueco **16:9** con la categoría y
+el título encima y, debajo, la **banda sólida** con los ingredientes y los metadatos. Con el ajuste
+apagado (o cuando no hay imagen) solo **desaparece la capa de fondo**; no cambia el layout. Es una
+decisión sobre la **forma**, no sobre la fotografía: la ficha sigue siendo el fondo por defecto. Aplica
+a Inicio ("Sugeridas para ti" y "Tus recetas"), Resultados y la rejilla de Favoritos
+(`recipe-card-l2-unified`).
 
 Esta dirección nace del prompt de Stitch y de las decisiones de discovery. **Es la fuente de verdad
 de la UI**: si un mockup generado contradice estos tokens o estas reglas, manda este documento.
@@ -217,7 +225,7 @@ tras el merge.
 genera capturas nuevas ni carpeta `docs/design/concepts/home-suggestions-personalized/`. Es una
 **correctiva de `home-offline-blocks`** que **no** cambia el diseño: no introduce pantalla, layout,
 geometría, token, microcopy ni estado visual nuevos — reutiliza el carrusel ya existente ("Sugeridas
-para ti" + "basado en tus gustos" y las tarjetas `RecipeCard` con imagen 16:10) y solo cambia **qué**
+para ti" + "basado en tus gustos" y las tarjetas `RecipeCard`, hoy en estructura L2 a 16:9) y solo cambia **qué**
 recetas entran y **en qué orden**. Comportamiento vigente del carrusel: muestra **como máximo 6**
 sugerencias **seguras** (descarta con el `RecipeValidator` las que incumplen una Restricción dura o el
 Patrón de dieta, semilla y `ai` por igual) **ordenadas por relevancia con el Perfil** (`MatchScore`:
@@ -229,6 +237,17 @@ dirección visual aplicable es el **backfill pendiente** de `home-offline-blocks
 `home-sin-conexion`; ver `docs/design/concepts/home-offline-blocks/README.md`) más la sección **Core
 Screens** (Home, arriba) y `Components`, contra las que se revisa el acabado en el emulador tras el
 merge.
+
+**Capturas obligatorias nuevas (revisión de diseño de la persona, 2026-10-14):** cuatro features de UI
+`not_started` (`recipe-card-l2-unified`, `favorites-tile-contrast`, `home-tus-recetas-ver-todas` y
+`detail-hero-full-bleed`) abren **carpeta de petición** en su worktree
+(`docs/design/concepts/<feature-id>/` con `README.md` + `stitch-prompt.md`) y quedan `blocked` hasta
+que la persona deje las capturas. Son **cambios de layout** (no microcopy), así que **no** aplica la
+excepción de capturas de las correctivas menores: cada una necesita su dirección visual antes de
+implementarse. Pantallas por feature: `recipe-card-l2-unified` (`recipe-card` —Inicio—, `resultados`,
+`favoritos-rejilla`), `favorites-tile-contrast` (`favoritos-lista`),
+`home-tus-recetas-ver-todas` (`home-tus-recetas`) y `detail-hero-full-bleed` (`detalle-receta`), en
+claro y oscuro.
 
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
@@ -296,21 +315,26 @@ nada lo es.
 - Superficies superpuestas **con el contenedor de fondo** (el apilado **hero + tira de metadatos** del
   Detalle: hero tipográfico de 240 con esquinas inferiores de 24 y, debajo, la tira de metadatos con las
   mismas esquinas y solo la sombra suave) para dar profundidad sin sombras fuertes. Ya **no** hay tarjeta
-  blanca que suba sobre la foto del Detalle (ADR 0006).
+  blanca que suba sobre la foto del Detalle (ADR 0006). El hero y la tira de metadatos van **de borde a
+  borde** (sin padding lateral de 16dp) desde la revisión de diseño del 2026-10-14
+  (`detail-hero-full-bleed`).
 
 ## Components
 
-- **RecipeCard** (ficha editorial, ADR 0006): **sin foto por defecto**. Dentro del hueco 16:10:
-  categoría en versalitas (`onSurfaceVariant`, tracking amplio), **título** en Manrope Bold (21sp en el
-  carrusel, 26sp en Resultados) a 2 líneas máximo, los **tres ingredientes principales** con su cantidad
-  en cifras tabulares (tres filas con hairline entre ellas cuando hay ancho; una línea con separadores
-  `·` cuando la tarjeta es estrecha), la fila `tiempo · dificultad · comensales` y el **porcentaje de
-  coincidencia** en terracota. **Filete de 6px** en el borde inferior con el degradado de la cocina
-  (`RecipeAccent`). En oscuro: superficie `darkCardSurface` + borde `darkCardOutline` (3,26:1) + tinte
-  cálido de la cocina.
-- **RecipeListCard** (horizontal): **miniatura 96x96 con el monograma** de iniciales sobre
-  `surfaceVariant` y la regla terracota de 5px a la izquierda, texto a la derecha, corazón a
-  la derecha.
+- **RecipeCard** (ficha editorial, ADR 0006): **sin foto por defecto** y **estructura L2 siempre**
+  (hueco **16:9** + banda sólida, unificado el 2026-10-14). En el hueco, con la superficie de la
+  tarjeta como base: categoría en versalitas (`onSurfaceVariant`, tracking amplio) y **título** en
+  Manrope Bold (21sp en el carrusel, 26sp en Resultados) a 2 líneas máximo, con la **marca de agua** del
+  glifo al 12 % y el **filete de 6px** al pie. Debajo del hueco, la **banda sólida** con los **tres
+  ingredientes principales** con su cantidad en cifras tabulares (tres filas con hairline entre ellas
+  cuando hay ancho; una línea con separadores `·` cuando la tarjeta es estrecha), la fila
+  `tiempo · dificultad · comensales` y el **porcentaje de coincidencia** en terracota. Con el ajuste de
+  imágenes encendido, la imagen generada es la **capa de fondo** del hueco (categoría y título pasan al
+  tratamiento sobre imagen); la geometría no cambia. En oscuro: superficie `darkCardSurface` + borde
+  `darkCardOutline` (3,26:1) + tinte cálido de la cocina.
+- **RecipeListCard** (horizontal): **miniatura 96x96 con el monograma** de iniciales sobre `primary`
+  (`onPrimary` para las iniciales; 96x96, esquina 24) para que **resalte** del fondo de la fila en claro
+  y en oscuro (≈3,97:1 / ≈3,31:1), texto a la derecha, corazón a la derecha.
 - **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork`, `recipe-photos`,
   `dish-image-*` y `dish-artwork-as-card-background`): la **capa base es la ficha tipográfica** del
   `RecipeCard`/hero, no una foto. `RecipeArtwork` es el **proveedor de la capa de fondo** del hueco y del
@@ -452,9 +476,11 @@ nada lo es.
    —filtrando restricciones duras y patrón de dieta— ordenadas por relevancia con el Perfil; **sin**
    píldora de coincidencia, ver la excepción de capturas de `home-suggestions-personalized` más arriba),
    y el bloque **"Tus recetas"**, que **solo lista
-   los grupos con contenido** (hoy, "Guardadas", alimentado por los Favoritos) tras sus filtros locales
-   (categoría + "Rápido"/"Vegetariano"), con el estado vacío "Cuando guardes una receta aparecerá aquí."
-   y la línea "No hay recetas con este filtro." cuando el filtro deja el grupo sin recetas.
+   los grupos con contenido** (hoy, "Guardadas", alimentado por los Favoritos) y, desde la revisión de
+   diseño del 2026-10-14 (`home-tus-recetas-ver-todas`), muestra las **6 últimas** guardadas con un botón
+   **"Ver todas"** que abre la pestaña Favoritos (ya **no** hay chips de filtro en la Home; el filtro
+   local sigue en Resultados), con el estado vacío "Cuando guardes una receta aparecerá aquí."
+   (se retira la línea "No hay recetas con este filtro." de la Home).
 3. **Generador**: paso 1 ingredientes (chips + input), paso 2 ajustes agrupados en tarjetas, estado
    de generación con animación cálida.
 4. **Resultados**: chips de orden + lista de **RecipeCard tipográfica** (título, tres ingredientes con
@@ -464,9 +490,11 @@ nada lo es.
    de agua del glifo y el filete de la cocina) y, solo con el ajuste de imágenes encendido, la foto como
    **capa de fondo** de ese hero; tira de metadatos (Tiempo · Dificultad · Comensales · Calorías),
    pestañas Ingredientes · Pasos · Notas, barra inferior con "Guardar" y "Empezar a cocinar". Ya **no
-   hay** tarjeta blanca superpuesta sobre la foto: el hero y la tira de metadatos ocupan su lugar.
+   hay** tarjeta blanca superpuesta sobre la foto: el hero y la tira de metadatos ocupan su lugar, y
+   desde la revisión de diseño del 2026-10-14 (`detail-hero-full-bleed`) van **de borde a borde**.
 6. **Favoritos**: búsqueda, orden (chip por defecto **"Recientes"**) con el toggle lista/rejilla
-   icónico, lista con **miniaturas de monograma** (96x96), rejilla con las tarjetas tipográficas, estado
+   icónico, lista con **miniaturas de monograma** (96x96 sobre `primary`, con las iniciales en
+   `onPrimary`, para que resalten del fondo), rejilla con las tarjetas tipográficas (L2), estado
    vacío con nota "Disponibles sin conexión".
 7. **Perfil**: identidad (nombre y color de avatar con vista previa), preferencias editables
    (alimentación, estilo, cocinas, ingredientes que me gustan e ingredientes que evito), comensales
@@ -531,9 +559,10 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
    `docs/adr/0006-typographic-recipe-cards.md` y
    `docs/adr/0004-recipe-photos-as-assets.md` / `0005-ai-dish-images.md` (ajustados).
 5. ¿La ilustración de los estados vacíos es un estilo definido (línea, color plano) o se improvisa?
-6. **Abierto:** ¿el carrusel de "Sugeridas para ti" sube a **3:2** para que quepan las tres filas de
-   ingredientes, o mantiene el 16:10 con los ingredientes en una línea? Hoy el prototipo usa 16:10 con
-   una línea en las tarjetas estrechas y tres filas en las anchas (Resultados y Detalle).
+6. **Resuelto (2026-10-14, `recipe-card-l2-unified`):** el carrusel **no** sube a 3:2. Todas las
+   tarjetas usan la estructura **L2** (hueco **16:9** + banda sólida): los ingredientes van en la banda,
+   en **una línea** cuando la tarjeta es estrecha y en **tres filas** cuando es ancha (Resultados y
+   Detalle). Se acaba con la dualidad 16:10/16:9: el hueco es siempre 16:9.
 7. **Resuelto (2026-10-14, `retire-recipe-photos`):** los assets `seed/` y `category/` de
    `img/recipes/` y la cadena local **salieron** del APK y del runtime (30 assets, ≈5,68 MiB), y
    **se conserva `img/recipes/default.jpg`** (137.359 B) como **ancla de estilo**
