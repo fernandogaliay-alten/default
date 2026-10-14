@@ -2,27 +2,24 @@ package com.sazon.app.ui.home
 
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.recipe.RecipeSource
-import com.sazon.app.domain.taxonomy.Taxonomy
-import com.sazon.app.domain.taxonomy.TaxonomyJson
-import com.sazon.app.ui.filters.LocalResultFilter
-import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Estado vacio del bloque "Tus recetas" (bloque 5 de la Home) y `HomeRecipes.filteredBy`: el filtro
- * local se aplica al unico grupo (`saved`, alimentado por los Favoritos). Logica pura.
+ * Estado vacio del bloque "Tus recetas" (bloque 5 de la Home) y regla pura del tope
+ * [HomeRecipes.latest]/[HomeRecipes.MAX_VISIBLE]: el bloque resume como mucho las 6 ultimas guardadas,
+ * sin reordenar (la lista ya llega mas reciente primero desde los Favoritos) y sin mutar el original.
+ * Logica pura, sin Android ni Compose.
  */
 class HomeRecipesTest {
-
-    private val taxonomy: Taxonomy = taxonomiaReal()
 
     @Test
     fun sin_guardadas_el_bloque_esta_vacio() {
         assertTrue(HomeRecipes().isEmpty)
         assertTrue(HomeRecipes(saved = emptyList()).isEmpty)
+        assertTrue("sin guardadas el tope se queda vacio", HomeRecipes().latest().isEmpty)
     }
 
     @Test
@@ -33,58 +30,51 @@ class HomeRecipesTest {
     }
 
     @Test
-    fun filtered_by_categoria_filtra_las_guardadas() {
-        val bloque = HomeRecipes(
-            saved = listOf(
-                receta("s-pasta", categoryId = "pasta"),
-                receta("s-arroz", categoryId = "rice"),
-            ),
+    fun max_visible_es_6() {
+        assertEquals(6, HomeRecipes.MAX_VISIBLE)
+    }
+
+    @Test
+    fun latest_con_mas_de_6_guardadas_devuelve_las_6_primeras_en_orden() {
+        val bloque = HomeRecipes(saved = (1..8).map { receta("s$it") })
+
+        val ultimas = bloque.latest()
+
+        assertEquals(
+            "el tope no reordena: conserva las 6 primeras del orden de entrada",
+            listOf("s1", "s2", "s3", "s4", "s5", "s6"),
+            ultimas.saved.map { it.id },
         )
-
-        val filtrado = bloque.filteredBy(LocalResultFilter.Category("pasta"), taxonomy)
-
-        assertEquals(listOf("s-pasta"), filtrado.saved.map { it.id })
     }
 
     @Test
-    fun filtered_by_rapido_respeta_la_frontera_30_en_las_guardadas() {
-        val bloque = HomeRecipes(
-            saved = listOf(
-                receta("s30", totalMinutes = 30),
-                receta("s31", totalMinutes = 31),
-            ),
+    fun latest_con_menos_de_6_guardadas_no_recorta() {
+        val bloque = HomeRecipes(saved = listOf(receta("s1"), receta("s2"), receta("s3")))
+
+        assertEquals(listOf("s1", "s2", "s3"), bloque.latest().saved.map { it.id })
+    }
+
+    @Test
+    fun latest_con_6_exactas_no_recorta() {
+        val bloque = HomeRecipes(saved = (1..6).map { receta("s$it") })
+
+        assertEquals(6, bloque.latest().saved.size)
+        assertFalse(bloque.latest().isEmpty)
+    }
+
+    @Test
+    fun latest_no_altera_el_bloque_original() {
+        val bloque = HomeRecipes(saved = (1..8).map { receta("s$it") })
+
+        val ultimas = bloque.latest()
+
+        assertEquals("latest() no muta el original", 8, bloque.saved.size)
+        assertEquals(
+            "isEmpty sigue siendo saved.isEmpty() despues del tope",
+            bloque.isEmpty,
+            bloque.saved.isEmpty(),
         )
-
-        val filtrado = bloque.filteredBy(LocalResultFilter.Fast, taxonomy)
-
-        assertEquals(listOf("s30"), filtrado.saved.map { it.id })
-    }
-
-    @Test
-    fun filtered_by_all_conserva_las_guardadas_sin_tocarlas() {
-        val bloque = HomeRecipes(saved = listOf(receta("s1"), receta("s2")))
-
-        val filtrado = bloque.filteredBy(LocalResultFilter.All, taxonomy)
-
-        assertEquals(bloque.saved, filtrado.saved)
-    }
-
-    @Test
-    fun filtered_by_sin_coincidencias_deja_el_grupo_vacio() {
-        val bloque = HomeRecipes(saved = listOf(receta("s-pasta", categoryId = "pasta")))
-
-        val filtrado = bloque.filteredBy(LocalResultFilter.Category("rice"), taxonomy)
-
-        assertTrue(filtrado.isEmpty)
-    }
-
-    @Test
-    fun filtered_by_no_altera_el_bloque_original() {
-        val bloque = HomeRecipes(saved = listOf(receta("s-pasta", categoryId = "pasta")))
-
-        bloque.filteredBy(LocalResultFilter.Category("rice"), taxonomy)
-
-        assertEquals("filteredBy no muta el original", listOf("s-pasta"), bloque.saved.map { it.id })
+        assertFalse(ultimas.isEmpty)
     }
 }
 
@@ -108,10 +98,3 @@ private fun receta(
     ingredients = emptyList(),
     steps = emptyList(),
 )
-
-private fun taxonomiaReal(): Taxonomy {
-    val path = checkNotNull(System.getProperty("taxonomy.asset.path")) {
-        "Falta la propiedad de sistema taxonomy.asset.path"
-    }
-    return TaxonomyJson.parse(File(path).readText())
-}

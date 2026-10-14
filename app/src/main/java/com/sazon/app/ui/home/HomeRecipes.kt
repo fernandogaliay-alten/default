@@ -1,9 +1,6 @@
 package com.sazon.app.ui.home
 
 import com.sazon.app.domain.recipe.Recipe
-import com.sazon.app.domain.taxonomy.Taxonomy
-import com.sazon.app.ui.filters.LocalResultFilter
-import com.sazon.app.ui.filters.LocalResultFilters
 
 /**
  * Costura de datos del bloque "Tus recetas" (bloque 5 de la Home): las recetas guardadas.
@@ -14,16 +11,24 @@ import com.sazon.app.ui.filters.LocalResultFilters
  *
  * [isEmpty] decide el estado vacio de usuario nuevo ("Cuando guardes una receta aparecera aqui.").
  *
- * [filteredBy] aplica el filtro local ([LocalResultFilters.visible]) al grupo `saved`, sin Compose ni
- * red; es la operacion pura que consume "Tus recetas".
+ * [latest] acota el grupo `saved` a las [MAX_VISIBLE] ultimas: es la operacion pura que consume "Tus
+ * recetas" (el bloque ya no filtra en local). El orden de entrada ya es "mas reciente primero" (lo
+ * aporta `FavoriteRepository`, `savedAt` desc, el mismo de la pestana Favoritos), asi que el tope
+ * **no** reordena; sin Compose ni red.
  */
 data class HomeRecipes(
     val saved: List<Recipe> = emptyList(),
 ) {
     val isEmpty: Boolean get() = saved.isEmpty()
 
-    /** Devuelve una copia con el grupo acotado por [filter] (mismo orden interno). */
-    fun filteredBy(filter: LocalResultFilter, taxonomy: Taxonomy): HomeRecipes = copy(
-        saved = LocalResultFilters.visible(saved, filter, taxonomy),
-    )
+    /**
+     * Devuelve una copia con el grupo `saved` acotado a las [MAX_VISIBLE] primeras recetas (mismo
+     * orden de entrada, sin reordenar) sin mutar el bloque original.
+     */
+    fun latest(): HomeRecipes = copy(saved = saved.take(MAX_VISIBLE))
+
+    companion object {
+        /** Tope de tarjetas del grupo "Guardadas" del bloque "Tus recetas". */
+        const val MAX_VISIBLE = 6
+    }
 }
