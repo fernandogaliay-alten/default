@@ -129,7 +129,8 @@ es `seed` o `ai`.
 
 ### Categoría de receta
 Clasificación (pasta, arroz, sopas, carnes, postres...) que la IA devuelve como `id` de la
-Taxonomía y que resuelve la imagen local de la receta.
+Taxonomía y que determina el **filtro** por categoría y el **glifo** de la ficha tipográfica de la
+receta (ADR 0006, que retiró la imagen local que resolvía hasta `retire-recipe-photos`).
 
 ## Rejected / Ambiguous Terms
 

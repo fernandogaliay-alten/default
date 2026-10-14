@@ -4,7 +4,13 @@ Estas capturas son **obligatorias antes de implementar** (política de capturas 
 cualquier contradicción, manda `DESIGN.md`.
 
 No son pantallas de la app: son **láminas de fotos de plato** cuyas imágenes se descargan desde el
-`code.html`, se empaquetan como **assets offline** del repo y se mapean por la clave de cada fila.
+`code.html`, se empaquetaban como **assets offline** del repo y se mapean por la clave de cada fila.
+
+> **Retirada (2026-10-14, `retire-recipe-photos`, ADR 0006):** los 30 assets de `seed/` y `category/`
+> que salieron de estas láminas **ya no viajan en el APK** ni se muestran; `scripts/fetch-recipe-photos.sh`
+> se eliminó. Las capturas se conservan **solo como procedencia** del ancla de estilo
+> `app/src/main/assets/img/recipes/default.jpg` (137.359 B), que sí se conserva. El mapeo y el
+> procedimiento de descarga de abajo quedan como registro histórico.
 
 ## Estado
 

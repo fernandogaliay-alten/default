@@ -10,7 +10,7 @@ import java.io.IOException
  *
  * Es el **segundo** fichero de `data.ai.image` que importa `android.*` (el otro es
  * [AndroidDishImageReducer]); **no** importa `android.graphics` (no decodifica ni re-codifica: la
- * referencia viaja byte a byte). La lectura es *best-effort* (patron `AssetRecipePhotoSource`):
+ * referencia viaja byte a byte). La lectura es *best-effort* (patron de las costuras de assets):
  * ausencia, `IOException` o bytes vacios devuelven `null` **sin lanzar**, y el adaptador degrada al
  * camino de texto->imagen de la fase 2.
  *

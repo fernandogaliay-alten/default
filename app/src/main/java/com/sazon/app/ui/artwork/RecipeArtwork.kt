@@ -35,8 +35,8 @@ object RecipeArtworkDefaults {
  * **`scrim`** de contraste, ambos con el **mismo alfa animado** (crossfade de
  * [DishImageArtworkPolicy.CROSSFADE_MILLIS] sobre `RecipeArtworkImagePrecedence.crossfadeTarget`).
  *
- * Ya **no** es "la imagen de la receta": **no** pinta capa base propia (ni foto local ni degradado +
- * glifo). La base es la **ficha tipografica del llamante** (color de la superficie de la tarjeta o el
+ * Ya **no** es "la imagen de la receta": **no** pinta capa base propia. La base es la **ficha
+ * tipografica del llamante** (color de la superficie de la tarjeta o el
  * degradado de la cocina del hero + la marca de agua del glifo), de modo que el hueco **nunca** queda
  * vacio, **nunca** cae en la foto de categoria y **no** hay salto de layout: la imagen solo cambia el
  * alfa de esta capa (`0f` -> `1f`).

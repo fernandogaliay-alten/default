@@ -45,9 +45,9 @@ object RecipeArtworkImagePrecedence {
      *   set semilla) y `GENERATED` en cualquier otro caso;
      * - sin imagen, `GLYPH`: la base tipografica (marca de agua del glifo).
      *
-     * `DishImageOrigin.CATEGORY` (la foto local) queda **sin productor** en la tarjeta/hero desde esta
-     * feature; lo limpia `retire-recipe-photos`. No cambia ninguna de las capas: solo las clasifica a
-     * posteriori.
+     * `CATEGORY` (la foto local de `recipe-photos`) salio del vocabulario con
+     * `retire-recipe-photos`: ya no hay ninguna etapa que clasifique una foto local. No cambia
+     * ninguna de las capas: solo las clasifica a posteriori.
      */
     fun <T : Any> originOf(
         generated: T?,

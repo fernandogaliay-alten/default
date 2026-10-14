@@ -1,5 +1,13 @@
 # Feature Implementation Spec: Fotos de plato por receta semilla y categoría
 
+> **Superada (2026-10-14) por `docs/specs/retire-recipe-photos.md`.** La feature `retire-recipe-photos`
+> (ADR 0006) **revierte** esta spec: los 30 assets de `seed/` y `category/` y toda la cadena local
+> (`data.RecipePhotoAssets.resolve/candidates`, `data.AssetRecipePhotoSource`,
+> `ui.artwork.RecipePhotoSource`) fueron retirados del APK y del runtime; se **conserva** solo
+> `img/recipes/default.jpg` como ancla de estilo de `dish-style-reference`. El fuente de verdad vigente
+> es `docs/adr/0006-typographic-recipe-cards.md`. Esta spec se conserva como **evidencia histórica** (no
+> se reescriben sus escenarios).
+
 ## Source Feature
 
 - `id`: `recipe-photos`

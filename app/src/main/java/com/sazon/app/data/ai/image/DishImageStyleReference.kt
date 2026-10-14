@@ -23,20 +23,21 @@ class DishImageStyleReference(
 
 /**
  * Convencion de la **referencia de estilo** de la casa: el asset neutro **ya empaquetado y versionado**
- * de `recipe-photos` (`img/recipes/default.<ext>`), jamas una imagen subida por el usuario.
+ * (`img/recipes/default.<ext>`, el ancla de estilo que dejo `recipe-photos`), jamas una imagen subida
+ * por el usuario.
  *
  * Logica **pura** (sin Android, sin I/O): la existencia de un fichero se inyecta con un predicado
- * (`exists`), igual que [RecipePhotoAssets.resolve], de modo que la misma funcion sirve al test JVM y
- * al cargador Android ([AssetDishImageStyleReference]) sin duplicar reglas. Se resuelve **por
- * extensiones** porque el script de empaquetado (`scripts/fetch-recipe-photos.sh`) puede haber
- * convertido el asset a WebP: **no** se asume formato ni se inventa una ruta.
+ * (`exists`), igual que [com.sazon.app.data.DishImageSeedAssets.resolve], de modo que la misma funcion
+ * sirve al test JVM y al cargador Android ([AssetDishImageStyleReference]) sin duplicar reglas. Se
+ * resuelve **por extensiones** porque el ancla podria estar versionada en otro formato: **no** se
+ * asume formato ni se inventa una ruta.
  */
 object DishImageStyleReferencePolicy {
 
-    /** Base del asset de referencia: la foto generica/neutra de `recipe-photos` (`img/recipes/default`). */
+    /** Base del asset de referencia: el ancla de estilo (`img/recipes/default`). */
     val ASSET_BASE = "${RecipePhotoAssets.ROOT}/${RecipePhotoAssets.DEFAULT_KEY}"
 
-    /** Extensiones que se prueban **en orden**, las mismas que acepta el empaquetado de fotos. */
+    /** Extensiones que se prueban **en orden**, las mismas que usa el set semilla. */
     val EXTENSIONS = RecipePhotoAssets.EXTENSIONS
 
     /** Nombre base del fichero de la parte `image` (la extension la aporta el asset resuelto). */

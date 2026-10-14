@@ -20,7 +20,7 @@ deben divergir**:
 3. **Validador** de la respuesta de la IA.
 
 La IA **nunca** devuelve texto libre para nada clasificable: devuelve **ids de esta taxonomía**,
-validados contra un esquema. Así el icono, la imagen y los filtros se resuelven localmente, sin red.
+validados contra un esquema. Así el icono, el glifo y los filtros se resuelven localmente, sin red.
 
 Consecuencia de arquitectura: onboarding, filtros y prompt son **el mismo modelo de datos leído de
 sitios distintos**. No hay base de datos para el catálogo; solo para el estado del usuario
@@ -65,16 +65,17 @@ Reglas:
 | `servings` | `min`, `max`, `default` | Rango del stepper y de "comensales habituales" |
 | `avatarColors` | `hex`, `label` | Identidad, **no** preferencia: no entra en la firma |
 | `ingredients` | `category`, `icon`, `allergens`, `tags` | Semilla extensible, no lista cerrada |
-| `recipeCategories` | `image` | Resolvía la imagen local de cada receta; **retirado por ADR 0006** (la imagen es tipográfica y la foto es capa de fondo). El campo y sus assets los limpia `retire-recipe-photos`. Ver §6 |
+| `recipeCategories` | `label` | Determina el filtro por categoría y el glifo de la ficha tipográfica. El campo `image` (resolvía la imagen local) se **retiró** con `retire-recipe-photos` (ADR 0006). Ver §6 |
 
 ### Invariantes (verificadas por test)
 
 - `ingredient.allergens[]` ⊆ `hardRestrictions.id`.
 - `ingredient.tags[]` ⊆ unión de `dietPatterns[].excludedTags`.
 - Todo `ingredient.icon` tiene asset local o cae a `categoryFallbackIcon[category]`.
-- ~~Todo `recipeCategories[].id` tiene imagen local; si falta, se usa `other`.~~ **Retirado (ADR 0006):**
-  deja de aplicar en cuanto `retire-recipe-photos` elimine `app/src/main/assets/img/recipes/` y el campo
-  `recipeCategories[].image`. Mientras esa feature no aterrice, el código vigente sigue cumpliéndolo.
+- ~~Todo `recipeCategories[].id` tiene imagen local; si falta, se usa `other`.~~ **Retirado** (ADR 0006):
+  `retire-recipe-photos` (2026-10-14) eliminó `app/src/main/assets/img/recipes/{seed,category}/**` y el
+  campo `recipeCategories[].image`, así que el invariante ya no aplica. El fallback `other` de la
+  categoría **sí** sigue vigente (`RecipeValidator` y el glifo).
 - Todo `avatarColors[].hex` es un color válido y con contraste suficiente para iniciales en blanco.
 - `id` estables y únicos, en `snake_case`, sin acentos. Los `label` sí llevan acentos.
 
@@ -177,12 +178,16 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   `_fallback` por categoría. Set local, offline, licencia abierta.
 - **Iconos de UI** (nav, acciones, chips): Material Symbols Rounded.
 - **Fotos de receta de la cadena local (retiradas, ADR 0006)**: los assets versionados en
-  `app/src/main/assets/img/recipes/` con la raíz `img/recipes`: foto propia por receta semilla
+  `app/src/main/assets/img/recipes/` con la raíz `img/recipes` — foto propia por receta semilla
   (`seed/<recipeId>.<ext>`, 12), foto por categoría (`category/cat-<categoryId>.<ext>`, 18 — una por
-  `recipeCategories`) y una genérica por defecto (`default.<ext>`, 1); `<ext>` es `webp`/`jpg`/`png`; y la
-  cadena de respaldo (semilla → categoría → `default` → glifo) en `data.RecipePhotoAssets` **quedan
-  retirados**; se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de `dish-style-reference`
-  (ADR 0005, fase 6), que no se muestra en ninguna pantalla. La IA solo devuelve `categoryId` (no imágenes), así que las recetas `ai-*` caían en la foto
+  `recipeCategories`) y una genérica por defecto (`default.<ext>`, 1); `<ext>` es `webp`/`jpg`/`png`— y la
+  cadena de respaldo (semilla → categoría → `default` → glifo) en `data.RecipePhotoAssets` **quedaron
+  retirados** con `retire-recipe-photos` (2026-10-14): salen del APK **30 de los 31 assets**
+  (**5.954.912 B ≈ 5,68 MiB**) y `scripts/fetch-recipe-photos.sh` se eliminó. Se **conserva**
+  `img/recipes/default.jpg` (**137.359 B**) como ancla de estilo de `dish-style-reference`
+  (ADR 0005, fase 6), que no se muestra en ninguna pantalla; `data.RecipePhotoAssets` queda solo con
+  `ROOT`/`DEFAULT_KEY`/`EXTENSIONS`. La IA solo devuelve `categoryId` (no imágenes), así que las recetas
+  `ai-*` caían en la foto
   de su categoría, que **no corresponde al plato**: es el síntoma de `dish-image-prompt-v2`. Con
   `docs/adr/0006-typographic-recipe-cards.md` la **imagen base de una receta es una ficha tipográfica** y,
   cuando existe imagen, es **capa de fondo** del hueco. Ver
@@ -202,8 +207,8 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   del Detalle (parámetro `imageBackground`, default `false` = ficha/hero aceptados). Solo hay imagen si el
   ajuste "Generar imágenes del plato"
   está encendido y el resolver devuelve una; apagado = `null` **sin** leer caché, sin red y sin cuota.
-  En depuración, el **origen resuelto** (`GENERATED`/`SEED`/`GLYPH`; `CATEGORY` queda **sin productor** al
-  dejar la tarjeta/hero de leer la cadena local) es observable en logcat (`SazonDishImage`) sin alterar el
+  En depuración, el **origen resuelto** (`GENERATED`/`SEED`/`GLYPH`; el valor `CATEGORY` se **retiró** con
+  `retire-recipe-photos`) es observable en logcat (`SazonDishImage`) sin alterar el
   pintado; en
   release no se emite nada. Los **platos frecuentes del demo** tienen desde la fase 7 (`dish-image-seed`)
   su foto **preparada de antemano y versionada**
@@ -219,8 +224,8 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   **glifo** por categoría (`RecipeGlyph`, los 18 `recipeCategories`) es la **marca de agua** de la ficha
   tipográfica y del hero; el **acento** por cocina (`RecipeAccent`, 10 cocinas + `DEFAULT`) es el
   **filete de 6px** de la tarjeta y del hero y, en el hero sin imagen, el **degradado base**. La cadena de
-  fotos local (`seed`/`category`/`default`) **ya no es un nivel de la imagen de receta**: la tarjeta y el
-  hero dejan de leerla (el glifo/acento se reutilizan por **roles del tema**).
+  fotos local (`seed`/`category`/`default`) se **retiró** con `retire-recipe-photos`: ya no es un nivel de
+  la imagen de receta (el glifo/acento se reutilizan por **roles del tema**).
 
 ---
 

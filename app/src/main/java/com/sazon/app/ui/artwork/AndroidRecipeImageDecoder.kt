@@ -10,8 +10,8 @@ import androidx.compose.ui.graphics.asImageBitmap
  *
  * `BitmapFactory.decodeByteArray` es justo el `(ByteArray) -> ImageBitmap?` que espera
  * [DishImageArtworkLoader] con `T = ImageBitmap`. La decodificacion **no lanza** (mismo contrato que
- * la cadena local): bytes vacios, corruptos o que no son una imagen devuelven `null` y la UI conserva
- * la foto local.
+ * el resto de la cadena): bytes vacios, corruptos o que no son una imagen devuelven `null` y la UI
+ * deja la ficha tipografica.
  */
 object AndroidRecipeImageDecoder : RecipeImageDecoder {
 

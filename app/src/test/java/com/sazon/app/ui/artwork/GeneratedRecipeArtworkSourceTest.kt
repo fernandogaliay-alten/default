@@ -8,8 +8,8 @@ import org.junit.Test
 
 /**
  * El default del seam ([NoGeneratedRecipeArtworkSource]) **no** produce imagen generada. Es la
- * degradacion segura de previews, tests y hosts sin proveedor: con este default [RecipeArtwork] pinta
- * exactamente lo de hoy (foto local o degradado + glifo), sin tocar red ni cache.
+ * degradacion segura de previews, tests y hosts sin proveedor: con este default [RecipeArtwork] deja
+ * visible la **ficha tipografica**, sin tocar red ni cache.
  */
 class GeneratedRecipeArtworkSourceTest {
 

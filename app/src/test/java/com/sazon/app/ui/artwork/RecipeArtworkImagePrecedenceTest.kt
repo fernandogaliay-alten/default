@@ -8,8 +8,9 @@ import org.junit.Test
  * Escenarios 2 y 6 de `docs/specs/dish-artwork-as-card-background.md`: la precedencia de la **capa de
  * fondo** y el objetivo del crossfade son **puros** y deterministas (JVM, sin Android ni Compose). Se
  * prueban con `String` para no depender de tipos de UI. La capa paso de tres valores
- * (`FALLBACK`/`LOCAL`/`GENERATED`) a **dos** (`TYPOGRAPHIC`/`GENERATED`): la cadena local de fotos deja
- * de ser parte de la imagen de receta.
+ * (`FALLBACK`/`LOCAL`/`GENERATED`) a **dos** (`TYPOGRAPHIC`/`GENERATED`) con
+ * `dish-artwork-as-card-background`, y la cadena local de fotos se retiro por completo con
+ * `retire-recipe-photos` (ADR 0006), de modo que la base sin imagen es siempre la tipografia.
  */
 class RecipeArtworkImagePrecedenceTest {
 
@@ -76,11 +77,6 @@ class RecipeArtworkImagePrecedenceTest {
             "Con imagen y cualquier otro origen, la generada manda",
             DishImageOrigin.GENERATED,
             RecipeArtworkImagePrecedence.originOf("generada", DishImageOrigin.GENERATED),
-        )
-        assertEquals(
-            "Con imagen y origen CATEGORY (dato incoherente) la generada manda",
-            DishImageOrigin.GENERATED,
-            RecipeArtworkImagePrecedence.originOf("generada", DishImageOrigin.CATEGORY),
         )
         assertEquals(
             "Sin imagen, la base tipografica es el glifo",

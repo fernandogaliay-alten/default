@@ -23,7 +23,7 @@ object DishImageSettingsCopy {
         "Las imágenes nuevas se generan con IA y consumen cuota; las que ya existen se reutilizan."
 
     /** Resumen con el interruptor apagado. */
-    const val DISABLED_SUMMARY = "Desactivado: se usa solo la foto local."
+    const val DISABLED_SUMMARY = "Desactivado: las recetas se muestran sin imagen."
 
     /**
      * Resumen visible del tope por sesion, derivado **solo** del estado (determinista):

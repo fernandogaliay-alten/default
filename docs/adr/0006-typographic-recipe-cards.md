@@ -3,7 +3,7 @@
 ## Estado
 
 **Aceptado** (2026-10-13, decisión de la persona tras revisar los prototipos locales de `preview/`).
-**Implementadas** la primera, la segunda, la tercera y la cuarta de las cinco features:
+**Implementadas** las cinco features:
 `card-typographic-tokens-and-design`
 (2026-10-14: tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
 `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` + tinte cálido en `ui/theme/CardTokens.kt`,
@@ -24,9 +24,10 @@ ingredientes/metadatos en la tarjeta—; `ui.artwork.RecipeArtwork` pasa a ser e
 fondo** (`content` slot aditivo, sin foto local ni degradado de respaldo, firma y geometría conservadas),
 la precedencia queda en **dos capas** (`TYPOGRAPHIC`/`GENERATED`), `ui/theme/CardImageOverlay` declara los
 tokens del `scrim` y del texto sobre imagen y `ui/artwork/DishImageArtworkOverlay` la decisión pura del
-hueco; el interruptor y el tope por sesión se respetan sin cambios; implementada y **autoverificada**,
-pendiente de validación independiente). **Implementación pendiente** de la última:
-`retire-recipe-photos`.
+hueco; el interruptor y el tope por sesión se respetan sin cambios; **`accepted`**).
+La última, `retire-recipe-photos` (2026-10-14), **retiró** la cadena local de fotos (30 assets,
+≈5,68 MiB, el seam Compose y la costura Android) y dejó `img/recipes/default.jpg` como ancla de estilo;
+implementada y **autoverificada**, pendiente de validación independiente.
 
 Ajusta:
 - **ADR 0004** (fotos empaquetadas como assets): la foto deja de ser la **imagen principal**; la cadena
@@ -78,8 +79,9 @@ Decisiones de la persona sobre los prototipos:
    y sin cuota (comportamiento ya implementado). Encendido ⇒ imagen de fondo si está disponible, con
    tope por sesión y caché persistentes.
 4. **Se retira la cadena local de fotos**: con el ajuste apagado no se consulta, y la foto de categoría
-   es precisamente la que no corresponde al plato. Se retiran del APK **30 de los 31 assets** (~6,2 MiB)
-   junto con `recipe-photos`; se **conserva** `img/recipes/default.<ext>` (~136 KB) como **ancla de estilo**
+   es precisamente la que no corresponde al plato. Se retiraron del APK **30 de los 31 assets**
+   (**5.954.912 B ≈ 5,68 MiB**) con `retire-recipe-photos` (2026-10-14); se **conserva**
+   `img/recipes/default.jpg` (**137.359 B**) como **ancla de estilo**
    de `dish-style-reference` (ADR 0005, fase 6), porque no se muestra en ninguna pantalla.
 5. **Modo oscuro**: la tarjeta usa `darkCardSurface` (`#3A2E26`) y `darkCardOutline` (`#7D6A5C`) —
    3,26:1, cumple WCAG 1.4.11 — más el tinte cálido de la cocina. Son tokens **de tarjeta**, no un
@@ -105,7 +107,8 @@ Decisiones de la persona sobre los prototipos:
 
 - **Honestidad**: no hay ninguna imagen que no corresponda al plato. El problema 2 queda resuelto de raíz.
 - **Sin red ni cuota por defecto**: el problema 1 solo existe si el usuario enciende el interruptor.
-- **−6,2 MiB** de APK (30 de los 31 assets; se conserva `default.<ext>` como ancla de estilo) y menos
+- **−5,68 MiB** de APK (30 de los 31 assets, 5.954.912 B; se conserva `default.jpg` como ancla de estilo)
+  y menos
   decodificación de bitmaps (el techo LRU de 16 bitmaps de 1376×768 era de
   ~64 MiB).
 - **Sin salto de layout** al insertar la imagen: la capa base es tipografía, no una imagen.

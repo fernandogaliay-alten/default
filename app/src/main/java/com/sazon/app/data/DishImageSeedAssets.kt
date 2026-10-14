@@ -19,10 +19,11 @@ package com.sazon.app.data
  * |---|---|---|---|
  * | Foto preparada de un plato frecuente | `img/dishes/seed/<cacheKey>.<ext>` | `DishImageCacheKey.of(titulo)` | 1 por plato |
  *
- * **Nunca** se empaqueta un asset para un plato que ya tenga foto propia (las 12 recetas semilla
- * resuelven su foto por `id` en `img/recipes/seed/<recipeId>.<ext>`): un asset semilla para su titulo
- * pisaria una foto propia con otra distinta (la semilla gana al generador y lo generado gana a la
- * cadena local).
+ * **Nunca** se empaqueta un asset para un plato que ya tenga una imagen generada: la semilla se indexa
+ * por la **clave canonica del plato** y gana al generador (0 cuota, 0 red, 0 espera), de modo que un
+ * asset para el mismo plato sustituiria su imagen por otra distinta. Desde `retire-recipe-photos` ya
+ * no existe una cadena de fotos locales con la que pudiera colisionar por `id` de receta: el unico
+ * respaldo sin imagen es la **ficha tipografica** (ADR 0006).
  */
 object DishImageSeedAssets {
 

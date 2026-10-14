@@ -16,10 +16,10 @@ class DishImageOriginSinkTest {
 
         sink.record("ai-1234", DishImageOrigin.SEED)
         sink.record("ai-1234", DishImageOrigin.GENERATED)
-        sink.record("seed-arroz-pollo", DishImageOrigin.CATEGORY)
+        sink.record("seed-arroz-pollo", DishImageOrigin.GLYPH)
 
         assertEquals(DishImageOrigin.GENERATED, sink.originFor("ai-1234"))
-        assertEquals(DishImageOrigin.CATEGORY, sink.originFor("seed-arroz-pollo"))
+        assertEquals(DishImageOrigin.GLYPH, sink.originFor("seed-arroz-pollo"))
     }
 
     @Test

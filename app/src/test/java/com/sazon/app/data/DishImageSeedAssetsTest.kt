@@ -16,7 +16,7 @@ import org.junit.Test
  * El caso de existencias **no pasa en vacio**: deriva cada clave con `DishImageCacheKey.of(titulo)` (la
  * canonicalizacion **real** de la fase 1) y comprueba contra los assets empaquetados en
  * `app/src/main/assets/img/dishes/seed/`, cuyo directorio publica `dish.image.seed.assets.dir` desde
- * `app/build.gradle.kts` (mismo patron que `RecipePhotoAssetsTest`). Todo en JVM: sin Android, sin red
+ * `app/build.gradle.kts` (mismo patron que los tests JVM de assets versionados). Todo en JVM: sin Android, sin red
  * y sin cuota.
  *
  * Desde `dish-image-prompt-v2` las claves son `dish-image-v2-<slug>`: el renombrado de los 6 assets

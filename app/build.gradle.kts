@@ -10,9 +10,6 @@ plugins {
 val taxonomyAssetFile = layout.projectDirectory.file("src/main/assets/taxonomy.json")
 val seedRecipesAssetFile = layout.projectDirectory.file("src/main/assets/seed-recipes.json")
 val designTokensFile = rootProject.layout.projectDirectory.file("DESIGN.md")
-// Directorio de las fotos de plato empaquetadas (assets offline, fuente versionada); los tests JVM
-// comprueban que cada receta semilla, cada categoria y el caso por defecto resuelven un fichero real.
-val recipePhotosDir = layout.projectDirectory.dir("src/main/assets/img/recipes")
 // Directorio del set semilla de imagenes de plato (fase 7, assets versionados); el test JVM deriva la
 // clave canonica de cada plato de la lista (`DishImageCacheKey.of(titulo)`) y comprueba que resuelve un
 // fichero real, no vacio y con la extension esperada.
@@ -130,6 +127,5 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("taxonomy.asset.path", taxonomyAssetFile.asFile.absolutePath)
     systemProperty("seed.recipes.asset.path", seedRecipesAssetFile.asFile.absolutePath)
     systemProperty("design.tokens.path", designTokensFile.asFile.absolutePath)
-    systemProperty("recipe.photos.assets.dir", recipePhotosDir.asFile.absolutePath)
     systemProperty("dish.image.seed.assets.dir", dishImageSeedDir.asFile.absolutePath)
 }

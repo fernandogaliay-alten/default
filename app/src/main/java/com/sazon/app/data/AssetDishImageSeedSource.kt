@@ -11,7 +11,7 @@ import kotlinx.coroutines.withContext
  * decodificacion ni `android.graphics`).
  *
  * - Es el **unico** fichero nuevo de la fase 7 que importa `android.*`, y vive en `data` junto a las
- *   demas costuras de assets ([AssetRecipePhotoSource], [AssetSeedRecipeSource], [AssetTaxonomySource]).
+ *   demas costuras de assets ([AssetSeedRecipeSource], [AssetTaxonomySource]).
  * - La lectura corre en [Dispatchers.IO]; el acierto lo cachea el resolutor (memoria) y el loader de
  *   `ui.artwork` (decodificadas), asi que **no** hay LRU propia que duplique cache.
  * - Devuelve `null` (**nunca** lanza) si el asset no existe, la lectura falla o los bytes estan vacios;

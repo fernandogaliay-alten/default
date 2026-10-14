@@ -18,12 +18,13 @@ object DishImageArtworkPolicy {
      */
     const val MAX_CONCURRENT_GENERATIONS = 2
 
-    /** Duracion del crossfade estandar cuando la imagen generada sustituye a la local. */
+    /** Duracion del crossfade estandar cuando la imagen generada aparece sobre la ficha tipografica. */
     const val CROSSFADE_MILLIS = 250
 
     /**
-     * Tope del LRU de **imagenes decodificadas** generadas (mismo valor que el precedente aceptado de
-     * `AssetRecipePhotoSource`); es **solo** para la generada, la foto local mantiene su propio LRU.
+     * Tope del LRU de **imagenes decodificadas** generadas (mismo valor que
+     * `DishImageCachePolicy.MAX_MEMORY_ENTRIES`); es el **unico** LRU de imagenes de receta desde que
+     * `retire-recipe-photos` retiro la cadena local.
      */
     const val MAX_DECODED_IMAGES = 16
 }
