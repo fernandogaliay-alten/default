@@ -773,7 +773,48 @@
   plato" aparezca **apagado** al arrancar (opt-in), con los tests JVM que asumían el default encendido
   actualizados y las docs durables (ADR 0005, `docs/technical-discovery.md`,
   `docs/risks-and-open-questions.md`) reconciliadas. Capturas: **no** se exigen (política vigente,
-  sesión 122). **WIP = 0**; ninguna implementada todavía.
+  sesión 122). Desde entonces, `detail-hero-square-bottom` quedó **`accepted`** (sesión 125) y
+  `dish-image-settings-default-off` sigue **`not_started`**.
+- **`detail-hero-square-bottom`** (issue pendiente de publicar, `area: ui`, depende de
+  `detail-hero-full-bleed`, `accepted`): **`accepted`** en la **sesión 125** con validación independiente
+  (veredicto `accept`, ver `docs/validations/detail-hero-square-bottom.md`); implementada y autoverificada
+  (**`passing`**) en la **sesión 124** en su worktree `../Default-Project-worktrees/detail-hero-square-bottom`
+  (rama `feature/detail-hero-square-bottom`, **sin** commit/push/PR del implementer; el commit local lo crea el
+  orquestador de `feature-flow` y publica `github-flow`). El **hero** del Detalle deja de redondear sus
+  esquinas inferiores: en `RecipeDetailScreen.kt` la cadena del `Box` de `DetailHero` pasa de
+  `.clip(HeroBottomShape)` a **`.clip(RectangleShape)`**, conservando el **recorte** (la marca de agua con
+  offsets +24/+6 y el filete de 6 px al pie siguen dentro del hero) y el orden
+  `fillMaxWidth` → recorte → `background` → `height(240 dp)`. La constante superviviente se **renombra**
+  `HeroBottomShape` → **`MetaStripBottomShape`** (mismo `RoundedCornerShape(bottomStart = 24.dp,
+  bottomEnd = 24.dp)`), porque ya solo la usa la **tira** (que **no cambia**: `surface`,
+  `shadowElevation = 4.dp`, su fila interna, sus cuatro pares y sus hairlines): el bloque hero + tira sigue
+  con el borde inferior redondeado, que es lo que cierra la tira. KDoc del encabezado, de `DetailHero` y de
+  `MetaStrip` actualizados; geometría (240/6/190/0,12f/3), contenido, `HeroTypography`, el `Row` flotante
+  "Atrás" + corazón, la capa de fondo `RecipeArtwork` (`matchParentSize()` dentro del `Box` recortado),
+  pestañas, cuerpo, `ServingsStepper`, barra inferior y estado **intactos**; sin dependencias ni tests
+  nuevos. `DESIGN.md` **reconciliado** en solo dos puntos: `Shapes` (el hero de 240 termina en **bordes
+  rectos**; la tira **conserva** sus 24 dp y su sombra, y es quien cierra el bloque) y `Core Screens` 5
+  (mismo registro, `detail-hero-square-bottom`, 2026-10-14); el bloque histórico de capturas y
+  `docs/design/concepts/**` **no** se tocan (y no se crea
+  `docs/design/concepts/detail-hero-square-bottom/`). Gate: `bash init.sh` exit 0 (test + lint vía
+  `scripts/gradle.sh`, sin procesos largos); parseo propio de los XML: **98 suites / 737 tests / 0 fallos /
+  0 errores / 0 saltados** (baseline re-derivada en `HEAD`: `git grep -c '@Test'` = 98 ficheros / 737
+  anotaciones ⇒ **delta 0**, sin tests nuevos); las cinco suites de `ui.detail` (32 tests, incluida
+  `RecipeDetailHeroFormatTest.la_geometria_del_hero_es_contrato`) verdes y **sin diff**; lint (SARIF): **0
+  errores, 13 warnings** preexistentes, **0 bajo `app/src`**. Greps de inspección: `HeroBottomShape` → 0;
+  `MetaStripBottomShape` definido (85) y usado (413) **una** vez; `RoundedCornerShape`/`bottomStart`/
+  `bottomEnd` solo en esa constante; un único `clip(` (229) y **rectangular**. `git diff --name-only` =
+  `RecipeDetailScreen.kt` + `DESIGN.md` (nada más); `test ! -e docs/design/concepts/detail-hero-square-bottom`
+  → **OK**. **Validación independiente** (sesión 125, contexto limpio, veredicto `accept`,
+  `docs/validations/detail-hero-square-bottom.md`): re-ejecutó `bash init.sh` (exit 0) y, ante el
+  `UP-TO-DATE`, forzó `testDebugUnitTest --rerun-tasks` (34/34) y `lint --rerun-tasks` (30/30); parseó por
+  su cuenta los XML (**98 suites / 737 tests / 0 fallos / 0 errores / 0 saltados**, delta 0 vs `HEAD`
+  7661f6e) y el SARIF (0 errores, 13 warnings preexistentes, 0 bajo `app/src`); confirmó los escenarios 1-6
+  por diff/greps y la disciplina de alcance. Sin hallazgos Critical/High/Medium; 3 Low informativos no
+  bloqueantes (redacción genérica de `DESIGN.md` ~394, `code.html` histórico que aún cita 24 px, y un
+  SIGSEGV de un daemon de Gradle por builds concurrentes de otros worktrees, no atribuible a la feature).
+  Queda la **revisión manual** de la persona en el emulador tras el merge (claro/oscuro × ajuste de imágenes
+  encendido/apagado), no automatizable desde WSL.
 
 ## Registro de sesiones
 
@@ -5393,3 +5434,106 @@
   el **borde inferior** aún redondeado (lo aporta la tira); si quisiera también la tira recta, sería
   **otra** correctiva. En `dish-image-settings-default-off`, al ser un ajuste de sesión, tras reiniciar
   la app vuelve a **apagado** (opt-in no recordado); persistirlo sería otra feature (dominio + Room).
+
+### Sesión 124 (implementer, `detail-hero-square-bottom`)
+
+- Fecha: 2026-10-14
+- Objetivo: implementar **una** feature planificada, `detail-hero-square-bottom` (`area: ui`, depende de
+  `detail-hero-full-bleed`, `accepted`), siguiendo su spec `docs/specs/detail-hero-square-bottom.md`
+  (skill `feature-implementer`), en el worktree
+  `../Default-Project-worktrees/detail-hero-square-bottom` (rama `feature/detail-hero-square-bottom`).
+  **Sin** commit, push ni PR (la publicación es del orquestador). WIP = 1.
+- Completado:
+  - `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt` (único fichero de código):
+    - `DetailHero`: `.clip(HeroBottomShape)` → **`.clip(RectangleShape)`** (línea 229), conservando el
+      **recorte** (la marca de agua con offsets +24/+6 y el filete de 6 px al pie siguen recortados dentro
+      del hero) y el orden `fillMaxWidth()` → recorte → `background(recipeAccentBrush(...))` →
+      `height(HERO_HEIGHT_DP.dp)`; import nuevo `androidx.compose.ui.graphics.RectangleShape` (único
+      import añadido; el import `clip` se conserva porque sigue en uso).
+    - Rename de la constante superviviente: `HeroBottomShape` → **`MetaStripBottomShape`** (mismo valor,
+      `RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)`), usada **solo** por la tira
+      (`shape = MetaStripBottomShape`, línea 413); es la **única** forma redondeada del bloque hero + tira.
+    - KDoc del encabezado (hero con **bordes rectos**, la tira cierra el bloque con sus 24 dp; cita
+      `DESIGN.md` → `Shapes`, 2026-10-14, `detail-hero-square-bottom`), de `DetailHero` (recorte
+      rectangular que sigue conteniendo marca de agua y filete) y de `MetaStrip` (`MetaStripBottomShape`;
+      ya **no** "las mismas esquinas que el hero").
+  - `DESIGN.md` (fuente de verdad visual), **solo** dos puntos:
+    - `Shapes`: "hero tipográfico de 240 **que termina en bordes rectos** y, debajo, la tira de metadatos
+      con **esquinas inferiores de 24** —es la tira quien cierra el bloque— y solo la sombra suave", más
+      la nota de que el 2026-10-14 el hero **dejó de redondear** su borde inferior
+      (`detail-hero-square-bottom`).
+    - `Core Screens` 5 (Detalle): el hero termina en **bordes rectos** (sin esquinas inferiores
+      redondeadas) y la tira **conserva** las suyas de 24 y su sombra.
+  - `docs/specs/detail-hero-square-bottom.md`: `Implementation Tasks` marcadas y nota de estado del
+    implementer.
+  - `feature_list.json`: entrada a **`passing`** con 9 evidencias (implementación, rename, KDoc, gate,
+    lint, greps, alcance/diff, reconciliación antes/después de `DESIGN.md` y revisión manual pendiente).
+- Verificación ejecutada:
+  - Tirada focal: `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.detail.*"
+    --rerun-tasks` → **BUILD SUCCESSFUL** (34/34 tareas); las **cinco** suites de `ui.detail` verdes sin
+    diff (5+4+10+5+8 = 32 tests, incluida `RecipeDetailHeroFormatTest.la_geometria_del_hero_es_contrato`).
+  - Gate estándar: **`bash init.sh` exit 0** (`./gradlew test` + `./gradlew lint` vía
+    `scripts/gradle.sh`, sin procesos largos; `init.sh` **sin cambios** y sin cambios en las reglas de
+    verificación).
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **98 suites / 737 tests / 0
+    fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` (`git grep -c "@Test" --
+    'app/src/test/**'` = 98 ficheros / 737 anotaciones) ⇒ **delta 0 / 0** (sin tests nuevos).
+  - Lint (`app/build/reports/lint-results-debug.sarif`): **13 resultados, 0 errores, 0 bajo `app/src`**
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1),
+    preexistentes; ningún hallazgo nuevo (sin imports muertos).
+  - Greps de inspección (`RecipeDetailScreen.kt`): `HeroBottomShape` → **0**; `MetaStripBottomShape`
+    definido **una** vez (85) y usado **una** vez (413); `RoundedCornerShape` / `bottomStart` /
+    `bottomEnd` **solo** en esa constante; **un único** `clip(` (229) y **rectangular**.
+  - Alcance: `git diff --name-only` = `DESIGN.md` + `RecipeDetailScreen.kt` (2 ficheros, 33 inserciones /
+    19 borrados); sin diff en formato/estado/`ServingScaler`/`IngredientFormat`/`ui.artwork`/`ui.theme`/
+    `MainShell`/`domain`/`data`/assets/build/lockfile/`init.sh`/`scripts`/ADR 0006/`docs/design/concepts/**`;
+    sin dependencias nuevas; `test ! -e docs/design/concepts/detail-hero-square-bottom` → **OK** y
+    `git status docs/design/concepts` limpio. Sin ficheros temporales ni `hs_err*.log` en el árbol.
+- Ficheros cambiados: `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt`, `DESIGN.md`,
+  `docs/specs/detail-hero-square-bottom.md`, `feature_list.json` y este registro. **Sin** commit, push ni
+  PR.
+- Riesgo o incógnita abierta: queda la **revisión manual** de la persona en el emulador tras el merge
+  (abrir el Detalle desde Inicio y Resultados, claro y oscuro, ajuste de imágenes encendido y apagado),
+  no automatizable desde WSL; el hueco de fondo en la unión hero → tira debería desaparecer y un defecto
+  visual se corrige con una **feature correctiva**. Recordatorio de alcance: la tira **sigue** con sus
+  esquinas inferiores de 24 dp (cuadrarla sería otra correctiva), y el bloque no cambia de geometría ni de
+  contenido.
+- Siguiente paso: **validación independiente** de `detail-hero-square-bottom` (skill `feature-validator`)
+  sobre este worktree; al `accept`, el orquestador de `feature-flow` crea el commit local y `github-flow`
+  publica (push + PR `feature/detail-hero-square-bottom` → `main`).
+
+### Sesión 125 (validator + cierre del orquestador, `detail-hero-square-bottom`)
+
+- Fecha: 2026-10-14
+- Objetivo: **validar de forma independiente** `detail-hero-square-bottom` (skill `feature-validator`,
+  subagente `validator`, contexto limpio) y, al `accept`, **persistir la aceptación** y crear el **commit
+  local** de la rama `feature/detail-hero-square-bottom` (orquestador de `feature-flow`). **Sin** push ni
+  PR: publica `github-flow`.
+- Completado:
+  - **Veredicto `accept`** del validator independiente (`docs/validations/detail-hero-square-bottom.md`),
+    sin hallazgos Critical/High/Medium.
+  - `feature_list.json`: `detail-hero-square-bottom` pasa de **`passing`** a **`accepted`** con la
+    evidencia de la validación independiente (nova) y la nota de cierre. Recuento: **62 features / 60
+    `accepted` / 1 `not_started` (`dish-image-settings-default-off`) / 1 `blocked` (`seed-catalog-50`)**.
+  - `PROGRESS.md`: bullet de estado verificado reconciliado + este registro de sesión.
+  - Commit local `feat: complete detail-hero-square-bottom`.
+- Verificación ejecutada (por el validator, independiente y re-derivada):
+  - `bash init.sh` exit 0 (`test` + `lint` vía `scripts/gradle.sh`); al salir mayormente `UP-TO-DATE` por
+    la config cache, forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**BUILD SUCCESSFUL**,
+    34/34 tareas) y `bash scripts/gradle.sh lint --rerun-tasks` (**BUILD SUCCESSFUL**, 30/30 tareas).
+  - Parseo propio de los XML: **98 suites / 737 tests / 0 fallos / 0 errores / 0 saltados** (las cinco
+    suites de `ui.detail` verdes, 32 tests); baseline re-derivada en `HEAD` 7661f6e ⇒ **delta 0**. Lint
+    (SARIF): **0 errores, 13 warnings** preexistentes (0 bajo `app/src`).
+  - Escenarios 1-6 confirmados por diff/greps: `HeroBottomShape` → 0; `MetaStripBottomShape` definida y
+    usada una vez; único `clip(` rectangular (`.clip(RectangleShape)`, línea 229); geometría y tira
+    intactas; `RecipeArtwork` sigue dentro del `Box` recortado. `DESIGN.md` reconciliado solo en `Shapes`
+    y `Core Screens` 5.
+- Ficheros del commit: `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt`, `DESIGN.md`,
+  `docs/specs/detail-hero-square-bottom.md`, `docs/validations/detail-hero-square-bottom.md`,
+  `feature_list.json` y `PROGRESS.md`. **Sin** push ni PR.
+- Riesgo o incógnita abierta: queda la **revisión manual** de la persona en el emulador tras el merge
+  (claro/oscuro × ajuste de imágenes encendido/apagado); la tira **sigue** con sus 24 dp inferiores
+  (cuadrarla sería otra correctiva). Un defecto visual se corrige con una **feature correctiva**.
+- Siguiente paso: el orquestador de **`github-flow`** publica (push de `feature/detail-hero-square-bottom`
+  + PR con `Closes #<n>` contra `main`). En el plan sigue `dish-image-settings-default-off` (`not_started`,
+  spec ya creada) y `seed-catalog-50` (`blocked`).

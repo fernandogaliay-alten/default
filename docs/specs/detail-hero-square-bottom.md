@@ -289,17 +289,31 @@ aceptadas.
 
 ## Implementation Tasks
 
-- [ ] Recorte rectangular del hero (`.clip(RectangleShape)` o `.clipToBounds()`), conservando el orden de la
+- [x] Recorte rectangular del hero (`.clip(RectangleShape)` o `.clipToBounds()`), conservando el orden de la
       cadena de modificadores y sin dejar imports muertos.
-- [ ] Renombrar `HeroBottomShape` → `MetaStripBottomShape` y usarla solo en `MetaStrip`.
-- [ ] Verificar (sin tocar) 240 dp, filete 6 y su gradiente, `HERO_PADDING` 18, offsets 24/6, marca de agua
+- [x] Renombrar `HeroBottomShape` → `MetaStripBottomShape` y usarla solo en `MetaStrip`.
+- [x] Verificar (sin tocar) 240 dp, filete 6 y su gradiente, `HERO_PADDING` 18, offsets 24/6, marca de agua
       190 al 12 %, `HeroTypography`, el `Row` flotante de "Atrás"/corazón y la fila interna de la tira.
-- [ ] Actualizar el KDoc del encabezado, de `DetailHero` y de `MetaStrip`.
-- [ ] Reconciliar `DESIGN.md` (`Shapes` + `Core Screens` 5) y **no** tocar capturas ni
+- [x] Actualizar el KDoc del encabezado, de `DetailHero` y de `MetaStrip`.
+- [x] Reconciliar `DESIGN.md` (`Shapes` + `Core Screens` 5) y **no** tocar capturas ni
       `docs/design/concepts/**`.
-- [ ] `bash init.sh` verde + tirada focal `ui.detail` + greps de alcance + `git diff` = Expected File Changes.
-- [ ] Registrar la evidencia en `feature_list.json`/`PROGRESS.md` según `feature-flow` (el planner no los
+- [x] `bash init.sh` verde + tirada focal `ui.detail` + greps de alcance + `git diff` = Expected File Changes.
+- [x] Registrar la evidencia en `feature_list.json`/`PROGRESS.md` según `feature-flow` (el planner no los
       toca; el implementer no hace commit, push ni PR).
+
+### Estado de implementación (sesión 124, implementer)
+
+Implementada en el worktree `../Default-Project-worktrees/detail-hero-square-bottom` (rama
+`feature/detail-hero-square-bottom`), **sin** commit/push/PR. Se eligió la opción preferida del plan:
+`.clip(RectangleShape)` en `DetailHero`, conservando el recorte y el import `clip` (que sigue en uso). La
+constante superviviente pasó a `MetaStripBottomShape` (definida en la línea 85, usada solo en `MetaStrip`).
+Gate: `bash init.sh` exit 0; tirada focal `ui.detail` en verde (5 suites / 32 tests); total **98 suites /
+737 tests / 0 fallos / 0 errores / 0 saltados** (delta 0 vs baseline `HEAD` 98/737); lint 0 errores y 13
+warnings preexistentes (0 bajo `app/src`). Greps: `HeroBottomShape` → 0; `RoundedCornerShape` solo en la
+constante de la tira; un único `clip(` y rectangular. `git diff --name-only` = `RecipeDetailScreen.kt` +
+`DESIGN.md` (solo). `test ! -e docs/design/concepts/detail-hero-square-bottom` → OK. Feature en
+**`passing`**, pendiente de validación independiente. Queda la revisión manual de la persona en el emulador
+(claro/oscuro × ajuste de imágenes encendido/apagado) tras el merge.
 
 ## Verification Plan
 

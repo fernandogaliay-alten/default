@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -76,8 +77,12 @@ import com.sazon.app.ui.theme.SazonSpacing
 /** Cifras tabulares para cantidades, comensales y nutricion ("tnum" en `DESIGN.md`). */
 private const val TABULAR_FIGURES = "tnum"
 
-/** Esquinas **inferiores** del hero y de la tira (`SazonShapes.medium` = 24 dp); las superiores, rectas. */
-private val HeroBottomShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+/**
+ * Esquinas **inferiores** de la tira de metadatos (`SazonShapes.medium` = 24 dp); las superiores, rectas.
+ * Es la **unica** forma redondeada del bloque hero + tira: el hero termina en bordes rectos desde la
+ * revision de diseno del 2026-10-14 (`detail-hero-square-bottom`).
+ */
+private val MetaStripBottomShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
 
 /** Padding interior del hero (prototipo C3 del Detalle: `18px`). */
 private val HERO_PADDING = 18.dp
@@ -103,16 +108,19 @@ private val HAIRLINE = 1.dp
  * ([ServingScaler], [IngredientFormat], [RecipeDetailFormat], [RecipeDetailState]).
  *
  * Estructura (direccion de `docs/design/concepts/recipe-detail-typographic-header/detalle-receta/`):
- * - **Hero** ([RecipeDetailHeroFormat]): 240 dp **de borde a borde** (sin padding lateral de 16 dp),
- *   categoría en versalitas, título en Manrope, los **tres ingredientes principales con cantidad**
+ * - **Hero** ([RecipeDetailHeroFormat]): 240 dp **de borde a borde** (sin padding lateral de 16 dp) y
+ *   con **bordes rectos** —incluido el inferior—, categoría en versalitas, título en Manrope, los **tres
+ *   ingredientes principales con cantidad**
  *   (cifras tabulares), marca de agua del glifo al 12 % y filete de 6 px con el degradado de la cocina.
  *   Con el ajuste de imágenes apagado **sin
  *   ninguna foto** (ADR 0006); con `imageBackground` la imagen generada es la **capa de fondo** del hero
  *   y la tipografía pasa al tratamiento sobre imagen (sin mover la geometría). "Atras" y el
  *   corazon/guardar siguen flotando encima.
  * - **Tira de metadatos**: bloque propio **de borde a borde** justo debajo del hero (los cuatro pares de
- *   [RecipeDetailFormat]) y con las **mismas** esquinas inferiores de 24 dp que él (`HeroBottomShape`), sin
- *   tarjeta superpuesta ni desplazamiento.
+ *   [RecipeDetailFormat]) y con esquinas inferiores de 24 dp (`MetaStripBottomShape`, que es quien cierra
+ *   el bloque), sin tarjeta superpuesta ni desplazamiento. El hero ya **no** redondea: encaja a ras con
+ *   el borde superior —recto— de la tira (`DESIGN.md` → `Shapes`, revision 2026-10-14,
+ *   `detail-hero-square-bottom`).
  * - **Pestanas** Ingredientes · Pasos · Notas (activa terracota).
  * - Cuerpo por pestana: ajustador de comensales ([ServingsStepper] reutilizado **sin cambios**) con la
  *   caption "Cantidades ajustadas automaticamente" + filas nombre/cantidad; timeline de pasos con
@@ -190,11 +198,13 @@ fun RecipeDetailScreen(
 }
 
 /**
- * Hero del Detalle, **240 dp** ([RecipeDetailHeroFormat.HERO_HEIGHT_DP], geometria intacta) y **de borde
- * a borde** (sin padding lateral; `DESIGN.md` → `Shapes`, revision 2026-10-14,
- * `detail-hero-full-bleed`): degradado de la cocina, marca de agua del glifo al 12 %, categoria en
- * versalitas, titulo en Manrope y los tres
- * ingredientes con cantidad en cifras tabulares; el filete de 6 px al pie. Con [imageBackground] `true`
+ * Hero del Detalle, **240 dp** ([RecipeDetailHeroFormat.HERO_HEIGHT_DP], geometria intacta), **de borde
+ * a borde** (sin padding lateral) y con **recorte rectangular** (`RectangleShape`): termina en **bordes
+ * rectos** para encajar a ras con la tira de metadatos, pero sigue **recortando** su contenido (la marca
+ * de agua con offsets +24/+6 y el filete de 6 px al pie quedan dentro del recorte). `DESIGN.md` →
+ * `Shapes`, revision 2026-10-14, `detail-hero-full-bleed` y `detail-hero-square-bottom`: degradado de la
+ * cocina, marca de agua del glifo al 12 %, categoria en versalitas, titulo en Manrope y los tres
+ * ingredientes con cantidad en cifras tabulares. Con [imageBackground] `true`
  * la **imagen generada** es la **capa de fondo** ([RecipeArtwork]) y la tipografia pasa al tratamiento
  * **sobre imagen**; la marca de agua se pinta **solo** sin imagen. "Atras" (pildora) y el
  * corazon/guardar (48 dp) siguen flotando encima, sin cambios de comportamiento.
@@ -216,7 +226,7 @@ private fun DetailHero(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(HeroBottomShape)
+                .clip(RectangleShape)
                 .background(recipeAccentBrush(style.accent))
                 .height(RecipeDetailHeroFormat.HERO_HEIGHT_DP.dp),
         ) {
@@ -386,8 +396,8 @@ private fun HeroIngredients(ingredients: List<MainIngredient>, onImage: Boolean)
 
 /**
  * Tira de metadatos: bloque propio **de borde a borde** (`surface`, esquinas inferiores 24 dp via
- * `HeroBottomShape`, por lo que quedan **alineadas en x** con las del hero; `DESIGN.md` → `Shapes`,
- * revision 2026-10-14, `detail-hero-full-bleed`) con los **cuatro pares** de
+ * `MetaStripBottomShape`, la unica forma redondeada del bloque: **cierra** hero + tira; `DESIGN.md` →
+ * `Shapes`, revision 2026-10-14, `detail-hero-square-bottom`) con los **cuatro pares** de
  * [RecipeDetailFormat.metaEntries] en columnas iguales separadas por un hairline
  * vertical (no tras la ultima), etiqueta en versalitas y valor en Manrope tabular.
  */
@@ -400,7 +410,7 @@ private fun MetaStrip(
     val entries = RecipeDetailFormat.metaEntries(taxonomy, recipe)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = HeroBottomShape,
+        shape = MetaStripBottomShape,
         color = scheme.surface,
         shadowElevation = 4.dp,
     ) {
