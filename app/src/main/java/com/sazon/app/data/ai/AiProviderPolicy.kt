@@ -7,22 +7,46 @@ import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
 
 /**
- * Politica de la IA en un **unico sitio**: endpoint, alias de modelo, timeouts, reintentos y
- * degradacion. Son constantes y decisiones **puras** (sin HTTP), de modo que se testean en JVM.
+ * Politica del **chat** de la IA en un **unico sitio**: endpoint, modelo, cabeceras del proveedor,
+ * timeouts, reintentos y degradacion. Son constantes y decisiones **puras** (sin HTTP), de modo que se
+ * testean en JVM.
  *
- * Cierra la pregunta abierta 1 de `docs/risks-and-open-questions.md` (ver
- * `docs/specs/real-ai-provider.md`).
+ * El chat se sirve contra **OpenCode Go** (`docs/adr/0003-ai-provider.md`, correctiva
+ * `chat-provider-opencode-go`); la **imagen de plato** tiene su **propia** base y su propia politica en
+ * `com.sazon.app.data.ai.image.DishImagePolicy` (DevExpert), de modo que cambiar de proveedor el chat
+ * no puede arrastrar las imagenes. Cierra la pregunta abierta 1 de
+ * `docs/risks-and-open-questions.md` (ver `docs/specs/real-ai-provider.md`).
  */
 object AiProviderPolicy {
 
-    /** Base de la API compatible con OpenAI de DevExpert Inference (`docs/adr/0003-ai-provider.md`). */
-    const val BASE_URL = "https://inference.devexpert.io/v1"
+    /** Base de la API compatible con OpenAI de **OpenCode Go** (proveedor del **chat**). */
+    const val BASE_URL = "https://opencode.ai/zen/go/v1"
 
     /** Ruta del endpoint de chat completions. */
     const val CHAT_COMPLETIONS_PATH = "/chat/completions"
 
-    /** Alias del modelo diario. El alias aislado, no el nombre real, puede cambiar sin romper nada. */
-    const val MODEL_ALIAS = "chat"
+    /**
+     * Id del modelo del chat. A diferencia de DevExpert (que expone **alias**), OpenCode Go **no**
+     * expone alias: el id es literal y queda fijado aqui (un unico sitio). Si el proveedor lo
+     * renombra, el chat degrada a modo semilla hasta cambiar esta constante.
+     */
+    const val MODEL_ID = "deepseek-v4.1-flash"
+
+    /**
+     * Nombre de la cabecera **obligatoria** de OpenCode Go. Sin ella el proveedor responde
+     * `400 MissingSessionID` (verificado a mano el 2026-10-14). Viaja **por peticion** (nunca como
+     * default del cliente compartido: filtraria la cabecera a las peticiones de imagen de DevExpert).
+     */
+    const val SESSION_HEADER = "x-opencode-session"
+
+    /**
+     * Valor de [SESSION_HEADER]: una constante **estable y no sensible** que identifica a la app.
+     * **Nunca** la clave ni nada derivado de ella.
+     */
+    const val SESSION_ID = "sazon-android"
+
+    /** `User-Agent` propio recomendado por el proveedor; tambien viaja por peticion. */
+    const val USER_AGENT = "Sazon-Android/1.0"
 
     /**
      * Interruptor del `response_format`. `true` (por defecto) pide `{"type":"json_object"}`;
@@ -46,6 +70,10 @@ object AiProviderPolicy {
      * Evidencia multi-modelo (6 recetas, HTTP 200): `chat` 28,0 / 33,1 / 42,1 / 46,6 s,
      * `chat`+`json_object` 85,3 s, `chat-pro`+`json_schema` 97,0 s, `deepseek-v4-flash` 52,6 s,
      * `mimo-v2.6-pro` 115,8 s.
+     *
+     * **Matiz (correctiva `chat-provider-opencode-go`)**: esa calibracion se midio contra el proveedor
+     * **anterior** (DevExpert). Al pasar el chat a OpenCode Go (`deepseek-v4.1-flash`) **no** se
+     * recalibra: se conserva como **techo conservador** hasta tener mediciones del proveedor nuevo.
      */
     const val SOCKET_TIMEOUT_MILLIS = 120_000L
 

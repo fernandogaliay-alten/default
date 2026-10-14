@@ -83,13 +83,31 @@ números eran **posicionales** y no se renumeran retroactivamente.
   `app/src/main/res/font/` son instancias estáticas de los pesos usados (Manrope 600/700, Inter
   400/500) generadas con `fontTools` a partir de las fuentes variables oficiales de Google Fonts, no
   descargables por red en tiempo de ejecución.
-- **Proveedor/modelo de IA** (antes pregunta 1): **DevExpert Inference**, API compatible con OpenAI
-  (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, `Bearer DEVEXPERT_API_KEY`).
-  Alias `chat` (diario) y `chat-pro` (avanzado); cuota semanal. La app usa HTTP directo + parsing
+- **Proveedor/modelo de IA** (antes pregunta 1): **dos proveedores** desde la correctiva
+  `chat-provider-opencode-go` (2026-10-14, issue #141, por agotamiento de la cuota semanal de
+  DevExpert). El **chat** va a **OpenCode Go** (base `https://opencode.ai/zen/go/v1`, `POST
+  /chat/completions`, `Bearer OPENCODE_API_KEY`, modelo **literal** `deepseek-v4.1-flash` y cabeceras
+  obligatorias `x-opencode-session` + `User-Agent`) y la **imagen de plato** sigue en **DevExpert
+  Inference** (base **propia** `https://inference.devexpert.io/v1` en `DishImagePolicy`, alias
+  `image`/`image-edit`, `Bearer DEVEXPERT_API_KEY`). La app usa HTTP directo + parsing
   tolerante del `RecipeValidator`; desde `ai-response-format` (issue #74) pide
   `response_format: {"type":"json_object"}` (forma) con fallback one-shot ante `400`/`422` e interruptor
   en `AiProviderPolicy`, sin depender de `json_schema`/structured outputs forzados (siguen descartados).
   Ver `docs/adr/0003-ai-provider.md`.
+- **Riesgo nuevo — cuota compartida y monitorización de abuso de OpenCode Go** (2026-10-14, issue #141):
+  Go está pensado para **agentes de programación** y **monitoriza el abuso**; su cuota (límites por
+  **5 h/semana/mes**) la comparte el chat de la app **con el harness de agentes de este repo**, así que
+  una sesión intensa de agentes puede agotar la del chat. Además, el endpoint **Console** de OpenCode
+  (`https://opencode.ai/inference/...`) responde `402 Insufficient account funds` (sin saldo), por lo
+  que **no** es alternativa. Mitigación: el chat **degrada a modo semilla** sin fallar cuando la cuota o
+  la clave fallan, y la política cache-first del Lote reduce las llamadas. Riesgo **no bloqueante**
+  (registrado; una cuota agotada no rompe la app, solo devuelve recetas semilla).
+- **Riesgo nuevo — id de modelo fijado** (2026-10-14, issue #141): OpenCode Go **no expone alias**, así
+  que el chat fija `deepseek-v4.1-flash` (`AiProviderPolicy.MODEL_ID`) en un único sitio; si el
+  proveedor lo renombra, el chat degrada a modo semilla hasta cambiar esa constante (cambio de una
+  línea, sin fallo de la app). Igual de acotado: el **valor** exacto de `x-opencode-session` está
+  verificado como **presencia** (sin ella `400 MissingSessionID`), no como formato; la constante
+  (`"sazon-android"`) vive en un único sitio y cambiarla es una línea.
 - **Licencias y precisión de las fotos de receta** (era la pregunta 2 de la tabla): resuelta como **no
   bloqueante** y, después, **resuelta por retirada** (ADR 0006). La app es personal y no se publica, así
   que la elección de assets es libre: los iconos van vía Material Symbols (incluido en Material 3). Las

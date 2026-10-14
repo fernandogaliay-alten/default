@@ -15,14 +15,17 @@ val designTokensFile = rootProject.layout.projectDirectory.file("DESIGN.md")
 // fichero real, no vacio y con la extension esperada.
 val dishImageSeedDir = layout.projectDirectory.dir("src/main/assets/img/dishes/seed")
 
-// Clave del proveedor de IA leida en tiempo de configuracion desde local.properties (que NO se
-// versiona). Nunca se imprime su valor ni la ruta; si falta el fichero o la propiedad, queda "".
+// Claves de los proveedores de IA leidas en tiempo de configuracion desde local.properties (que NO se
+// versiona). Nunca se imprimen su valor ni la ruta; si falta el fichero o la propiedad, quedan "".
+// Son DOS claves con consumidores separados: el chat va a OpenCode Go (`opencode.apiKey`) y la imagen
+// de plato sigue en DevExpert (`devexpert.apiKey`).
 val localProperties = Properties().apply {
     rootProject.layout.projectDirectory.file("local.properties")
         .asFile.takeIf { it.exists() }
         ?.inputStream()?.use { load(it) }
 }
 val devexpertApiKey: String = localProperties.getProperty("devexpert.apiKey", "")
+val opencodeApiKey: String = localProperties.getProperty("opencode.apiKey", "")
 
 val syncTaxonomy by tasks.registering(Copy::class) {
     description = "Copia la Taxonomia canonica al directorio de assets de la aplicacion."
@@ -47,11 +50,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Clave del proveedor de IA inyectada en BuildConfig; valor vacio si falta local.properties.
+        // Claves de IA inyectadas en BuildConfig; valor vacio si falta local.properties. El chat usa
+        // OPENCODE_API_KEY (OpenCode Go) y la imagen de plato DEVEXPERT_API_KEY (DevExpert).
         buildConfigField(
             "String",
             "DEVEXPERT_API_KEY",
             "\"${devexpertApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
+        )
+        buildConfigField(
+            "String",
+            "OPENCODE_API_KEY",
+            "\"${opencodeApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
         )
     }
 

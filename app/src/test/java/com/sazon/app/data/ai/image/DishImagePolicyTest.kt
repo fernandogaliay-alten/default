@@ -4,6 +4,7 @@ import com.sazon.app.data.ai.AiProviderPolicy
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -14,14 +15,21 @@ import org.junit.Test
  */
 class DishImagePolicyTest {
 
-    // El endpoint reutiliza la base unica del proveedor y anade la ruta de imagenes.
+    // Escenario 3 (correctiva `chat-provider-opencode-go`): la imagen tiene su **propia** base de
+    // DevExpert y **no** la deriva de la base del chat (que ahora es OpenCode Go).
     @Test
-    fun el_endpoint_reutiliza_la_base_del_proveedor() {
+    fun el_endpoint_usa_la_base_propia_de_devexpert_y_no_la_del_chat() {
+        assertEquals("https://inference.devexpert.io/v1", DishImagePolicy.BASE_URL)
         assertEquals(
             "https://inference.devexpert.io/v1/images/generations",
             DishImagePolicy.endpointUrl(),
         )
-        assertEquals(AiProviderPolicy.BASE_URL + "/images/generations", DishImagePolicy.endpointUrl())
+        assertEquals(DishImagePolicy.BASE_URL + "/images/generations", DishImagePolicy.endpointUrl())
+        assertNotEquals(
+            "La base de la imagen no puede ser la del chat",
+            AiProviderPolicy.BASE_URL,
+            DishImagePolicy.BASE_URL,
+        )
     }
 
     // El alias, el tamano generado, el ancho objetivo, la calidad y los intentos son los decididos.
@@ -83,14 +91,14 @@ class DishImagePolicyTest {
         assertArrayEquals(intArrayOf(960, 1), DishImagePolicy.scaledSize(2_000, 1))
     }
 
-    // Escenario 11: el ajuste vive en este unico sitio y reutiliza la base/ruta del proveedor.
+    // Escenario 11: el ajuste vive en este unico sitio y usa la base propia de DevExpert.
     @Test
-    fun el_endpoint_de_ajuste_reutiliza_la_base_y_la_ruta_de_edits() {
+    fun el_endpoint_de_ajuste_usa_la_base_propia_y_la_ruta_de_edits() {
         assertEquals(
             "https://inference.devexpert.io/v1/images/edits",
             DishImagePolicy.editsUrl(),
         )
-        assertEquals(AiProviderPolicy.BASE_URL + "/images/edits", DishImagePolicy.editsUrl())
+        assertEquals(DishImagePolicy.BASE_URL + "/images/edits", DishImagePolicy.editsUrl())
         assertEquals("image-edit", DishImagePolicy.EDIT_MODEL_ALIAS)
         assertTrue("El anclaje esta activo por defecto", DishImagePolicy.STYLE_REFERENCE_ENABLED)
     }

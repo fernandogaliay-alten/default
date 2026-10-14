@@ -70,12 +70,19 @@ class DevExpertRecipeGeneratorTest {
         assertEquals("Arroz salteado con verduras", recipes.single().title)
 
         val request = mock.lastRequest
-        assertEquals("https://inference.devexpert.io/v1/chat/completions", request.url.toString())
+        assertEquals("https://opencode.ai/zen/go/v1/chat/completions", request.url.toString())
         assertEquals(HttpMethod.Post, request.method)
         assertEquals("Bearer $KEY", request.headers[HttpHeaders.Authorization])
+        // Cabeceras de OpenCode Go (correctiva `chat-provider-opencode-go`): la de sesion es
+        // **obligatoria** (sin ella el proveedor responde `400 MissingSessionID`).
+        assertEquals(
+            AiProviderPolicy.SESSION_ID,
+            request.headers[AiProviderPolicy.SESSION_HEADER],
+        )
+        assertEquals(AiProviderPolicy.USER_AGENT, request.headers[HttpHeaders.UserAgent])
 
         val body = Json.parseToJsonElement(request.bodyText()).jsonObject
-        assertEquals("chat", body["model"]!!.jsonPrimitive.content)
+        assertEquals("deepseek-v4.1-flash", body["model"]!!.jsonPrimitive.content)
         val messages = body["messages"]!!.jsonArray
         assertEquals("system", messages[0].jsonObject["role"]!!.jsonPrimitive.content)
         assertEquals("user", messages[1].jsonObject["role"]!!.jsonPrimitive.content)
@@ -95,6 +102,15 @@ class DevExpertRecipeGeneratorTest {
 
         assertNotNull(thrown)
         assertEquals(AiUnavailableReason.MISSING_KEY, thrown!!.reason)
+        // Escenario 2: el mensaje cita la clave del **chat** (`opencode.apiKey`), no la de DevExpert.
+        assertTrue(
+            "El mensaje debe citar opencode.apiKey: '${thrown.message}'",
+            thrown.message!!.contains("opencode.apiKey"),
+        )
+        assertFalse(
+            "El mensaje no debe citar el proveedor de imagen",
+            thrown.message!!.contains("devexpert"),
+        )
         assertEquals("No debe hacer ninguna peticion", 0, mock.calls)
     }
 
