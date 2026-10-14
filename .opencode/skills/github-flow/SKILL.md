@@ -19,6 +19,7 @@ The first four inputs are required. If any is missing, ask before doing anything
 
 ## Hard Rules
 
+- The base checkout must be **current** before any check that reads shared state (`feature_list.json`, `PROGRESS.md`, statuses, dependencies). `execute` and `publish` fast-forward the local `base_branch` to `origin/<base_branch>` as one of their first steps, before the precondition/acceptance gate; a stale checkout misjudges dependencies and statuses (a feature whose dependency already merged would look blocked). `plan` never fetches and only reports whether the local checkout is behind.
 - Plan mode is read-only. It must not mutate git, GitHub, or files: no fetch, push, commit, checkout, stash, or worktree add; no issue/PR create, comment, or edit; no file writes.
 - Without acceptance there is no publish. `publish` requires each feature's status to be `accepted` in `feature_list.json` (independent validator `accept`). `passing` is not accepted.
 - Push and PR are automatic after acceptance. The orchestrator has standing push permission: once a feature is `accepted`, it pushes `feature/<feature-id>` and opens (or reuses) the PR without asking for a separate per-run grant. There is no push gate beyond acceptance.
@@ -33,7 +34,7 @@ The first four inputs are required. If any is missing, ask before doing anything
 
 ## Preconditions
 
-Checked by `execute` before it launches any session. `plan` runs the same checks read-only. Every feature to execute must pass all five; a feature that fails only precondition 5 is provisioned instead of skipped (see `## UI Captures Provisioning`).
+Checked by `execute` before it launches any session, and always **after** `execute` has fast-forwarded the base checkout to `origin/<base_branch>` (see `## Mode: execute`, step 0). `plan` runs the same checks read-only against the local refs and must flag if the base checkout is behind. Every feature to execute must pass all five; a feature that fails only precondition 5 is provisioned instead of skipped (see `## UI Captures Provisioning`).
 
 1. Dependencies accepted: every id in `depends_on` has status `accepted` in `feature_list.json`.
 2. Clean base: the base checkout has no staged, modified, or deleted tracked files (`git status --porcelain` has no tracked entries; untracked files are allowed and reported), no merge/rebase in progress, and `base_branch` resolves.
@@ -61,15 +62,26 @@ Reuse lookup before any creation (read-only):
 
 Read-only. Produce the plan report only.
 
-1. Resolve inputs; read `feature_list.json`, `PROGRESS.md`, git state (`git status --porcelain`, `git rev-parse <base_branch>`, `git worktree list`, `git branch --list`) and gh state (`gh auth status`, issue and PR lookups). Never `git fetch`.
+1. Resolve inputs; read `feature_list.json`, `PROGRESS.md`, git state (`git status --porcelain`, `git rev-parse <base_branch>`, `git rev-parse origin/<base_branch>`, `git worktree list`, `git branch --list`) and gh state (`gh auth status`, issue and PR lookups). Never `git fetch`. If `<base_branch>` is behind the local `origin/<base_branch>` ref, say so and warn that the plan may be based on a stale checkout (a fetch during `execute` may reveal more); the plan does not sync anything itself.
 2. Evaluate the five preconditions per feature. For blocked features, report the concrete missing inputs: `accepted` dependency ids and/or missing UI capture paths under `docs/design/concepts/<feature-id>/`. For a UI-captures block, also state that `execute` would provision the feature (issue, worktree, branch, request folder with `README.md` + `stitch-prompt.md`, all inside the worktree) and launch no session.
-3. Planned base SHA = current `git rev-parse <base_branch>`.
+3. Planned base SHA = current `git rev-parse origin/<base_branch>` when it resolves, otherwise `git rev-parse <base_branch>`; flag it if the local `<base_branch>` is behind it (the planned worktree should branch from the remote SHA, which `execute` fast-forwards to first).
 4. For each ready feature, resolve reuse targets (issue, worktree, branch, PR) and the planned session command `opencode run ...` launched with the worktree as the working directory (opencode v2 has no `--dir`).
 5. Emit the output report with status `planned` and `pr: none`. Nothing is created.
 
 ## Mode: execute (ejecutar)
 
-Before the steps below, run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch`; never prune a feature that is not merged. This is what keeps orphan worktrees from accumulating between runs.
+Do these two things first, in order, before evaluating any precondition:
+
+0. **Sync the base checkout** so every later check reads fresh state. Fetch and fast-forward the local base branch to the remote:
+
+   ```bash
+   git fetch origin <base_branch>
+   git merge --ff-only origin/<base_branch>
+   ```
+
+   Run it in the base checkout. The precondition gate (step 2) and every status/dependency read take `feature_list.json`/`PROGRESS.md` from this checkout, so a stale local `base_branch` misjudges them (a dependency whose PR already merged would still look `not_started`, and the feature would be wrongly reported `blocked`). This is a **fast-forward only**: never rebase, never force-push, never stash or discard local work. If it is not a fast-forward (diverged local branch or local commits), stop and report instead of clobbering.
+
+   Then run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch`; never prune a feature that is not merged. This is what keeps orphan worktrees from accumulating between runs.
 
 1. Fix the common base SHA: `git fetch origin <base_branch>` then `base_sha=$(git rev-parse origin/<base_branch>)`. Every worktree — including the ones provisioned for a UI-captures block — branches from this exact SHA.
 2. Run the precondition gate. Split the request into **ready**, **UI-captures-blocked**, and **blocked** (missing dependency or credential) features and report every list; continue with ready features and with the UI-captures provisioning.
@@ -126,7 +138,7 @@ A feature is `blocked` when it fails a precondition for a reason outside the age
 
 ## Mode: publish (publicar)
 
-0. Prune first: run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch` before publishing; never prune a feature that is not merged.
+0. Prune first: run the `prune` cleanup (`## Mode: prune`) for any requested feature whose PR is already merged into `base_branch` before publishing; never prune a feature that is not merged. Then sync the base checkout so the acceptance gate reads fresh state: `git fetch origin <base_branch>` then `git merge --ff-only origin/<base_branch>` in the base checkout (fast-forward only; if it is not a fast-forward, stop and report).
 1. Acceptance gate: every feature must be `accepted` in `feature_list.json`. If any is not, refuse that feature: without acceptance there is no publish. `passing` does not qualify.
 2. Push is standing (automatic after acceptance); there is no per-run push gate. Refuse only if the feature is not `accepted`.
 3. Commit gate: the feature branch must contain the acceptance commit. If `feature_list.json` says `accepted` but the branch has no commit (for example the `feature-flow` session crashed before committing), create the single Conventional Commit naming the feature before pushing; never push an uncommitted branch.
