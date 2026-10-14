@@ -189,30 +189,38 @@ La IA de texto **no devuelve imágenes**. Resolución determinista:
   `docs/adr/0004-recipe-photos-as-assets.md` (ajustado).
 - **Avatares**: iniciales sobre un color de `avatarColors`. Sin assets: el avatar se compone en
   tiempo de ejecución.
-- **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4; capa de fondo, ADR 0006)**:
+- **Imagen de plato generada (real desde `dish-image-progressive-ui`, fase 4; capa de fondo integrada en
+  `dish-artwork-as-card-background`, ADR 0006)**:
   la app pide al proveedor la imagen del plato (`data.ai.image`), la resuelve por `data.image` (memoria →
   disco → **assets semilla** → generador real, con la clave canónica `dish-image-v2-…` del nombre del
   plato —o del `dishKey` del modelo cuando existe, descriptor de la fase 5— y el prompt v2 de
   `domain.image.DishImagePrompt`: título como identidad + detalle del descriptor + ingredientes clave +
-  composición + negativos) y `ui.artwork.RecipeArtwork`, que pasa a ser el **proveedor de la capa de
-  fondo** del hueco, la pinta **por detrás de la tipografía** con un crossfade de 250 ms, sin cambiar la
-  firma, la geometría ni los 5 puntos de uso. Solo hay imagen si el ajuste "Generar imágenes del plato"
+  composición + negativos) y `ui.artwork.RecipeArtwork`, que es el **proveedor de la capa de fondo** del
+  hueco (**16:9**) y del hero (**240**): la pinta **por detrás de la tipografía** (la ficha tipográfica es
+  la **capa base**) con un crossfade de 250 ms, con un `scrim` de contraste (`ui/theme/CardImageOverlay`)
+  y sin cambiar la firma ni la geometría. Sus **dos** consumidores son el hueco de `RecipeFicha` y el hero
+  del Detalle (parámetro `imageBackground`, default `false` = ficha/hero aceptados). Solo hay imagen si el
+  ajuste "Generar imágenes del plato"
   está encendido y el resolver devuelve una; apagado = `null` **sin** leer caché, sin red y sin cuota.
-  En depuración, el **origen resuelto** (`GENERATED`/`SEED`/`GLYPH` tras la retirada de la cadena local,
-  que ya no puede dar `CATEGORY`) es observable en logcat (`SazonDishImage`) sin alterar el pintado; en
+  En depuración, el **origen resuelto** (`GENERATED`/`SEED`/`GLYPH`; `CATEGORY` queda **sin productor** al
+  dejar la tarjeta/hero de leer la cadena local) es observable en logcat (`SazonDishImage`) sin alterar el
+  pintado; en
   release no se emite nada. Los **platos frecuentes del demo** tienen desde la fase 7 (`dish-image-seed`)
   su foto **preparada de antemano y versionada**
   (`app/src/main/assets/img/dishes/seed/<clave canónica>.<ext>`, ya `dish-image-v2-…`,
   `data.DishImageSeedAssets` + `data.AssetDishImageSeedSource`), de modo que se resuelven **sin red y
   sin gastar cuota** (ni la primera vez) y **sin** duplicar bytes en `cacheDir`; ese nivel va entre el
   disco y el generador y queda detrás del mismo interruptor. Si no está disponible (sin red, fallo,
-  timeout o cancelación) se **conserva la ficha tipográfica base** (con el glifo de último recurso), así
+  timeout, cancelación o tope agotado) se **conserva la ficha tipográfica base** (color de superficie o
+  degradado del hero + marca de agua del glifo), así
   que **nunca** hay error de UI ni hueco y la app sigue funcionando offline: la generación **no** es
   dependencia del MVP. Ver `docs/adr/0005-ai-dish-images.md` y `docs/specs/dish-image-seed.md`.
 - **Glifo y acento por cocina (vivos, ADR 0006)**: siguen siendo la identidad visual de reserva. El
   **glifo** por categoría (`RecipeGlyph`, los 18 `recipeCategories`) es la **marca de agua** de la ficha
-  tipográfica; el **acento** por cocina (`RecipeAccent`, 10 cocinas + `DEFAULT`) es el **filete de 6px**
-  de la tarjeta y, si no hay imagen, el degradado + glifo sigue siendo el **último recurso**.
+  tipográfica y del hero; el **acento** por cocina (`RecipeAccent`, 10 cocinas + `DEFAULT`) es el
+  **filete de 6px** de la tarjeta y del hero y, en el hero sin imagen, el **degradado base**. La cadena de
+  fotos local (`seed`/`category`/`default`) **ya no es un nivel de la imagen de receta**: la tarjeta y el
+  hero dejan de leerla (el glifo/acento se reutilizan por **roles del tema**).
 
 ---
 

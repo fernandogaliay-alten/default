@@ -241,14 +241,20 @@ tarjeta pinta ya imagen alguna: la **marca de agua** es el glifo de categoría a
 `ingredientsLine`) y `ui/home/RecipeMonogram`, y las primitivas de dibujo se comparten desde
 `ui/artwork` (`RecipeGlyphArtwork`, `recipeAccentColors`, `recipeAccentBrush`, extraídas de
 `RecipeArtwork`, que **conserva firma y comportamiento**).
-`ui.artwork.RecipeArtwork` **cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser el
-**proveedor de la capa de fondo** del hueco, con la ficha tipográfica como **capa base** y la imagen
-superpuesta con el crossfade de 250 ms ya existente (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, variante
-**L2**: imagen 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), sin
-salto de layout ni frame en blanco; **esa capa de fondo no entra en esta feature** (es
-`dish-artwork-as-card-background`) y tras ella el único punto de uso que le queda es el hero del Detalle.
-La geometría aceptada de los puntos de uso no cambia (16:10 de las tarjetas, 96x96 de Favoritos y hero de
-240 del Detalle).
+`ui.artwork.RecipeArtwork` **cambia de rol** (feature `dish-artwork-as-card-background`): deja de ser
+"la imagen de la receta" y pasa a ser el **proveedor de la capa de fondo** del hueco y del hero, con la
+**ficha tipográfica como capa base** (la pinta el llamante) y la imagen superpuesta con el crossfade de
+250 ms ya existente (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, variante **L2**: imagen **16:9** con
+`scrim`, categoría y título encima; ingredientes y metadatos en **banda sólida** en la tarjeta), sin
+salto de layout ni frame en blanco. Sus **dos** consumidores son el hueco de `RecipeFicha` y el hero del
+Detalle; el ajuste encendido los activa con `imageBackground = true` (parámetro explícito, default
+`false` = ficha/hero aceptados). Los tokens del `scrim` (claro `rgba(20,12,8,.42/.18/.78)`, oscuro
+`rgba(10,6,4,.5/.22/.82)`) y del texto **sobre imagen** (`#FFFFFF` y blanco al 86 %, hairline 32 %) viven
+en `ui/theme/CardImageOverlay.kt` (único sitio, 0 hex en `ui/artwork`); la decisión **pura** del hueco
+(ratio 16:9, `headingOnImage`, `watermarkVisible`, alfa derivado) es `ui/artwork/DishImageArtworkOverlay`.
+`RecipeArtwork` ya **no** lee `LocalRecipePhotoSource` ni pinta el degradado + glifo de respaldo (la marca
+de agua la pinta el llamante dentro del slot de contenido, que recibe la capa resuelta).
+La geometría aceptada de los puntos de uso no cambia (16:10 de la ficha apagada, hero de 240 del Detalle).
 
 La **cadena local de fotos queda retirada** con la feature `retire-recipe-photos` (ADR 0006): **30 de
 los 31 assets** (12 `seed/<id>.<ext>` y 18 `category/cat-<categoryId>.<ext>`, ~**6,2 MiB**) de
@@ -260,12 +266,13 @@ de categoría es la que **no corresponde al plato** de las recetas `ai-*`. El se
 mapeo puro **`RecipeArtworkStyle`** (sin Compose ni Android: `RecipeGlyph` con 18 miembros ↔ 18
 `recipeCategories`, `RecipeAccent` con 10 acentos + `DEFAULT` ↔ 10 `cuisines`, `RecipeStyle` y el fallback
 total `null`/vacío/desconocido -> `PLATE` + `DEFAULT`) **sigue vigente**: el glifo es la **marca de agua**
-de la ficha y el **último recurso** (bloque con degradado por **roles del tema** —`primaryContainer`,
-`secondaryContainer`, `tertiaryContainer`, `surfaceVariant`— y glifo de línea con primitivas de `Canvas`),
-y el acento por cocina es el **filete** de la tarjeta. La capa Compose `RecipeArtwork(recipe, modifier,
-glyphSize)` conserva su firma. El nivel **generado** y su crossfade (fase 4, ADR 0005) se superponen a esa
-base tipográfica. Ver `docs/adr/0006-typographic-recipe-cards.md`,
-`docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y `docs/specs/recipe-artwork.md`.
+de la ficha (y del hero) y el bloque con degradado por **roles del tema** (`primaryContainer`,
+`secondaryContainer`, `tertiaryContainer`, `surfaceVariant`) es la base tipográfica del hero. El acento
+por cocina es el **filete**. La capa Compose `RecipeArtwork(recipe, modifier, glyphSize)` conserva su
+firma (y el parámetro `glyphSize` queda **reservado**, documentado: la marca de agua la pinta el
+llamante) y gana un **slot de contenido aditivo** que recibe la capa resuelta. Ver
+`docs/adr/0006-typographic-recipe-cards.md`, `docs/adr/0004-recipe-photos-as-assets.md` (ajustado) y
+`docs/specs/recipe-artwork.md`.
 
 **Capturas de la dirección tipográfica (desviación autorizada, ADR 0006):** esta dirección se decidió
 sobre **prototipos HTML locales**, versionados en `docs/design/concepts/typographic-cards/`, **no** sobre
@@ -732,43 +739,49 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   y `GENERATED` en memoria/disco/generador (recuerda por clave el origen con el que pobló la memoria, así
   que un acierto de memoria sobre bytes semilla sigue reportando `SEED`); **no** cambia los bytes, el
   orden de la cadena, la `Mutex` ni la propagación de la cancelación, y un fallo **no** reporta.
-  `RecipeArtworkImagePrecedence.originOf(local, generated, resolvedOrigin)` clasifica la capa que gana
-  (`generated != null` → `SEED` si el resolutor registró `SEED`, `GENERATED` en otro caso; sin generada y
-  con foto local → `CATEGORY`; sin ninguna → `GLYPH`) y `RecipeArtwork` lo notifica por la costura
+  `RecipeArtworkImagePrecedence.originOf(generated, resolvedOrigin)` clasifica la capa que gana
+  (`generated != null` → `SEED` si el resolutor registró `SEED`, `GENERATED` en otro caso; sin generada →
+  `GLYPH`) y `RecipeArtwork` lo notifica por la costura
   `ui.artwork.DishImageOriginDiagnostics` (`NoDishImageOriginDiagnostics` no-op /
   `LocalDishImageOriginDiagnostics`) como **llamada lateral** (ninguna rama de pintado depende de ella).
   `MainActivity` cablea el sumidero, el `onResolved` y el proveedor **solo** con `BuildConfig.DEBUG`,
   emitiendo `Log.d("SazonDishImage", "origin=… id=… title=…")`; en release queda el no-op y no se emite
   ninguna linea. Sin claves, URLs ni bytes en el log.
-- **Imagen de plato en la UI y carga progresiva (fase 4)**: `com.sazon.app.ui.artwork` inserta el nivel
-  generado **por delante** de la cadena local sin cambiar pantalla, firma ni geometría. `RecipeArtwork`
-  (misma firma `(recipe, modifier, glyphSize)`) lee **dos** seams independientes —`LocalRecipePhotoSource`
-  (foto local, instantánea) y `LocalGeneratedRecipeArtworkSource` (imagen generada, default no-op)— con
-  sendos `produceState`, pinta **siempre** una **capa base** (foto local con `ContentScale.Crop` o, si no
-  hay, el degradado + glifo de `RecipeArtworkStyle`) y **superpone** la generada con un alfa animado
-  (`animateFloatAsState`, crossfade de **250 ms**): nunca hay hueco ni frame en blanco. La precedencia y
-  el objetivo del crossfade son puros (`RecipeArtworkImagePrecedence`: `GENERATED`/`LOCAL`/`FALLBACK`),
-  la política vive en un único sitio (`DishImageArtworkPolicy`: concurrencia **2**, crossfade **250 ms**,
-  LRU de decodificadas **16**) y `DishImageArtworkLoader<T>` resuelve vía `DishImageResolver`
-  (memoria → disco → generador), **decodifica** (`RecipeImageDecoder`; en la app
-  `AndroidRecipeImageDecoder`, único fichero de `ui.artwork` con `android.graphics`) y mantiene una **LRU
-  de `ImageBitmap`** por clave canónica. Contrato coherente con el ADR 0005: `null`/array vacío/códec
-  roto degradan a la cadena local **sin cachear**, la **cancelación** se propaga (salir de pantalla o
-  reciclar la tarjeta cancela la petición) y no hay `Log`. `MainActivity` compone la cadena reutilizando
-  el `aiClient` compartido (los timeouts de imagen se aplican por petición) y la caché de la fase 3. La
-  cadena en runtime queda `ui.artwork` → `data.image` → `data.ai.image`, con la cadena local
-  (`RecipePhotoSource`/`AssetRecipePhotoSource`) como respaldo. El **ajuste de sesión** de la fase 4
-  (`dish-image-settings-toggle`) se gobierna en **dos puntos**: el proveedor del seam gatea el
-  **interruptor** (`DishImageSettings.generatedIfEnabled`; apagado = `null` **sin leer caché ni
-  generar**, así que se usa solo la foto local) y el generador real va envuelto por
-  `GatedDishImageGenerator`, que impone el **tope de generaciones por sesión** en el borde de generación
-  (una unidad por petición al proveedor, `null` sin invocar al delegado cuando está agotado; los
-  aciertos de memoria/disco no lo consumen). Las constantes viven en un único sitio
+- **Imagen de plato en la UI, carga progresiva y capa de fondo (fases 4 y `dish-artwork-as-card-background`)**:
+  `com.sazon.app.ui.artwork` resuelve y pinta la **imagen generada**. `RecipeArtwork`
+  (misma firma `(recipe, modifier, glyphSize)`; `glyphSize` **reservado**) lee el seam
+  `LocalGeneratedRecipeArtworkSource` (default no-op) con `produceState` y pinta la imagen con
+  `ContentScale.Crop` y un alfa animado (`animateFloatAsState`, crossfade de **250 ms**,
+  `DishImageArtworkPolicy.CROSSFADE_MILLIS`) más el **`scrim`** de contraste con el mismo alfa **encima**
+  de la imagen y **debajo** de la tipografía. La capa base (color de superficie de la tarjeta o degradado
+  del hero + marca de agua del glifo) la pinta el **llamante** dentro del **slot de contenido aditivo**,
+  que recibe la **capa resuelta** (`RecipeArtworkImagePrecedence`: `TYPOGRAPHIC` / `GENERATED`); la
+  precedencia y el objetivo del crossfade siguen siendo **puros**, y la decisión del hueco L2 (ratio
+  **16:9**, `headingOnImage`, `watermarkVisible`) es `ui.artwork.DishImageArtworkOverlay`. Los tokens del
+  `scrim` (claro/oscuro) y del texto sobre imagen viven en `ui/theme/CardImageOverlay.kt`. Sin imagen
+  (`null`/array vacío/códec roto/timeout/tope agotado) no se pinta nada y queda la tipografía: nunca hay
+  hueco ni frame en blanco, y la **cancelación** se propaga. La política vive en un único sitio
+  (`DishImageArtworkPolicy`: concurrencia **2**, crossfade **250 ms**, LRU de decodificadas **16**) y
+  `DishImageArtworkLoader<T>` resuelve vía `DishImageResolver` (memoria → disco → semilla → generador),
+  **decodifica** (`RecipeImageDecoder`; en la app `AndroidRecipeImageDecoder`, único fichero de
+  `ui.artwork` con `android.graphics`) y mantiene una **LRU de `ImageBitmap`** por clave canónica.
+  `MainActivity` compone la cadena reutilizando el `aiClient` compartido (los timeouts de imagen se
+  aplican por petición) y la caché de la fase 3. La **cadena en runtime** es
+  `ui.artwork` → `data.image` → `data.ai.image`; la **cadena local** (`RecipePhotoSource`/
+  `AssetRecipePhotoSource`) **ya no la lee la tarjeta/hero** (su provider se conserva en `MainActivity`
+  hasta `retire-recipe-photos`). El **ajuste de sesión** de la fase 4 (`dish-image-settings-toggle`) se
+  gobierna en **dos puntos**: el proveedor del seam gatea el **interruptor**
+  (`DishImageSettings.generatedIfEnabled`; apagado = `null` **sin leer caché, semilla ni generar**) y el
+  generador real va envuelto por `GatedDishImageGenerator`, que impone el **tope de generaciones por
+  sesión** en el borde de generación (una unidad por petición al proveedor, `null` sin invocar al
+  delegado cuando está agotado; los aciertos de memoria/disco/semilla no lo consumen). `MainShell` reparte
+  el interruptor como `imageBackground` a `HomeScreen`, `ResultsScreen`, `FavoritesScreen` y al Detalle
+  (default `false` = ficha/hero aceptados). Las constantes viven en un único sitio
   (`DishImageSettingsPolicy`: `DEFAULT_ENABLED = true`, `MAX_GENERATIONS_PER_SESSION = 12`) y el estado
   observable (`DishImageSettings.state`, un `StateFlow`) alimenta la sección "Imágenes del plato" del
   Perfil. El ajuste es **de sesión** (vida del proceso, sin persistir): al reiniciar vuelve a activado
-  y el contador a 12. Ver `docs/specs/dish-image-progressive-ui.md` y
-  `docs/specs/dish-image-settings-toggle.md`.
+  y el contador a 12. Ver `docs/specs/dish-image-progressive-ui.md`,
+  `docs/specs/dish-image-settings-toggle.md` y `docs/specs/dish-artwork-as-card-background.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
@@ -897,11 +910,17 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   `DishImageResolverTest`, los escenarios de la semilla (gana al generador con **0** llamadas y **0**
   ficheros en la caché, la segunda resolución no relee el asset, el disco gana a la semilla, `seed =
   null` reproduce la fase 3, y `null`/vacío/excepción degradan con la cancelación relanzada).
-- **Tests JVM de la carga progresiva de imagen (fase 4, `ui.artwork`)**: `RecipeArtworkImagePrecedenceTest`
-  (precedencia pura con `String`: generada → `GENERATED`, local → `LOCAL`, ninguna → `FALLBACK`, y
-  `crossfadeTarget` `1f`/`0f`; desde `dish-image-prompt-v2`, `originOf` cubre las cuatro capas del
-  diagnóstico —`SEED` solo cuando el resolutor lo registró, `GENERATED` en el resto de casos con
-  generada, `CATEGORY` con foto local y `GLYPH` sin ninguna—) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
+- **Tests JVM de la carga progresiva y de la capa de fondo (fases 4 y
+  `dish-artwork-as-card-background`, `ui.artwork`)**: `RecipeArtworkImagePrecedenceTest` (precedencia
+  pura con `String` de **dos** capas: generada → `GENERATED`, sin generada → `TYPOGRAPHIC`, y
+  `crossfadeTarget` `1f`/`0f`; `originOf` cubre el diagnóstico —`SEED` solo cuando el resolutor lo
+  registró, `GENERATED` con generada y `GLYPH` sin ella—), `DishImageArtworkOverlayTest` (ratio del hueco
+  L2 `16f/9f`, `headingOnImage`/`watermarkVisible` por capa —excluyentes— y alfa derivado de la
+  precedencia), `RecipeBackgroundGateTest` (tal como lo cablea `MainActivity`: apagado → `null` con **0**
+  invocaciones del resolutor; encendido con imagen → `GENERATED` con alfa objetivo `1f`; encendido sin
+  imagen o con códec roto → `TYPOGRAPHIC`; resolución lenta que cae a `null` → `TYPOGRAPHIC`;
+  `CancellationException` propagada; tope agotado en `GatedDishImageGenerator` → `null` sin invocar al
+  delegado) y `DishImageArtworkLoaderTest` (con resolutor y decodificador **falsos**:
   misma clave canónica resuelta y decodificada una sola vez, `null`/array vacío/códec roto → `null`
   **sin cachear**, máximo de **2** resoluciones en vuelo con tres peticiones simultáneas, LRU acotado que
   descarta la menos usada y `CancellationException` propagada), más `GeneratedRecipeArtworkSourceTest`

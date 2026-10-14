@@ -79,6 +79,7 @@ fun FavoritesScreen(
     onToggleFavorite: (Recipe) -> Unit,
     onExplore: () -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var sort by rememberSaveable(stateSaver = FavoritesSortSaver) {
@@ -150,6 +151,7 @@ fun FavoritesScreen(
                                 onClick = { onOpenRecipe(favorite.recipe) },
                                 onRemove = { onToggleFavorite(favorite.recipe) },
                                 modifier = Modifier.weight(1f),
+                                imageBackground = imageBackground,
                             )
                         }
                         if (row.size == 1) {

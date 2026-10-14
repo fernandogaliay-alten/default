@@ -138,8 +138,11 @@ fun MainShell(
     // Conectividad observada (unica dependencia externa de la Home); inicial optimista (true).
     val isOnline by networkStatusSource.observe().collectAsState(initial = true)
     // Ajuste de imagen de plato (interruptor + tope por sesion): el host lo **observa** (patron de
-    // `networkStatusSource`) y pasa el estado y el callback a la seccion de Perfil.
+    // `networkStatusSource`) y pasa el estado y el callback a la seccion de Perfil. Ademas reparte el
+    // interruptor como `imageBackground` a las tarjetas, la rejilla de Favoritos y el hero del Detalle
+    // (estructura L2); apagado, la capa de fondo ni se lee (el gate vive en `MainActivity`).
     val imageGeneration by dishImageSettings.state.collectAsState()
+    val imageBackground = imageGeneration.enabled
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
     }
@@ -192,6 +195,7 @@ fun MainShell(
                                 navigation = navigation.push(PushedScreen.GENERATOR)
                             },
                             onOpenRecipe = { detailRecipe = it },
+                            imageBackground = imageBackground,
                         )
 
                         MainTab.FAVORITES -> FavoritesScreen(
@@ -202,6 +206,7 @@ fun MainShell(
                                 scope.launch { favoriteService.toggle(recipe) }
                             },
                             onExplore = { navigation = navigation.selectTab(MainTab.HOME) },
+                            imageBackground = imageBackground,
                         )
 
                         MainTab.PROFILE -> ProfileScreen(
@@ -247,6 +252,7 @@ fun MainShell(
                     onClose = { navigation = navigation.pop() },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                     onOpenRecipe = { detailRecipe = it },
+                    imageBackground = imageBackground,
                 )
             }
 
@@ -264,6 +270,7 @@ fun MainShell(
                     onOpenRecipe = { detailRecipe = it },
                     onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
                     onCreateRecipe = { navigation = navigation.push(PushedScreen.GENERATOR) },
+                    imageBackground = imageBackground,
                 )
             }
         }
@@ -279,6 +286,7 @@ fun MainShell(
                 onStartCooking = { cookingRecipe = recipe },
                 onBack = { detailRecipe = null },
                 modifier = Modifier.fillMaxSize(),
+                imageBackground = imageBackground,
             )
         }
 

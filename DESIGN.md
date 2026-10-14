@@ -75,7 +75,10 @@ components:
     position: "capa de fondo del hueco, solo con el ajuste de imágenes encendido"
     ratio: "16:10 (tarjeta completa) y 16:9 (héroe y tarjeta L2)"
     rounded: "{rounded.md}"
-    scrim: "degradado de contraste bajo el texto blanco"
+    scrim: "degradado de contraste bajo el texto blanco (claro rgba(20,12,8,.42/.18/.78), oscuro rgba(10,6,4,.5/.22/.82))"
+    overImageText: "#FFFFFF"
+    overImageTextVariant: "rgba(255,255,255,.86)"
+    overImageHairline: "rgba(255,255,255,.32)"
   recipe-tile-favorites:
     size: "96x96"
     backgroundColor: "{colors.surfaceVariant}"
@@ -305,13 +308,18 @@ nada lo es.
 - **RecipeListCard** (horizontal): **miniatura 96x96 con el monograma** de iniciales sobre
   `surfaceVariant` y la regla terracota de 5px a la izquierda, texto a la derecha, corazón a
   la derecha.
-- **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork`, `recipe-photos` y
-  `dish-image-*`): la **capa base es la ficha tipográfica** del `RecipeCard`, no una foto.
-  `RecipeArtwork` aporta la **capa de fondo** del hueco y solo cuando existe imagen:
-  - **Variante L2** (la aceptada, ADR 0006): la imagen ocupa la parte superior (16:9 en las tarjetas y en
-    el héroe) con un `scrim` de contraste y la **categoría y el título encima**; los ingredientes con
-    cantidad y los metadatos van en una **banda sólida** con los tokens de superficie.
-  - **Sin imagen**: queda la ficha tipográfica, con una **marca de agua** del glifo de la categoría al
+- **Imagen de receta** (`ui.artwork.RecipeArtwork`, features `recipe-artwork`, `recipe-photos`,
+  `dish-image-*` y `dish-artwork-as-card-background`): la **capa base es la ficha tipográfica** del
+  `RecipeCard`/hero, no una foto. `RecipeArtwork` es el **proveedor de la capa de fondo** del hueco y del
+  hero (implementado, ADR 0006) y solo aporta algo cuando existe imagen:
+  - **Variante L2** (la aceptada e **implementada**, ADR 0006): la imagen ocupa la parte superior (16:9 en
+    las tarjetas y en el héroe) con un `scrim` de contraste y la **categoría y el título encima**; los
+    ingredientes con cantidad y los metadatos van en una **banda sólida** con los tokens de superficie.
+    Sus **dos** consumidores son el hueco de `RecipeFicha` (tarjeta estrecha/ancha/rejilla, banda sólida) y
+    el hero del Detalle; `MainShell` reparte el interruptor como `imageBackground` (default `false` = ficha
+    y hero aceptados).
+  - **Sin imagen**: queda la ficha tipográfica (color de superficie o degradado del hero), con una
+    **marca de agua** del glifo de la categoría al
     12 % en la esquina inferior derecha, para que dos recetas de la misma categoría y cocina no se vean
     idénticas.
   - **Cuándo hay imagen**: solo si el ajuste **"Generar imágenes del plato"** está encendido y el
@@ -320,22 +328,30 @@ nada lo es.
     sesión, se queda la tipografía, sin microcopy ni estado de error.
   - La imagen entra con el **crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`) sobre la
     tipografía: **nunca hay hueco, frame en blanco ni salto de layout**.
+  - **`scrim` y texto sobre imagen** (`ui/theme/CardImageOverlay.kt`, único sitio con esos valores; 0 hex
+    en `ui/artwork`): el `scrim` es un degradado vertical de contraste —claro
+    `rgba(20,12,8,.42)`/`.18` al 52 %/`.78`, oscuro `rgba(10,6,4,.5)`/`.22`/`.82`— y la tipografía sobre
+    la imagen usa **blanco** (`#FFFFFF`), blanco al 86 % para la categoría en versalitas y hairline blanco
+    al 32 % para las filas de ingredientes del hero. El ratio **16:9** del hueco L2 y las decisiones
+    (`headingOnImage`, `watermarkVisible`, alfa derivado) son la lógica pura
+    `ui/artwork/DishImageArtworkOverlay`.
 
-  > Los apartados siguientes describen el detalle **ya implementado** de la cadena local de fotos y del
-  > nivel generado. Con ADR 0006 la **cadena local se retira** (`retire-recipe-photos`) y el nivel
-  > generado pasa a ser **capa de fondo**. El glifo y el acento por cocina siguen vigentes como marca de
-  > agua, filete y último recurso.
-  - **Cadena de respaldo local (retirada, ADR 0006)**: `data.RecipePhotoAssets` resolvía foto propia de
+  > Los apartados siguientes conservan la referencia de la **identidad visual** (glifo + acento) y de la
+  > cadena de imagen; con ADR 0006 la **cadena local de fotos se retira** (`retire-recipe-photos`) y, desde
+  > `dish-artwork-as-card-background`, la tarjeta y el hero **ya no la leen**.
+  - **Cadena de respaldo local (sin lectores, ADR 0006)**: `data.RecipePhotoAssets` resolvía foto propia de
     la receta semilla (`seed/<id>.<ext>`) → foto de su categoría (`category/cat-<categoryId>.<ext>`) →
     foto genérica (`default.<ext>`) → glifo. Con `retire-recipe-photos` esa cadena **desaparece**: la
     foto de categoría es la que no corresponde al plato, y salen del APK **30 de los 31 assets**
     (~6,2 MiB): se **conserva** `default.<ext>` (~136 KB) como ancla de estilo de `dish-style-reference`,
-    que no se muestra en ninguna pantalla (OQ7).
-  - La foto se recorta con `ContentScale.Crop` y conserva la geometría aceptada (16:10 de las tarjetas,
-    96x96 y alto 96 de Favoritos, hero de 240 del Detalle); no cambian esquinas ni tamaños. La imagen
+    que no se muestra en ninguna pantalla (OQ7). Desde `dish-artwork-as-card-background` la tarjeta y el
+    hero **dejan de leerla**; el proveedor `LocalRecipePhotoSource` se conserva en `MainActivity` solo
+    hasta su retirada.
+  - La **imagen** se recorta con `ContentScale.Crop` y conserva la geometría aceptada (16:9 del hueco L2,
+    hero de 240 del Detalle); no cambian esquinas ni tamaños. La imagen
     es **decorativa** (`contentDescription = null`): el título de la receta ya se anuncia.
-  - **Último recurso** (degradado + glifo): el **glifo** identifica la categoría (`categoryId`) y el
-    **acento del degradado** la cocina (`cuisineId`), de modo que dos recetas de la misma categoría y
+  - **Identidad visual de reserva** (glifo + acento): el **glifo** identifica la categoría (`categoryId`) y
+    el **acento del degradado** la cocina (`cuisineId`), de modo que dos recetas de la misma categoría y
     distinta cocina no se ven iguales:
     - Glifo por categoría (18, la Taxonomía real): `pasta`, `rice`, `soup_cream`, `salad`, `meat`,
       `poultry`, `fish_seafood`, `vegetarian`, `vegan`, `legume_stew`, `pizza_bread`, `egg_breakfast`,
@@ -360,26 +376,30 @@ nada lo es.
 
     - **Fallback total**: un id nulo, vacío o desconocido pinta el **plato** (dos círculos concéntricos)
       con el degradado **melocotón→oliva** (`DEFAULT`) de siempre; nunca un bloque vacío ni una excepción.
-    - El glifo se tiñe con `onSurfaceVariant` y el componente no fija forma: mantiene el 16:10 de las
-      tarjetas (`RecipeCard` 48 dp de glifo, `ResultRecipeCard` 56), el 96x96 y el alto 96 de Favoritos
-      (40) y el hero de 240 del Detalle (72).
-  - Es el **único punto a cambiar** para la imagen de receta: la fuente de la foto se inyecta por
-    `LocalRecipePhotoSource`, así que los 5 puntos de uso no conocen ni el asset ni Android. Ver
+    - El glifo se tiñe con `onSurfaceVariant` y el componente no fija forma: la **marca de agua** mide
+      **150 dp** en la tarjeta y **190 dp** en el hero (desbordando por la esquina inferior derecha,
+      recortada por el `clip`); el filete de 6 px va al pie del hueco y del hero.
+  - La imagen se inyecta por el seam `LocalGeneratedRecipeArtworkSource`, así que los llamantes no conocen
+    ni el asset ni Android; la **foto local** deja de leerse (el proveedor `LocalRecipePhotoSource` se
+    conserva en `MainActivity` hasta `retire-recipe-photos`). Ver
     `docs/adr/0004-recipe-photos-as-assets.md` y `docs/technical-discovery.md`.
-  - **Imagen generada (nivel por delante) y crossfade estándar** (feature `dish-image-progressive-ui`,
-    fase 4): `RecipeArtwork` lee un **segundo seam** (`LocalGeneratedRecipeArtworkSource`; por defecto
-    no produce imagen) y pide en paralelo la imagen del plato; cuando llega, **la superpone a la foto
-    local con un crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`, en un único sitio).
-    La foto local (o el degradado + glifo) es la **capa base**, que se pinta **siempre**: nunca hay
-    hueco ni frame en blanco. Si la generación falla, tarda, se cancela o no hay red, se **conserva la
-    foto local** (degradación silenciosa, contrato `null` del ADR 0005). No hay microcopy, token ni
-    estado visual nuevos y la firma, la geometría y los 5 puntos de uso no cambian.
+  - **Carga progresiva y crossfade estándar** (fase 4, `dish-image-progressive-ui`): `RecipeArtwork` lee
+    el seam de la **imagen generada** (`LocalGeneratedRecipeArtworkSource`; por defecto no produce imagen),
+    pinta la imagen con `ContentScale.Crop` y **su `scrim`** con un alfa animado (`animateFloatAsState`,
+    crossfade de **250 ms**, `DishImageArtworkPolicy.CROSSFADE_MILLIS`, en un único sitio) y deja la
+    tipografía al **slot de contenido** del llamante, que recibe la capa resuelta. La **capa base**
+    (ficha/hero tipográficos) se pinta **siempre**: nunca hay
+    hueco ni frame en blanco. Si la generación falla, tarda, se cancela o no hay red, se **conserva
+    la tipografía** (degradación silenciosa, contrato `null` del ADR 0005). No hay microcopy ni estado
+    visual nuevos; la firma `(recipe, modifier, glyphSize)` y la geometría no cambian y los consumidores
+    son **dos** (hueco y hero).
   - **Cadena de imagen en runtime**: `ui.artwork.RecipeArtwork` → `LocalGeneratedRecipeArtworkSource` →
     `DishImageArtworkLoader` (límite de **2** resoluciones en vuelo y LRU de **16** imágenes
     decodificadas) → `data.image.DishImageResolver` → `FileDishImageCache` (80 MiB en
-    `cacheDir/dish-images`) / `MemoryDishImageCache` / `data.ai.image.DevExpertDishImageGenerator`; en
-    paralelo, la cadena local `LocalRecipePhotoSource` → `data.AssetRecipePhotoSource` como **respaldo**
-    (y el degradado + glifo como **último recurso**). El proveedor del seam (en `MainActivity`) **gatea
+    `cacheDir/dish-images`) / `MemoryDishImageCache` / **assets semilla** /
+    `data.ai.image.DevExpertDishImageGenerator`; la cadena local
+    `LocalRecipePhotoSource` → `data.AssetRecipePhotoSource` **ya no es un respaldo de la imagen de
+    receta** (la tarjeta y el hero no la leen). El proveedor del seam (en `MainActivity`) **gatea
     el interruptor** (`DishImageSettings.generatedIfEnabled`: apagado = `null` sin leer caché ni
     generar) y el generador real va envuelto por `GatedDishImageGenerator`, que impone el **tope por
     sesión** (`DishImageSettingsPolicy.MAX_GENERATIONS_PER_SESSION`) en el borde de generación:

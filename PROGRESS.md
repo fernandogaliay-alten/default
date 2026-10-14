@@ -41,6 +41,15 @@
   `ui/theme`, contrato `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` con el tinte cálido y
   tests JVM de contraste WCAG; **ninguna** pantalla la consume todavía) a la espera de **validación
   independiente**. Las otras cuatro features del ADR 0006 siguen `not_started`.
+- Cuarta feature del ADR 0006 implementada y autoverificada (sesión 109): **`dish-artwork-as-card-background`**
+  (`area: integration`) queda **`passing`** en su worktree `feature/dish-artwork-as-card-background`
+  (imagen generada como capa de fondo opcional del hueco de la tarjeta —16:9— y del hero —240—, con
+  `scrim` de contraste y banda sólida; `RecipeArtwork` pasa a ser el **proveedor de la capa de fondo** con
+  la ficha tipográfica como capa base y **dos** consumidores; precedencia reducida a dos capas; tokens del
+  `scrim`/texto sobre imagen en `ui/theme/CardImageOverlay`; el interruptor y el tope por sesión se
+  respetan sin cambios) a la espera de **validación independiente**. Segunda y tercera
+  (`recipe-card-typographic` y `recipe-detail-typographic-header`) ya `accepted`; queda **`not_started`**
+  la quinta, `retire-recipe-photos` (depende de esta).
 - Siguiente feature en orden de lista: **ninguna**; `real-ai-provider` fue la última feature del plan y
   quedó `accepted` en la sesión 067 (validación independiente, rama `feature/real-ai-provider`). El commit
   local lo hace el orquestador de `feature-flow` y la publicación queda para `github-flow`. Después se
@@ -615,6 +624,41 @@
   **prueba manual** de la persona tras el merge (logcat `SazonDishImage` con
   `GENERATED`/`SEED`/`CATEGORY`) y el **pendiente separado** del tope de 12 por sesión / manejo del
   `429`.
+- Última feature **`accepted`** — **`dish-artwork-as-card-background`** (`area: integration`, **cuarta**
+  feature del ADR 0006, variante **L2**): implementada y autoverificada (**`passing`**) en la **sesión 109**
+  y **`accepted`** en la **sesión 110** (validación independiente, veredicto **`accept`**, rama
+  `feature/dish-artwork-as-card-background`; el commit local lo crea el orquestador de `feature-flow` y la
+  publicación queda para `github-flow`, **sin** commit/push/PR del implementer). La imagen generada pasa a
+  **capa de fondo opcional** del hueco de la tarjeta y del hero del Detalle: `RecipeArtwork` deja de ser
+  "la imagen de la receta" y pasa a ser el **proveedor de la capa de fondo** (imagen con `ContentScale.Crop`
+  y alfa animado + `scrim` de contraste encima de la imagen y debajo de la tipografía; firma
+  `(recipe, modifier, glyphSize)`, geometría y `glyphSize` reservados, slot de contenido aditivo) y deja de
+  leer `LocalRecipePhotoSource` y de pintar el degradado/glifo de respaldo; `RecipeArtworkImagePrecedence`
+  queda en **dos** capas (`TYPOGRAPHIC`/`GENERATED`, `DishImageOrigin.CATEGORY` sin productor) y aparecen la
+  lógica pura `ui/artwork/DishImageArtworkOverlay.kt` (`HOLE_RATIO = 16f/9f`, `headingOnImage`,
+  `watermarkVisible`, `crossfadeAlpha`) y el único hogar de tokens `ui/theme/CardImageOverlay.kt`
+  (`scrim` claro/oscuro y texto sobre imagen). `RecipeFicha` gana `imageBackground: Boolean = false`
+  (`true` = hueco **16:9** + `RecipeArtwork` + **banda sólida** con los tres ingredientes con cantidad y
+  metadatos; `false` = ficha aceptada idéntica) y el flag se reparte desde
+  `MainShell`→`HomeScreen`/`FavoritesScreen` y, por un **hallazgo de alcance** registrado en la spec,
+  también por `GeneratorFlow`/`AiSearchFlow` hasta `ResultsScreen`; `DetailHero` usa la misma capa con
+  `HERO_HEIGHT_DP = 240` y la tira de metadatos intactas. Apagado = **0** consultas (ni caché, ni set
+  semilla, ni generador) y fallo/timeout/cancelación/tope agotado → ficha tipográfica silenciosa; el
+  **interruptor** y el **tope por sesión** (`dish-image-settings-toggle`) no se tocan y el fundido sigue en
+  `DishImageArtworkPolicy.CROSSFADE_MILLIS` (250). Gate: `bash init.sh` exit 0, **98 suites / 742 tests /
+  0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD` 96/730; delta **+2 suites / +12
+  tests**: `DishImageArtworkOverlayTest` 5, `RecipeBackgroundGateTest` 6, `RecipeArtworkImagePrecedenceTest`
+  5), lint 0 errores y 13 warnings preexistentes (ninguno bajo `app/src`); capturas obligatorias
+  (8 ficheros de `docs/design/concepts/dish-artwork-as-card-background/{tarjeta-con-imagen,detalle-con-imagen}/`)
+  aportadas por la persona, de solo lectura y sin modificar; sin dependencias nuevas y sin diff en
+  `domain/**`, `data/**`, `assets/**`, build/lockfile, `init.sh` ni `scripts/**`. Docs durables: `DESIGN.md`,
+  `docs/technical-discovery.md`, `docs/adr/0006` (cuarta feature implementada), `docs/domain/taxonomy.md` §6
+  y `docs/risks-and-open-questions.md`. Detalle en
+  `docs/validations/dish-artwork-as-card-background.md`. **WIP = 0.** Nueva incógnita abierta (no
+  bloqueante): el **transitorio** de 250 ms cambia el tratamiento y la marca de agua de forma instantánea
+  mientras el alfa anima; la revisión visual de la persona (variantes estrecha y compacta, extrapoladas sin
+  captura, y contraste del título sobre una foto arbitraria) sigue pendiente tras el merge. La quinta feature
+  del ADR 0006, **`retire-recipe-photos`** (`area: data`), queda desbloqueada y es la siguiente del plan.
 
 ## Registro de sesiones
 
@@ -4422,3 +4466,139 @@
   propias) y la confirmación de la exención de capturas antes de planificarse. Sus dependencias
   (`home-suggestions-personalized`, `recipe-photos`) ya están `accepted`; todavía no tiene spec.
   Registrado en `feature_list.json` (rama `chore/seed-catalog-50-blocked`).
+
+### Sesión 109
+
+- Fecha: 2026-10-14
+- Objetivo: implementar `dish-artwork-as-card-background` (`area: integration`, cuarta feature del
+  ADR 0006, variante **L2**) según `docs/specs/dish-artwork-as-card-background.md`, en la rama
+  `feature/dish-artwork-as-card-background` (worktree); solo hasta implementación y autoverificación
+  (`passing`), **sin commit/push/PR** (los hace el orquestador). Gate de UI satisfecho: las capturas
+  obligatorias `docs/design/concepts/dish-artwork-as-card-background/{tarjeta-con-imagen,detalle-con-imagen}/`
+  ya existían y son de solo lectura.
+- Completado:
+  - `ui/artwork/RecipeArtwork.kt` reconducido a **proveedor de la capa de fondo**: pinta la imagen
+    generada (`ContentScale.Crop`) con `alpha` animado (`animateFloatAsState` + `tween(CROSSFADE_MILLIS)`) y
+    el **`scrim`** de contraste con el mismo alfa **encima** de la imagen y **debajo** de la tipografía;
+    firma `(recipe, modifier, glyphSize)` y geometría conservadas (`glyphSize` reservado), **slot de
+    contenido aditivo** que recibe la capa resuelta, **sin** `LocalRecipePhotoSource` ni degradado/glifo de
+    respaldo. Diagnóstico de origen intacto (llamada lateral).
+  - `ui/artwork/RecipeArtworkImagePrecedence.kt` reducida a **dos capas** (`TYPOGRAPHIC`/`GENERATED`);
+    `layerOf(generated)`, `crossfadeTarget(generated)` y `originOf(generated, resolvedOrigin)` (sin `LOCAL`;
+    `CATEGORY` queda sin productor).
+  - `ui/artwork/DishImageArtworkOverlay.kt` **nuevo** (puro, sin Compose ni Android): `HOLE_RATIO = 16f/9f`,
+    `headingOnImage`, `watermarkVisible` y `crossfadeAlpha` derivado de la precedencia.
+  - `ui/theme/CardImageOverlay.kt` **nuevo**: único sitio con el `scrim` claro/oscuro
+    (`rgba(20,12,8,.42/.18/.78)` / `rgba(10,6,4,.5/.22/.82)`) y el texto sobre imagen (`#FFFFFF`, blanco al
+    86 % y hairline blanco al 32 %).
+  - `RecipeFicha` gana `imageBackground: Boolean = false`; con `true` usa la estructura **L2**: hueco
+    **16:9** (base tipográfica + `RecipeArtwork` + contenido del slot) y **banda sólida** con los
+    ingredientes con cantidad (tres filas; la celda `compact` conserva una línea y sin metadatos). Con
+    `false` la ficha aceptada **idéntica**. `RecipeCard`/`ResultRecipeCard`/`FavoriteRecipeTile` reenvían el
+    flag.
+  - `DetailHero` pinta `RecipeArtwork` como capa de fondo y usa el tratamiento sobre imagen; `HERO_HEIGHT_DP`
+    = 240 intacta; la tira de metadatos no cambia.
+  - `HomeScreen`/`ResultsScreen`/`FavoritesScreen` reciben y reenvían el flag; `MainShell` reparte
+    `dishImageSettings.state.enabled`. **Hallazgo de alcance** (registrado en la spec): `ResultsScreen` no lo
+    monta `MainShell` directamente, sino `GeneratorFlow` y `AiSearchFlow`, así que el flag los atraviesa con
+    un parámetro aditivo (default `false`); sin ellos Resultados se quedaría siempre en `false`.
+  - Tests JVM nuevos: `DishImageArtworkOverlayTest` 5, `RecipeBackgroundGateTest` 6 (escenarios 1-5:
+    apagado → `null` con 0 invocaciones del resolutor; encendido con imagen → `GENERATED` alfa `1f`; sin
+    imagen/códec roto/lento → `TYPOGRAPHIC`; `CancellationException` propagada; tope agotado → `null` sin
+    invocar al delegado) y `RecipeArtworkImagePrecedenceTest` actualizado a dos capas (5).
+  - Docs durables: `DESIGN.md` (frontmatter `recipe-card-image` con los tokens del `scrim` y del texto sobre
+    imagen; sección *Imagen de receta* reconciliada a L2 y a la capa base tipográfica, cadena local sin
+    lectores), `docs/technical-discovery.md`, `docs/adr/0006` (cuarta feature implementada),
+    `docs/domain/taxonomy.md` §6 y `docs/risks-and-open-questions.md`.
+- Verificación ejecutada: baselines re-derivadas en `HEAD` (`git grep -c '@Test'` → 96 ficheros / 730
+  anotaciones). Tiradas focales `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.artwork.*"`
+  y `--tests "com.sazon.app.ui.*"` → `BUILD SUCCESSFUL`. Gate `bash init.sh` → **exit 0** (test 1m41s +
+  lint 2m01s, vía `scripts/gradle.sh`, sin procesos largos; `init.sh` intacto). Parseo propio de
+  `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **98 suites / 742 tests / 0 fallos / 0 errores /
+  0 saltados** (delta **+2 suites / +12 tests**). SARIF `app/build/reports/lint-results-debug.sarif`:
+  **0 errores** y **13 warnings** preexistentes de entorno (GradleDependency 7, NewerVersionAvailable 3,
+  AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo `app/src`**.
+- Ficheros creados/cambiados: `ui/artwork/{RecipeArtwork.kt,RecipeArtworkImagePrecedence.kt}` (modificados),
+  `ui/artwork/DishImageArtworkOverlay.kt` (nuevo), `ui/theme/CardImageOverlay.kt` (nuevo),
+  `ui/home/{RecipeFicha,RecipeCard,HomeScreen}.kt`, `ui/results/{ResultRecipeCard,ResultsScreen}.kt`,
+  `ui/favorites/{FavoriteRecipeCard,FavoritesScreen}.kt`, `ui/detail/RecipeDetailScreen.kt`,
+  `ui/MainShell.kt`, `ui/generator/GeneratorFlow.kt`, `ui/search/AiSearchFlow.kt`,
+  `app/src/test/java/com/sazon/app/ui/artwork/{DishImageArtworkOverlayTest.kt,RecipeBackgroundGateTest.kt}`
+  (nuevos) y `RecipeArtworkImagePrecedenceTest.kt` (modificado), más `DESIGN.md`,
+  `docs/technical-discovery.md`, `docs/adr/0006`, `docs/domain/taxonomy.md`,
+  `docs/risks-and-open-questions.md`, la spec (hallazgo), `feature_list.json` y este registro.
+- Inspección: `DishImageArtworkOverlay.kt` sin imports `android`/`androidx`; **0 hex** en `ui/artwork` (viven
+  en `ui/theme/CardImageOverlay.kt`); `RecipeArtwork(` = definición + **2** consumidores (hueco y hero);
+  `LocalRecipePhotoSource` solo en `MainActivity.kt` (provider conservado) y `RecipePhotoSource.kt`;
+  capturas de `docs/design/concepts/dish-artwork-as-card-background/**` **sin modificar**; sin diff en
+  `domain/**`, `data/**` (ajuste/tope), `assets/**`, `app/build.gradle.kts`, `gradle/**`, `init.sh` ni
+  `scripts/**`; sin dependencias nuevas.
+- Riesgo/incógnita abierta: **revisión visual de la persona** (emulador, tras el merge) de la tarjeta
+  **estrecha** del carrusel y la **compacta** de la rejilla con la banda L2 (extrapolación: las capturas solo
+  cubren la ancha de Resultados y el hero) y del contraste del título sobre una foto arbitraria (el `scrim`
+  no es medible en JVM). OQ6 (¿sube el carrusel a 3:2?) sigue abierta. Un defecto visual se corrige con una
+  feature correctiva.
+- Siguiente paso: validación independiente de `dish-artwork-as-card-background` con `feature-validator`;
+  después, commit local (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`. La
+  quinta feature del ADR 0006 (`retire-recipe-photos`) espera a que ésta quede `accepted`.
+
+### Sesión 110
+
+- Fecha: 2026-10-14
+- Objetivo: cerrar `dish-artwork-as-card-background` (`area: integration`, cuarta feature del ADR 0006,
+  variante **L2**) con validación independiente y commit local, en el worktree
+  `feature/dish-artwork-as-card-background`. Solo `feature-flow`: **sin push y sin PR** (publica
+  `github-flow`).
+- Completado:
+  - Validación independiente (`validator`, contexto limpio, sin reutilizar la evidencia del implementer):
+    veredicto **`accept`**. Re-ejecutó `bash init.sh` (exit 0, pero `testDebugUnitTest`/`lint` en
+    `UP-TO-DATE`) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 3m34s,
+    34/34 tareas `executed`) y `bash scripts/gradle.sh lint --rerun-tasks` (BUILD SUCCESSFUL 3m12s, 30/30);
+    parseó por su cuenta los XML frescos (**98 suites / 742 tests / 0 fallos / 0 errores / 0 saltados**;
+    `DishImageArtworkOverlayTest` 5/5, `RecipeBackgroundGateTest` 6/6, `RecipeArtworkImagePrecedenceTest`
+    5/5) y el SARIF (13 resultados, **0 errores**, **0 bajo `app/src`**). Re-derivó la baseline en `HEAD`
+    (`git grep -c '@Test' HEAD` = 96 ficheros / 730 anotaciones) ⇒ delta **+2 suites / +12 tests**.
+  - Contraste de los 8 escenarios contra código y tests (apagado → `null` con **0** llamadas al resolutor y
+    `RecipeArtwork` ni se compone; encendido con imagen → `GENERATED`/alfa `1f`/`Crop`/`scrim`; sin imagen,
+    códec roto, lento, cancelado o tope agotado → `TYPOGRAPHIC` silencioso con `CancellationException`
+    propagada; hueco **16:9** y hero 240 **sin salto**; fundido desde la única constante
+    `DishImageArtworkPolicy.CROSSFADE_MILLIS` 250; firma `(recipe, modifier, glyphSize)` con `content`
+    aditivo y **2** consumidores), la pureza (0 imports `android`/`androidx` en `DishImageArtworkOverlay`;
+    **0 hex** en `ui/{artwork,home,detail,results,favorites}`, solo en `ui/theme/CardImageOverlay.kt`) y la
+    disciplina de alcance (0 diff en `domain/**`, `data/**` con interruptor y tope intactos, `assets/**`,
+    build/gradle, `init.sh`, `scripts/**`, `docs/design/concepts/**`, `taxonomy.json`; las **8 capturas**
+    intactas; sin dependencias nuevas). Confirmó que el implementer **no** hizo commit/push/PR
+    (`HEAD == origin/main == 4ba6a7c`).
+  - La frase heredada de `verification` sobre los "cinco puntos de uso" se interpretó como **compatibilidad
+    de contrato** (§1 de la spec) y se cumple con los 2 consumidores nuevos.
+  - Sin hallazgos **Critical/High/Medium**; 3 **Low** informativos no bloqueantes (el test de resolución
+    lenta usa tiempo virtual y solo verifica `null → TYPOGRAPHIC`; `CardImageOverlay.scrimStops` es API
+    pública sin uso; KDoc obsoleto de `DishImageArtworkLoader.kt` que cita la cadena local) e informativos
+    (variantes estrecha/compacta extrapoladas sin captura con OQ6 abierta, transitorio de 250 ms,
+    `LocalRecipePhotoSource` sin lectores y `DishImageOrigin.CATEGORY` sin productor hasta
+    `retire-recipe-photos`). Sin hallazgos de seguridad (mismo interruptor y tope con 0 diff; apagado corta
+    antes de caché, red y cuota). Detalle en `docs/validations/dish-artwork-as-card-background.md`.
+  - Aceptación persistida por el orquestador: `feature_list.json` → `accepted` con la evidencia del
+    validator, bullet de estado y este registro en `PROGRESS.md`, y **commit local**
+    (`feat: complete dish-artwork-as-card-background`) en la rama
+    `feature/dish-artwork-as-card-background`.
+- Verificación ejecutada: la del validador independiente (arriba), más `git status`/`git diff` del
+  orquestador para aislar los ficheros de la feature antes del commit.
+- Ficheros creados/cambiados: los de la sesión 109 (`ui/artwork/{RecipeArtwork,RecipeArtworkImagePrecedence,DishImageArtworkOverlay}.kt`,
+  `ui/theme/CardImageOverlay.kt`, `ui/home/{RecipeFicha,RecipeCard,HomeScreen}.kt`,
+  `ui/results/{ResultRecipeCard,ResultsScreen}.kt`, `ui/favorites/{FavoriteRecipeCard,FavoritesScreen}.kt`,
+  `ui/detail/RecipeDetailScreen.kt`, `ui/MainShell.kt`, `ui/generator/GeneratorFlow.kt`,
+  `ui/search/AiSearchFlow.kt`, los 3 tests de `ui/artwork`, `DESIGN.md`, `docs/technical-discovery.md`,
+  `docs/adr/0006`, `docs/domain/taxonomy.md`, `docs/risks-and-open-questions.md`), más
+  `docs/specs/dish-artwork-as-card-background.md`, `docs/validations/dish-artwork-as-card-background.md`,
+  `feature_list.json` y este registro. Capturas sin cambios.
+- Hallazgos relevantes: `accept` en la primera validación (sin ciclo `revise`); los 3 hallazgos Low no
+  exigen re-validación y encajan en `retire-recipe-photos`.
+- Riesgo o incógnita abierta: **revisión manual de la persona** en el emulador (tras el merge) de Inicio,
+  Resultados, Favoritos (rejilla y lista) y Detalle en los tres estados (apagado / encendido con imagen /
+  encendido sin imagen por modo avión o tope agotado), con atención a las variantes **estrecha** y
+  **compacta** y al contraste del título durante el fundido; no automatizable desde WSL (`adb` de WSL no ve
+  el emulador). OQ6 (¿sube el carrusel a 3:2?) sigue abierta.
+- Siguiente paso: el orquestador de `github-flow` publica (push de `feature/dish-artwork-as-card-background`
+  + PR contra `main`, reutilizando la issue si existe, con `Closes #<n>`). Después, la siguiente feature del
+  plan es **`retire-recipe-photos`** (`area: data`, ya desbloqueada): rol **planner** (spec).

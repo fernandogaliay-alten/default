@@ -5,23 +5,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.recipe.Recipe
+import com.sazon.app.ui.theme.CardImageOverlay
+import com.sazon.app.ui.theme.LocalSazonCardColors
 
 /**
- * Tamaños por defecto de [RecipeArtwork]. El llamante puede pasar un `glyphSize` propio para
- * conservar la geometría ya aceptada de cada punto de uso (48/56/40/72 dp).
+ * Tamaños por defecto de [RecipeArtwork]. **Reservado** para compatibilidad de contrato: desde que la
+ * capa base tipografica y su marca de agua las pinta el llamante (la tarjeta 150 dp, el hero 190 dp),
+ * [RecipeArtwork] no usa este valor; se conserva el parametro para no romper la firma aceptada.
  */
 object RecipeArtworkDefaults {
     /** Tamaño del glifo de la tarjeta de receta (`RecipeCard`). */
@@ -29,125 +30,87 @@ object RecipeArtworkDefaults {
 }
 
 /**
- * Imagen de una receta, en **dos capas**:
+ * **Proveedor de la capa de fondo** de la imagen de una receta (ADR 0006, variante **L2**): pinta la
+ * **imagen generada** ([LocalGeneratedRecipeArtworkSource]) con `ContentScale.Crop` y, encima, el
+ * **`scrim`** de contraste, ambos con el **mismo alfa animado** (crossfade de
+ * [DishImageArtworkPolicy.CROSSFADE_MILLIS] sobre `RecipeArtworkImagePrecedence.crossfadeTarget`).
  *
- * **Capa base (nunca vacia)** — la **foto del plato**: una fotografia empaquetada como asset offline,
- * resuelta con `RecipePhotoAssets` (foto propia de la receta semilla → foto de su categoria → foto por
- * defecto) y leida/decodificada por `data.AssetRecipePhotoSource`, que se inyecta por
- * [LocalRecipePhotoSource]. Se pinta con `ContentScale.Crop`, de modo que llena el hueco del llamante
- * (16:10 de las tarjetas, 96x96 y alto 96 de Favoritos, hero de 240 del Detalle) sin cambiar su
- * geometria.
+ * Ya **no** es "la imagen de la receta": **no** pinta capa base propia (ni foto local ni degradado +
+ * glifo). La base es la **ficha tipografica del llamante** (color de la superficie de la tarjeta o el
+ * degradado de la cocina del hero + la marca de agua del glifo), de modo que el hueco **nunca** queda
+ * vacio, **nunca** cae en la foto de categoria y **no** hay salto de layout: la imagen solo cambia el
+ * alfa de esta capa (`0f` -> `1f`).
  *
- * **Capa superior — la imagen generada**: si hay proveedor ([LocalGeneratedRecipeArtworkSource]) y llega
- * una imagen para el plato, se superpone a la foto local con un **crossfade estandar**
- * ([DishImageArtworkPolicy.CROSSFADE_MILLIS]). Si falla, tarda, se cancela o no hay red, se **conserva
- * la foto local**: nunca un error ni un hueco.
+ * El slot [content] recibe la **capa resuelta** ([RecipeArtworkImageLayer]) y es donde el llamante
+ * pinta la tipografia del hueco (categoria + titulo; en el hero tambien las filas de ingredientes) con
+ * el tratamiento **sobre imagen** o **sobre superficie** ([DishImageArtworkOverlay.headingOnImage]) y la
+ * marca de agua **solo sin imagen** ([DishImageArtworkOverlay.watermarkVisible]). El slot tiene default
+ * no-op (aditivo y source-compatible): los llamantes historicos seguirian compilando.
  *
- * **Ultimo recurso**: si no hay ninguna foto disponible ([LocalRecipePhotoSource] no provee, no hay
- * asset o la decodificacion falla), la capa base pinta el **bloque con degradado** (acento por cocina)
- * y el **glifo de linea** (por categoria) de [RecipeArtworkStyle], dibujado con Compose y **sin
- * assets**.
+ * **Sin imagen** (`null`: sin red, sin clave, fallo, timeout, cancelacion o tope agotado) no pinta
+ * nada: la tipografia base del llamante queda visible (degradacion **silenciosa**). La cancelacion de
+ * la corrutina que resuelve la imagen se propaga.
  *
- * Es el **unico punto a cambiar** para la imagen de receta de los 5 puntos de uso, y no fija forma ni
- * tamaño: el `modifier` del llamante aporta el ratio/tamaño y el recorte (se aplica al `Box` externo;
- * las capas usan `matchParentSize()`), y las esquinas las redondea el contenedor padre o el `clip` del
- * llamante.
- *
- * Como **llamada lateral** (nunca una rama de pintado), notifica el **origen resuelto** de la imagen
- * ([RecipeArtworkImagePrecedence.originOf]) a [DishImageOriginDiagnostics]: eso es solo diagnostico
- * (en la app, una linea de logcat en debug) y el dibujo es identico con o sin el.
- *
- * @param glyphSize lado del cuadrado del glifo del fallback; por defecto
- *   [RecipeArtworkDefaults.GlyphSize].
+ * Conserva la firma `(recipe, modifier, glyphSize)` y **no** fija geometria (ratio ni tamaño): los
+ * aporta el `modifier` del llamante. Como llamada lateral (nunca rama de pintado) notifica el **origen
+ * resuelto** a [DishImageOriginDiagnostics] (solo diagnostico de debug).
  */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun RecipeArtwork(
     recipe: Recipe,
     modifier: Modifier = Modifier,
     glyphSize: Dp = RecipeArtworkDefaults.GlyphSize,
+    content: @Composable (RecipeArtworkImageLayer) -> Unit = {},
 ) {
-    val localSource = LocalRecipePhotoSource.current
     val generatedSource = LocalGeneratedRecipeArtworkSource.current
-    val local by produceState<ImageBitmap?>(initialValue = null, recipe.id, recipe.categoryId) {
-        value = localSource.photoFor(recipe)
-    }
     val generated by produceState<ImageBitmap?>(initialValue = null, recipe.id, recipe.categoryId) {
         value = generatedSource.generatedFor(recipe)
     }
+    val layer = RecipeArtworkImagePrecedence.layerOf(generated)
 
-    // Diagnostico (solo debug): clasifica el origen de la imagen y lo notifica. Es una llamada
-    // lateral: ninguna rama de pintado de abajo lee el diagnostico ni depende de el.
+    // Diagnostico (solo debug): clasifica el origen y lo notifica. Es una llamada lateral: ninguna rama
+    // de pintado de abajo lee el diagnostico ni depende de el.
     val originDiagnostics = LocalDishImageOriginDiagnostics.current
-    LaunchedEffect(recipe.id, local, generated) {
+    LaunchedEffect(recipe.id, generated) {
         originDiagnostics.onPainted(
             recipe,
-            RecipeArtworkImagePrecedence.originOf(local, generated, originDiagnostics.resolvedOriginFor(recipe)),
+            RecipeArtworkImagePrecedence.originOf(generated, originDiagnostics.resolvedOriginFor(recipe)),
         )
     }
 
-    // Alfa de la capa generada: `0f` mientras no hay imagen y `1f` cuando llega. En la primera
-    // composicion el valor inicial es el objetivo, asi que un acierto de cache se pinta directamente y
-    // solo se anima la sustitucion real (0 -> 1) sobre la capa base.
-    val generatedAlpha by animateFloatAsState(
-        targetValue = RecipeArtworkImagePrecedence.crossfadeTarget(generated),
+    // Alfa de la capa de fondo: `0f` sin imagen y `1f` con ella, en un unico sitio
+    // (`DishImageArtworkOverlay.crossfadeAlpha` -> `RecipeArtworkImagePrecedence.crossfadeTarget`).
+    val backgroundAlpha by animateFloatAsState(
+        targetValue = DishImageArtworkOverlay.crossfadeAlpha(layer),
         animationSpec = tween(DishImageArtworkPolicy.CROSSFADE_MILLIS),
-        label = "recipeArtworkGeneratedAlpha",
+        label = "recipeArtworkBackgroundAlpha",
     )
 
-    Box(modifier = modifier) {
-        // Capa base: NUNCA en blanco -> foto local si la hay, si no el degradado + glifo de siempre.
-        val photo = local
-        if (photo != null) {
-            Image(
-                bitmap = photo,
-                // Decorativa: el titulo de la receta ya se anuncia; mantener `null` conserva la
-                // semantica de accesibilidad que tenia el placeholder.
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        } else {
-            FallbackGradientAndGlyph(
-                recipe = recipe,
-                glyphSize = glyphSize,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
+    // En oscuro el scrim va mas cerrado (prototipo L2); `boundaryWidth > 0` es la marca de variante
+    // oscura del contrato de tarjeta, la misma que usan la ficha y la miniatura de Favoritos.
+    val dark = LocalSazonCardColors.current.boundaryWidth > 0.dp
 
-        // Capa superior: la generada, con alfa animado (crossfade sobre la capa base).
+    Box(modifier = modifier) {
         val image = generated
         if (image != null) {
             Image(
                 bitmap = image,
+                // Decorativa: el titulo de la receta ya se anuncia.
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                alpha = generatedAlpha,
+                alpha = backgroundAlpha,
                 modifier = Modifier.matchParentSize(),
             )
+            // Scrim de contraste con el mismo alfa que la imagen: aparece y se va con ella.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(backgroundAlpha)
+                    .background(CardImageOverlay.scrimBrush(dark)),
+            )
         }
-    }
-}
-
-/**
- * Capa base de ultimo recurso: el bloque con degradado (acento por cocina) y el glifo de linea (por
- * categoria) de [RecipeArtworkStyle], dibujado con Compose y **sin assets**. Nunca deja el hueco vacio.
- */
-@Composable
-private fun FallbackGradientAndGlyph(
-    recipe: Recipe,
-    glyphSize: Dp,
-    modifier: Modifier = Modifier,
-) {
-    val style = RecipeArtworkStyle.of(recipe)
-    val tint = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        modifier = modifier.background(recipeAccentBrush(style.accent)),
-        contentAlignment = Alignment.Center,
-    ) {
-        RecipeGlyphArtwork(
-            glyph = style.glyph,
-            tint = tint,
-            modifier = Modifier.size(glyphSize),
-        )
+        // Tipografia del hueco (categoria/titulo, ingredientes del hero): encima del scrim.
+        content(layer)
     }
 }
