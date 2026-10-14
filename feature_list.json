@@ -1504,5 +1504,25 @@
       "Validacion independiente (validator con contexto limpio, sesion 124, veredicto accept): re-ejecuto el gate forzando bash scripts/gradle.sh testDebugUnitTest --rerun-tasks (BUILD SUCCESSFUL, 34 tareas, 4m49s) y bash scripts/gradle.sh lint --rerun-tasks (BUILD SUCCESSFUL, 30 tareas, 4m19s) tras ver la primera pasada de bash init.sh en UP-TO-DATE; parseo por su cuenta los XML frescos (98 suites / 738 tests / 0 fallos / 0 errores / 0 saltados; DishImageSettingsTest 17, RecipeBackgroundGateTest 6, DishImageSettingsCopyTest 8, DishImageGenerationBudgetTest 7) y el SARIF (0 errores, 13 warnings preexistentes, 0 bajo app/src); re-derivo la baseline en HEAD 7661f6e (98/737 => delta +1 test / 0 suites nuevas). Confirmo los 5 escenarios de la spec (default apagado con 0 lecturas/generacion/tope mediante el caso negativo el_estado_inicial_es_apagado_y_no_pide_imagenes; resumen DISABLED_SUMMARY; encender restaura con los 11 tests explicitos y el tope respetado; assertFalse(DEFAULT_ENABLED) y MAX_GENERATIONS_PER_SESSION == 12 en un unico sitio; alcance solo con data/image/DishImageSettings.kt + su test + las 4 docs + estado), la propagacion sin editar llamantes (MainActivity.kt:145 y :208, MainShell.kt:146-147, DishImageSettingsSection.kt:48/74, ProfileScreen.kt:206), la coherencia de las docs durables y que el implementer no hizo commit/push/PR. Sin hallazgos Critical/High/Medium; 1 Low informativo no bloqueante (DESIGN.md describe el contador 12 de 12 como lectura de estado, no como contador visible separado). Residual conocido no bloqueante: la revision visual del arranque en emulador la hace la persona tras el merge."
     ],
     "notes": "Correctiva pedida por la persona (2026-10-14): la generacion de imagenes venia **activada** por defecto (`DishImageSettingsPolicy.DEFAULT_ENABLED = true`) y gasta cuota de IA; la persona quiere que el interruptor aparezca **desactivado** por defecto (opt-in), coherente con la mitigacion de cuota ya registrada en docs/risks-and-open-questions.md y con el ADR 0006. Cambio de una constante (data/image/DishImageSettings.kt) + KDoc + los tests JVM que asumian el default encendido + docs durables (DESIGN.md, docs/adr/0005-ai-dish-images.md, docs/technical-discovery.md, docs/risks-and-open-questions.md). Area: ui (ajuste visible en Perfil). Ver docs/specs/dish-image-settings-default-off.md."
+  },
+  {
+    "id": "chat-provider-opencode-go",
+    "area": "integration",
+    "title": "Chat por OpenCode Go (deepseek-v4.1-flash); las imagenes siguen en DevExpert",
+    "user_visible_behavior": "Generar por ingredientes, buscar por texto y sugerir por preferencias usan OpenCode Go (modelo deepseek-v4.1-flash) en vez de DevExpert, con la misma degradacion a modo semilla si la clave falta o el proveedor falla; la generacion de imagenes de plato sigue usando DevExpert sin cambios.",
+    "depends_on": [
+      "real-ai-provider"
+    ],
+    "status": "not_started",
+    "verification": [
+      "El chat envia POST https://opencode.ai/zen/go/v1/chat/completions con Authorization: Bearer <clave de OpenCode Go>, modelo deepseek-v4.1-flash y las cabeceras x-opencode-session y User-Agent propias; sin x-opencode-session el proveedor responde 400 MissingSessionID",
+      "Las imagenes de plato siguen enviandose a https://inference.devexpert.io/v1/images/generations y /images/edits con la clave de DevExpert (la base de imagen ya no se deriva de la base de chat)",
+      "Las dos claves vienen de local.properties (opencode.apiKey para el chat, devexpert.apiKey para la imagen) y nunca se versionan",
+      "Con la clave de chat ausente, vacia o invalida, el chat degrada a modo semilla sin fallar (la imagen mantiene su comportamiento)",
+      "Tests JVM con MockEngine cubren endpoint, cabeceras y modelo del chat, y que la imagen conserva su base y su clave",
+      "bash init.sh (test + lint) en verde"
+    ],
+    "evidence": [],
+    "notes": "Correctiva de real-ai-provider pedida por la persona (2026-10-14) por agotamiento de la cuota semanal de DevExpert. Decision: solo el CHAT cambia de proveedor; las imagenes de plato siguen en DevExpert (docs/adr/0005-ai-dish-images.md). Verificacion de proveedor hecha a mano (2026-10-14): la clave de OpenCode Go funciona contra https://opencode.ai/zen/go/v1/chat/completions con HTTP 200 y modelo deepseek-v4.1-flash; ese endpoint EXIGE la cabecera x-opencode-session (sin ella devuelve 400 MissingSessionID) y recomienda un User-Agent propio; el endpoint Console (https://opencode.ai/inference/...) responde 402 Insufficient account funds (sin saldo). No hay 'alias' como en DevExpert: el id del modelo es deepseek-v4.1-flash. El wire del chat ya es compatible OpenAI (OpenAiChat), asi que el cambio es de base URL + modelo + cabeceras + clave, no de contrato. OJO (riesgo anotado): la doc de Go declara que esta pensado para agentes de programacion y monitoriza el abuso; la cuota de Go es compartida con el harness (limites por 5h/semana/mes). Actualizar docs/adr/0003-ai-provider.md, docs/adr/0005-ai-dish-images.md, docs/technical-discovery.md y docs/risks-and-open-questions.md."
   }
 ]

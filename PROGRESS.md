@@ -10,6 +10,14 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Alta (2026-10-14): correctiva **`chat-provider-opencode-go`** (`area: integration`, depende de
+  `real-ai-provider`, `not_started`) — el **chat** pasa a OpenCode Go (`https://opencode.ai/zen/go/v1`,
+  modelo `deepseek-v4.1-flash`) y las **imágenes de plato siguen en DevExpert**; motivada por el
+  agotamiento de la cuota semanal de DevExpert. Verificación de proveedor hecha a mano el 2026-10-14 con
+  la clave de OpenCode Go: Go responde **HTTP 200** con ese modelo, **exige** `x-opencode-session` (sin
+  ella `400 MissingSessionID`) y el endpoint Console (`https://opencode.ai/inference/...`) responde
+  **`402 Insufficient account funds`**. Claves en `local.properties` (`opencode.apiKey` para el chat +
+  `devexpert.apiKey` para la imagen), nunca versionadas. Detalle en `feature_list.json`.
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
