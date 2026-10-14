@@ -6,7 +6,7 @@
   (`/mnt/c/Users/fernando.galiay/Documents/Default-Project-worktrees/detail-hero-full-bleed`)
 - Rol: `validator` (contexto limpio; no implementa ni persiste `accepted`)
 - Fecha: 2026-10-14
-- Estado en `feature_list.json` al validar: `passing` (autoverificado por el implementer, sesión 117;
+- Estado en `feature_list.json` al validar: `passing` (autoverificado por el implementer, sesión 119;
   sin commit/push/PR, trabajo en disco — esperado)
 - Veredicto: **accept**
 
@@ -100,7 +100,7 @@ en el mismo worktree y limpiar la caché incremental si reaparece.
 ## Cierre
 
 Veredicto **`accept`**; el orquestador de `feature-flow` persiste `accepted` en `feature_list.json`
-(sesión 117), registra el cierre en `PROGRESS.md` y crea el commit local de la rama. La publicación
+(sesión 120), registra el cierre en `PROGRESS.md` y crea el commit local de la rama. La publicación
 (push + PR, con `Closes #132`) queda para el orquestador de `github-flow`. Queda para la persona la
 **revisión manual** en el emulador (no automatizable desde WSL): claro/oscuro × ajuste de imágenes
 encendido/apagado, comprobando borde a borde, esquinas inferiores de 24 limpias y alineadas, controles

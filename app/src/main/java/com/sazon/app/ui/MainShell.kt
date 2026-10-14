@@ -83,7 +83,9 @@ import kotlinx.coroutines.launch
  * interruptor y el tope por sesion a la seccion "Imagenes del plato";
  * la pestana Favoritos monta [FavoritesScreen] sobre los favoritos persistidos (observa
  * [FavoriteRepository.observe]) y su corazon cablea [FavoriteService.toggle]; esa misma lista alimenta
- * el bloque "Guardadas" de la Home y el corazon/"Guardada" del Detalle. El Generador es real
+ * el bloque "Tus recetas" de la Home (las **6 ultimas** guardadas, mas reciente primero) y el
+ * corazon/"Guardada" del Detalle; la accion "Ver todas" del bloque abre la pestana Favoritos
+ * (`selectTab(MainTab.FAVORITES)`). El Generador es real
  * ([GeneratorFlow], pasos de
  * ingredientes y de ajustes) y dispara la generacion validada a traves de [GenerationService].
  *
@@ -195,6 +197,9 @@ fun MainShell(
                                 navigation = navigation.push(PushedScreen.GENERATOR)
                             },
                             onOpenRecipe = { detailRecipe = it },
+                            onOpenFavorites = {
+                                navigation = navigation.selectTab(MainTab.FAVORITES)
+                            },
                             imageBackground = imageBackground,
                         )
 

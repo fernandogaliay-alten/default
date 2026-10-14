@@ -104,15 +104,17 @@ resultados pasan por el Validador de recetas igual que los del generador, y las 
 siguen aplicándose aunque el texto escrito las contradiga.
 
 ### Bloque "Tus recetas"
-Sección de la Home que agrupa las recetas que **ya están en el dispositivo**: favoritas ("Guardadas")
-y últimas abiertas ("Abiertas hace poco"). Junto con la pantalla Favoritos, es donde aplican los
-Filtros de resultados.
+Sección de la Home que **resume** las recetas que **ya están en el dispositivo**: como máximo las 6
+últimas favoritas ("Guardadas"), más recientes primero, y un botón "Ver todas" que abre la pantalla
+Favoritos. Las últimas abiertas ("Abiertas hace poco") llegarán cuando alguna feature registre
+`lastOpenedAt`. **No** aplica los Filtros de resultados.
 
 ### Filtros de resultados
 Filtrado **local y sin red** de las recetas que ya están en el dispositivo: por categoría
 (`categoryId`), por texto en la pantalla Favoritos, y por filtros derivados ("Rápido" =
 `totalMinutes ≤ 30`; "Vegetariano" = sin ingredientes con tags `meat`, `poultry`, `fish` o
-`seafood`). Aplica al bloque "Tus recetas" de la Home y a la pantalla Favoritos.
+`seafood`). Aplica a la pantalla Favoritos; **no** al bloque "Tus recetas" de la Home, que solo resume
+las últimas guardadas.
 
 ### Generador de recetas (RecipeGenerator)
 Puerto del dominio que abstrae la IA. Tiene tres operaciones: sugerir por preferencias, buscar por

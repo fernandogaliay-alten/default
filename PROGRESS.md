@@ -733,7 +733,7 @@
   features de la revisión de diseño (`favorites-tile-contrast`, `home-tus-recetas-ver-todas`,
   `detail-hero-full-bleed`).
 - Tercera de las cuatro features de la revisión de diseño implementada y autoverificada (**`passing`**)
-  en la **sesión 117**: **`detail-hero-full-bleed`** (issue #132, `area: ui`) en su worktree
+  en la **sesión 119**: **`detail-hero-full-bleed`** (issue #132, `area: ui`) en su worktree
   `feature/detail-hero-full-bleed` — el **hero** (nombre + ingredientes principales) y la **tira de
   metadatos** del Detalle pasan a **de borde a borde** retirando solo los dos
   `.padding(horizontal = SazonSpacing.md)` de `RecipeDetailScreen.kt`; geometría (240/6/190/0,12f/3),
@@ -5032,6 +5032,104 @@
 ### Sesión 117
 
 - Fecha: 2026-10-14
+- Objetivo: implementar (implementer) la feature **`home-tus-recetas-ver-todas`** (issue #131, `area: ui`)
+  en el worktree `home-tus-recetas-ver-todas`, rama `feature/home-tus-recetas-ver-todas` desde
+  `origin/main` (`804f009`). Spec: `docs/specs/home-tus-recetas-ver-todas.md`. Implementada y
+  autoverificada (**`passing`**), **sin commit/push/PR del implementer** (el commit lo crea el
+  orquestador de `feature-flow` y publica `github-flow`); pendiente de validación independiente.
+- Cambios:
+  - `ui/home/HomeRecipes.kt` (puro): `companion object` con `MAX_VISIBLE = 6` y
+    `fun latest(): HomeRecipes = copy(saved = saved.take(MAX_VISIBLE))` (no reordena ni muta); se
+    **retira** `filteredBy` (quedaba sin lectores y con KDoc falso) junto con los imports de
+    `ui.filters`/`domain.taxonomy`.
+  - `ui/home/HomeScreen.kt`: fuera el estado de filtro (`rememberSaveable` + `LocalResultFilterSaver`),
+    la llamada a `ResultFilterRow`, el cálculo de `categoriesIn` y la línea "No hay recetas con este
+    filtro." (y los imports que quedaban sin uso); `RecipesSection` pasa a pintar la fila del título
+    (`Row` + `SpaceBetween` + `CenterVertically`) con `TextButton("Ver todas")` **solo si hay
+    guardadas**, y el grupo "Guardadas" con `recipes.latest().saved`; nuevo parámetro
+    `onOpenFavorites: () -> Unit` antes de `modifier`; KDoc del bloque al día.
+  - `ui/MainShell.kt`: cablea `onOpenFavorites = { navigation = navigation.selectTab(MainTab.FAVORITES) }`
+    (mismo patrón que el `onExplore` de Favoritos) y actualiza el KDoc de la Home.
+  - `ui/home/HomeRecipesTest.kt`: fuera los 5 casos de `filteredBy`; dentro 5 de `latest()`/tope
+    (`MAX_VISIBLE == 6`, 8 → 6 primeras en orden, 3 → 3, 6 → 6, no mutación + `isEmpty` tras el tope);
+    se conservan los dos casos de estado vacío/no vacío (con una aserción extra de que `latest()` de un
+    bloque vacío sigue vacío). 7 tests en total, igual que antes.
+  - Docs durables: `docs/technical-discovery.md` (bloque "Tus recetas" = 6 últimas + "Ver todas" →
+    pestaña Favoritos; el módulo `ui.filters` se conserva pero **ya no tiene consumidor** en
+    `app/src/main`), `CONTEXT.md` ("Bloque 'Tus recetas'" y "Filtros de resultados") y
+    `docs/design/stitch-prompt.md` (sección B.5 sin la fila de chips y con la acción "Ver todas").
+    `DESIGN.md` **no** se toca (ya declara el comportamiento nuevo).
+- Verificación (evidencia medida):
+  - `bash init.sh` **exit 0** (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`; sin procesos
+    largos; `init.sh` intacto). Tirada focal previa
+    `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.home.*" --rerun-tasks` → BUILD
+    SUCCESSFUL (34/34 tareas, 3m8s).
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **97 suites / 733 tests /
+    0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` (`804f009`): `git grep -c
+    '@Test'` = **97 ficheros / 733 anotaciones** → **delta 0 tests / 0 suites** (`HomeRecipesTest` 7:
+    −5 de `filteredBy`, +5 de `latest()`/tope). `HomeGreetingTest` 7, `HomeIdentityTest` 4,
+    `HomeSuggestionsTest` 13, `RecipeCardFormatTest` 13 y `RecipeMonogramTest` 7 verdes **sin cambios**.
+  - Lint (SARIF): **13 resultados / 0 errores** (GradleDependency 7, NewerVersionAvailable 3,
+    AndroidGradlePluginVersion 2, OldTargetApi 1; todos preexistentes), **0 bajo `app/src`**.
+  - Inspección de alcance/pureza: `filteredBy` en `app/src` → **0**;
+    `ResultFilterRow|LocalResultFilter` en `ui/home` → **0**; `rememberSaveable|Saver|mutableStateOf|
+    "No hay recetas con este filtro"` en `HomeScreen.kt` → **0**; `import android|import androidx` en
+    `HomeRecipes.kt` → **0**; hex `0xRRGGBBAA` en `ui/home` → **0**. `git diff --name-only` = los
+    4 ficheros de código/test + las 3 docs durables (+ la spec sin trackear); `git diff` de
+    `ui/filters/**`, `domain/**`, `data/**`, `assets/**`, `app/build.gradle.kts`, `gradle/**`,
+    `init.sh`, `scripts/**` y `DESIGN.md` vacío; sin dependencias nuevas.
+  - Capturas: **no** existe `docs/design/concepts/home-tus-recetas-ver-todas/` y
+    `git status docs/design/concepts` está limpio (exención autorizada de la issue #131, registrada en
+    `DESIGN.md`).
+  - Incidencia de entorno (no de la feature): la primera pasada de `init.sh` murió con un **SIGSEGV del
+    daemon de Gradle** dentro de `lintAnalyzeDebug` (`hs_err_pid46399.log`, frame
+    `Klass::external_name`); se borró el `hs_err` y se reintentó: la segunda pasada terminó exit 0
+    (test 1m38s + lint 1m31s) con XML/SARIF frescos. Flake de JVM/Gradle.
+- Hallazgo a decidir por la persona: al retirar los chips de la Home, `ui/filters`
+  (`ResultFilterRow`/`LocalResultFilters`) queda **sin consumidor en `app/src/main`** (la pantalla
+  Resultados del Generador no filtra en local). Esta feature lo **conserva** sin recortes; retirarlo o
+  cablearlo en Resultados es una feature/limpieza aparte. Anotado en `docs/technical-discovery.md` y en
+  la spec. La viñeta 2 del `verification` de la feature se reconcilia en ese sentido (ver evidencia).
+- Siguiente paso: validación independiente (`validator`). Tras el merge, revisión manual de la persona
+  en el emulador (Inicio en claro y oscuro con 0, 3 y 8 favoritos: "Tus recetas" sin chips, como mucho
+  las 6 últimas en el orden de Favoritos, y "Ver todas" abriendo la pestaña Favoritos), no automatizable
+  desde WSL.
+
+### Sesión 118
+
+- Fecha: 2026-10-14
+- Objetivo: cerrar la feature **`home-tus-recetas-ver-todas`** (issue #131, `area: ui`): validación
+  independiente y persistencia del `accept` por el orquestador de `feature-flow` (worktree
+  `home-tus-recetas-ver-todas`, rama `feature/home-tus-recetas-ver-todas`).
+- Validación independiente (`validator`, contexto limpio): veredicto **`accept`**. Re-ejecutó
+  `bash init.sh` (exit 0, aunque salió `UP-TO-DATE`) y forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 5m40s, 34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (4m35s, 30/30 tareas); parseó por su cuenta los XML
+  (**97 suites / 733 tests / 0 fallos / 0 errores / 0 saltados**; `HomeRecipesTest` 7) y el SARIF
+  (**13 resultados / 0 errores / 0 bajo `app/src`**, todos preexistentes) y re-derivó la baseline en
+  `HEAD` (97 ficheros / 733 anotaciones → delta 0/0). Rehizo los greps de alcance/pureza
+  (`filteredBy` en `app/src` → 0; `ui.filters` intacto byte a byte; `domain/**`, `data/**`, `assets/**`,
+  build/lockfile, `init.sh`, `scripts/**` y `DESIGN.md` sin diff; sin dependencias nuevas) y confirmó la
+  exención de capturas (no existe `docs/design/concepts/home-tus-recetas-ver-todas/`). Juzgó correcta la
+  reconciliación de la viñeta 2 (`ui.filters` conservado sin recortes y sin consumidor en `app/src/main`
+  aparte de la Home; no se cablea en Resultados) y **no bloqueante**. Sin hallazgos Critical/High/Medium;
+  3 Low informativos no bloqueantes. Detalle en `docs/validations/home-tus-recetas-ver-todas.md`.
+- Estado: entrada `home-tus-recetas-ver-todas` en `feature_list.json` de `passing` → **`accepted`** con
+  la evidencia del validador independiente. **Commit local** creado por el orquestador de `feature-flow`
+  (`feat: complete home-tus-recetas-ver-todas`); **sin** push ni PR (la publicación es de `github-flow`).
+- Comportamiento vigente: el bloque "Tus recetas" de la Home ya no filtra en local (sin chips ni la
+  línea "No hay recetas con este filtro."), muestra como máximo las 6 últimas guardadas con el orden de
+  Favoritos (`savedAt` desc, `HomeRecipes.latest()` con `MAX_VISIBLE = 6`) y un `TextButton("Ver todas")`
+  que abre la pestaña Favoritos vía la costura `onOpenFavorites` cableada en `MainShell`. El módulo
+  `ui.filters` se conserva intacto pero queda **sin consumidor** en `app/src/main` (decisión de la
+  persona: seguimiento o limpieza aparte).
+- Siguiente paso: publicación por `github-flow` (push de `feature/home-tus-recetas-ver-todas` + PR con
+  `Closes #131`) y, tras el merge, revisión manual de la persona en el emulador. Como features en
+  paralelo siguen `not_started` `favorites-tile-contrast` y `detail-hero-full-bleed`.
+
+### Sesión 119
+
+- Fecha: 2026-10-14
 - Objetivo: implementar y **autoverificar** `detail-hero-full-bleed` (issue #132, `area: ui`) según
   `docs/specs/detail-hero-full-bleed.md`, en su worktree `../Default-Project-worktrees/detail-hero-full-bleed`
   (rama `feature/detail-hero-full-bleed`); **sin commit, sin push y sin PR** (esos pasos son del
@@ -5090,7 +5188,7 @@
 - Siguiente paso: **validación independiente** de `detail-hero-full-bleed` (subagente `validator`) y,
   tras el `accept`, commit local por el orquestador y publicación por `github-flow`.
 
-### Sesión 117 (validación independiente y aceptación)
+### Sesión 120 (validación independiente y aceptación)
 
 - Fecha: 2026-10-14
 - Objetivo: validar de forma **independiente** `detail-hero-full-bleed` y persistir la aceptación.
