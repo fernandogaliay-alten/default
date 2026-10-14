@@ -4828,3 +4828,18 @@
   queda por revisar el recorte de las esquinas inferiores de 24 y la posición de "Atrás"/corazón flotantes.
 - Siguiente paso: `github-flow execute` de las cuatro ids para provisionar issue + worktree + rama +
   carpeta de petición (estado `provisioned`, sin sesión).
+- Resultado del `github-flow execute` (misma sesión): las cuatro quedan **`blocked` por capturas**,
+  **provisionadas** (issue + rama `feature/<id>` + worktree + carpeta de petición) y **sin sesión**:
+  - `recipe-card-l2-unified` → issue **#129**, worktree
+    `../Default-Project-worktrees/recipe-card-l2-unified`.
+  - `favorites-tile-contrast` → issue **#130**, worktree
+    `../Default-Project-worktrees/favorites-tile-contrast`.
+  - `home-tus-recetas-ver-todas` → issue **#131**, worktree
+    `../Default-Project-worktrees/home-tus-recetas-ver-todas`.
+  - `detail-hero-full-bleed` → issue **#132**, worktree
+    `../Default-Project-worktrees/detail-hero-full-bleed`.
+  Los cuatro worktrees ramifican del mismo `base_sha` (`a0a6e85`) y llevan
+  `docs/design/concepts/<feature-id>/` con `README.md` (pantallas esperadas) y `stitch-prompt.md`
+  (copia derivada de `docs/design/stitch/`); el checkout base **no** queda sucio (solo `preview/` sin
+  seguimiento). `feature_list.json` marca las cuatro como `blocked`. Reanudar con
+  `github-flow execute <feature-id>` (o `--captures <ruta>`) cuando la persona deje las capturas.
