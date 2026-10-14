@@ -4765,3 +4765,47 @@
   y `github-flow` **publica** (push + PR `feature/retire-recipe-photos` → `main` con `Closes #<n>`; el merge
   lo hace la persona). Con esta feature, el **plan del ADR 0006 queda completo** y **no hay features
   `not_started`** en el plan.
+
+### Sesión 113
+
+- Fecha: 2026-10-14
+- Objetivo: revertir el **lanzador sin espera** de la sesión 107 (commit `c3410d5`) y **corregir el
+  diagnóstico** de por qué fallaron sesiones anteriores. Rama `chore/revert-launcher-blocking`
+  (worktree `chore-revert-launcher-blocking`), desde `origin/main` (`43ecb94`); PR propio (no es una
+  feature). Sin tocar `app/**`, `init.sh` ni la build.
+- Cambios:
+  - `scripts/launch-feature-session.sh` vuelve a la versión bloqueante de `0c798ed`: hace
+    `exec opencode run` en el worktree y **no devuelve el control hasta que el ciclo termina**; el
+    llamante debe pasarlo en **primer plano con el timeout de su herramienta desactivado**
+    (`timeout: 0`). Se retiran el registro `.sazon-sessions/<id>` y el camino `opencode api post` con
+    aviso en segundo plano.
+  - `AGENTS.md` y `.opencode/skills/github-flow/SKILL.md`: la descripción del lanzador vuelve a "corre
+    el ciclo en primer plano hasta que termina" y la skill prohíbe explícitamente background/detach
+    (el aviso de fin en segundo plano no es fiable).
+- Motivo (medido, no inferido):
+  - El **poller en segundo plano** que iba a avisar del fin **sí se ejecutó** (88 consultas
+    `opencode api get /api/session/<id>` cada 45 s, 12:18–13:33Z del 14-10), pero el harness **no creó
+    su fichero de salida ni notificó** su final: el orquestador quedó a ciegas hasta que la persona
+    preguntó.
+  - La espera `POST /api/experimental/session/<id>/wait` en una sola llamada dura **~6,2 min** (corta
+    por timeout del cliente CLI), muy por debajo de un ciclo de 30–90 min.
+  - `opencode api get` **no consume tokens** (coste/tokens idénticos antes y después de 5 llamadas):
+    el poller gastaba procesos, no cuota de modelo; se retira igualmente por frágil.
+- Correcciones a afirmaciones previas, retractadas al revisar la evidencia:
+  - "El comando en segundo plano nunca arrancó": **falso** (arrancó; falló el aviso y la salida).
+  - "El primer plano se abandona a la hora": **sin evidencia**; el literal `Tool execution interrupted`
+    no aparece como evento en `opencode.log` y el shell tool no tiene ese límite (120 s por defecto,
+    `0` lo desactiva). Era una inferencia de una nota previa, no un hecho medido.
+- Por qué fallaron otras sesiones (evidencia del harness: `session_v2.idle_outcome` + `opencode.log`):
+  - `failed` = **respuesta vacía del modelo** (mensaje del asistente presente y sin contenido), en
+    sesiones cortas (2–18 min), incluidas dos de `card-typographic-tokens-and-design` y una sonda
+    deliberada ("responde solo con la palabra: ok") que **también** falló: es fiabilidad del
+    proveedor/modelo, **no** un corte del harness.
+  - `interrupted` = **interrupción deliberada**. Probado para `recipe-card-typographic`:
+    `opencode api post /api/session/ses_ec6d284b1ffec7ldYS1a4pLngl/interrupt` en el log (06:52:19Z).
+    En los duplicados de `home-suggestions-personalized` (interrumpidos a la misma hora) **no** hay
+    llamada explícita en el log: la causa no está probada, y no se da por supuesta.
+- Ficheros: `scripts/launch-feature-session.sh`, `AGENTS.md`,
+  `.opencode/skills/github-flow/SKILL.md` y este registro.
+- Siguiente paso: el orquestador de `github-flow` publica (push + PR
+  `chore/revert-launcher-blocking` → `main`); el merge lo hace la persona.
