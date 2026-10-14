@@ -49,6 +49,7 @@ fun AiSearchFlow(
     onEditProfile: () -> Unit,
     onCreateRecipe: () -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     var result by remember { mutableStateOf<GenerationResult?>(null) }
     var searchId by remember { mutableIntStateOf(0) }
@@ -78,6 +79,7 @@ fun AiSearchFlow(
                 onRetry = retry,
                 onOpenRecipe = onOpenRecipe,
                 modifier = modifier,
+                imageBackground = imageBackground,
             )
 
             is AiSearchStage.Blocked -> BlockedState(

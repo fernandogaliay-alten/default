@@ -75,6 +75,7 @@ fun GeneratorFlow(
     onEditProfile: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     var step by rememberSaveable(stateSaver = GeneratorStepSaver) {
         mutableStateOf(GeneratorStep.INGREDIENTS)
@@ -138,6 +139,7 @@ fun GeneratorFlow(
                 },
                 onOpenRecipe = onOpenRecipe,
                 modifier = modifier,
+                imageBackground = imageBackground,
             )
         }
 

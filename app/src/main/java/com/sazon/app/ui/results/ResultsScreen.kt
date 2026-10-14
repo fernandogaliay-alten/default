@@ -56,6 +56,7 @@ fun ResultsScreen(
     onRetry: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -73,6 +74,7 @@ fun ResultsScreen(
                     recipes = status.recipes,
                     taxonomy = taxonomy,
                     onOpenRecipe = onOpenRecipe,
+                    imageBackground = imageBackground,
                 )
 
                 ResultsStatus.Empty -> EmptyState()
@@ -82,6 +84,7 @@ fun ResultsScreen(
                     taxonomy = taxonomy,
                     onRetry = onRetry,
                     onOpenRecipe = onOpenRecipe,
+                    imageBackground = imageBackground,
                 )
             }
         }
@@ -153,6 +156,7 @@ private fun ResultsList(
     recipes: List<Recipe>,
     taxonomy: Taxonomy,
     onOpenRecipe: (Recipe) -> Unit,
+    imageBackground: Boolean,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -164,6 +168,7 @@ private fun ResultsList(
                 recipe = recipe,
                 taxonomy = taxonomy,
                 onClick = { onOpenRecipe(recipe) },
+                imageBackground = imageBackground,
             )
         }
     }
@@ -202,6 +207,7 @@ private fun UnavailableState(
     taxonomy: Taxonomy,
     onRetry: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
+    imageBackground: Boolean,
 ) {
     if (seedRecipes.isEmpty()) {
         Column(
@@ -233,6 +239,7 @@ private fun UnavailableState(
                     recipe = recipe,
                     taxonomy = taxonomy,
                     onClick = { onOpenRecipe(recipe) },
+                    imageBackground = imageBackground,
                 )
             }
         }

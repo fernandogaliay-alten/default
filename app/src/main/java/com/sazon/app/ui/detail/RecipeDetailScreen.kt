@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -55,12 +56,16 @@ import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeStep
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.artwork.DishImageArtworkOverlay
+import com.sazon.app.ui.artwork.RecipeArtwork
 import com.sazon.app.ui.artwork.RecipeArtworkStyle
 import com.sazon.app.ui.artwork.RecipeGlyphArtwork
+import com.sazon.app.ui.artwork.RecipeStyle
 import com.sazon.app.ui.artwork.recipeAccentBrush
 import com.sazon.app.ui.artwork.recipeAccentColors
 import com.sazon.app.ui.home.MainIngredient
 import com.sazon.app.ui.preferences.ServingsStepper
+import com.sazon.app.ui.theme.CardImageOverlay
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonFontFamilies
 import com.sazon.app.ui.theme.SazonPillShape
@@ -98,9 +103,11 @@ private val HAIRLINE = 1.dp
  * ([ServingScaler], [IngredientFormat], [RecipeDetailFormat], [RecipeDetailState]).
  *
  * Estructura (direccion de `docs/design/concepts/recipe-detail-typographic-header/detalle-receta/`):
- * - **Hero tipografico** ([RecipeDetailHeroFormat]): 240 dp, categoría en versalitas, título en Manrope,
+ * - **Hero** ([RecipeDetailHeroFormat]): 240 dp, categoría en versalitas, título en Manrope,
  *   los **tres ingredientes principales con cantidad** (cifras tabulares), marca de agua del glifo al
- *   12 % y filete de 6 px con el degradado de la cocina. **Sin ninguna foto** (ADR 0006); "Atras" y el
+ *   12 % y filete de 6 px con el degradado de la cocina. Con el ajuste de imágenes apagado **sin
+ *   ninguna foto** (ADR 0006); con `imageBackground` la imagen generada es la **capa de fondo** del hero
+ *   y la tipografía pasa al tratamiento sobre imagen (sin mover la geometría). "Atras" y el
  *   corazon/guardar siguen flotando encima.
  * - **Tira de metadatos**: bloque propio justo debajo del hero (los cuatro pares de [RecipeDetailFormat]),
  *   sin tarjeta superpuesta ni desplazamiento.
@@ -125,6 +132,7 @@ fun RecipeDetailScreen(
     onStartCooking: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     var state by rememberSaveable(stateSaver = RecipeDetailStateSaver) {
         mutableStateOf(RecipeDetailState.initial(recipe, taxonomy.servings))
@@ -154,6 +162,7 @@ fun RecipeDetailScreen(
                 onBack = onBack,
                 isSaved = isSaved,
                 onToggleSave = onToggleSave,
+                imageBackground = imageBackground,
             )
             // La tira de metadatos ocupa el lugar de la tarjeta superpuesta (sin solape ni `offset`).
             MetaStrip(taxonomy = taxonomy, recipe = recipe)
@@ -179,10 +188,12 @@ fun RecipeDetailScreen(
 }
 
 /**
- * Hero **tipografico** (240 dp, [RecipeDetailHeroFormat]): degradado de la cocina, marca de agua del
- * glifo al 12 %, categoria en versalitas, titulo en Manrope y los tres ingredientes con cantidad en
- * cifras tabulares; **ninguna foto** (ADR 0006). "Atras" (pildora) y el corazon/guardar (48 dp) siguen
- * flotando encima, sin cambios de comportamiento.
+ * Hero del Detalle, **240 dp** ([RecipeDetailHeroFormat.HERO_HEIGHT_DP], geometria intacta): degradado
+ * de la cocina, marca de agua del glifo al 12 %, categoria en versalitas, titulo en Manrope y los tres
+ * ingredientes con cantidad en cifras tabulares; el filete de 6 px al pie. Con [imageBackground] `true`
+ * la **imagen generada** es la **capa de fondo** ([RecipeArtwork]) y la tipografia pasa al tratamiento
+ * **sobre imagen**; la marca de agua se pinta **solo** sin imagen. "Atras" (pildora) y el
+ * corazon/guardar (48 dp) siguen flotando encima, sin cambios de comportamiento.
  */
 @Composable
 private fun DetailHero(
@@ -191,6 +202,7 @@ private fun DetailHero(
     onBack: () -> Unit,
     isSaved: Boolean,
     onToggleSave: () -> Unit,
+    imageBackground: Boolean,
 ) {
     val scheme = MaterialTheme.colorScheme
     val style = RecipeArtworkStyle.of(recipe)
@@ -205,38 +217,12 @@ private fun DetailHero(
                 .background(recipeAccentBrush(style.accent))
                 .height(RecipeDetailHeroFormat.HERO_HEIGHT_DP.dp),
         ) {
-            // Marca de agua: desborda por la esquina inferior derecha y el `clip` la recorta.
-            RecipeGlyphArtwork(
-                glyph = style.glyph,
-                tint = scheme.onSurfaceVariant.copy(alpha = RecipeDetailHeroFormat.WATERMARK_ALPHA),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = WATERMARK_OFFSET_X, y = WATERMARK_OFFSET_Y)
-                    .size(RecipeDetailHeroFormat.WATERMARK_DP.dp),
+            HeroLayer(
+                recipe = recipe,
+                style = style,
+                content = content,
+                imageBackground = imageBackground,
             )
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(HERO_PADDING),
-                verticalArrangement = Arrangement.Bottom,
-            ) {
-                Text(
-                    text = content.category.uppercase(),
-                    style = HeroTypography.category,
-                    color = scheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = content.title,
-                    style = HeroTypography.title,
-                    color = scheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                HeroIngredients(ingredients = content.ingredients)
-            }
             // Filete de 6 dp con el degradado de la cocina, sobre el borde inferior del hero.
             Box(
                 modifier = Modifier
@@ -277,9 +263,88 @@ private fun DetailHero(
     }
 }
 
+/**
+ * Capa de la estructura del hero: la base tipografica (degradado de la cocina + marca de agua) y, con
+ * [imageBackground], la imagen generada como **capa de fondo** ([RecipeArtwork]). La tipografia se
+ * reubica en el slot para leer la **capa resuelta**: marca de agua solo sin imagen, categoria, titulo y
+ * filas de ingredientes con el tratamiento sobre imagen o sobre superficie.
+ */
+@Composable
+private fun BoxScope.HeroLayer(
+    recipe: Recipe,
+    style: RecipeStyle,
+    content: RecipeDetailHeroFormat.HeroContent,
+    imageBackground: Boolean,
+) {
+    if (imageBackground) {
+        RecipeArtwork(recipe = recipe, modifier = Modifier.matchParentSize()) { layer ->
+            HeroForeground(
+                style = style,
+                content = content,
+                onImage = DishImageArtworkOverlay.headingOnImage(layer),
+                watermarkVisible = DishImageArtworkOverlay.watermarkVisible(layer),
+            )
+        }
+    } else {
+        HeroForeground(
+            style = style,
+            content = content,
+            onImage = false,
+            watermarkVisible = true,
+        )
+    }
+}
+
+/** Contenido del hero (marca de agua + tipografia) con el tratamiento de la capa resuelta. */
+@Composable
+private fun HeroForeground(
+    style: RecipeStyle,
+    content: RecipeDetailHeroFormat.HeroContent,
+    onImage: Boolean,
+    watermarkVisible: Boolean,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Marca de agua: desborda por la esquina inferior derecha y el `clip` del hero la recorta.
+        if (watermarkVisible) {
+            RecipeGlyphArtwork(
+                glyph = style.glyph,
+                tint = scheme.onSurfaceVariant.copy(alpha = RecipeDetailHeroFormat.WATERMARK_ALPHA),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = WATERMARK_OFFSET_X, y = WATERMARK_OFFSET_Y)
+                    .size(RecipeDetailHeroFormat.WATERMARK_DP.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(HERO_PADDING),
+            verticalArrangement = Arrangement.Bottom,
+        ) {
+            Text(
+                text = content.category.uppercase(),
+                style = HeroTypography.category,
+                color = if (onImage) CardImageOverlay.onImageVariant else scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = content.title,
+                style = HeroTypography.title,
+                color = if (onImage) CardImageOverlay.onImageText else scheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            HeroIngredients(ingredients = content.ingredients, onImage = onImage)
+        }
+    }
+}
+
 /** Los tres ingredientes del hero: nombre a la izquierda y cantidad tabular a la derecha, con hairline. */
 @Composable
-private fun HeroIngredients(ingredients: List<MainIngredient>) {
+private fun HeroIngredients(ingredients: List<MainIngredient>, onImage: Boolean) {
     if (ingredients.isEmpty()) return
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -298,7 +363,7 @@ private fun HeroIngredients(ingredients: List<MainIngredient>) {
                     Text(
                         text = ingredient.name,
                         style = HeroTypography.ingredientName,
-                        color = scheme.onSurfaceVariant,
+                        color = if (onImage) CardImageOverlay.onImageVariant else scheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -307,10 +372,10 @@ private fun HeroIngredients(ingredients: List<MainIngredient>) {
                     Text(
                         text = ingredient.quantityLabel,
                         style = HeroTypography.ingredientQuantity,
-                        color = scheme.onSurface,
+                        color = if (onImage) CardImageOverlay.onImageText else scheme.onSurface,
                     )
                 }
-                Hairline()
+                Hairline(if (onImage) CardImageOverlay.onImageHairline else scheme.outline)
             }
         }
     }
@@ -376,12 +441,12 @@ private fun MetaStrip(
 
 /** Separador de 1 dp con el `outline` del tema (las hairlines de `DESIGN.md`). */
 @Composable
-private fun Hairline() {
+private fun Hairline(color: Color = MaterialTheme.colorScheme.outline) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(HAIRLINE)
-            .background(MaterialTheme.colorScheme.outline),
+            .background(color),
     )
 }
 

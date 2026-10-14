@@ -71,6 +71,7 @@ fun HomeScreen(
     onOpenGenerator: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     val hour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val identity = remember(profile, taxonomy) { HomeIdentity.from(profile, taxonomy) }
@@ -103,6 +104,7 @@ fun HomeScreen(
                 suggestions = suggestions,
                 taxonomy = taxonomy,
                 onOpenRecipe = onOpenRecipe,
+                imageBackground = imageBackground,
             )
         }
         item {
@@ -112,6 +114,7 @@ fun HomeScreen(
                 filter = filter,
                 onSelect = { filter = it },
                 onOpenRecipe = onOpenRecipe,
+                imageBackground = imageBackground,
             )
         }
     }
@@ -184,6 +187,7 @@ private fun SuggestionsSection(
     suggestions: List<Recipe>,
     taxonomy: Taxonomy,
     onOpenRecipe: (Recipe) -> Unit,
+    imageBackground: Boolean,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -208,6 +212,7 @@ private fun SuggestionsSection(
                     recipe = recipe,
                     taxonomy = taxonomy,
                     onClick = { onOpenRecipe(recipe) },
+                    imageBackground = imageBackground,
                 )
             }
         }
@@ -221,6 +226,7 @@ private fun RecipesSection(
     filter: LocalResultFilter,
     onSelect: (LocalResultFilter) -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
+    imageBackground: Boolean,
 ) {
     val allRecipes = recipes.saved
     val categories = LocalResultFilters.categoriesIn(allRecipes, taxonomy)
@@ -253,6 +259,7 @@ private fun RecipesSection(
                 recipes = filtered.saved,
                 taxonomy = taxonomy,
                 onOpenRecipe = onOpenRecipe,
+                imageBackground = imageBackground,
             )
             if (filtered.isEmpty) {
                 Text(
@@ -276,6 +283,7 @@ private fun HomeRecipesGroup(
     recipes: List<Recipe>,
     taxonomy: Taxonomy,
     onOpenRecipe: (Recipe) -> Unit,
+    imageBackground: Boolean,
 ) {
     if (recipes.isEmpty()) return
 
@@ -297,6 +305,7 @@ private fun HomeRecipesGroup(
                     recipe = recipe,
                     taxonomy = taxonomy,
                     onClick = { onOpenRecipe(recipe) },
+                    imageBackground = imageBackground,
                 )
             }
         }

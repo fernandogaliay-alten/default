@@ -14,7 +14,9 @@ import com.sazon.app.ui.home.RecipeFicha
  * ingredientes principales** se muestran en **tres filas** (nombre a la izquierda, **cantidad a la
  * derecha en cifras tabulares** y hairline entre filas), titulo a 26sp, la fila de metadatos y el
  * **porcentaje de coincidencia** en terracota. Debajo del hueco 16:10 se conserva la **descripcion**
- * (1 linea) dentro de la misma tarjeta. **Sin ninguna imagen**.
+ * (1 linea) dentro de la misma tarjeta. Con el ajuste de imagenes apagado (default) **sin ninguna
+ * imagen**; con [imageBackground] `true` usa la estructura **L2** (imagen generada como capa de fondo
+ * del hueco 16:9 y banda solida con los ingredientes y los metadatos).
  *
  * **Sin corazon** (favoritos es de `favorites`); el click opcional abre el Detalle
  * (`recipe-detail-screen`).
@@ -25,6 +27,7 @@ fun ResultRecipeCard(
     taxonomy: Taxonomy,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    imageBackground: Boolean = false,
 ) {
     RecipeFicha(
         recipe = recipe,
@@ -33,5 +36,6 @@ fun ResultRecipeCard(
         wide = true,
         onClick = onClick,
         description = recipe.description,
+        imageBackground = imageBackground,
     )
 }

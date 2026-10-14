@@ -5,94 +5,101 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Escenario 2 de `docs/specs/dish-image-progressive-ui.md`: la precedencia y el objetivo del crossfade
- * son **puros** y deterministas (JVM, sin Android ni Compose). Se prueban con `String` para no depender
- * de tipos de UI.
+ * Escenarios 2 y 6 de `docs/specs/dish-artwork-as-card-background.md`: la precedencia de la **capa de
+ * fondo** y el objetivo del crossfade son **puros** y deterministas (JVM, sin Android ni Compose). Se
+ * prueban con `String` para no depender de tipos de UI. La capa paso de tres valores
+ * (`FALLBACK`/`LOCAL`/`GENERATED`) a **dos** (`TYPOGRAPHIC`/`GENERATED`): la cadena local de fotos deja
+ * de ser parte de la imagen de receta.
  */
 class RecipeArtworkImagePrecedenceTest {
 
     @Test
-    fun la_generada_manda_la_local_respalda_y_sin_ninguna_es_fallback() {
+    fun con_imagen_es_generada_y_sin_imagen_es_tipografica() {
         assertEquals(
-            "Con generada y local, la capa efectiva es la generada",
+            "Con imagen generada, la capa efectiva es la generada",
             RecipeArtworkImageLayer.GENERATED,
-            RecipeArtworkImagePrecedence.layerOf("local", "generada"),
+            RecipeArtworkImagePrecedence.layerOf("generada"),
         )
         assertEquals(
-            "Sin generada pero con local, la capa efectiva es la local",
-            RecipeArtworkImageLayer.LOCAL,
-            RecipeArtworkImagePrecedence.layerOf("local", null),
-        )
-        assertEquals(
-            "Sin local pero con generada, sigue mandando la generada",
-            RecipeArtworkImageLayer.GENERATED,
-            RecipeArtworkImagePrecedence.layerOf(null, "generada"),
-        )
-        assertEquals(
-            "Sin ninguna de las dos, el ultimo recurso",
-            RecipeArtworkImageLayer.FALLBACK,
-            RecipeArtworkImagePrecedence.layerOf<String>(null, null),
+            "Sin imagen, la capa efectiva es la ficha tipografica",
+            RecipeArtworkImageLayer.TYPOGRAPHIC,
+            RecipeArtworkImagePrecedence.layerOf<String>(null),
         )
     }
 
     @Test
     fun el_objetivo_del_crossfade_es_uno_solo_con_imagen_generada() {
         assertEquals(
-            "Hay generada: la capa superior va a opaca",
+            "Hay imagen: la capa de fondo va a opaca",
             1f,
             RecipeArtworkImagePrecedence.crossfadeTarget("generada"),
             0f,
         )
         assertEquals(
-            "Sin generada: la capa superior queda transparente",
+            "Sin imagen: la capa de fondo queda transparente",
             0f,
             RecipeArtworkImagePrecedence.crossfadeTarget<String>(null),
             0f,
         )
     }
 
-    // --- Escenario 8 de `docs/specs/dish-image-prompt-v2.md` (diagnostico del origen) ---
+    @Test
+    fun la_precedencia_es_pura_y_determinista() {
+        assertEquals(
+            "Misma entrada, misma capa",
+            RecipeArtworkImagePrecedence.layerOf("generada"),
+            RecipeArtworkImagePrecedence.layerOf("generada"),
+        )
+        assertEquals(
+            "Misma entrada, mismo alfa",
+            RecipeArtworkImagePrecedence.crossfadeTarget("generada"),
+            RecipeArtworkImagePrecedence.crossfadeTarget("generada"),
+            0f,
+        )
+    }
+
+    // --- Diagnostico del origen (dos capas) ---
 
     @Test
-    fun escenario_8_el_origen_resuelto_cubre_las_cuatro_capas() {
+    fun el_origen_resuelto_cubre_las_dos_capas() {
         assertEquals(
-            "Con generada y sin origen semilla, es generada",
+            "Con imagen y sin origen semilla, es generada",
             DishImageOrigin.GENERATED,
-            RecipeArtworkImagePrecedence.originOf<String>(null, "generada", null),
+            RecipeArtworkImagePrecedence.originOf<String>("generada", null),
         )
         assertEquals(
-            "Con generada y origen SEED, la imagen salio del set semilla",
+            "Con imagen y origen SEED, la imagen salio del set semilla",
             DishImageOrigin.SEED,
-            RecipeArtworkImagePrecedence.originOf("local", "generada", DishImageOrigin.SEED),
+            RecipeArtworkImagePrecedence.originOf("generada", DishImageOrigin.SEED),
         )
         assertEquals(
-            "Con generada y cualquier otro origen, la generada manda",
+            "Con imagen y cualquier otro origen, la generada manda",
             DishImageOrigin.GENERATED,
-            RecipeArtworkImagePrecedence.originOf("local", "generada", DishImageOrigin.GENERATED),
+            RecipeArtworkImagePrecedence.originOf("generada", DishImageOrigin.GENERATED),
         )
         assertEquals(
-            "Con generada y origen CATEGORY (dato incoherente) la generada manda",
+            "Con imagen y origen CATEGORY (dato incoherente) la generada manda",
             DishImageOrigin.GENERATED,
-            RecipeArtworkImagePrecedence.originOf(null, "generada", DishImageOrigin.CATEGORY),
+            RecipeArtworkImagePrecedence.originOf("generada", DishImageOrigin.CATEGORY),
         )
         assertEquals(
-            "Sin generada pero con foto local, es la cadena local",
-            DishImageOrigin.CATEGORY,
-            RecipeArtworkImagePrecedence.originOf("local", null, null),
-        )
-        assertEquals(
-            "Sin generada ni foto local, es el glifo",
+            "Sin imagen, la base tipografica es el glifo",
             DishImageOrigin.GLYPH,
-            RecipeArtworkImagePrecedence.originOf<String>(null, null, null),
+            RecipeArtworkImagePrecedence.originOf<String>(null, null),
+        )
+        assertEquals(
+            "Sin imagen y con un origen residual, sigue siendo el glifo",
+            DishImageOrigin.GLYPH,
+            RecipeArtworkImagePrecedence.originOf<String>(null, DishImageOrigin.SEED),
         )
     }
 
     @Test
-    fun escenario_8b_la_clasificacion_del_origen_es_pura_y_determinista() {
-        val primera = RecipeArtworkImagePrecedence.originOf("local", null, DishImageOrigin.SEED)
-        val segunda = RecipeArtworkImagePrecedence.originOf("local", null, DishImageOrigin.SEED)
+    fun la_clasificacion_del_origen_es_pura_y_determinista() {
+        val primera = RecipeArtworkImagePrecedence.originOf<String>(null, DishImageOrigin.GENERATED)
+        val segunda = RecipeArtworkImagePrecedence.originOf<String>(null, DishImageOrigin.GENERATED)
 
         assertEquals("Misma entrada, mismo origen", primera, segunda)
-        assertEquals(DishImageOrigin.CATEGORY, primera)
+        assertEquals(DishImageOrigin.GLYPH, primera)
     }
 }

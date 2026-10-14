@@ -130,7 +130,8 @@ fun FavoriteRecipeCard(
  * agua), con el **corazon** superpuesto en la esquina superior derecha. La celda omite la fila de
  * metadatos: a 16:10 y ~172dp de ancho es lo unico que cabe sin subir la tarjeta a 3:2 (OQ6, abierta),
  * y es exactamente lo que muestra la captura `docs/design/concepts/recipe-card-typographic/
- * favoritos-rejilla/`. Comparte la logica de [FavoriteRecipeCard]; **sin** imagen.
+ * favoritos-rejilla/`. Comparte la logica de [FavoriteRecipeCard]; con el ajuste apagado (default)
+ * **sin** imagen; con [imageBackground] `true` usa la estructura L2 (fondo 16:9 + banda solida).
  */
 @Composable
 fun FavoriteRecipeTile(
@@ -139,6 +140,7 @@ fun FavoriteRecipeTile(
     onClick: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    imageBackground: Boolean = false,
 ) {
     RecipeFicha(
         recipe = favorite.recipe,
@@ -156,6 +158,7 @@ fun FavoriteRecipeTile(
                 HeartButton(onClick = onRemove)
             }
         },
+        imageBackground = imageBackground,
     )
 }
 
