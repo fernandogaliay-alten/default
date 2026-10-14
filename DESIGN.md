@@ -287,8 +287,10 @@ nada lo es.
 
 - Tarjetas e imágenes: 24px. Inputs: 16px. Chips y botones: píldora completa.
 - Sombras solo suaves y de baja opacidad; nunca bordes duros para separar tarjetas.
-- Superficies superpuestas (la tarjeta blanca que sube sobre la foto del detalle) para dar
-  profundidad sin sombras fuertes.
+- Superficies superpuestas **con el contenedor de fondo** (el apilado **hero + tira de metadatos** del
+  Detalle: hero tipográfico de 240 con esquinas inferiores de 24 y, debajo, la tira de metadatos con las
+  mismas esquinas y solo la sombra suave) para dar profundidad sin sombras fuertes. Ya **no** hay tarjeta
+  blanca que suba sobre la foto del Detalle (ADR 0006).
 
 ## Components
 
