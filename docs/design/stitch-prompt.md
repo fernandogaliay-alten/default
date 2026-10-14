@@ -151,11 +151,12 @@ B) HOME (tab "Inicio") — exactly five stacked blocks, in this order. Everythin
      + white pill button "Crear receta".
   4) "Sugeridas para ti" with the caption "basado en tus gustos": horizontal carousel of RecipeCards.
      No filter row here — it is a curated selection.
-  5) "Tus recetas": one single block that replaces what used to be three separate sections.
-     - Filter row (horizontal chips, applied locally with no network): Todas, Postres, Pasta, Arroz,
-       Ensaladas, Carnes, Vegetariano, Rápido. Make it visually clear that "Vegetariano" and "Rápido"
-       are derived filters rather than recipe categories.
-     - Group "Guardadas": horizontal list of favourite RecipeListCards with a heart.
+  5) "Tus recetas": one single block that replaces what used to be three separate sections. Its header
+     is a row with the title "Tus recetas" and, on the right, the text action "Ver todas" that opens
+     the Favorites tab (only when there are saved recipes). NO filter row here — local filters live in
+     the Favorites tab.
+     - Group "Guardadas": at most 6 favourite RecipeListCards with a heart, most recently saved first
+       (same order as the Favorites tab).
      - Group "Abiertas hace poco": horizontal list of RecipeListCards without the heart filled.
      - Empty state for a brand-new user: a short line "Cuando guardes una receta aparecerá aquí."
   Offline variant: block 2 becomes muted with "Sin conexión · la búsqueda no está disponible" and

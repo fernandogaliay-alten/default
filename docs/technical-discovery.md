@@ -107,7 +107,10 @@ la **barra de navegacion inferior** de tres destinos (Inicio · Favoritos · Per
 `ui.favorites.FavoritesScreen` para Favoritos, `ui.profile.ProfileScreen` para Perfil y
 `ui.generator.GeneratorFlow` en el Generador empujado). `HomeScreen` pinta los cuatro bloques **locales**
 de `DESIGN.md` (el bloque 2, Búsqueda con IA, es de `ai-search`): cabecera con saludo por franja
-horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas" con su
+horaria y avatar, tarjeta-heroe al Generador, carrusel "Sugeridas para ti" y bloque "Tus recetas", que
+**resume** lo guardado: como maximo las **6 ultimas** (`HomeRecipes.MAX_VISIBLE`, mismo orden que
+Favoritos: mas reciente primero), un boton **"Ver todas"** que abre la pestaña Favoritos
+(`onOpenFavorites` → `MainNavigationState.selectTab(MainTab.FAVORITES)`) y, sin guardadas, solo su
 estado vacio. La logica/estado de la Home es **pura** y testeable en JVM en `com.sazon.app.ui.home`
 (`HomeGreeting`, `HomeIdentity`, `HomeSuggestions`, `HomeRecipes`, `RecipeCardFormat`, `RecipeMonogram`) y en
 `com.sazon.app.ui.navigation` (`MainTab`, `PushedScreen`, `MainNavigationState`, navegacion sin
@@ -156,12 +159,11 @@ por keywords**, asi que un ingrediente libre no se excluye. `ResultFilterRow` es
 (`FilterChip` de Material 3, sin dependencias nuevas) con "Todas" primero, una chip por categoria
 **presente** en las recetas (orden de `taxonomy.recipeCategories`), y "Rápido"/"Vegetariano" agrupados
 al final y con el acento oliva (`secondary`) cuando estan seleccionados, para distinguirlos de las
-categorias (terracota/`primary`). Se aplica al bloque "Tus recetas": `HomeRecipes` conserva un unico
-grupo (`saved`, alimentado por los Favoritos) y `HomeRecipes.filteredBy(filter, taxonomy)` lo acota;
-`HomeScreen` guarda la seleccion con `rememberSaveable` + `Saver` (clave/`fromKey`), pinta la fila y el
-estado "sin resultados para este filtro", y **solo pinta los grupos con contenido** (un grupo sin
-recetas no pinta ni titulo ni carrusel); si el bloque llega **vacio** solo pinta la linea de usuario
-nuevo (sin chips). La logica es **reutilizable** por `favorites`. Ver `docs/specs/local-result-filters.md`.
+categorias (terracota/`primary`). El modulo se **conserva intacto** (con su test), pero **ya no tiene
+consumidor en `app/src/main`**: la Home dejo de aplicarlo en `home-tus-recetas-ver-todas` (el bloque "Tus
+recetas" ya no pinta chips ni mantiene estado de filtro, y `HomeRecipes.filteredBy` se retiro) y la
+pantalla **Resultados** del Generador no filtra en local. Retirar el modulo o cablearlo en otra pantalla
+es una decision aparte, pendiente de la persona. Ver `docs/specs/local-result-filters.md`.
 
 El **paso de ingredientes del Generador** vive en `com.sazon.app.ui.generator`. La logica/estado es
 **pura** y testeable en JVM: `GeneratorIngredient` (ingrediente anadido: de la Taxonomia si

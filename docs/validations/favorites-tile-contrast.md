@@ -5,7 +5,7 @@
 - **Spec**: `docs/specs/favorites-tile-contrast.md`.
 - **Rama / worktree**: `feature/favorites-tile-contrast` (`../Default-Project-worktrees/favorites-tile-contrast`),
   desde `origin/main` (`804f009`, merge del PR #133).
-- **Veredicto**: **`accept`** (validator independiente, agente con contexto limpio, sesión 117).
+- **Veredicto**: **`accept`** (validator independiente, agente con contexto limpio, sesión 121).
 - **Estado tras persistir**: `accepted` en `feature_list.json`.
 
 ## Qué cambia
