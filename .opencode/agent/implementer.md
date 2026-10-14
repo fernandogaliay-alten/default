@@ -3,19 +3,19 @@ description: Implementa UNA feature planificada de Sazón desde su spec en docs/
 mode: subagent
 color: primary
 temperature: 0.2
-permission:
+permissions:
   edit:
     "**": allow
     ".git/**": deny
     ".opencode/**": deny
-  bash:
+  shell:
     "*": allow
     "git commit*": deny
     "git push*": deny
     "git reset --hard*": deny
     "git clean*": deny
     "rm -rf*": deny
-  task: deny
+  subagent: deny
   webfetch: allow
   todowrite: allow
   question: allow

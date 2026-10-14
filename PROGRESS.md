@@ -4374,3 +4374,35 @@
 - Siguiente paso: `github-flow` publica (push + PR) esta rama; después podrá arrancar
   `dish-artwork-as-card-background` (L2), que recupera `RecipeArtwork` como capa de fondo y exige
   capturas ya aportadas.
+
+### Sesión 106
+
+- Fecha: 2026-10-14
+- Objetivo: cerrar las **mejoras del harness** detectadas al comparar con la skill original de
+  `github-flow`: permisos de los agentes, arranque del lanzador y aviso de fin. Rama
+  `chore/harness-launch-and-agent-permissions`; PR propio (no es una feature).
+- Completado:
+  - **Permisos de los agentes V1 → V2** (`permissions:`, `shell:`, `subagent:` en `planner`,
+    `implementer` y `validator`). Con la forma V1, la guarda `git push*` (y `rm -rf*`,
+    `git reset --hard*`, `git clean*`) **se ignoraba en silencio**: nunca estuvo activa. El `edit: deny`
+    sí funcionaba porque se llama igual en los dos dialectos, y eso despistaba. Verificado con sesiones
+    reales: el `implementer` queda **bloqueado** en `git push --dry-run` y el `planner` no puede escribir
+    fuera de `docs/specs/`.
+  - **Lanzador sin espera**: `scripts/launch-feature-session.sh` crea la sesión en el servidor y devuelve
+    el control (**0,69 s** medidos). Antes esperaba el ciclo completo (30-90 min) y el harness lo
+    abandonaba a la hora con `Tool execution interrupted`, dejando al orquestador a ciegas mientras el
+    flujo seguía vivo. Deja el id en `<worktrees-root>/.sazon-sessions/<feature-id>`.
+  - **Ruleset mínimo al crear la sesión**: pasar `{action:"*",resource:"*",effect:"allow"}` **anula las
+    guardas `deny` de los agentes**; el lanzador pasa solo `external_directory: allow` (necesario porque
+    Gradle lee fuera del worktree, p. ej. `~/.gradle`).
+  - **Aviso de fin**: `POST /api/experimental/session/<id>/wait` devuelve en **0,117 s** sobre una sesión
+    inactiva; lanzado en segundo plano del harness (sin timeout, con aviso al terminar) permite publicar
+    en cuanto el flujo acaba. Documentado en la skill de `github-flow` (dos frases factuales) y en
+    `AGENTS.md` (una línea).
+- Ficheros: `.opencode/agent/{planner,implementer,validator}.md`,
+  `.opencode/skills/github-flow/SKILL.md`, `scripts/launch-feature-session.sh`, `AGENTS.md` y este
+  registro. **Sin** tocar `app/**`, `init.sh` ni la build; sin dependencias nuevas.
+- Nota: la corrección de permisos aplica a las sesiones que arranquen en un worktree que **ya contenga**
+  el cambio; los flujos lanzados antes siguen con los ficheros antiguos.
+- Integración: merge de `origin/main` (`7e4f1c3`) conservando **ambas** aportaciones de `PROGRESS.md`
+  (sesión 105 de `recipe-detail-typographic-header` y esta, renumerada a 106).
