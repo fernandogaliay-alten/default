@@ -3,16 +3,16 @@ description: Valida de forma independiente UNA feature implementada de Sazón co
 mode: subagent
 color: warning
 temperature: 0.1
-permission:
+permissions:
   edit: deny
-  bash:
+  shell:
     "*": allow
     "git commit*": deny
     "git push*": deny
     "git reset --hard*": deny
     "git clean*": deny
     "rm -rf*": deny
-  task: deny
+  subagent: deny
   webfetch: deny
   todowrite: allow
   question: allow
