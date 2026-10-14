@@ -67,10 +67,7 @@ Check:
 - expected file changes are present or deviations are justified,
 - implementation tasks were completed or explicitly deferred,
 - verification plan was followed,
-- for UI features, the spec named capture file(s) under `../../../docs/design/concepts/<feature-id>/`
-  that existed at implementation time, and the implementation follows them (with `../../../DESIGN.md` as
-  the overriding source of truth). Missing captures or an unnamed visual baseline is a `revise` (or
-  `block`) finding.
+- for UI features, the implementation follows `../../../DESIGN.md` (the overriding visual source of truth). An implementation that contradicts `DESIGN.md` without justification is a `revise` (or `block`) finding.
 
 ### 3. Rerun Or Inspect Verification
 
@@ -91,7 +88,7 @@ Use this hierarchy:
 
 1. static/syntax checks,
 2. tests and runtime/startup checks,
-3. persistent E2E checks when the repo has them (this repo does not; UI is verified by JVM logic/state plus the captures),
+3. persistent E2E checks when the repo has them (this repo does not; UI is verified by JVM logic/state plus `../../../DESIGN.md`),
 4. user-flow or manual smoke checks when persistent E2E is not yet available or cannot cover the case.
 
 If the repo has a persistent E2E command and the feature changes user-visible behavior, authentication, authorization, routing, or API flows, verify that focused E2E coverage was added/updated or that the spec/implementation gives a credible reason it was not needed. Missing relevant E2E coverage is normally a `revise` finding once the E2E harness exists.
@@ -122,7 +119,6 @@ Validate the spec's `Durable Documentation Impact` section:
 - durable MUST/MUST NOT rules live in `../../../AGENTS.md` or `docs/technical-discovery.md` rather than vague preferences,
 - docs do not contradict the implemented behavior.
 - UI or visual changes follow `../../../DESIGN.md` when the feature involves product screens, public verification pages, or generated design assets.
-- For UI features, the mandatory captures under `../../../docs/design/concepts/<feature-id>/` named by the spec exist and were treated as required input.
 
 ### 6. Produce Verdict
 

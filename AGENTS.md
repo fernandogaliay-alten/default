@@ -14,9 +14,9 @@ Leer solo cuando sea relevante para la tarea:
 
 - `docs/technical-discovery.md` — stack, almacenamiento, integraciones y verificación.
 - `docs/domain/taxonomy.md` — modelo de la Taxonomía y reglas del Validador.
-- `docs/design/stitch-prompt.md` — pantallas y microcopy de referencia.
+- `docs/design/stitch-prompt.md` — pantallas y microcopy de referencia (material opcional de diseño).
 - `docs/design/concepts/` — capturas de referencia aceptadas, una subcarpeta `<feature-id>/` por
-  feature de UI; **obligatorias antes de implementar**.
+  feature de UI; referencia visual opcional, no un requisito del flujo.
 - `DESIGN.md` — dirección visual y tokens.
 - `docs/adr/` — decisiones aceptadas. Consúltalas si algo parece contradecirlas.
 
@@ -37,24 +37,9 @@ Antes de escribir código:
 - No marques una feature como hecha solo porque hayas añadido código.
 - Mantén los cambios dentro del alcance de la feature elegida.
 - No cambies las reglas de verificación durante la implementación.
-- **Capturas de UI obligatorias**: toda feature con UI (campo `area: ui` en `feature_list.json`, o
-  cualquier comportamiento de pantalla/visual) exige **capturas de referencia versionadas** en
-  `docs/design/concepts/<feature-id>/` **antes** de implementar. La spec nombra los ficheros concretos
-  (p. ej. `docs/design/concepts/profile-screen/perfil/screen.png`). Si no existen, el `planner`, el
-  `implementer` y `feature-flow` se **detienen y las piden** a la persona. En `github-flow`, la feature
-  **no** se bloquea sin más: `execute` **crea igualmente el worktree** (issue, rama `feature/<feature-id>`
-  y worktree), deja la **subcarpeta de petición** `docs/design/concepts/<feature-id>/` **dentro del
-  worktree** con un `README.md` que lista las pantallas y ficheros esperados y un `stitch-prompt.md`
-  listo para pegar en Stitch (generado a partir de `docs/design/stitch/`), y **no** lanza sesión. Así la
-  base **no se ensucia** (nada que commitear ni pushear en `main`): la persona deja las capturas
-  directamente en la ruta del worktree y la feature queda `blocked` hasta que estén disponibles. Cuando
-  la persona aporte las capturas, la feature se **reanuda re-ejecutando `github-flow execute <feature-id>`**
-  (idempotente: reutiliza issue/worktree/rama y relanza la sesión);
-  **no** se reanuda con un `feature-flow` suelto, que dejaría la publicación fuera de `github-flow`.
-  `DESIGN.md` sigue siendo la fuente de verdad ante contradicciones; las capturas son dirección visual
-  obligatoria, no opcional. Si prefieres no copiarlas a mano, pásale la ruta: `github-flow execute
-  <feature-id> --captures <ruta>` importa los exports desde esa carpeta (WSL o Windows) al worktree y,
-  si validan, reanuda la sesión en la misma ejecución.
+- **Diseño de UI opcional**: `DESIGN.md` es la fuente de verdad visual y las features de UI lo siguen.
+  Las capturas de referencia en `docs/design/concepts/<feature-id>/` y los prompts de `docs/design/stitch/`
+  son material opcional de apoyo; no son un requisito previo y su ausencia no bloquea el flujo.
 - Actualiza los artefactos del repositorio en lugar de depender de resúmenes de chat.
 
 ## Acuerdos de trabajo con la persona
@@ -73,11 +58,11 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   salida es el commit local.
 - El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
 - **Verificación de UI**: no se automatizan pruebas de UI (emulador). Las features de UI se validan por
-  lógica/estado en JVM cuando sea posible y contra las capturas de referencia obligatorias (ver
-  "Reglas de trabajo"); lo puramente visual lo revisa la persona tras el merge. Un defecto visual se
+  lógica/estado en JVM cuando sea posible y contra `DESIGN.md` (fuente de verdad visual); lo puramente
+  visual lo revisa la persona tras el merge. Un defecto visual se
   corrige con una **feature correctiva** nueva, sin bloquear el flujo autónomo.
-- Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio,
-  regenerar las pantallas en Stitch) los hace la persona.
+- Los pasos manuales fuera del repositorio (crear el proyecto con el asistente de Android Studio;
+  opcionalmente, generar material de diseño en Stitch) los hace la persona.
 
 ## Reparto de roles (subagentes)
 

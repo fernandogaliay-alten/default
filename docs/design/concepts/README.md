@@ -3,36 +3,26 @@
 Carpeta para las exportaciones aceptadas de Stitch. Son **dirección visual**, no especificación
 pixel-perfect: ante cualquier contradicción, manda `DESIGN.md` (fuente de verdad de la UI).
 
-## Capturas obligatorias para features de UI
+## Capturas de referencia para features de UI (opcionales)
 
-Toda feature con UI (campo `area: ui` en `feature_list.json`, o cualquier comportamiento de
-pantalla/visual) debe tener sus **capturas de referencia** antes de implementarse, en una
+Las capturas son **material de apoyo opcional**, no un requisito previo: `DESIGN.md` es la fuente de
+verdad visual y el flujo nunca se bloquea por su ausencia. Cuando existan, se guardan en una
 **subcarpeta por feature**: `docs/design/concepts/<feature-id>/`.
 
 - Dentro, cada **pantalla** (no componente) se guarda en su propia subcarpeta con los **tres ficheros
   que exporta Stitch** (el `.png`, el `.html` y el `design.md`, con los nombres que dé Stitch):
   `docs/design/concepts/<feature-id>/<pantalla>/` (p. ej.
   `docs/design/concepts/results-screen/resultados/`).
-- Si faltan, el agente **crea la subcarpeta** `docs/design/concepts/<feature-id>/` y un `README.md`
-  dentro con la **lista exacta de pantallas** esperadas (y una línea de qué es cada una); después se
-  detiene, te las pide y la feature queda `blocked`. En `github-flow`, además, `execute` deja la carpeta
-  de petición (con `README.md` + `stitch-prompt.md`) **dentro del worktree** de la feature, sin lanzar
-  sesión ni ensuciar la base. Tú dejas cada subcarpeta `<pantalla>/` con sus tres ficheros y reanudas
-  con `github-flow execute <feature-id>`. Si no quieres copiarlas a mano, pásale la ruta de origen:
-  `github-flow execute <feature-id> --captures <ruta>` importa los exports desde esa carpeta (WSL o
-  Windows) al worktree y, si validan, reanuda la sesión.
-- La spec de la feature nombra esas pantallas en su sección "Visual Design Impact".
-- Son entrada obligatoria, no sustituto de `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
+- La spec de la feature puede nombrar esas pantallas en su sección "Visual Design Impact" y usarlas como
+  referencia, pero su ausencia no bloquea la planificación ni la implementación.
+- Nunca sustituyen a `DESIGN.md`: los tokens y reglas de `DESIGN.md` mandan.
+- Utilidad manual para importarlas desde otra carpeta (WSL o Windows), fuera del flujo:
+  `scripts/import-stitch-captures.sh <feature-id> <ruta>` las copia a la subcarpeta de la feature.
 
 **Dirección tipográfica (ADR 0006, desviación autorizada).** La dirección "tarjeta tipográfica" se
 decidió sobre **prototipos HTML locales**, no sobre un export de Stitch. Los prototipos que la sostienen
 están versionados en `docs/design/concepts/typographic-cards/` y sus `.png` por pantalla van en
-`docs/design/concepts/<feature-id>/<pantalla>/` (en claro y oscuro). Es una **desviación de la política de
-capturas** (que parte de export de Stitch) **autorizada por la persona** (2026-10-13, sesión 101). Las
-cuatro features de UI (`card-typographic-tokens-and-design`, `recipe-card-typographic`,
-`recipe-detail-typographic-header` y `dish-artwork-as-card-background`) están `not_started` con sus
-capturas ya aportadas (2026-10-14): siete pantallas, en claro y oscuro, renderizadas de los prototipos con
-Chrome headless a 390×844 y 2×.
+`docs/design/concepts/<feature-id>/<pantalla>/` (en claro y oscuro).
 
 ## Qué tomar de Stitch y qué no
 

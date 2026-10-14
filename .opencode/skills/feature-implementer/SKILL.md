@@ -30,7 +30,6 @@ You are the implementer/generator, not the planner and not the final validator.
    - `../../../docs/technical-discovery.md`
    - `../../../docs/domain-model.md`
    - `../../../DESIGN.md` when the spec has UI or visual behavior
-   - `../../../docs/design/concepts/<feature-id>/` captures named in the spec (mandatory for UI features)
    - relevant docs under `docs/`
 6. Existing application files named in the spec's repository research and expected file changes.
 
@@ -57,12 +56,6 @@ Read the selected spec and identify:
 
 If the spec is too vague for implementation, stop with a concise blocker and recommend revising the spec.
 
-UI gate (before any code): if the feature has UI (`area: ui` or any screen/visual behavior), the spec's
-`Visual Design Impact` must name capture file(s) under `../../../docs/design/concepts/<feature-id>/` and
-those files must exist in the repo. If any is missing, STOP: do not implement UI, ensure the folder
-`../../../docs/design/concepts/<feature-id>/` exists with a `README.md` listing the expected files,
-leave the feature `blocked` with the missing paths, and request them from the user.
-
 ### 2. Set Feature State
 
 Before code changes, ensure `feature_list.json` reflects one active feature:
@@ -78,8 +71,7 @@ Make the smallest coherent set of changes needed to satisfy the spec.
 Rules:
 
 - Follow existing repository patterns.
-- For UI features, follow the captures under `../../../docs/design/concepts/<feature-id>/` named by the
-  spec and `../../../DESIGN.md` for layout, hierarchy, components, spacing and states.
+- For UI features, follow `../../../DESIGN.md` for layout, hierarchy, components, spacing and states.
 - Keep WIP=1.
 - Do not implement adjacent features from `feature_list.json`.
 - Add regression/unit/integration/smoke tests when they fit the feature and current repo maturity.

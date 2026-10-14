@@ -763,6 +763,17 @@
   crea `docs/design/concepts/detail-hero-full-bleed/`; las cuatro capturas aceptadas se revisaron y
   respetan (sin commit/push/PR del implementer). **Pendiente de validación independiente.** Quedan
   `not_started` `favorites-tile-contrast` y `home-tus-recetas-ver-todas`.
+- Correctivas de diseño nuevas (2026-10-14, sesión 123): **dos features `not_started`** en
+  `feature_list.json`, ambas `area: ui` y **con spec de planner ya creada** en `docs/specs/`:
+  **`detail-hero-square-bottom`** (depende de `detail-hero-full-bleed`, `accepted`) — el **hero** del
+  Detalle deja de redondear sus **esquinas inferiores** (recorte rectangular; encaja a ras con la tira de
+  metadatos, que **conserva** sus 24 dp) y `DESIGN.md` (`Shapes`, `Core Screens` 5) se reconcilia; y
+  **`dish-image-settings-default-off`** (depende de `dish-image-settings-toggle`, `accepted`) —
+  `DishImageSettingsPolicy.DEFAULT_ENABLED` pasa a `false` para que el interruptor "Generar imágenes del
+  plato" aparezca **apagado** al arrancar (opt-in), con los tests JVM que asumían el default encendido
+  actualizados y las docs durables (ADR 0005, `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`) reconciliadas. Capturas: **no** se exigen (política vigente,
+  sesión 122). **WIP = 0**; ninguna implementada todavía.
 
 ## Registro de sesiones
 
@@ -5297,3 +5308,88 @@
 - Siguiente paso: el orquestador de `feature-flow` crea el **commit local** de
   `feature/favorites-tile-contrast` y `github-flow` **publica** (push + PR `feature/favorites-tile-contrast`
   → `main` con `Closes #130`; el merge lo hace la persona).
+
+### Sesión 122 (harness)
+
+- Fecha: 2026-10-14
+- Objetivo: **chore de harness** (no es feature de producto): **retirar el requisito de capturas de
+  diseño (UI) para las features de UI** que imponía el flujo. Decisión de la persona: eliminarlo de
+  **todo el harness**; `scripts/import-stitch-captures.sh` y `docs/design/stitch/` se conservan como
+  **utilidad/manual**, sin bloquear ningún flujo.
+- Completado:
+  - `github-flow` (skill + evals): se retiran el input `captures_path`, la **precondición 5** de
+    capturas (quedan **4** precondiciones), la sección **`## UI Captures Provisioning`**, el estado
+    `provisioned`, y los pasos de provisión/`--captures` de `execute`; `Blocked → Resume` y el
+    `Output Report` quedan sin capturas. Evals 6 y 7 (capturas) eliminados.
+  - `feature-flow`: fuera la regla dura de capturas y la **UI gate** del `Role Selection`.
+  - `feature-spec` (y `references/spec-template.md`), `feature-implementer`, `feature-validator`: fuera
+    la puerta de capturas y sus menciones; `DESIGN.md` sigue siendo la **fuente de verdad visual**.
+  - `AGENTS.md`: la regla "**Capturas de UI obligatorias**" se sustituye por "**Diseño de UI
+    opcional**" (material de apoyo, no requisito); "Verificación de UI" pasa a citar `DESIGN.md`.
+  - `docs/design/concepts/README.md`: "Capturas obligatorias" → capturas **opcionales** de referencia
+    (sin `blocked`, sin `--captures`); `docs/design/stitch/README.md` y `DESIGN.md` ("Generated Concept
+    Images") alineados. `feature_list.json`: retirada la condición de "exención de capturas" en la
+    feature `blocked` `seed-catalog-50`.
+- Verificación ejecutada: cambio **solo de harness/documentación** (ningún fichero Kotlin/recursos/gradle),
+  por lo que el gate `init.sh` no aplica; revisión del diff y `python3 -c "json.load(...)"` sobre
+  `feature_list.json` (válido). Greps de coherencia: sin referencias a "UI Captures Provisioning",
+  `captures_path` ni la UI gate en las skills.
+- Ficheros actualizados: `.opencode/skills/github-flow/SKILL.md`,
+  `.opencode/skills/github-flow/references/evals.md`, `.opencode/skills/feature-flow/SKILL.md`,
+  `.opencode/skills/feature-spec/SKILL.md`,
+  `.opencode/skills/feature-spec/references/spec-template.md`,
+  `.opencode/skills/feature-implementer/SKILL.md`, `.opencode/skills/feature-validator/SKILL.md`,
+  `AGENTS.md`, `docs/design/concepts/README.md`, `docs/design/stitch/README.md`, `DESIGN.md`,
+  `feature_list.json` y este registro.
+- Riesgo o incógnita abierta: las capturas históricas, los registros de sesión previos y las
+  "excepciones de capturas" de features ya `accepted` se conservan como **historia** (no se reescriben);
+  `DESIGN.md` sigue siendo la referencia visual y la revisión puramente visual la hace la persona.
+
+### Sesión 123
+
+- Fecha: 2026-10-14
+- Objetivo: **dar de alta dos correctivas de diseño pedidas por la persona** (agente principal, rol
+  orquestador) para dejarlas listas para el ciclo `feature-flow`, cada una con su spec de planner. **No**
+  se implementa nada en esta sesión.
+- Completado:
+  - **`feature_list.json`**: dos entradas nuevas `not_started` (`area: ui`), con `user_visible_behavior`,
+    `depends_on`, `verification` (sin bullets de capturas, según la política vigente de la sesión 122),
+    `evidence: []` y notas con el motivo y el alcance. Total: **62 features**.
+    - **`detail-hero-square-bottom`** — depende de `detail-hero-full-bleed` (accepted). La cabecera
+      (hero: nombre + los tres ingredientes principales) del Detalle termina en esquinas inferiores
+      redondeadas que no encajan con la tira de metadatos (tiempo · dificultad · comensales · calorías);
+      se pide **quitar el redondeado** de la parte inferior de la cabecera (bordes rectos). Alcance
+      cerrado: **solo** el hero; la tira **conserva** sus 24 dp y el hero sigue recortando su contenido
+      (marca de agua y filete), así que el redondeado se sustituye por un recorte **rectangular**.
+    - **`dish-image-settings-default-off`** — depende de `dish-image-settings-toggle` (accepted). El
+      interruptor **"Generar imágenes del plato"** del Perfil debe aparecer **desactivado** por defecto
+      (hoy `DEFAULT_ENABLED = true` y gasta cuota); cambio de una constante en
+      `data/image/DishImageSettings.kt` (opt-in), más los tests JVM que asumían el default encendido y
+      las docs durables.
+  - **Specs** (subagentes `planner` en paralelo, skill `feature-spec`), sin tocar `feature_list.json` ni
+    este registro: `docs/specs/detail-hero-square-bottom.md` (416 líneas) y
+    `docs/specs/dish-image-settings-default-off.md` (510 líneas), con `Expected File Changes`,
+    `Decisions And Unknowns` y `Validator Checklist`. `docs/design/concepts/detail-hero-square-bottom/`
+    **no** existe (finalmente no se exigen capturas).
+  - Alcance previsto (según las specs): `detail-hero-square-bottom` → `ui/detail/RecipeDetailScreen.kt`
+    (recorte rectangular del hero + renombrar `HeroBottomShape` → `MetaStripBottomShape` + KDoc) y
+    `DESIGN.md` (`Shapes`, `Core Screens` 5); `dish-image-settings-default-off` →
+    `data/image/DishImageSettings.kt` (`DEFAULT_ENABLED = false` + KDoc), `DishImageSettingsTest.kt`
+    (tests con `enabled` explícito + default apagado) y `DESIGN.md`, `docs/adr/0005`, 
+    `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`. Sin dependencias nuevas en
+    ninguna.
+- Verificación ejecutada: **cambio solo de harness/documentación** (ningún fichero Kotlin/recursos/
+  gradle), así que el gate `init.sh` no aplica; `feature_list.json` re-validado con `python3 -c
+  "json.load(...)"` (válido, 62 entradas) y revisión del diff.
+- Ficheros creados/cambiados: `docs/specs/detail-hero-square-bottom.md` y
+  `docs/specs/dish-image-settings-default-off.md` (nuevos); `feature_list.json` y `PROGRESS.md`
+  (modificados). **Sin** tocar `app/**`, `scripts/**`, `init.sh`, `gradle*`, `DESIGN.md` ni los ADR
+  (los reconcilia el implementer de cada feature).
+- Siguiente paso: `github-flow execute detail-hero-square-bottom` y
+  `github-flow execute dish-image-settings-default-off` (cada una en su worktree/rama
+  `feature/<id>`; son independientes y pueden correr en paralelo) para lanzar el ciclo
+  implementer → validator. **No** se ha hecho commit, push ni PR en esta sesión.
+- Riesgo o incógnita abierta: en `detail-hero-square-bottom`, la persona verá el bloque hero+tira con
+  el **borde inferior** aún redondeado (lo aporta la tira); si quisiera también la tira recta, sería
+  **otra** correctiva. En `dish-image-settings-default-off`, al ser un ajuste de sesión, tras reiniciar
+  la app vuelve a **apagado** (opt-in no recordado); persistirlo sería otra feature (dominio + Room).

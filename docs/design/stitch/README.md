@@ -48,8 +48,8 @@ Stitch son placeholders (en la app se resuelven con Material Symbols y degradado
 
 ## Paquetes listos por feature (`features/`)
 
-Para el **backfill** de capturas (features de UI aceptadas antes de la política de capturas) hay un
-prompt **autocontenido por feature** en `features/<feature-id>.md`: incluye el contexto
+Para el **backfill** de capturas (features de UI aceptadas antes de que existiera la convención de
+capturas) hay un prompt **autocontenido por feature** en `features/<feature-id>.md`: incluye el contexto
 (`00-contexto.md`) y las partes de sus pantallas, listo para pegar en una conversación de Stitch por
 feature y guardar cada export en `docs/design/concepts/<feature-id>/<pantalla>/`. No sustituyen a las
 partes de arriba (`00`–`21`), que son la fuente.

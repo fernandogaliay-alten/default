@@ -127,12 +127,11 @@ de la UI**: si un mockup generado contradice estos tokens o estas reglas, manda 
 
 ## Generated Concept Images
 
-La política de capturas de UI (PR #37) exige una captura por **pantalla** en
+La convención de capturas de UI (PR #37) describe una captura por **pantalla** en
 `docs/design/concepts/<feature-id>/<pantalla>/` (el `.png`, el `.html` y el `design.md` del export de
-Stitch). La primera captura aceptada es `results-screen/resultados/` (dirección visual de la pantalla
-de Resultados, registrada abajo). Las features de UI aceptadas **antes** de esa política tienen
-pendiente este **backfill**; la petición concreta de cada una vive en su
-`docs/design/concepts/<feature-id>/README.md`.
+Stitch). Es **material de referencia opcional**, no un requisito previo: manda este documento. Las
+features de UI aceptadas **antes** de esa convención tienen pendiente un **backfill** opcional; la
+petición concreta de cada una vive en su `docs/design/concepts/<feature-id>/README.md`.
 
 Capturas aceptadas (dirección visual, no especificación pixel-perfect):
 

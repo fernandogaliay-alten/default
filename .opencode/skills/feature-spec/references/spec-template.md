@@ -78,16 +78,11 @@ If paths are provisional because the app is not bootstrapped yet, say so explici
 - Screens or states affected: <list>
 - New design artifact required: yes/no — <reason>
 
-For UI features, name the concrete capture file(s) under
-`../../../../docs/design/concepts/<feature-id>/` that must exist before implementation, e.g.:
-
-- `UI captures (required)`: `../../../../docs/design/concepts/<feature-id>/<screen>.<ext>` (light and dark if both apply)
-
-If a required capture is missing, create `../../../../docs/design/concepts/<feature-id>/README.md`
-listing the exact expected file names, then stop and request them from the user instead of emitting this
-spec (the feature is blocked pending design input).
-
-If UI is involved, follow `../../../../DESIGN.md` and identify any feature-specific visual states the implementer must handle. If `../../../../DESIGN.md` is missing but needed, mark it as a planning gap rather than letting the implementer invent a visual style.
+For UI features, follow `../../../../DESIGN.md` as the visual source of truth and identify any
+feature-specific visual states the implementer must handle. If the feature needs design direction that
+`DESIGN.md` does not yet cover, mark it as a planning gap rather than letting the implementer invent a
+visual style. Optionally, reference accepted captures under `../../../../docs/design/concepts/<feature-id>/`
+as supporting material (they are not required).
 
 ## Durable Documentation Impact
 
@@ -119,7 +114,7 @@ Use these rules:
 
 - <Command or manual scenario to run.>
 - <Expected result.>
-- If the repo has a persistent E2E command and this feature changes user-visible behavior, authentication, authorization, routing, or API flows, add or update focused E2E coverage and include the E2E command here. If E2E is not appropriate (this repo: UI is verified by JVM logic/state and the mandatory captures), state why.
+- If the repo has a persistent E2E command and this feature changes user-visible behavior, authentication, authorization, routing, or API flows, add or update focused E2E coverage and include the E2E command here. If E2E is not appropriate (this repo: UI is verified by JVM logic/state and `../../../../DESIGN.md`), state why.
 
 For `init.sh`, be explicit:
 
@@ -138,6 +133,6 @@ For `init.sh`, be explicit:
 - [ ] Verification evidence is present.
 - [ ] Persistent E2E coverage was added/updated when the feature has an observable user/API flow and an E2E harness exists, or the spec explains why it is not needed.
 - [ ] `feature_list.json` and `../../../../PROGRESS.md` were updated correctly.
-- [ ] For UI features, the spec's `Visual Design Impact` names captures under `../../../../docs/design/concepts/<feature-id>/` that exist, and the implementation follows them.
+- [ ] For UI features, the implementation follows `../../../../DESIGN.md` (the visual source of truth).
 - [ ] No unrelated product behavior or extra feature work was added.
 ```

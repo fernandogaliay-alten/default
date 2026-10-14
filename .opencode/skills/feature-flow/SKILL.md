@@ -25,9 +25,6 @@ The main agent is the orchestrator. It chooses the next role, launches the right
 - If validation returns `revise`, route the repair brief back to `implementer` for the same feature.
 - After a `revise` repair, route the same feature back to `validator`; do not stop after the repair unless the user explicitly asked for a single role step.
 - If validation returns `block`, stop and report the blocker.
-- UI features are never implemented without their mandatory captures under `docs/design/concepts/<feature-id>/`
-  (see Role Selection, UI gate). Missing captures are a blocker to request from the person, not a
-  reason to improvise visuals.
 - After validation returns `accept`, stage only the accepted feature's changes and create a Conventional Commit before selecting or reporting the next feature.
 - After every accepted feature pass, the main orchestrator must report what changed and how the user can try it locally. The implementer supplies raw verification notes, the validator checks they are real, and the orchestrator presents the final user-facing testing steps after the commit.
 - Never push and never open pull requests. Publishing (push + PR) is owned exclusively by the `github-flow` orchestrator; a `feature-flow` session leaves the acceptance commit local, in its branch.
@@ -62,20 +59,8 @@ For the selected feature:
 
 0. If the feature status is `accepted`, report that the feature is already planned, implemented, and accepted; select the next available feature if the user asked to continue.
 1. If `../../../docs/specs/<feature-id>.md` is missing or stale, run `planner`.
-2. UI gate (before `implementer`): if the feature has UI (`area: ui` or any screen/visual behavior),
-   confirm the spec names capture file(s) under `../../../docs/design/concepts/<feature-id>/` and that
-   those files exist. If any is missing, do NOT run `implementer`: reuse the request material the
-   `github-flow` orchestrator already laid down inside the worktree (`README.md` + `stitch-prompt.md`);
-   if it is absent, create the folder `../../../docs/design/concepts/<feature-id>/` with a `README.md`
-   listing the expected files and a `stitch-prompt.md` (see `../github-flow/SKILL.md`, "UI Captures
-   Provisioning"). Then stop, mark the feature `blocked` with the missing capture paths, and request
-   them from the person. In the block report, name the resume entry point:
-   `github-flow execute <feature-id>` when the feature is owned by a `github-flow` plan (it reuses the
-   issue/worktree/branch); never resume a `github-flow`-owned feature with a standalone `feature-flow`
-   run. Note that when this skill runs inside the `planner` subagent, that subagent can only write under
-   `docs/specs/`, so the orchestrator (main agent) creates the captures request folder.
-3. Else if the feature is neither `passing` nor `accepted`, run `implementer`.
-4. Else if the feature is `passing`, run `validator`.
+2. Else if the feature is neither `passing` nor `accepted`, run `implementer`.
+3. Else if the feature is `passing`, run `validator`.
 
 Validation records should live under `../../../docs/validations/<feature-id>.md` when the validator or main agent persists them. If the validator only reports in chat, the main agent should ask before writing a validation record unless the user requested persistence.
 
