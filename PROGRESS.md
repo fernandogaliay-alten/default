@@ -4222,6 +4222,162 @@
 ### Sesión 105
 
 - Fecha: 2026-10-14
+- Objetivo: **implementar** (rol `implementer`, contexto limpio, worktree
+  `feature/recipe-detail-typographic-header`) la **tercera** de las cinco features del ADR 0006,
+  **`recipe-detail-typographic-header`** (`area: ui`, `depends_on: recipe-card-typographic` ya
+  `accepted`), según `docs/specs/recipe-detail-typographic-header.md`. No es orquestación: **sin**
+  commit/push/PR (el commit lo crea el orquestador de `feature-flow` y publica `github-flow`).
+- Completado:
+  - **Lógica pura nueva** `ui/detail/RecipeDetailHeroFormat.kt`: constantes de geometría
+    (`HERO_HEIGHT_DP = 240`, `FILLET_HEIGHT_DP = 6`, `WATERMARK_DP = 190`, `WATERMARK_ALPHA = 0.12f`,
+    `MAIN_INGREDIENTS = RecipeCardFormat.MAIN_INGREDIENTS`), `data class HeroContent(category, title,
+    ingredients: List<MainIngredient>)` y `of(taxonomy, recipe)` compuesto por
+    `RecipeCardFormat.categoryLine` + `RecipeCardFormat.mainIngredients` (una sola regla de
+    "categoría · cocina" y de ingredientes principales, con despensa fuera, orden de declaración, tope 3
+    y respaldo al `id`). Sin Compose ni Android.
+  - **Hero tipográfico** en `ui/detail/RecipeDetailScreen.kt`: `Box` de 240 dp a sangre con margen
+    lateral 16 dp y `clip` de esquinas **inferiores** a 24 dp, relleno
+    `recipeAccentBrush(RecipeArtworkStyle.of(recipe).accent)`, marca de agua `RecipeGlyphArtwork` de
+    190 dp tintada `onSurfaceVariant` al 12 % desbordando por la esquina inferior derecha (offset
+    +24/+6, recortada por el `clip`), `Column` alineada al pie con categoría en versalitas (11 sp, bold,
+    tracking 0.14 em), título Manrope Bold 29/31 sp (-0.025 em, 2 líneas con elipsis) y las **tres filas**
+    de ingrediente (nombre 12,5 sp `onSurfaceVariant` + cantidad 12,5 sp Medium tabular `onSurface`,
+    hairline `outline` bajo cada fila incluida la última) y **filete de 6 dp**
+    (`Brush.horizontalGradient(recipeAccentColors(accent))`) en el borde inferior. Tipografías locales
+    (`HeroTypography` desde `SazonFontFamilies`): el tema solo overridea 4 estilos.
+  - **Eliminados** `DetailCard` y el `Column(offset(y = -SazonSpacing.lg))`: el `MetaStrip` es ahora un
+    **bloque propio** (sin solape) con `Surface` `surface`, esquinas inferiores 24 dp, margen lateral
+    16 dp, sombra suave 4 dp, **cuatro columnas** `weight(1f)` centradas con hairline vertical `outline`
+    (no tras la última), etiqueta en versalitas (9,5 sp, tracking 0.1 em, `onSurfaceVariant`) y valor en
+    **Manrope Bold 14 sp tabular** (`onSurface`), alimentado por `RecipeDetailFormat.metaEntries`
+    (**sin tocar** sus cuatro valores ni sus tests).
+  - **La descripción de la receta deja de pintarse** (Scenario 8, consecuencia declarada de la spec):
+    vivía en la tarjeta retirada.
+  - **Intactos**: "Atrás" (píldora) y el corazón/guardar (48 dp) flotando sobre el hero; pestañas,
+    checklist con `ServingScaler`, `ServingsStepper`, timeline, notas/nutrición, `DetailBottomBar`,
+    `RecipeDetailState`/`RecipeDetailStateSaver`, `RecipeDetailFormat`, `IngredientFormat`,
+    `ui/artwork/**` (solo se **consumen** `RecipeGlyphArtwork`/`recipeAccentBrush`/`recipeAccentColors`/
+    `RecipeArtworkStyle`), `ui/home/**`, `MainShell`, `ui/theme/**`, dominio, datos, build/gradle,
+    `init.sh` y `scripts/**`.
+  - **Docs durables**: `docs/technical-discovery.md` (párrafo del Detalle: hero tipográfico 240 dp,
+    degradado de cocina, marca de agua 12 %, filete 6 px, tira como bloque propio, `RecipeDetailHeroFormat`
+    entre la lógica pura y que el Detalle **deja de consumir** `RecipeArtwork`), `docs/adr/0006`
+    (`Estado`: tercera feature implementada —y `recipe-card-typographic` marcada `accepted`—; §7 y
+    "Consecuencias": el hero del Detalle ya no usa `RecipeArtwork`, que queda **sin consumidores** hasta
+    `dish-artwork-as-card-background`) y `DESIGN.md` → `Shapes` (la viñeta de la tarjeta superpuesta del
+    Detalle se sustituye por el apilado **hero + tira de metadatos**). `docs/domain-model.md`,
+    `AGENTS.md`, `docs/risks-and-open-questions.md` y `docs/design/concepts/**`: **sin cambios** (las
+    capturas se leen, no se editan).
+- Verificación ejecutada:
+  1. Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.detail.*"
+     --rerun-tasks` → `BUILD SUCCESSFUL` (2m25s, 34/34 tareas): `RecipeDetailHeroFormatTest` 10/10 y los
+     cuatro tests previos de `ui.detail` verdes **sin diff**.
+  2. Gate estándar **`bash init.sh` → exit 0** (`./gradlew test` + `./gradlew lint` vía
+     `scripts/gradle.sh`; sin procesos largos, sin red y **sin** tocar `init.sh`).
+- Evidencia capturada:
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **96 suites / 730 tests /
+    0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` (`git grep -c '@Test'`) = **95
+    ficheros / 720 anotaciones** ⇒ delta **+1 suite / +10 tests** (`RecipeDetailHeroFormatTest` 10). Los
+    cuatro tests previos de `ui.detail` siguen intactos (`ServingScalerTest` 8, `IngredientFormatTest` 5,
+    `RecipeDetailFormatTest` 4, `RecipeDetailStateTest` 5).
+  - Vectores JVM comprobados (Taxonomía real): categoría `"Arroz · Latina"` (`rice`/`latin`) y
+    `"Huevos y desayunos · Española"` (`egg_breakfast`/`spanish`); ingredientes `Pollo 400 g / Arroz 300 g
+    / Zanahoria 1 ud` y la tortilla semilla `Patata 600 g / Huevo 6 ud / Cebolla 1 ud` (aceite y sal,
+    despensa, fuera); `"Al gusto"` con `unit = null`; negativos **no vacíos** (receta vacía → lista vacía
+    sin excepción; 2 ingredientes → 2; solo despensa → se completa a 3; 4 ingredientes → 3; ids
+    desconocidos → `"futurista · marte"`; determinismo por igualdad estructural de `HeroContent`) y
+    geometría `240/6/190/0,12/3` con `MAIN_INGREDIENTS == RecipeCardFormat.MAIN_INGREDIENTS`.
+  - Lint (`app/build/reports/lint-results-debug.sarif`): **0 errores**, los **13 warnings** de entorno
+    preexistentes (`GradleDependency` 7, `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2,
+    `OldTargetApi` 1) y **0 bajo `app/src`**.
+  - Disciplina de alcance por inspección: `git diff --name-only` = los `Expected File Changes`
+    (`RecipeDetailHeroFormat.kt` y su test nuevos; `RecipeDetailScreen.kt`; `docs/technical-discovery.md`;
+    `docs/adr/0006`; `DESIGN.md`) más la spec del planner y este harness; `grep -rn "RecipeArtwork(\|
+    RecipePhotoSource" app/src/main/java/com/sazon/app/ui/detail` → **0**; `grep -rn "RecipeArtwork("
+    app/src/main/java/com/sazon/app/ui` → solo la **definición** (`RecipeArtwork` queda **sin
+    consumidores**); sin `DetailCard` ni `offset(y = (-` en `RecipeDetailScreen.kt`; `grep -rn "0xFF" ...
+    | grep -v ui/theme` → solo las **dos máscaras de bytes preexistentes**; `test -f` de
+    `docs/design/concepts/recipe-detail-typographic-header/detalle-receta/{screen,screen-dark}.png` →
+    **OK**; sin diff en `app/build.gradle.kts`, `gradle/**`, `init.sh`, `scripts/**`, `assets/**`,
+    `docs/domain/taxonomy.json`, `seed-recipes.json`, `ui/theme/**`, `ui/artwork/**` ni
+    `docs/design/**`; sin dependencias nuevas.
+- Ficheros creados/cambiados: `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailHeroFormat.kt` y
+  `app/src/test/java/com/sazon/app/ui/detail/RecipeDetailHeroFormatTest.kt` (nuevos);
+  `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt`, `docs/technical-discovery.md`,
+  `docs/adr/0006-typographic-recipe-cards.md`, `DESIGN.md` y la spec (modificados);
+  `feature_list.json` (`recipe-detail-typographic-header` → **`passing`** con evidencia) y este registro.
+  **Sin** commit, push ni PR.
+- Hallazgos:
+  - El grep de alcance de la spec (`"RecipeArtwork\|RecipePhotoSource"` → 0) **chocaba con su propio
+    Approach**, que exige `recipeAccentBrush(RecipeArtworkStyle.of(recipe).accent)`: `ui/detail` sí
+    importa `RecipeArtworkStyle` (mapeo **puro** glifo/acento). Se reconciliaron las tres líneas de
+    inspección del plan y del checklist a **`RecipeArtwork(`** (la llamada a la imagen) y se dejó
+    constancia en la spec ("Hallazgo de implementación"). Lo que la spec pedía de verdad —el hero sin
+    foto y `RecipeArtwork` sin consumidores— se cumple.
+  - Desviaciones visuales **declaradas** por la spec y respetadas: la tira conserva `"480 kcal"` (el
+    `code.html` dibuja `480`), los controles "Atrás"/guardar se mantienen a ≥48 dp (la captura los dibuja
+    a 34 px) y las pestañas/stepper/checklist **no** se rediseñan aunque la captura los muestre con otros
+    contenedores (`DESIGN.md` manda).
+- Riesgo o incógnita abierta: ninguno nuevo. Queda para la persona la **revisión visual en el emulador**
+  (abrir una receta semilla y una de IA, en claro y oscuro: confirmar hero sin foto, marca de agua,
+  filete, tira con los cuatro valores y comportamiento idéntico del stepper, las pestañas y la barra
+  inferior), no automatizable desde WSL; un defecto visual se corrige con feature correctiva. La
+  desviación de contraste del hero en oscuro (~1,5:1 contra `darkBackground`) queda como está declarada
+  en la spec, no bloqueante. **OQ7** (set semilla en el hero) sigue abierto: el hero es tipográfico.
+- Siguiente paso: **validación independiente** (`feature-validator`, contexto limpio) de
+  `docs/specs/recipe-detail-typographic-header.md`; si devuelve `accept`, el orquestador de
+  `feature-flow` persiste `accepted` y crea el **commit local** en
+  `feature/recipe-detail-typographic-header`, y `github-flow` publica (push + PR). Después podrá
+  arrancar `dish-artwork-as-card-background` (L2), que recupera `RecipeArtwork` como capa de fondo y
+  exige capturas ya aportadas.
+
+### Sesión 106
+
+- Fecha: 2026-10-14
+- Objetivo: **validar de forma independiente** (rol `validator`, contexto limpio) y **persistir la
+  aceptación** (orquestador de `feature-flow`) de **`recipe-detail-typographic-header`** (tercera
+  feature del ADR 0006) en el worktree `feature/recipe-detail-typographic-header`. **Sin** push ni PR
+  (los hace `github-flow`).
+- Veredicto del validador independiente: **`accept`**. No se fio de la evidencia del implementer:
+  `bash init.sh` salió exit 0 pero con `:app:testDebugUnitTest` **UP-TO-DATE**, así que forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**BUILD SUCCESSFUL** 3m45s, 34/34 tareas
+  ejecutadas) y `bash scripts/gradle.sh lint --rerun-tasks` (**BUILD SUCCESSFUL** 3m17s, 30/30) y
+  parseó por su cuenta los XML frescos: **96 suites / 730 tests / 0 fallos / 0 errores / 0 saltados**
+  (`RecipeDetailHeroFormatTest` 10/10; `ServingScalerTest` 8, `IngredientFormatTest` 5,
+  `RecipeDetailFormatTest` 4 —los cuatro valores de la tira—, `RecipeDetailStateTest` 5) y el SARIF
+  (**0 errores**, 13 warnings de entorno, **0 bajo `app/src`**). Re-derivó la baseline en `HEAD`
+  (`git grep -c '@Test'` → 95 ficheros / 720 anotaciones) ⇒ delta **+1 suite / +10 tests**.
+- Contraste de los **8 escenarios** contra código + capturas + tests (hero 240 dp sin foto, esquinas
+  inferiores 24 dp, marca de agua 190 dp @12 %, filete 6 dp, tira de 4 valores, sin `DetailCard` ni
+  `offset`, descripción no pintada) y **disciplina de alcance** (sin diff en build/gradle, `init.sh`,
+  `scripts/**`, `assets/**`, `ui/theme/**`, `ui/artwork/**`, `ui/home/**`, `MainShell.kt`, dominio ni
+  datos; **0 llamadas** a `RecipeArtwork(` en `ui/**`; capturas versionadas sin modificar; sin
+  dependencias nuevas). Sin hallazgos **Critical/High/Medium**; 2 **Low** informativos no bloqueantes
+  (`HeroBottomShape` duplica el literal `24.dp` de `SazonShapes.medium`; la captura pinta
+  `DE LA COCINA LATINA` y el código `ARROZ · LATINA` según `RecipeCardFormat.categoryLine`, aviso para
+  la revisión visual) e informativos (título 700 vs 800 del prototipo, mismo precedente aceptado de
+  `RecipeFicha`; dependencia mutua `ui.detail ⇄ ui.home` mandada por la spec). Detalle en
+  `docs/validations/recipe-detail-typographic-header.md`.
+- Persistencia de la aceptación (orquestador): `feature_list.json` →
+  `recipe-detail-typographic-header` **`accepted`** con la evidencia del validador; este registro de
+  sesión. **Commit local** en `feature/recipe-detail-typographic-header` (Conventional Commit, solo los
+  ficheros de la feature + harness/docs); **sin** push ni PR.
+- Ficheros de la feature aceptada: `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailHeroFormat.kt`
+  y `app/src/test/java/com/sazon/app/ui/detail/RecipeDetailHeroFormatTest.kt` (nuevos);
+  `app/src/main/java/com/sazon/app/ui/detail/RecipeDetailScreen.kt`, `docs/technical-discovery.md`,
+  `docs/adr/0006-typographic-recipe-cards.md`, `DESIGN.md`, la spec, `docs/validations/…`,
+  `feature_list.json` y `PROGRESS.md`.
+- Queda para la persona la **revisión visual en el emulador** (claro y oscuro: hero sin foto, marca de
+  agua, filete, tira con los cuatro valores y stepper/pestañas/barra inferior igual que antes), no
+  automatizable desde WSL; un defecto visual se corrige con una feature correctiva. **WIP = 0** para
+  esta feature.
+- Siguiente paso: `github-flow` publica (push + PR) esta rama; después podrá arrancar
+  `dish-artwork-as-card-background` (L2), que recupera `RecipeArtwork` como capa de fondo y exige
+  capturas ya aportadas.
+
+### Sesión 106
+
+- Fecha: 2026-10-14
 - Objetivo: cerrar las **mejoras del harness** detectadas al comparar con la skill original de
   `github-flow`: permisos de los agentes, arranque del lanzador y aviso de fin. Rama
   `chore/harness-launch-and-agent-permissions`; PR propio (no es una feature).
@@ -4248,5 +4404,5 @@
   registro. **Sin** tocar `app/**`, `init.sh` ni la build; sin dependencias nuevas.
 - Nota: la corrección de permisos aplica a las sesiones que arranquen en un worktree que **ya contenga**
   el cambio; los flujos lanzados antes siguen con los ficheros antiguos.
-- Siguiente paso: revisión y merge del PR; después, la siguiente feature del ADR 0006
-  (`recipe-detail-typographic-header`).
+- Integración: merge de `origin/main` (`7e4f1c3`) conservando **ambas** aportaciones de `PROGRESS.md`
+  (sesión 105 de `recipe-detail-typographic-header` y esta, renumerada a 106).

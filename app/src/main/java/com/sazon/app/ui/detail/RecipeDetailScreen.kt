@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -37,20 +38,31 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.sazon.app.domain.recipe.Nutrition
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.recipe.RecipeIngredient
 import com.sazon.app.domain.recipe.RecipeStep
 import com.sazon.app.domain.taxonomy.Taxonomy
-import com.sazon.app.ui.artwork.RecipeArtwork
+import com.sazon.app.ui.artwork.RecipeArtworkStyle
+import com.sazon.app.ui.artwork.RecipeGlyphArtwork
+import com.sazon.app.ui.artwork.recipeAccentBrush
+import com.sazon.app.ui.artwork.recipeAccentColors
+import com.sazon.app.ui.home.MainIngredient
 import com.sazon.app.ui.preferences.ServingsStepper
 import com.sazon.app.ui.theme.SazonComponents
+import com.sazon.app.ui.theme.SazonFontFamilies
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonPrimaryContainer
 import com.sazon.app.ui.theme.SazonShapes
@@ -59,23 +71,50 @@ import com.sazon.app.ui.theme.SazonSpacing
 /** Cifras tabulares para cantidades, comensales y nutricion ("tnum" en `DESIGN.md`). */
 private const val TABULAR_FIGURES = "tnum"
 
+/** Esquinas **inferiores** del hero y de la tira (`SazonShapes.medium` = 24 dp); las superiores, rectas. */
+private val HeroBottomShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+
+/** Padding interior del hero (prototipo C3 del Detalle: `18px`). */
+private val HERO_PADDING = 18.dp
+
+/** Desbordamiento de la marca de agua por la esquina inferior derecha (prototipo: `-24px`/`-6px`). */
+private val WATERMARK_OFFSET_X = 24.dp
+private val WATERMARK_OFFSET_Y = 6.dp
+
+/** Aire entre el titulo y los ingredientes del hero (prototipo: `12px`). */
+private val HERO_INGREDIENTS_TOP = SazonSpacing.sm
+
+/** Separacion entre las filas de ingredientes del hero (prototipo: `3px`). */
+private val INGREDIENT_ROW_GAP = 3.dp
+
+/** Aire entre la fila de ingrediente y su hairline (prototipo: `2px`). */
+private val INGREDIENT_ROW_PADDING_BOTTOM = 2.dp
+
+/** Hairline de las filas de ingredientes y de la tira (`DESIGN.md`). */
+private val HAIRLINE = 1.dp
+
 /**
  * Pantalla de Detalle de receta: capa Compose **delgada** sobre la logica pura de `ui.detail`
  * ([ServingScaler], [IngredientFormat], [RecipeDetailFormat], [RecipeDetailState]).
  *
- * Estructura (direccion de `docs/design/concepts/recipe-detail-screen/detalle-receta/`):
- * - **Hero**: imagen de receta de `ui.artwork.RecipeArtwork` (240 dp, glifo 72 dp) con "Atras" y el
- *   corazon/guardar flotante.
- * - **Tarjeta** superpuesta con titulo, descripcion y los cuatro pares de [RecipeDetailFormat].
+ * Estructura (direccion de `docs/design/concepts/recipe-detail-typographic-header/detalle-receta/`):
+ * - **Hero tipografico** ([RecipeDetailHeroFormat]): 240 dp, categoría en versalitas, título en Manrope,
+ *   los **tres ingredientes principales con cantidad** (cifras tabulares), marca de agua del glifo al
+ *   12 % y filete de 6 px con el degradado de la cocina. **Sin ninguna foto** (ADR 0006); "Atras" y el
+ *   corazon/guardar siguen flotando encima.
+ * - **Tira de metadatos**: bloque propio justo debajo del hero (los cuatro pares de [RecipeDetailFormat]),
+ *   sin tarjeta superpuesta ni desplazamiento.
  * - **Pestanas** Ingredientes · Pasos · Notas (activa terracota).
  * - Cuerpo por pestana: ajustador de comensales ([ServingsStepper] reutilizado **sin cambios**) con la
  *   caption "Cantidades ajustadas automaticamente" + filas nombre/cantidad; timeline de pasos con
  *   pildora ambar `"N min"`; tips y rejilla de nutricion opcional.
  * - **Barra inferior** fija con "Guardar" (outline) y el primario terracota "Empezar a cocinar".
  *
- * `isSaved`/`onToggleSave` y `onStartCooking` son **costuras no-op** de `favorites` y del modo cocina:
- * se pintan segun la captura, pero esta feature no persiste ni cocina. La receta es un parametro (no se
- * guarda en el `Saver`); el estado memorizado es comensales + pestana.
+ * La **descripcion** de la receta ya **no** se pinta: vivia en la tarjeta superpuesta que esta feature
+ * retira (desviacion declarada en la spec). `isSaved`/`onToggleSave` y `onStartCooking` son **costuras
+ * no-op** de `favorites` y del modo cocina: se pintan segun la captura, pero esta feature no persiste
+ * ni cocina. La receta es un parametro (no se guarda en el `Saver`); el estado memorizado es
+ * comensales + pestana.
  */
 @Composable
 fun RecipeDetailScreen(
@@ -110,52 +149,103 @@ fun RecipeDetailScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             DetailHero(
+                taxonomy = taxonomy,
                 recipe = recipe,
                 onBack = onBack,
                 isSaved = isSaved,
                 onToggleSave = onToggleSave,
             )
-            // La tarjeta sube sobre el hero (superficie superpuesta de `DESIGN.md`).
-            Column(modifier = Modifier.offset(y = (-SazonSpacing.lg))) {
-                DetailCard(taxonomy = taxonomy, recipe = recipe)
-                DetailTabs(
-                    selected = state.selectedTab,
-                    onSelect = { state = state.selectTab(it) },
+            // La tira de metadatos ocupa el lugar de la tarjeta superpuesta (sin solape ni `offset`).
+            MetaStrip(taxonomy = taxonomy, recipe = recipe)
+            DetailTabs(
+                selected = state.selectedTab,
+                onSelect = { state = state.selectTab(it) },
+            )
+            when (state.selectedTab) {
+                RecipeDetailTab.INGREDIENTS -> IngredientsTab(
+                    taxonomy = taxonomy,
+                    servings = state.servings,
+                    onServingsChange = { state = state.setServings(it, taxonomy.servings) },
+                    ingredients = ingredients,
                 )
-                when (state.selectedTab) {
-                    RecipeDetailTab.INGREDIENTS -> IngredientsTab(
-                        taxonomy = taxonomy,
-                        servings = state.servings,
-                        onServingsChange = { state = state.setServings(it, taxonomy.servings) },
-                        ingredients = ingredients,
-                    )
 
-                    RecipeDetailTab.STEPS -> StepsTab(steps = recipe.steps)
+                RecipeDetailTab.STEPS -> StepsTab(steps = recipe.steps)
 
-                    RecipeDetailTab.NOTES -> NotesTab(tips = recipe.tips, nutrition = recipe.nutrition)
-                }
-                Spacer(modifier = Modifier.height(SazonSpacing.lg))
+                RecipeDetailTab.NOTES -> NotesTab(tips = recipe.tips, nutrition = recipe.nutrition)
             }
+            Spacer(modifier = Modifier.height(SazonSpacing.lg))
         }
     }
 }
 
-/** Hero: imagen de receta ([RecipeArtwork], alto 240) con "Atras" y el corazon/guardar flotante. */
+/**
+ * Hero **tipografico** (240 dp, [RecipeDetailHeroFormat]): degradado de la cocina, marca de agua del
+ * glifo al 12 %, categoria en versalitas, titulo en Manrope y los tres ingredientes con cantidad en
+ * cifras tabulares; **ninguna foto** (ADR 0006). "Atras" (pildora) y el corazon/guardar (48 dp) siguen
+ * flotando encima, sin cambios de comportamiento.
+ */
 @Composable
 private fun DetailHero(
+    taxonomy: Taxonomy,
     recipe: Recipe,
     onBack: () -> Unit,
     isSaved: Boolean,
     onToggleSave: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val style = RecipeArtworkStyle.of(recipe)
+    val content = RecipeDetailHeroFormat.of(taxonomy, recipe)
+
     Box(modifier = Modifier.fillMaxWidth()) {
-        RecipeArtwork(
-            recipe = recipe,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(240.dp),
-            glyphSize = 72.dp,
-        )
+                .padding(horizontal = SazonSpacing.md)
+                .clip(HeroBottomShape)
+                .background(recipeAccentBrush(style.accent))
+                .height(RecipeDetailHeroFormat.HERO_HEIGHT_DP.dp),
+        ) {
+            // Marca de agua: desborda por la esquina inferior derecha y el `clip` la recorta.
+            RecipeGlyphArtwork(
+                glyph = style.glyph,
+                tint = scheme.onSurfaceVariant.copy(alpha = RecipeDetailHeroFormat.WATERMARK_ALPHA),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = WATERMARK_OFFSET_X, y = WATERMARK_OFFSET_Y)
+                    .size(RecipeDetailHeroFormat.WATERMARK_DP.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(HERO_PADDING),
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                Text(
+                    text = content.category.uppercase(),
+                    style = HeroTypography.category,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = content.title,
+                    style = HeroTypography.title,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                HeroIngredients(ingredients = content.ingredients)
+            }
+            // Filete de 6 dp con el degradado de la cocina, sobre el borde inferior del hero.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(RecipeDetailHeroFormat.FILLET_HEIGHT_DP.dp)
+                    .background(Brush.horizontalGradient(recipeAccentColors(style.accent))),
+            )
+        }
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -187,78 +277,112 @@ private fun DetailHero(
     }
 }
 
-/** Tarjeta superpuesta: titulo (Manrope), descripcion y la meta de cuatro pares. */
+/** Los tres ingredientes del hero: nombre a la izquierda y cantidad tabular a la derecha, con hairline. */
 @Composable
-private fun DetailCard(
-    taxonomy: Taxonomy,
-    recipe: Recipe,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = SazonShapes.large,
-        color = MaterialTheme.colorScheme.surface,
+private fun HeroIngredients(ingredients: List<MainIngredient>) {
+    if (ingredients.isEmpty()) return
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = HERO_INGREDIENTS_TOP),
+        verticalArrangement = Arrangement.spacedBy(INGREDIENT_ROW_GAP),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(SazonSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(SazonSpacing.sm),
-        ) {
-            Text(
-                text = recipe.title,
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = recipe.description,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            MetaStrip(taxonomy = taxonomy, recipe = recipe)
+        ingredients.forEach { ingredient ->
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = INGREDIENT_ROW_PADDING_BOTTOM),
+                ) {
+                    Text(
+                        text = ingredient.name,
+                        style = HeroTypography.ingredientName,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(modifier = Modifier.width(SazonSpacing.sm))
+                    Text(
+                        text = ingredient.quantityLabel,
+                        style = HeroTypography.ingredientQuantity,
+                        color = scheme.onSurface,
+                    )
+                }
+                Hairline()
+            }
         }
     }
 }
 
-/** Meta del hero: cuatro pares (Tiempo, Dificultad, Comensales, Calorias) en cifras tabulares. */
+/**
+ * Tira de metadatos: bloque propio (`surface`, esquinas inferiores 24 dp, mismo ancho que el hero) con
+ * los **cuatro pares** de [RecipeDetailFormat.metaEntries] en columnas iguales separadas por un hairline
+ * vertical (no tras la ultima), etiqueta en versalitas y valor en Manrope tabular.
+ */
 @Composable
 private fun MetaStrip(
     taxonomy: Taxonomy,
     recipe: Recipe,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val entries = RecipeDetailFormat.metaEntries(taxonomy, recipe)
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = SazonShapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SazonSpacing.md),
+        shape = HeroBottomShape,
+        color = scheme.surface,
+        shadowElevation = 4.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(SazonSpacing.sm),
-            horizontalArrangement = Arrangement.spacedBy(SazonSpacing.sm),
+                .height(IntrinsicSize.Min)
+                .padding(vertical = SazonSpacing.sm, horizontal = 4.dp),
         ) {
-            RecipeDetailFormat.metaEntries(taxonomy, recipe).forEach { meta ->
+            entries.forEachIndexed { index, meta ->
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = meta.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = meta.label.uppercase(),
+                        style = HeroTypography.metaLabel,
+                        color = scheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = meta.value,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontFeatureSettings = TABULAR_FIGURES,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = HeroTypography.metaValue,
+                        color = scheme.onSurface,
                         textAlign = TextAlign.Center,
+                    )
+                }
+                if (index != entries.lastIndex) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(HAIRLINE)
+                            .background(scheme.outline),
                     )
                 }
             }
         }
     }
+}
+
+/** Separador de 1 dp con el `outline` del tema (las hairlines de `DESIGN.md`). */
+@Composable
+private fun Hairline() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(HAIRLINE)
+            .background(MaterialTheme.colorScheme.outline),
+    )
 }
 
 /** Fila de pestanas fija; la activa va rellena de terracota. */
@@ -682,3 +806,62 @@ private val RecipeDetailStateSaver: Saver<RecipeDetailState, Any> = listSaver(
         )
     },
 )
+
+/**
+ * Estilos del hero y de la tira, construidos **localmente** desde [SazonFontFamilies] y los valores del
+ * prototipo C3 / `DESIGN.md` (29/12,5/9,5 sp…). **No** se anaden roles a `SazonTypography`: el tema solo
+ * overridea 4 estilos, asi que `titleSmall`/`labelSmall`/`headlineLarge` no usan Manrope donde se espera.
+ */
+private object HeroTypography {
+
+    /** Categoria en versalitas del hero (prototipo: `11px`, tracking `.14em`). */
+    val category = TextStyle(
+        fontFamily = SazonFontFamilies.Body,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 0.14.em,
+    )
+
+    /** Titulo del hero en Manrope (prototipo: `29px` / `1.08` / `-.025em`). */
+    val title = TextStyle(
+        fontFamily = SazonFontFamilies.Display,
+        fontWeight = FontWeight.Bold,
+        fontSize = 29.sp,
+        lineHeight = 31.sp,
+        letterSpacing = (-0.025f).em,
+    )
+
+    val ingredientName = TextStyle(
+        fontFamily = SazonFontFamilies.Body,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.5.sp,
+        lineHeight = 17.sp,
+    )
+
+    val ingredientQuantity = TextStyle(
+        fontFamily = SazonFontFamilies.Body,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.5.sp,
+        lineHeight = 17.sp,
+        fontFeatureSettings = TABULAR_FIGURES,
+    )
+
+    /** Etiqueta de la tira en versalitas (prototipo: `9,5px`, tracking `.1em`). */
+    val metaLabel = TextStyle(
+        fontFamily = SazonFontFamilies.Body,
+        fontWeight = FontWeight.Bold,
+        fontSize = 9.5.sp,
+        lineHeight = 13.sp,
+        letterSpacing = 0.1.em,
+    )
+
+    /** Valor de la tira en Manrope tabular (prototipo: `14px`). */
+    val metaValue = TextStyle(
+        fontFamily = SazonFontFamilies.Display,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        fontFeatureSettings = TABULAR_FIGURES,
+    )
+}

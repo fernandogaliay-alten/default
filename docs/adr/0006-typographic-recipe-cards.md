@@ -3,16 +3,22 @@
 ## Estado
 
 **Aceptado** (2026-10-13, decisión de la persona tras revisar los prototipos locales de `preview/`).
-**Implementadas** la primera y la segunda de las cinco features: `card-typographic-tokens-and-design`
+**Implementadas** la primera, la segunda y la tercera de las cinco features:
+`card-typographic-tokens-and-design`
 (2026-10-14: tokens `darkCardSurface`/`darkCardOutline` en `ui/theme/Color.kt`, contrato de tarjeta
 `SazonCardTokens`/`SazonCardColors`/`LocalSazonCardColors` + tinte cálido en `ui/theme/CardTokens.kt`,
-cableado en `SazonTheme` y tests JVM de contraste y tinte; **`accepted`**) y `recipe-card-typographic`
+cableado en `SazonTheme` y tests JVM de contraste y tinte; **`accepted`**), `recipe-card-typographic`
 (2026-10-14: la ficha tipográfica de `RecipeCard`/`ResultRecipeCard` y de la rejilla de Favoritos —sin
 ninguna foto—, el monograma 96×96 de la miniatura de la lista de Favoritos, la lógica pura
 `RecipeCardFormat`/`RecipeMonogram` y las primitivas compartidas `RecipeGlyphArtwork`/
-`recipeAccentBrush`/`recipeAccentColors` en `ui/artwork`; implementada y **autoverificada**, pendiente
-de validación independiente). **Implementación pendiente** de las otras tres:
-`recipe-detail-typographic-header`, `dish-artwork-as-card-background` y `retire-recipe-photos`.
+`recipeAccentBrush`/`recipeAccentColors` en `ui/artwork`; **`accepted`**) y
+`recipe-detail-typographic-header`
+(2026-10-14: el hero del Detalle deja de ser una foto y pasa a **hero tipográfico** —categoría en
+versalitas, título Manrope, los tres ingredientes con cantidad, marca de agua del glifo al 12 % y filete
+de 6 px— seguido de la **tira de metadatos** como bloque propio, sin la tarjeta superpuesta; lógica pura
+`RecipeDetailHeroFormat`, el Detalle **ya no consume `ui.artwork.RecipeArtwork`**; implementada y
+**autoverificada**, pendiente de validación independiente). **Implementación pendiente** de las otras
+dos: `dish-artwork-as-card-background` y `retire-recipe-photos`.
 
 Ajusta:
 - **ADR 0004** (fotos empaquetadas como assets): la foto deja de ser la **imagen principal**; la cadena
@@ -80,8 +86,10 @@ Decisiones de la persona sobre los prototipos:
 7. **`RecipeArtwork` cambia de rol**: deja de ser "la imagen de la receta" y pasa a ser **el proveedor
    de la capa de fondo** (con crossfade y degradación silenciosa). Conserva firma y geometría; los 5
    puntos de uso se revisan. *(Tras `recipe-card-typographic` las tres tarjetas —Inicio, Resultados y
-   Favoritos— y la miniatura de la lista **ya no lo consumen** (ficha tipográfica y monograma): su único
-   punto de uso hoy es el hero del Detalle, que es de `recipe-detail-typographic-header`.)*
+   Favoritos— y la miniatura de la lista **ya no lo consumen** (ficha tipográfica y monograma); tras
+   `recipe-detail-typographic-header` el hero del Detalle tampoco: `RecipeArtwork` queda **sin
+   consumidores** en la app hasta que `dish-artwork-as-card-background` lo recupere como capa de fondo
+   del hueco.)*
 
 ## Consecuencias
 
@@ -102,7 +110,9 @@ Decisiones de la persona sobre los prototipos:
 - **Se renuncia al apetito de la fotografía** como protagonista; pasa a un registro editorial. Es una
   decisión de producto consciente y reversible (volver a las fotos es un `revert`).
 - **El Detalle pierde el recurso del solape** (la tarjeta blanca que subía sobre el hero). Se sustituye
-  por hero tipográfico + tira de metadatos; hay que revisar el acabado en el emulador.
+  por hero tipográfico + tira de metadatos; hay que revisar el acabado en el emulador. Con ello el hero
+  del Detalle **ya no consume `RecipeArtwork`**, que queda sin consumidores en la app hasta que
+  `dish-artwork-as-card-background` lo recupere como capa de fondo.
 - **Es un cambio de layout**: la política de capturas de `docs/design/concepts/` obliga a capturas de
   referencia nuevas por feature (no vale la excepción de las correctivas de microcopy).
 - **Modo semilla**: el set semilla de imágenes de la fase 7 (`img/dishes/seed/`) queda **sin uso** si se
