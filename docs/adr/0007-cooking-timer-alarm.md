@@ -69,6 +69,15 @@ Restricciones del repositorio que condicionan la decisión:
     `registerForActivityResult`, bandera estática de compañía) de forma **no bloqueante**: no gatea
     ninguna pantalla y, denegado, el Modo cocina, la cuenta atrás y el "¡Listo!" en pantalla siguen
     intactos (degradación silenciosa).
+
+    > **Enmienda (`cooking-timer-alarm-permission-context`, 2026-10-15):** esta decisión queda
+    > **superada**. Probar en el emulador el diálogo del sistema **al abrir la app y sin ninguna
+    > explicación** resultó un defecto de UX: el permiso pasa a pedirse **en contexto**, la **primera
+    > vez** que el usuario arranca el temporizador de un paso y **después** de un rationale breve, con
+    > la decisión **pura** `NotificationPermissionPolicy` (permiso e instante inyectados) y el
+    > adaptador `data.cooking.AndroidNotificationPermissionPrompt` (que asume la memoria de sesión: una
+    > vez por proceso). Denegado o descartado, el Modo cocina, la cuenta atrás y el "¡Listo!" siguen
+    > intactos y la petición **no** gatea el temporizador. El resto del ADR no cambia.
 12. **Sin dependencias nuevas**: `NotificationCompat` y `NotificationManagerCompat` (`androidx.core`),
     `AlarmManager`, `NotificationChannel` y `ActivityResultContracts` (androidx.activity) ya están.
 
@@ -108,6 +117,9 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
 9. **Petición del permiso de forma contextual** (al pulsar "Iniciar", primera vez). Se descarta porque el
    permiso es de arranque y no debe mezclarse con la acción del temporizador: pedirlo una vez por proceso
    al abrir la app es más predecible y no gatea nada. Descartado.
+   > **Superada (`cooking-timer-alarm-permission-context`, 2026-10-15):** la correctiva invierte este
+   > descarte y adopta la petición contextual con rationale, porque el diálogo al arrancar sin
+   > explicación es un defecto de UX (ver la enmienda a la decisión 11).
 
 ## Consecuencias
 

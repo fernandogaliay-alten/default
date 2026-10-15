@@ -14,6 +14,13 @@
   notificación (sin excepción y sin datos sensibles); prueba **manual** en emulador (persona).
 - Enmienda acotada del Non-Goal "Notificaciones y recordatorios" de `docs/build-brief.md`: **solo**
   el aviso de fin del temporizador (no recordatorios programados ni notificaciones de sugerencias).
+- **Vigencia (correctiva `cooking-timer-alarm-permission-context`, 2026-10-15):** esta spec es el
+  registro histórico del aviso aceptado; **desde la correctiva**, el permiso `POST_NOTIFICATIONS` ya
+  **no** se pide "una vez por proceso al arrancar" sino **en contexto**, la primera vez que arranca el
+  temporizador de un paso y tras un rationale (decisión pura `NotificationPermissionPolicy` + adaptador
+  `data.cooking.AndroidNotificationPermissionPrompt`). Los escenarios, el plan de verificación y las
+  casillas de esta spec quedan como registro de lo validado el 2026-10-15; ver
+  `docs/specs/cooking-timer-alarm-permission-context.md`.
 
 ## Goal
 
@@ -62,9 +69,12 @@ para no pasarme de tiempo ni tener que quedarme mirando la pantalla.
 - **Usuario local**: dueño único del dispositivo. Abre el Modo cocina, arranca el temporizador y
   puede salir/bloquear el móvil; recibe el aviso y, si lo toca, vuelve al paso.
 - **Permiso `POST_NOTIFICATIONS`** (runtime, Android 13+ = todo el rango soportado, `minSdk = 33`):
-  se pide **una vez por proceso** al arrancar la `MainActivity`, con una petición no bloqueante.
-  **Denegado**: no hay aviso de sistema, pero el Modo cocina, la cuenta atrás y el "¡Listo!" en
-  pantalla siguen **intactos** (degradación silenciosa: el receptor no publica nada y no falla).
+  se pide **en contexto**, la **primera vez** que el usuario arranca el temporizador de un paso y
+  **después** de un rationale breve, solo si no está concedido y no se ha pedido ya en la sesión
+  (desde la correctiva `cooking-timer-alarm-permission-context`; antes se pedía una vez por proceso al
+  arrancar — ver la nota de vigencia de `Source Feature`). **Denegado**: no hay aviso de sistema, pero
+  el Modo cocina, la cuenta atrás y el "¡Listo!" en pantalla siguen **intactos** (degradación
+  silenciosa: el receptor no publica nada y no falla).
 - **Permiso `USE_EXACT_ALARM`** (API 33+, concedido en la instalación; su caso de uso documentado son
   relojes, **temporizadores** y calendarios; la app no se publica): permite programar la alarma en el
   instante exacto con `setExactAndAllowWhileIdle`. Si el sistema no lo concediera
@@ -349,12 +359,16 @@ DisposableEffect(Unit) {
   - `notify(context, contentIntent)`: `ensureChannel` + si `POST_NOTIFICATIONS` no está concedido
     (`checkSelfPermission`) o `areNotificationsEnabled()` es `false`, **no publica**; si publica,
     `NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)`.
-- `MainActivity`: construir `AndroidCookingAlarm(applicationContext)`,
-  `CookingNotifications.ensureChannel(applicationContext)`, pedir `POST_NOTIFICATIONS` **una vez por
-  proceso** (`registerForActivityResult(ActivityResultContracts.RequestPermission())`, guardado con un
-  flag estático de compañía; no bloquea ni gatea ninguna UI) y pasar la costura a `SazonApp`.
-- `SazonApp`/`MainShell`: nuevo parámetro `cookingAlarm: CookingAlarm = NoOpCookingAlarm` (por
-  parámetro, como `dishImageSettings`) reenviado a `CookingModeScreen`.
+- `MainActivity`: construir `AndroidCookingAlarm(applicationContext)`, mantener
+  `CookingNotifications.ensureChannel(applicationContext)` y el
+  `registerForActivityResult(ActivityResultContracts.RequestPermission())` (registrado **antes** de
+  `onCreate`) y construir `AndroidNotificationPermissionPrompt(applicationContext,
+  requestNotificationsPermission::launch)`, que lo lanza **en contexto** (desde
+  `cooking-timer-alarm-permission-context` ya **no** se pide nada al arrancar); pasar ambas costuras a
+  `SazonApp`.
+- `SazonApp`/`MainShell`: nuevos parámetros `cookingAlarm: CookingAlarm = NoOpCookingAlarm` y
+  `notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt` (por
+  parámetro, como `dishImageSettings`) reenviados a `CookingModeScreen`.
 
 ### 4. `res/drawable/ic_notification_timer.xml`
 
@@ -450,7 +464,8 @@ feature `app-launcher-icon`, ajena).
 3. Crear `AndroidCookingAlarm.kt` y `CookingAlarmReceiver.kt`, declarar permisos y receptor en el
    manifiesto y cubrir el adaptador con `ShadowAlarmManager`.
 4. Cablear `CookingModeScreen` (parámetro + dos efectos), `MainShell`, `SazonApp` y `MainActivity`
-   (costura, canal, permiso una vez por proceso).
+   (costura, canal, permiso una vez por proceso — momento **superado** por
+   `cooking-timer-alarm-permission-context`, que lo pide en contexto; ver la nota de vigencia).
 5. Ejecutar `bash init.sh` en verde (test + lint) y actualizar la documentación durable (ADR 0007,
    `docs/build-brief.md`, `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`,
    `DESIGN.md`).
@@ -487,6 +502,7 @@ feature `app-launcher-icon`, ajena).
       `SazonApp` (parámetro + reenvío).
 - [x] Cablear `MainActivity`: `AndroidCookingAlarm(applicationContext)`, `ensureChannel` y petición de
       `POST_NOTIFICATIONS` una vez por proceso (`registerForActivityResult`), sin gatear la UI.
+      *(Registro histórico: desde `cooking-timer-alarm-permission-context` la petición es en contexto.)*
 - [x] `bash init.sh` en verde y actualizar ADR 0007, `docs/build-brief.md`,
       `docs/technical-discovery.md`, `docs/risks-and-open-questions.md` y `DESIGN.md`.
 
@@ -570,9 +586,10 @@ persona.
   con el mismo id en el siguiente disparo).
 - **Sin persistencia**: el instante de fin vive en la alarma del sistema y el estado del modo cocina
   sigue sin persistirse (no-goal explícito de la entrada). "Reanudar donde lo dejé" es otra feature.
-- **El permiso se pide una vez por proceso al arrancar**, de forma no bloqueante: `minSdk 33` obliga al
+- **El permiso se pide en contexto, al arrancar el temporizador de un paso y tras un rationale**
+  (desde `cooking-timer-alarm-permission-context`; **ya no** al arrancar la app): `minSdk 33` obliga al
   permiso en runtime y la entrada exige que su ausencia **no** rompa el flujo; denegado, el aviso
-  simplemente no aparece y el modo cocina queda intacto.
+  simplemente no aparece y el modo cocina queda intacto (y la petición **no** gatea el temporizador).
 - **Sin dependencias nuevas**: `NotificationCompat` (`androidx.core`), `AlarmManager`,
   `NotificationChannel` y `ActivityResultContracts` (androidx.activity) ya están disponibles.
 
@@ -616,8 +633,10 @@ persona.
       cocina quedan **sin cambios**; `domain/**`, la Taxonomía, `seed-recipes.json`, `ui/theme/**`,
       `app/build.gradle.kts`, `gradle/libs.versions.toml` e `init.sh` intactos; sin dependencias
       nuevas.
-- [ ] La petición de `POST_NOTIFICATIONS` es no bloqueante (una vez por proceso) y no gatea ninguna
-      pantalla; el arranque no se resiente.
+- [ ] La petición de `POST_NOTIFICATIONS` es no bloqueante y **no gatea** ninguna pantalla ni el
+      temporizador; el arranque no se resiente. (Momento de la petición: **en contexto**, al arrancar el
+      temporizador de un paso y tras un rationale, desde `cooking-timer-alarm-permission-context`; ya no
+      al arrancar la app.)
 - [ ] `docs/build-brief.md` (Non-Goal enmendado de forma **acotada**), `docs/technical-discovery.md`,
       `docs/risks-and-open-questions.md`, `DESIGN.md` y el ADR 0007 quedan coherentes con lo
       implementado; **no** se crea `docs/design/concepts/cooking-timer-alarm/`.

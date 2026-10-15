@@ -414,9 +414,19 @@ propio `cooking_timer` (importancia alta, sonido y vibracion, visibilidad public
 receta y el `PendingIntent` de la alarma **no lleva extras**, asi que los datos de la receta no cruzan al
 sistema. El toque abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP` (reutiliza
 la actividad viva); si el sistema mato el proceso, la app abre en su estado de arranque (limitacion
-aceptada: el modo no se persiste). `MainActivity` crea el canal al arrancar y pide `POST_NOTIFICATIONS`
-**una vez por proceso** con `registerForActivityResult` (no bloqueante: sin permiso no hay aviso, pero el
-Modo cocina y su "¡Listo!" siguen intactos); el manifiesto declara `POST_NOTIFICATIONS`, `USE_EXACT_ALARM`
+aceptada: el modo no se persiste). `MainActivity` crea el canal al arrancar, pero el permiso
+`POST_NOTIFICATIONS` **no** se pide al abrir la app: se pide **en contexto** —la **primera vez** que
+arranca el temporizador de un paso y **después** de un rationale— desde `cooking-timer-alarm-permission-context`
+(2026-10-15). La decision es **pura** (`ui.cooking.NotificationPermissionPolicy.onTimerChange`, con el
+permiso y el instante **inyectados** y memoria de sesion en el estado: `AskWithRationale` solo en la arista
+`!previous.isRunning && next.isRunning` sin permiso y sin intento previo; `None` con permiso concedido, con
+intento previo o fuera de esa arista), la costura `NotificationPermissionPrompt` (default
+`NoOpNotificationPermissionPrompt`) viaja **por parametro** como `CookingAlarm`, el rationale es un
+`AlertDialog` de Material 3 con el microcopy de `NotificationPermissionCopy` y el adaptador
+`data.cooking.AndroidNotificationPermissionPrompt` (permiso via `ContextCompat.checkSelfPermission` +
+`ActivityResultLauncher` de `MainActivity` + memoria de sesion, "no lanza") lo lanza en el **mismo**
+efecto que programa el aviso: la peticion **no** gatea el temporizador ni la cuenta atras, y sin permiso no
+hay aviso pero el Modo cocina y su "¡Listo!" siguen intactos; el manifiesto declara `POST_NOTIFICATIONS`, `USE_EXACT_ALARM`
 (normal, concedido al instalar, caso de uso documentado de temporizador) y `VIBRATE`. `Cancel` cancela
 **solo** la alarma pendiente, **no** retira una notificacion ya mostrada (si lo hiciera, el `Cancel` de
 `RUNNING→FINISHED` borraria el aviso recien disparado en primer plano). Sin dependencias nuevas
