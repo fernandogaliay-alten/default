@@ -51,13 +51,15 @@ data class DishImageSettingsState(
 }
 
 /**
- * Ajuste de sesion de la imagen de plato: **interruptor** + **tope por sesion**, en memoria.
+ * Ajuste de la imagen de plato: **interruptor** + **tope por sesion**.
  *
- * Uno por **proceso** = una sesion (se crea una vez en `MainActivity`); al morir el proceso el
- * contador vuelve a cero y el interruptor vuelve a [DishImageSettingsPolicy.DEFAULT_ENABLED]
- * (**apagado**: la generacion es opt-in y el arranque no gasta cuota ni reserva tope). **No** se
- * persiste (Decision 2 del spec): el ajuste no es una preferencia culinaria y no entra en
- * `UserProfile`.
+ * Uno por **proceso** (se crea una vez en `MainActivity`). El **interruptor se persiste** (un solo
+ * bit detras de [DishImageSettingsStore]; ver `docs/specs/dish-image-settings-persistence.md`): al
+ * arrancar, [restored] lee el ultimo estado elegido por el usuario —o el default de la politica
+ * ([DishImageSettingsPolicy.DEFAULT_ENABLED], **apagado**) si no hay nada guardado— y cada movimiento
+ * lo escribe. El **tope sigue siendo de sesion**: al morir el proceso el contador vuelve a cero
+ * (`MAX_GENERATIONS_PER_SESSION = 12`) y **nunca** se persiste (la costura no expone el tope). El
+ * ajuste no es una preferencia culinaria y **no** entra en `UserProfile` ni en Room.
  *
  * Se gobierna en dos puntos (Decision 1 del spec):
  *
@@ -73,7 +75,23 @@ data class DishImageSettingsState(
 class DishImageSettings(
     enabled: Boolean = DishImageSettingsPolicy.DEFAULT_ENABLED,
     private val budget: DishImageGenerationBudget = DishImageGenerationBudget(),
+    private val store: DishImageSettingsStore = NoOpDishImageSettingsStore,
 ) {
+
+    companion object {
+
+        /**
+         * Arranque real: restaura el estado guardado (o el default de la politica, `false`, si no hay
+         * nada guardado o la lectura falla) y persiste cada movimiento del interruptor. **Sincrono**:
+         * el primer frame ya usa el estado guardado, sin parpadeo ni una primera decision equivocada
+         * del gate.
+         */
+        fun restored(store: DishImageSettingsStore): DishImageSettings = DishImageSettings(
+            enabled = runCatching { store.loadEnabled() }.getOrNull()
+                ?: DishImageSettingsPolicy.DEFAULT_ENABLED,
+            store = store,
+        )
+    }
 
     private val _state = MutableStateFlow(
         DishImageSettingsState(enabled = enabled, used = budget.used, max = budget.max),
@@ -82,9 +100,14 @@ class DishImageSettings(
     /** Estado observable del ajuste; lo consume la seccion de Perfil con `collectAsState`. */
     val state: StateFlow<DishImageSettingsState> = _state.asStateFlow()
 
-    /** El interruptor. Apagar/encender **no** reinicia el tope (Decision 7). */
+    /**
+     * El interruptor. Apagar/encender **no** reinicia el tope (Decision 7) y persiste el bit (mejor
+     * esfuerzo): un fallo de escritura deja la sesion con el valor elegido y **no** llega a la UI.
+     * `runCatching` no oculta cancelacion porque [DishImageSettingsStore.saveEnabled] **no** suspende.
+     */
     fun setEnabled(value: Boolean) {
         _state.update { it.copy(enabled = value) }
+        runCatching { store.saveEnabled(value) }
     }
 
     /**

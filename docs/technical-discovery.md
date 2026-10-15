@@ -13,6 +13,11 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 - Toolchain del bootstrap: Gradle 9.5.0 (wrapper), AGP 9.3.3, Kotlin 2.2.10, Compose BOM 2026.02.01.
 - `applicationId` / paquete base: **`com.sazon.app`**. Barato de cambiar ahora; caro tras publicar.
 - Room para persistencia local; DataStore para flags de aplicación (p. ej. "onboarding completado").
+  Única excepción hoy: el **estado del interruptor de imágenes del plato** (un bit) se persiste con
+  **`SharedPreferences`** detrás de una costura pura (`data.image.DishImageSettingsStore`; feature
+  `dish-image-settings-persistence`, 2026-10-15): es API del framework (sin dependencias nuevas),
+  el arranque lo necesita de forma síncrona antes del primer frame y un booleano no justifica Room.
+  DataStore sigue **diferido** (añadirlo sería una dependencia nueva).
 - KSP para procesar las anotaciones de Room. Con el Kotlin integrado de AGP 9, KSP necesita la
   excepción `android.disallowKotlinSourceSets=false` en `gradle.properties` para registrar sus fuentes
   generadas; sin ella, la configuración falla.
@@ -42,6 +47,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` es el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retiró** con `retire-recipe-photos` (ADR 0006); solo queda `img/recipes/default.jpg` como ancla de estilo | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
+| **Interruptor de imágenes del plato** (ajuste de gasto) | `SharedPreferences` privado de la app (`dish_image_settings` / `enabled`), detrás de la costura pura `data.image.DishImageSettingsStore` y del adaptador `AndroidDishImageSettingsStore`; se restaura **síncronamente** en el punto de composición (`MainActivity`) | Es **un bit** de ajuste (no estado relacional: Room queda para el Perfil, Favoritos, Resumen y Lote) y **sin dependencias nuevas** (API del framework). El **tope por sesión** **no** se persiste; ausencia de valor = default de la política (apagado) |
 | Claves de IA | **Dos**, desde `local.properties` (que no se versiona): `BuildConfig.OPENCODE_API_KEY` (`opencode.apiKey`) para el **chat** de OpenCode Go y `BuildConfig.DEVEXPERT_API_KEY` (`devexpert.apiKey`) para la **imagen** de DevExpert | Decisión de demo; cada consumidor degrada en silencio si falta la suya (chat → modo semilla; imagen → ficha tipográfica); ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
@@ -835,10 +841,16 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   (default `false` = ficha/hero aceptados). Las constantes viven en un único sitio
   (`DishImageSettingsPolicy`: `DEFAULT_ENABLED = false`, `MAX_GENERATIONS_PER_SESSION = 12`) y el estado
   observable (`DishImageSettings.state`, un `StateFlow`) alimenta la sección "Imágenes del plato" del
-  Perfil. El ajuste es **de sesión** (vida del proceso, sin persistir) y **opt-in**: al reiniciar vuelve
-  a **apagado** (el estado de partida no lee caché, no genera ni gasta cuota) y el contador a 12. Ver
-  `docs/specs/dish-image-settings-default-off.md`, `docs/specs/dish-image-progressive-ui.md`,
-  `docs/specs/dish-image-settings-toggle.md` y `docs/specs/dish-artwork-as-card-background.md`.
+  Perfil. El **interruptor** se **persiste** (un solo bit) y se **restaura de forma síncrona** en el
+  punto de composición (`DishImageSettings.restored(AndroidDishImageSettingsStore(...))` en
+  `MainActivity`, feature `dish-image-settings-persistence`, 2026-10-15), así que el **primer frame** ya
+  usa la última elección del usuario; `DEFAULT_ENABLED = false` aplica **solo** cuando no hay estado
+  guardado (primer arranque, datos borrados, instalación nueva) y sigue siendo **opt-in**: sin valor
+  guardado no se lee caché, no se genera ni se gasta cuota. El **tope** sigue siendo **de sesión** (vida
+  del proceso) y **nunca** se persiste: arranca en 12 en cada proceso. Ver
+  `docs/specs/dish-image-settings-persistence.md`, `docs/specs/dish-image-settings-default-off.md`,
+  `docs/specs/dish-image-progressive-ui.md`, `docs/specs/dish-image-settings-toggle.md` y
+  `docs/specs/dish-artwork-as-card-background.md`.
 - **Adaptador real (ya existe)**: `com.sazon.app.data.ai` implementa el puerto contra DevExpert
   Inference con **Ktor Client (engine OkHttp) + `kotlinx.serialization`**: compone el prompt con
   `PromptBuilder`, envia `{"model":"chat","messages":[{"role":"system"},{"role":"user"}]}` con
