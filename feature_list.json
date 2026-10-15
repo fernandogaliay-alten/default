@@ -1565,5 +1565,22 @@
     ],
     "evidence": [],
     "notes": "Correctiva pedida por la persona (2026-10-15) al comprobar que la llamada de imagen de DevExpert falla en silencio: DevExpertDishImageGenerator devuelve null ante cualquier no-2xx (incluida la cuota agotada) sin dejar rastro. Alcance: observar la llamada de imagen (estado HTTP + motivo) con el patron AiCallEvent del chat, consumida por un Log.d (tag SazonDishImage) en MainActivity; NO cambia la cadena de resolucion, la cache, el gate del interruptor ni el tope, y NO convierte un fallo en excepcion ni en UI de error."
+  },
+  {
+    "id": "screen-transitions",
+    "area": "ui",
+    "title": "Transiciones de movimiento entre pantallas, pasos y contenido",
+    "user_visible_behavior": "Los cambios de vista dejan de ser cortes secos. Al cambiar de pestana (Inicio/Favoritos/Perfil) y al abrir o cerrar una pagina empujada (Generador, Busqueda con IA), al entrar y salir el Detalle de receta y el Modo cocina, al avanzar y retroceder en los pasos del onboarding y del Generador, y al aparecer listas, resultados y tarjetas, la vista se mueve con una transicion suave y coherente (fundido con un deslizamiento sutil), acorde con el caracter 'tranquilo' de DESIGN.md.",
+    "depends_on": ["design-tokens-and-theme", "onboarding-ingredients-safety-kitchen", "generation-flow-with-validation", "recipe-detail-screen", "cooking-mode", "ai-search"],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' (test + lint) en verde y sin dependencias nuevas: androidx.compose.animation:animation (AnimatedContent/AnimatedVisibility/Crossfade/fadeIn/slideIn) ya esta en el classpath de compilacion via material3",
+      "Test JVM de la politica de movimiento pura (sin Compose/Android): los valores que fija (duracion, desplazamiento, orden de capas) coinciden con lo declarado en DESIGN.md, del mismo modo que DesignTokensTest compara los tokens visuales",
+      "Test JVM del selector de direccion (adelante/atras/sin movimiento) a partir del destino anterior y el siguiente, tanto para pestanas y paginas empujadas como para los pasos del onboarding y del Generador",
+      "El comportamiento funcional no cambia: mismo estado de navegacion, mismos callbacks y mismos destinos, solo con animacion; los tests existentes siguen en verde sin cambios de aserciones",
+      "Prueba manual (persona, emulador, tras el merge; no automatizable segun AGENTS.md): cada transicion se ve suave y coherente en claro y oscuro, sin corte, sin parpadeo y sin salto de layout"
+    ],
+    "evidence": [],
+    "notes": "Ampliacion de UI pedida por la persona (2026-10-15): 'faltan transiciones y queda visualmente mal'. Hoy toda la navegacion es composicion directa (when en MainShell.kt para pestana/pagina y bloques 'detailRecipe?.let { }'/'cookingRecipe?.let { }' para los overlays de Detalle y Modo cocina; when en OnboardingFlow/GeneratorFlow para los pasos) y solo hay micro-efectos aislados (crossfade de imagen de 250 ms, spinner del Generador y pulso del temporizador). Alcance (los cuatro frentes elegidos por la persona): (1) navegacion principal = cambio de pestana y paginas empujadas; (2) overlays = entrada/salida del Detalle y del Modo cocina; (3) onboarding (7 pasos) y pasos internos del Generador; (4) contenido al aparecer = listas, resultados y tarjetas. Enfoque: lenguaje de movimiento unico y sobrio (fundido + deslizamiento corto) con tokens de movimiento en ui/theme, documentados en DESIGN.md (no existe hoy seccion de movimiento) y con una politica pura testeable en JVM (patron de design-tokens-and-theme); se reutilizan las primitivas de androidx.compose.animation ya disponibles (AnimatedContent para el contenido cambiante, AnimatedVisibility/Crossfade para overlays y apariciones) sin anadir dependencias. NO entra: cambios de dominio, datos, red, persistencia ni microcopy; no se toca la logica del Lote, la generacion, la validacion ni los tokens visuales existentes. El acabado puramente visual lo revisa la persona tras el merge y un defecto se corrige con una feature correctiva (AGENTS.md)."
   }
 ]
