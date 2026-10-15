@@ -220,6 +220,15 @@ pendiente** de `profile-screen` (`perfil`, `perfil-editar`; ver
 `docs/design/concepts/profile-screen/README.md`), contra las que se revisa el acabado en el emulador
 tras el merge.
 
+**Excepción de capturas (desviación documentada, misma clase que #101):** `dish-image-settings-persistence`
+**no** genera capturas nuevas ni carpeta `docs/design/concepts/dish-image-settings-persistence/`. Es una
+**correctiva del ajuste** de la fase 4: **no** introduce pantalla, layout, geometría, token ni microcopy
+nuevos —reutiliza la sección "Imágenes del plato" tal cual— y solo cambia **el estado de arranque** del
+interruptor (primer arranque apagado; después, la última elección recordada), con el **tope por sesión**
+intacto (el microcopy "Se reanudará al reiniciar la app" sigue siendo correcto). La dirección visual
+aplicable es este documento más las capturas aceptadas del Perfil (`activity-summary:
+perfil-resumen`) y el **backfill pendiente** de `profile-screen` (`perfil`, `perfil-editar`).
+
 **Excepción de capturas (desviación documentada, issue #110):** `home-suggestions-personalized` **no**
 genera capturas nuevas ni carpeta `docs/design/concepts/home-suggestions-personalized/`. Es una
 **correctiva de `home-offline-blocks`** que **no** cambia el diseño: no introduce pantalla, layout,
@@ -366,8 +375,11 @@ nada lo es.
     idénticas.
   - **Cuándo hay imagen**: solo si el ajuste **"Generar imágenes del plato"** está encendido y el
     resolver devuelve una (memoria → disco → semilla → generador). Apagado = `null`, sin leer caché, sin
-    red y sin cuota. El ajuste **arranca apagado** (opt-in, `DEFAULT_ENABLED = false`), así que el
-    estado de partida de toda receta es la **ficha tipográfica**. Degradación **silenciosa**: si falla,
+    red y sin cuota. El ajuste **arranca apagado en el primer arranque** (sin estado guardado: opt-in,
+    `DEFAULT_ENABLED = false`) y **después recuerda la última elección** (persistida en un bit, feature
+    `dish-image-settings-persistence`): con el interruptor nunca tocado, el estado de partida de toda
+    receta es la **ficha tipográfica**. El **tope por sesión** sigue reiniciándose al reiniciar la app.
+    Degradación **silenciosa**: si falla,
     tarda, se cancela o se agota el tope por
     sesión, se queda la tipografía, sin microcopy ni estado de error.
   - La imagen entra con el **crossfade de 250 ms** (`DishImageArtworkPolicy.CROSSFADE_MILLIS`) sobre la
@@ -457,9 +469,11 @@ nada lo es.
   `labelSmall`; `SazonSpacing.md`; ≥48dp). Interruptor **"Generar imágenes del plato"** (`Switch` de
   `material3`) en una fila `toggleable` con `role = Role.Switch`, de modo que la fila entera es el
   control y el `Switch` solo refleja el estado (no depende solo del color). El interruptor **aparece
-  apagado al arrancar** (opt-in, `DishImageSettingsPolicy.DEFAULT_ENABLED = false`; feature
-  `dish-image-settings-default-off`): el resumen inicial es el desactivado y el contador de sesión sigue
-  en **12 de 12** sin consumo; hasta que la persona lo encienda no se lee caché, no se genera nada ni se
+  apagado en el primer arranque** (opt-in, `DishImageSettingsPolicy.DEFAULT_ENABLED = false`; feature
+  `dish-image-settings-default-off`) y **después arranca con la última elección** del usuario
+  (persistida en un bit, feature `dish-image-settings-persistence`): el resumen inicial es el
+  desactivado y el contador de sesión sigue
+  en **12 de 12** sin consumo; sin estado guardado no se lee caché, no se genera nada ni se
   gasta cuota. El resumen del **tope por
   sesión** sale de un objeto puro (`DishImageSettingsCopy`): "Quedan N de 12 imágenes en esta sesión.",
   "Queda 1 de 12 imágenes en esta sesión." (singular), "Tope de esta sesión alcanzado (12 de 12). Se
@@ -524,7 +538,8 @@ nada lo es.
    habituales, tarjeta ámbar de alérgenos, bloque de cifras titulado **"Estadísticas"** (recetas
    generadas y favoritas, informativas y **no navegables**), acción "Actualizar sugerencias" con la
    fecha del último refresco, y al final la sección **"Imágenes del plato"**: interruptor **"Generar
-   imágenes del plato"** (**apagado** al arrancar: opt-in, `DEFAULT_ENABLED = false`) con el tope **por
+   imágenes del plato"** (**apagado en el primer arranque**: opt-in, `DEFAULT_ENABLED = false`; después
+   **recuerda la última elección**, persistida en un bit) con el tope **por
    sesión** visible ("Quedan N de 12 imágenes en esta sesión.")
    y el helper de cuota. No es una preferencia culinaria: es un ajuste de app, colocado al final para
    no reordenar las secciones aceptadas.

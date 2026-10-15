@@ -10,6 +10,32 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Correctiva **`dish-image-settings-persistence`** implementada y autoverificada (**`passing`**) en la
+  **sesión 128** y **`accepted`** en la **sesión 129** (validación independiente, veredicto `accept`;
+  ver `docs/validations/dish-image-settings-persistence.md`) en su worktree
+  `feature/dish-image-settings-persistence` (rama homónima; **sin** commit/push/PR del implementer; el
+  commit local lo crea el orquestador de `feature-flow` y publica `github-flow`). El
+  **interruptor** "Generar imágenes del plato" ya **recuerda su estado** entre reinicios: el estado se
+  persiste (un solo bit) en `SharedPreferences` (`dish_image_settings`/`enabled`, `MODE_PRIVATE`,
+  escritura con la extensión KTX `androidx.core.content.edit` → `apply`, **nunca** `commit`) detrás de
+  la costura **pura** nueva `data.image.DishImageSettingsStore` (`loadEnabled`/`saveEnabled`, contrato
+  "no lanza", sin `android.*`) y de su adaptador `AndroidDishImageSettingsStore`;
+  `DishImageSettings.restored(store)` lo restaura **síncronamente** en `MainActivity` antes de
+  `setContent` (el primer frame ya usa la última elección, sin parpadeo) y `setEnabled` escribe el bit
+  (mejor esfuerzo). `DEFAULT_ENABLED = false` aplica **solo** si no hay valor guardado; el **tope por
+  sesión** (12) **no** se persiste (la costura no expone el tope) y el gate, la cadena de resolución,
+  la UI y el microcopy quedan intactos. Gate: `bash init.sh` exit 0, **100 suites / 756 tests / 0
+  fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD` 89ed694: `git grep -c '@Test'` = 98
+  ficheros / 739 anotaciones ⇒ delta **+2 suites / +17 tests**: `DishImageSettingsPersistenceTest` 13 +
+  `AndroidDishImageSettingsStoreTest` 4; 0 suites modificadas), lint **0 errores y 13 warnings
+  preexistentes (0 bajo `app/src`)**. Hallazgo resuelto en la autoverificación: la primera versión del
+  adaptador (`prefs.edit().putBoolean(...).apply()`) disparaba 1 warning **nuevo** `UseKtx` bajo
+  `app/src` (14 warnings); se cambió a la extensión KTX `androidx.core.content.edit` (mismo `apply`) y
+  lint volvió a 13. Docs durables: `docs/technical-discovery.md`, `docs/adr/0005-ai-dish-images.md`,
+  `DESIGN.md` y `docs/risks-and-open-questions.md`. Queda la **prueba manual** de la persona tras el
+  merge (encender/apagar y reabrir la app; primer arranque apagado; acabado visual sin cambios), no
+  automatizable desde WSL. Detalle en `docs/validations/dish-image-settings-persistence.md` y
+  `feature_list.json`. WIP = 0.
 - Alta (2026-10-14): correctiva **`chat-provider-opencode-go`** (`area: integration`, depende de
   `real-ai-provider`, `not_started`) — el **chat** pasa a OpenCode Go (`https://opencode.ai/zen/go/v1`,
   modelo `deepseek-v4.1-flash`) y las **imágenes de plato siguen en DevExpert**; motivada por el
