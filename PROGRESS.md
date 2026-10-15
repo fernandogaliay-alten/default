@@ -10,6 +10,16 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
+  **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
+  plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
+  vectores XML derivados de los tokens de `DESIGN.md`, sin assets binarios ni dependencias) y un
+  **splash de marca** dedicado; cierra la pregunta abierta 2 de `DESIGN.md`. **`cooking-timer-alarm`**
+  (`area: integration`, depende de `cooking-mode`): al terminar el temporizador de un paso, además del
+  aviso en pantalla "¡Listo!", salta una **notificación/alarma de sistema** con sonido y vibración aunque
+  la app esté en segundo plano o el móvil bloqueado; enmienda de forma acotada el Non-Goal
+  "Notificaciones y recordatorios" de `docs/build-brief.md` (solo el aviso del temporizador). Detalle en
+  `feature_list.json`. Ninguna se implementa ni se planifica en esta sesión.
 - Correctiva **`dish-image-settings-persistence`** implementada y autoverificada (**`passing`**) en la
   **sesión 128** y **`accepted`** en la **sesión 129** (validación independiente, veredicto `accept`;
   ver `docs/validations/dish-image-settings-persistence.md`) en su worktree
