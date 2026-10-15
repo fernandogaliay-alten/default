@@ -23,7 +23,9 @@ import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.cooking.CookingAlarm
+import com.sazon.app.ui.cooking.CookingSessionStore
 import com.sazon.app.ui.cooking.NoOpCookingAlarm
+import com.sazon.app.ui.cooking.NoOpCookingSessionStore
 import com.sazon.app.ui.cooking.NoOpNotificationPermissionPrompt
 import com.sazon.app.ui.cooking.NotificationPermissionPrompt
 import com.sazon.app.ui.onboarding.OnboardingFlow
@@ -58,6 +60,8 @@ fun SazonApp(
     modifier: Modifier = Modifier,
     cookingAlarm: CookingAlarm = NoOpCookingAlarm,
     notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
+    cookingSession: CookingSessionStore = NoOpCookingSessionStore,
+    resumeRequest: Int = 0,
 ) {
     val state by produceState<ProfileObservation>(
         initialValue = ProfileObservation.Loading,
@@ -100,6 +104,8 @@ fun SazonApp(
                     modifier = modifier,
                     cookingAlarm = cookingAlarm,
                     notificationPermission = notificationPermission,
+                    cookingSession = cookingSession,
+                    resumeRequest = resumeRequest,
                 )
             }
         }

@@ -10,7 +10,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.MainActivity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,11 +21,14 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
- * Canal y contenido del aviso de sistema con Android real (Robolectric, sin emulador;
- * `docs/specs/cooking-timer-alarm.md`, escenarios 2, 3 y 6): el canal `cooking_timer` se crea con
- * importancia **alta**, sonido y vibracion; la notificacion se **construye** y se **publica** sin
- * excepcion con el id **fijo**; su contenido es **generico** (titulo/texto exactos, sin la receta) y
- * **sin extras propios**; y con `POST_NOTIFICATIONS` denegado no se publica nada y no hay excepcion.
+ * Canal y contenido de las notificaciones del temporizador con Android real (Robolectric, sin
+ * emulador; `docs/specs/cooking-timer-alarm.md`, escenarios 2, 3 y 6; y
+ * `docs/specs/cooking-timer-foreground-service.md`, escenarios 5 y 9): el canal `cooking_timer` se crea
+ * con importancia **alta**, sonido y vibracion; las dos notificaciones (la del aviso de fin y la
+ * **persistente** del servicio en primer plano) se **construyen** y se **publican** sin excepcion con su
+ * id **fijo**; su contenido es **generico** (titulo/texto exactos, sin la receta) y **sin extras
+ * propios**; el `Intent` de contenido lleva **solo** el flag booleano de reanudacion (ni receta, ni
+ * pasos, ni claves); y con `POST_NOTIFICATIONS` denegado no se publica nada y no hay excepcion.
  *
  * El comportamiento con el movil bloqueado, en Doze o con la pantalla apagada no es automatizable
  * (AGENTS.md): lo revisa la persona en el emulador.
@@ -216,6 +221,91 @@ class CookingNotificationsTest {
         assertTrue(
             "SINGLE_TOP: reutiliza la actividad viva en lugar de recrearla",
             intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0,
+        )
+    }
+
+    // --- Notificacion **persistente** y flag de reanudacion (feature
+    // `cooking-timer-foreground-service`, escenarios 9 y 5) ---
+
+    @Test
+    fun la_notificacion_persistente_se_construye_sin_excepcion_con_la_cuenta_atras_del_sistema() {
+        val notificacion = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+
+        assertEquals("Cocina en marcha", notificacion.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals(CookingNotifications.ONGOING_TITLE, notificacion.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals(CookingNotifications.CHANNEL_ID, notificacion.channelId)
+        assertEquals(1_600_000L, notificacion.`when`)
+        assertTrue(
+            "El sistema pinta la cuenta atras",
+            notificacion.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER),
+        )
+        assertTrue(
+            "Y la pinta hacia abajo",
+            notificacion.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN),
+        )
+        assertTrue(
+            "Persistente: no se descarta con un gesto",
+            notificacion.flags and Notification.FLAG_ONGOING_EVENT != 0,
+        )
+        assertNull("Sin cuerpo de texto", notificacion.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals(com.sazon.app.R.drawable.ic_notification_timer, notificacion.smallIcon.resId)
+    }
+
+    @Test
+    fun la_notificacion_persistente_se_publica_con_su_id_fijo_y_sin_extras_de_receta() {
+        val notificacion = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+        val claves = notificacion.extras.keySet()
+        val contenido = notificacion.extras.toString()
+
+        assertFalse(
+            "Sin claves propias de la app",
+            claves.any { it.startsWith("com.sazon") },
+        )
+        assertFalse("Sin rastro de recetas ni ingredientes", contenido.contains(TITULO_RECETA))
+        assertFalse("Sin rastro de recetas ni ingredientes", contenido.contains(NOMBRE_INGREDIENTE))
+        assertEquals(
+            "La persistente usa un id distinto del aviso de fin",
+            1000,
+            CookingNotifications.ONGOING_NOTIFICATION_ID,
+        )
+        assertNotEquals(
+            "Los dos ids no pueden colisionar",
+            CookingNotifications.NOTIFICATION_ID,
+            CookingNotifications.ONGOING_NOTIFICATION_ID,
+        )
+    }
+
+    @Test
+    fun el_intent_de_contenido_lleva_solo_el_flag_de_reanudacion() {
+        val pendingIntent = CookingNotifications.contentIntent(context, CookingAlarmReceiver.CONTENT_REQUEST_CODE)
+
+        val shadowIntent = shadowOf(checkNotNull(pendingIntent))
+        assertTrue("Es un PendingIntent de Activity", shadowIntent.isActivity)
+        val intent = shadowIntent.savedIntent
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(
+            "El flag de reanudacion es un booleano",
+            intent.getBooleanExtra(CookingNotifications.EXTRA_RESUME_COOKING, false),
+        )
+        assertEquals(
+            "Nada mas viaja al sistema (sin receta, sin pasos, sin claves)",
+            setOf(CookingNotifications.EXTRA_RESUME_COOKING),
+            intent.extras?.keySet().orEmpty(),
+        )
+    }
+
+    @Test
+    fun el_receptor_publica_el_aviso_con_el_flag_de_reanudacion_y_sin_datos_de_la_receta() {
+        grantPostNotifications()
+
+        CookingAlarmReceiver().onReceive(context, Intent(context, CookingAlarmReceiver::class.java))
+
+        val publicada = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
+        val intent = shadowOf(publicada.contentIntent).savedIntent
+        assertTrue(intent.getBooleanExtra(CookingNotifications.EXTRA_RESUME_COOKING, false))
+        assertEquals(
+            setOf(CookingNotifications.EXTRA_RESUME_COOKING),
+            intent.extras?.keySet().orEmpty(),
         )
     }
 

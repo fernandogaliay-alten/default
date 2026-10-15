@@ -31,6 +31,19 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
 
+    <!-- Servicio en primer plano que pinta la **cuenta atras** del temporizador del Modo cocina fuera de
+         la app (feature `cooking-timer-foreground-service`). `FOREGROUND_SERVICE` es obligatorio para
+         llamar a `startForeground` y `FOREGROUND_SERVICE_SPECIAL_USE` para el tipo `specialUse` en API
+         34+: los dos son permisos **normales** (sin dialogo, concedidos al instalar). No existe un tipo
+         de primer plano especifico para temporizadores (el mas afin, `shortService`, esta limitado a ~3
+         minutos), asi que el caso de uso documentado del subtipo es "temporizador de cocina en curso,
+         visible en la notificacion". La app no se publica en Play (`docs/technical-discovery.md`), de
+         modo que no hay formulario de revision que rellenar. Sin estos permisos el servicio no arranca:
+         el Modo cocina, la cuenta atras en pantalla y el "¡Listo!" siguen intactos (degradacion
+         silenciosa, ADR 0005). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -57,6 +70,20 @@
         <receiver
             android:name=".data.cooking.CookingAlarmReceiver"
             android:exported="false" />
+
+        <!-- Servicio en primer plano que pinta la cuenta atras: mantiene viva la notificacion
+             persistente mientras corre el temporizador. `exported="false"`: solo lo arranca la propia
+             app (`startForegroundService` desde el adaptador del aviso). `stopWithTask` queda por
+             defecto (`true`): quitar la tarea de recientes detiene el servicio (la sesion persistida
+             sigue permitiendo volver al paso al tocar la notificacion del aviso). -->
+        <service
+            android:name=".data.cooking.CookingTimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Temporizador de cocina en curso" />
+        </service>
     </application>
 
 </manifest>

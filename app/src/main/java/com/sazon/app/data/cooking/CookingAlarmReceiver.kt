@@ -1,10 +1,8 @@
 package com.sazon.app.data.cooking
 
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.sazon.app.MainActivity
 
 /**
  * Receptor de la **alarma** del temporizador del modo cocina: el sistema lo despierta en el instante de
@@ -17,9 +15,12 @@ import com.sazon.app.MainActivity
  * construccion.
  *
  * El contenido es **generico** ([CookingNotifications.TITLE]/[CookingNotifications.TEXT]): el receptor
- * no lee la receta ni ningun extra, asi que no puede filtrar datos. El toque en la notificacion abre
- * [MainActivity] con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP`, de modo que **reutiliza** la
- * actividad viva (que conserva el modo cocina del paso terminado) en lugar de recrearla.
+ * no lee la receta ni ningun extra, asi que no puede filtrar datos. El `PendingIntent` de contenido lo
+ * construye [CookingNotifications.contentIntent] —**compartido** con la notificacion persistente del
+ * servicio en primer plano—: abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or
+ * FLAG_ACTIVITY_SINGLE_TOP` y le pasa **solo** [CookingNotifications.EXTRA_RESUME_COOKING] (`true`),
+ * para que el toque vuelva al paso exacto (`docs/specs/cooking-timer-foreground-service.md`, escenarios
+ * 5 y 6).
  *
  * Se declara en el manifiesto con `android:exported="false"`: el `PendingIntent` que lo lanza es
  * explicito y de la misma app. **Nunca lanza**: si el permiso `POST_NOTIFICATIONS` esta denegado o
@@ -29,14 +30,10 @@ class CookingAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         runCatching {
-            val contentIntent = PendingIntent.getActivity(
+            CookingNotifications.notify(
                 context,
-                CONTENT_REQUEST_CODE,
-                Intent(context, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                CookingNotifications.contentIntent(context, CONTENT_REQUEST_CODE),
             )
-            CookingNotifications.notify(context, contentIntent)
         }
     }
 

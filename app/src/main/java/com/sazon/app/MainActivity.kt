@@ -1,5 +1,6 @@
 package com.sazon.app
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -7,6 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import com.sazon.app.data.AssetDishImageSeedSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
@@ -21,6 +25,8 @@ import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.cooking.AndroidCookingAlarm
 import com.sazon.app.data.cooking.AndroidNotificationPermissionPrompt
 import com.sazon.app.data.cooking.CookingNotifications
+import com.sazon.app.data.cooking.CookingSessionDatabase
+import com.sazon.app.data.cooking.RoomCookingSessionStore
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
@@ -67,9 +73,21 @@ class MainActivity : ComponentActivity() {
     private val requestNotificationsPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+    /**
+     * Peticiones de **volver al paso** vistas por esta actividad: se incrementa cada vez que el
+     * `Intent` de arranque ([onCreate]) o el de una actividad ya viva ([onNewIntent]) trae el flag de
+     * reanudacion de las notificaciones del temporizador. Es un estado de Compose (no un booleano) para
+     * que **cada** peticion vuelva a disparar el `LaunchedEffect` de `MainShell`, que carga la sesion
+     * persistida y abre el Modo cocina en el paso exacto.
+     */
+    private var resumeRequest by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Arranque en frio desde una notificacion del temporizador (persistente o de fin): la peticion
+        // viaja ya en el `Intent` de `onCreate`. Un arranque normal (lanzador) no la trae.
+        observeResumeCookingRequest(intent)
 
         // Composicion de dependencias a mano (sin DI): bases Room + repositorios + Taxonomia +
         // catalogo semilla + servicio cache-first del Lote -> raiz de la app.
@@ -232,6 +250,11 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             requestNotificationsPermission::launch,
         )
+        // Sesion del Modo cocina persistida (una fila, base propia): permite que el toque en la
+        // notificacion vuelva al paso exacto aunque el proceso haya muerto
+        // (feature `cooking-timer-foreground-service`).
+        val cookingSessionDatabase = CookingSessionDatabase.build(applicationContext)
+        val cookingSessionStore = RoomCookingSessionStore(cookingSessionDatabase.cookingSessionDao())
 
         setContent {
             SazonTheme {
@@ -259,9 +282,34 @@ class MainActivity : ComponentActivity() {
                         seedRecipes = seedRecipes,
                         cookingAlarm = AndroidCookingAlarm(applicationContext),
                         notificationPermission = notificationPermission,
+                        cookingSession = cookingSessionStore,
+                        resumeRequest = resumeRequest,
                     )
                 }
             }
         }
+    }
+
+    /**
+     * Actividad ya viva (la app estaba en segundo plano): la notificacion reutiliza la actividad por el
+     * flag `SINGLE_TOP`, asi que la peticion de volver al paso llega aqui. `setIntent` deja el `Intent`
+     * actualizado para el resto del ciclo de vida (patron del framework).
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        observeResumeCookingRequest(intent)
+    }
+
+    /**
+     * Convierte el flag [CookingNotifications.EXTRA_RESUME_COOKING] del `Intent` en una **peticion** de
+     * reanudacion. Es lo **unico** que distingue "volver del temporizador" de "abrir la app": el extra
+     * es un booleano (sin receta, paso ni claves), de modo que un arranque normal **no** abre el Modo
+     * cocina.
+     */
+    private fun observeResumeCookingRequest(intent: Intent?) {
+        val requested = intent
+            ?.getBooleanExtra(CookingNotifications.EXTRA_RESUME_COOKING, false) == true
+        if (requested) resumeRequest++
     }
 }

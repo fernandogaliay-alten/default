@@ -66,6 +66,61 @@
   `docs/risks-and-open-questions.md`, comentario del manifiesto, `PROGRESS.md` (sesión 131) y `DESIGN.md`
   (excepción de capturas). Queda la **prueba manual** de la persona en el emulador (rationale → diálogo,
   conceder/denegar, no volver a pedir en la sesión), no automatizable desde WSL.
+- Feature **`cooking-timer-foreground-service`** implementada y autoverificada (**`passing`**) por el
+  subagente `implementer` y **`accepted`** en la **sesión 137** (validación independiente del subagente
+  `validator`, contexto limpio, veredicto **`accept`**; ver
+  `docs/validations/cooking-timer-foreground-service.md`), en su worktree `cooking-timer-foreground-service`
+  (rama `feature/cooking-timer-foreground-service`; **sin** commit/push/PR de los subagentes: el commit
+  local lo crea el orquestador de `feature-flow` y la publicación queda para `github-flow`). El temporizador de un
+  paso ya **se ve fuera de la app**: un **servicio en primer plano**
+  (`data.cooking.CookingTimerService`, tipo `specialUse` con su `<property>` y los permisos **normales**
+  `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`) mantiene una notificación **persistente** (id
+  **fijo** `1000`, canal `cooking_timer` reutilizado, `ongoing` + `onlyAlertOnce` + `silent`, small icon
+  monocromo) cuya **cuenta atrás la pinta el sistema** (`setUsesChronometer` + `setChronometerCountDown` +
+  `setWhen`): ni una publicación por segundo ni un `tick` en el servicio, que solo espera **un** despertar
+  (`delay` hasta el instante de fin monotónico) y entonces retira la notificación
+  (`STOP_FOREGROUND_REMOVE`) y se detiene (`START_NOT_STICKY`). El servicio es un **pintor**: no cambia
+  estado y **no** publica el "¡Listo!" (la alarma exacta aceptada sigue siendo la **única** dueña del
+  aviso; `USE_EXACT_ALARM`, el receptor y el canal no se tocan) y su **único** dato de entrada es el
+  instante de fin, así que la receta, los pasos y la clave de IA **no** cruzan al sistema. La **sesión del
+  Modo cocina** se persiste (una fila, base propia `cooking_session.db`, columna JSON con `RecipeJson` +
+  paso + marcado + temporizador + instante de fin) detrás de la costura **pura**
+  `ui.cooking.CookingSessionStore` (default `NoOpCookingSessionStore`) y del adaptador
+  `data.cooking.RoomCookingSessionStore` ("no lanza"), con la decisión de la sesión **pura** y sin reloj
+  (`CookingSession`: `of` proyecta `now + remaining` solo En marcha y `resumedMode(now)` recalcula lo que
+  queda, dando `Terminado`/`0` si el instante ya pasó). El toque de cualquiera de las dos notificaciones
+  (`EXTRA_RESUME_COOKING`, **solo** un booleano que `MainActivity` convierte en `resumeRequest` desde
+  `onCreate` y `onNewIntent`) vuelve al **paso exacto**, incluso con el proceso muerto, y **un arranque
+  normal no abre el Modo cocina**. La pantalla persiste por **cambio significativo** (nunca por `tick`),
+  **rearma** una vez alarma + servicio al reanudar En marcha (misma `CookingAlarmPolicy`,
+  `IDLE -> RUNNING`), **borra** la sesión al salir ("Atrás"/"Terminar") y **no** la borra al desmontarse
+  (`onDispose`). Gate: `bash init.sh` exit 0, **113 suites / 874 tests / 0 fallos / 0 errores /
+  0 saltados** (baseline re-derivada en `HEAD 3c3ec1b`: `git grep -c '@Test'` = 109 ficheros / 830
+  anotaciones ⇒ delta **+4 suites / +44 tests**: `CookingSessionTest` 14 —**la verificación exigida**—,
+  `CookingTimerServiceTest` 10, `RoomCookingSessionStoreTest` 7 y `CookingTimerServiceManifestTest` 6
+  nuevas, más casos **añadidos** en `CookingNotificationsTest` 11→15 y `AndroidCookingAlarmTest` 7→10;
+  las demás suites aceptadas de `cooking` sin cambios), lint **0 errores, 13 warnings preexistentes, 0
+  bajo `app/src`** (sin `tools:ignore` ni `lint.xml`). Docs durables: ADR **0008** (nuevo), revisión de
+  las alternativas 3/4 y del "estado de arranque" en ADR 0007, `docs/build-brief.md`,
+  `docs/technical-discovery.md`, `docs/domain-model.md`, `docs/risks-and-open-questions.md` y `DESIGN.md`.
+  Queda la **prueba manual** de la persona en el emulador (persistente con la cuenta atrás decreciendo,
+  móvil bloqueado, sonido/vibración al llegar a cero, toque que vuelve al paso con el proceso vivo y
+  muerto, pausar/reiniciar/salir que detienen el servicio, permiso denegado sin crash y lanzador que
+  **no** abre el Modo cocina), no automatizable desde WSL. **Validación independiente `accept` (sesión
+  137)**: el validador no modificó nada y reprodujo el gate por su cuenta (`bash init.sh` exit 0 con
+  `testDebugUnitTest UP-TO-DATE` ⇒ forzado: `testDebugUnitTest --rerun-tasks` 4m28s y `lint --rerun-tasks`
+  3m51s, ambos BUILD SUCCESSFUL; XML frescos **113 suites / 874 tests / 0 fallos / 0 errores / 0 saltados**;
+  SARIF **13 / 0 errores, 0 bajo `app/src`**; baseline re-derivada 109 ficheros / 830 anotaciones ⇒ delta
+  +4 suites / +44 tests), confirmó escenarios 1-10, el Validator Checklist, la pureza y el confinamiento
+  Android, los `Intent`s mínimos con `FLAG_IMMUTABLE`, el caso negativo del test de manifiesto, la
+  disciplina de alcance (sin dependencias nuevas, sin capturas) y la seguridad. Sin hallazgos
+  Critical/High/Medium; **3 Low informativos no bloqueantes** (L1: una sesión persistida como `FINISHED` no
+  reanuda desde la notificación del "¡Listo!" porque `isResumable` exige En marcha/Pausado —la rama
+  realista minimizado/bloqueado sí funciona—; L2: rotar con el modo abierto desde una notificación lo
+  reabre por el `EXTRA_RESUME_COOKING` que sobrevive en el `Intent` de lanzamiento; L3: el cableado
+  Compose/Activity se verifica por inspección, coherente con `AGENTS.md`), todos como follow-up
+  (aclaración de spec y/o feature correctiva), sin bloquear. Detalle en
+  `docs/validations/cooking-timer-foreground-service.md`.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -6586,3 +6641,91 @@
   diálogo al arrancar; ya concedido, no hay rationale), no automatizable según `AGENTS.md`; el acabado del
   diálogo en claro/oscuro se revisa tras el merge y un defecto se corrige con una feature correctiva. Los
   dos hallazgos Low quedan como follow-up opcional.
+
+### Sesión 137 (implementer, `cooking-timer-foreground-service`)
+
+- Fecha: 2026-10-15
+- Objetivo: implementar **una** feature planificada, `cooking-timer-foreground-service`
+  (`area: integration`, depende de `cooking-timer-alarm-permission-context`, `accepted`), según su spec
+  `docs/specs/cooking-timer-foreground-service.md` (skill `feature-implementer`), en el worktree
+  `cooking-timer-foreground-service` (rama `feature/cooking-timer-foreground-service`). **Sin** commit,
+  push ni PR (la publicación es del orquestador). WIP = 1.
+- Cambios entregados:
+  - Nuevos (lógica **pura**, `ui.cooking`, 0 imports de `android.*`/`androidx.*` y 0 lecturas del reloj):
+    `CookingSession.kt` (receta, paso, marcado, temporizador e instante de fin; `of`, `resumedMode`,
+    `projectedEndMillis`, `mode`, `isRunning`, `isResumable`) y `CookingSessionStore.kt` (costura +
+    `NoOpCookingSessionStore`, contrato "no lanza").
+  - Nuevos (persistencia, `data.cooking`): `CookingSessionEntity` (`cooking_session`, una fila, columna
+    JSON con `RecipeJson` + CSV de `order` + estado/millis + instante de fin), `CookingSessionDao`
+    (`get`/`upsert` `REPLACE`/`deleteAll`), `CookingSessionDatabase` (`cooking_session.db`, versión 1,
+    `exportSchema = false`, base propia), `CookingSessionMappers` y `RoomCookingSessionStore`
+    (`runCatching` en las tres operaciones).
+  - Nuevo: `data/cooking/CookingTimerService.kt` — servicio en primer plano `START_NOT_STICKY` con
+    `startForeground(1000, …)` inmediato, **un** `delay` hasta el instante de fin y entonces
+    `stopForeground(STOP_FOREGROUND_REMOVE)` + `stopSelf()`; `onBind` nulo, `onDestroy` cancela el scope;
+    no publica el "¡Listo!" ni cambia estado; sin `ServiceCompat.startForeground` (no está en `core
+    1.10.1`).
+  - `data/cooking/CookingNotifications.kt`: `ONGOING_NOTIFICATION_ID = 1000`, `ONGOING_TITLE`,
+    `ongoing(context, endWallClockMillis, contentIntent)` (cronómetro descendente del **sistema**,
+    `ongoing` + `onlyAlertOnce` + `silent` + `CATEGORY_STOPWATCH`, sin `contentText` ni extras),
+    `EXTRA_RESUME_COOKING` y `contentIntent(context, requestCode)` compartido. La notificación de fin
+    aceptada no cambia.
+  - `data/cooking/AndroidCookingAlarm.kt`: `Schedule` suma `startForegroundService` (con el **mismo**
+    instante de fin) y `Cancel` suma `stopService`, cada pata con su `runCatching`; la alarma aceptada
+    intacta. `data/cooking/CookingAlarmReceiver.kt`: usa el `Intent` de contenido compartido (gana **solo**
+    el flag de reanudación).
+  - `ui/cooking/CookingModeScreen.kt`: parámetros `session`/`resume`, estado inicial restaurado
+    (`resume?.resumedMode(now)`), persistencia por **cambio significativo** (`stepIndex`/`timer.status`/
+    `completedOrders`; nunca por `tick`), rearme **una vez** del trabajo del sistema al reanudar En marcha
+    (misma `CookingAlarmPolicy`, `IDLE -> RUNNING`) y `clear()` al salir; el `onDispose` **no** borra.
+  - `ui/MainShell.kt` (`cookingSession`, `resumeRequest` y `LaunchedEffect` que carga la sesión resumible y
+    abre el paso), `ui/SazonApp.kt` (reenvío) y `MainActivity.kt` (almacén Room, estado `resumeRequest` y
+    `onNewIntent` con `setIntent`).
+  - `AndroidManifest.xml`: `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE` y el `<service>` con
+    `exported="false"`, `foregroundServiceType="specialUse"` y el `<property>` del subtipo. Receptor y
+    permisos aceptados intactos.
+  - Tests nuevos: `ui/cooking/CookingSessionTest.kt` (JUnit 4 puro, 14 tests, **la verificación
+    exigida**), `data/cooking/CookingTimerServiceTest.kt` (Robolectric + `ShadowService`, 10),
+    `data/cooking/RoomCookingSessionStoreTest.kt` (Robolectric + Room en memoria, 7) y
+    `data/cooking/CookingTimerServiceManifestTest.kt` (JVM con `AppResourceFiles`, 6, con caso negativo
+    sobre el XML mutado). Casos **añadidos** (sin alterar los aceptados) en `CookingNotificationsTest`
+    (11→15) y `AndroidCookingAlarmTest` (7→10).
+- Verificación (evidencia real de esta sesión):
+  - Gate `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`; `init.sh` **sin cambios**). Parseo
+    propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml` = **113 suites / 874 tests / 0 fallos /
+    0 errores / 0 saltados**; baseline re-derivada en `HEAD 3c3ec1b` (`git grep -c '@Test' HEAD -- app/src/test`
+    = 109 ficheros / 830 anotaciones) ⇒ delta **+4 suites / +44 tests**, con las suites aceptadas de
+    `cooking` sin cambios de recuento (`CookingAlarmPolicyTest` 15, `CookingTimerStateTest` 11,
+    `CookingModeStateTest` 10, `CookingModeFormatTest` 8, `NotificationPermissionPolicyTest` 14,
+    `AndroidNotificationPermissionPromptTest` 7).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"
+    --tests "com.sazon.app.data.cooking.*"` = BUILD SUCCESSFUL (12 suites / 126 tests, 0 fallos) y sin
+    avisos nuevos del compilador (se evitaron los campos `Notification.sound`/`vibrate`/`defaults`,
+    deprecados).
+  - Lint: SARIF `app/build/reports/lint-results-debug.sarif` = **13 resultados / 0 errores** (los mismos
+    preexistentes: GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+    OldTargetApi 1) y **0 bajo `app/src`** (el tipo de primer plano, los permisos nuevos y el `<property>`
+    no emitieron nada, así que no hizo falta el remedio del `Unknowns`).
+  - Inspecciones: pureza de `CookingSession`/`CookingSessionStore` (**0** imports de framework, **0**
+    lecturas del reloj); `Service`/`startForeground`/`stopForeground` **solo** bajo `data/cooking/` (+ el
+    manifiesto); persistencia escrita **solo** en el `LaunchedEffect` por cambio significativo y
+    `onDispose` sin `clear()`; `Intent` de arranque con **solo** el instante de fin y de contenido con
+    **solo** el booleano; `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**`,
+    `domain/**`, Taxonomía, `seed-recipes.json`, `assets/**`, `ui/theme/**`, `ic_notification_timer.xml`,
+    `CookingAlarm.kt`, `CookingTimerState.kt`, `CookingModeState.kt`, `CookingModeFormat.kt`,
+    `NotificationPermission*.kt` y `AndroidNotificationPermissionPrompt.kt` **sin diff**; sin dependencias
+    nuevas; no se crea `docs/design/concepts/cooking-timer-foreground-service/`.
+- Estado: `feature_list.json` con `cooking-timer-foreground-service` en **`passing`** y 13 entradas de
+  evidencia (el rango máximo que puede dejar el implementer); pendiente la **validación independiente**
+  (`feature-validator`) y, después, el commit/push/PR del orquestador.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (puntos 1-7 de la spec:
+  persistente con la cuenta atrás decreciendo; minimizar/bloquear el móvil; sonido y vibración al llegar a
+  cero con la persistente desapareciendo sin duplicados; toque que vuelve al paso exacto con la app en
+  segundo plano **y** con el proceso muerto, con el tiempo restante correcto o el "¡Listo!" si ya pasó;
+  pausar/reiniciar/cambiar de paso/salir que detienen el servicio; permiso denegado sin crash; y lanzador
+  que **no** abre el Modo cocina), no automatizable según `AGENTS.md`. Quedan como incógnitas aceptadas y
+  documentadas (ADR 0008): que alguna capa del fabricante no pinte el cronómetro, que la primera
+  publicación de la persistente alerte una vez por reutilizar el canal de importancia alta, la pérdida de
+  la cuenta atrás si el sistema mata el proceso o el usuario quita la tarea de recientes (el "¡Listo!"
+  sigue llegando y el toque devuelve al paso) y el reinicio del dispositivo (no sobrevive nada); un
+  defecto de acabado se corrige con una **feature correctiva**.

@@ -4,13 +4,17 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.ContextCompat
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingAlarmCommand
 
 /**
  * Adaptador Android de la costura [CookingAlarm]: programa en `AlarmManager` la alarma de **un solo
  * disparo** del aviso y la cancela cuando deja de tener sentido
- * (`docs/specs/cooking-timer-alarm.md`, escenarios 1, 4 y 5).
+ * (`docs/specs/cooking-timer-alarm.md`, escenarios 1, 4 y 5). Ademas arranca y para el **servicio en
+ * primer plano** que pinta la cuenta atras
+ * (`docs/specs/cooking-timer-foreground-service.md`, escenarios 1 y 4), con la **misma**
+ * idempotencia: el comando ya transporta exactamente las dos cosas.
  *
  * - La base de tiempo es **`ELAPSED_REALTIME_WAKEUP`**: el instante que llega en
  *   [CookingAlarmCommand.Schedule] es `SystemClock.elapsedRealtime()` + lo que quedaba de cuenta
@@ -21,8 +25,16 @@ import com.sazon.app.ui.cooking.CookingAlarmCommand
  *   **normal** concedido al instalar) usa `setExactAndAllowWhileIdle` — exacta incluso en Doze —; si
  *   no, **degrada** a `setAndAllowWhileIdle` (inexacta: el aviso puede llegar tarde, pero llega).
  *   Nunca `setRepeating`/`setInexactRepeating`.
+ * - `Schedule` arranca tambien el servicio en primer plano (`startForegroundService` con
+ *   [CookingTimerService.intent], que solo lleva el instante de fin) y `Cancel` lo para
+ *   (`stopService`), de modo que la notificacion persistente existe **solo** En marcha. Las dos patas
+ *   son **independientes**: si una falla, la otra se intenta igual (cada una con su `runCatching`).
+ *   Arrancar el servicio siempre ocurre desde una interaccion del usuario con la app en primer plano
+ *   ("Iniciar"/"Reanudar"), asi que no aplica la restriccion de arranque en segundo plano.
  * - `Cancel` cancela **solo** la alarma pendiente con el **mismo** `PendingIntent` (mismo `requestCode`
- *   y mismo `Intent`): **no** retira una notificacion ya mostrada.
+ *   y mismo `Intent`): **no** retira una notificacion ya mostrada (decision 9 aceptada). Detener el
+ *   servicio si retira su notificacion persistente, que es justo lo que se quiere al Pausar/Reiniciar/
+ *   cambiar de paso/salir.
  * - **Degradacion silenciosa** (ADR 0005): todo va envuelto en `runCatching`; un `SecurityException`,
  *   un `AlarmManager` ausente o un paquete sin launch intent no pueden tumbar el modo cocina.
  */
@@ -41,11 +53,14 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
         }
     }
 
-    /** Programa la alarma exacta para [at] (o la inexacta de respaldo); nunca lanza. */
+    /**
+     * Programa la alarma exacta para [at] (o la inexacta de respaldo) **y** arranca el servicio en
+     * primer plano con el mismo instante de fin; nunca lanza.
+     */
     private fun schedule(at: Long) {
         runCatching {
-            val manager = alarmManager ?: return
-            val pendingIntent = broadcastPendingIntent() ?: return
+            val manager = alarmManager ?: return@runCatching
+            val pendingIntent = broadcastPendingIntent() ?: return@runCatching
             if (manager.canScheduleExactAlarms()) {
                 manager.setExactAndAllowWhileIdle(
                     AlarmManager.ELAPSED_REALTIME_WAKEUP,
@@ -60,14 +75,24 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
                 )
             }
         }
+        // Pata del servicio: independiente de la alarma (si esta fallara, la cuenta atras sigue).
+        runCatching {
+            ContextCompat.startForegroundService(appContext, CookingTimerService.intent(appContext, at))
+        }
     }
 
-    /** Cancela la alarma pendiente (idempotente); nunca lanza y **no** toca la notificacion. */
+    /**
+     * Cancela la alarma pendiente (idempotente) y **para** el servicio en primer plano; nunca lanza y
+     * **no** toca la notificacion del aviso de fin ya mostrada.
+     */
     private fun cancel() {
         runCatching {
-            val manager = alarmManager ?: return
-            val pendingIntent = broadcastPendingIntent() ?: return
+            val manager = alarmManager ?: return@runCatching
+            val pendingIntent = broadcastPendingIntent() ?: return@runCatching
             manager.cancel(pendingIntent)
+        }
+        runCatching {
+            appContext.stopService(Intent(appContext, CookingTimerService::class.java))
         }
     }
 

@@ -104,6 +104,14 @@ private const val COMPLETED_ALPHA = 0.45f
  * "Continuar" lanza el dialogo del sistema por la costura [NotificationPermissionPrompt] (default
  * [NoOpNotificationPermissionPrompt]). El rationale **no** gatea nada: el aviso ya esta programado y el
  * reloj de la UI es un efecto aparte.
+ *
+ * **Sesion persistida** (feature `cooking-timer-foreground-service`): la pantalla guarda su estado por
+ * **cambio significativo** en la costura [CookingSessionStore] (default [NoOpCookingSessionStore]) y lo
+ * **borra** al salir ("Atras"/"Terminar"). Si llega [resume] (el usuario toco una notificacion y el
+ * proceso habia muerto), el estado inicial es el **paso exacto** con la cuenta atras **recalculada**
+ * desde el instante de fin y el trabajo del sistema (alarma + servicio) se **rearma** una vez. El
+ * desmontaje de la composicion **no** borra la sesion: una muerte de actividad o una rotacion no debe
+ * perderla.
  */
 @Composable
 fun CookingModeScreen(
@@ -112,16 +120,58 @@ fun CookingModeScreen(
     modifier: Modifier = Modifier,
     alarm: CookingAlarm = NoOpCookingAlarm,
     notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
+    session: CookingSessionStore = NoOpCookingSessionStore,
+    resume: CookingSession? = null,
 ) {
     var state by rememberSaveable(stateSaver = CookingModeStateSaver) {
-        mutableStateOf(CookingModeState.initial(recipe))
+        mutableStateOf(
+            resume?.resumedMode(SystemClock.elapsedRealtime()) ?: CookingModeState.initial(recipe),
+        )
     }
     // Ultimo temporizador al que se le aplico la politica: el efecto solo corre al **cambiar de
     // estado**, asi que basta con guardar el primero de cada estado (solo se consulta por
-    // `isRunning`/igualdad, nunca por `remainingMillis`).
+    // `isRunning`/igualdad, nunca por `remainingMillis`). Arranca ya igual al estado (incluida la
+    // reanudacion), de modo que el efecto de transiciones no rearma lo que rearma la reanudacion.
     var previousTimer by remember { mutableStateOf(state.timer) }
     // Rationale del permiso: la primera vez que arranca el temporizador sin permiso concedido.
     var showRationale by rememberSaveable { mutableStateOf(false) }
+    // Salida explicita ("Atras"/"Terminar"): primero se **borra** la sesion y solo despues se cierra el
+    // modo, para que el borrado no se quede a medias si la composicion se desmonta antes.
+    var exiting by remember { mutableStateOf(false) }
+
+    // Reanudacion de una sesion En marcha (el proceso murio a mitad): la cuenta atras ya se recalculo
+    // desde el instante de fin, pero la alarma y el servicio murieron con el proceso, asi que se
+    // **rearma** el trabajo del sistema **una vez**, tratando la reanudacion como `IDLE -> RUNNING`.
+    // `previousTimer` arranca ya igual al temporizador del estado para que el efecto de transiciones no
+    // lo repita.
+    LaunchedEffect(Unit) {
+        val resumed = resume ?: return@LaunchedEffect
+        if (resumed.timer.status != CookingTimerStatus.RUNNING) return@LaunchedEffect
+        alarm.apply(
+            CookingAlarmPolicy.onTimerChange(
+                previous = resumed.timer.copy(status = CookingTimerStatus.IDLE),
+                next = state.timer,
+                nowMillis = SystemClock.elapsedRealtime(),
+            ),
+        )
+    }
+
+    // Persistencia por **cambio significativo** (arrancar, pausar, reanudar, reiniciar, cambiar de paso,
+    // marcar, llegar a cero): **nunca** por `tick`, porque lo que queda de cuenta atras se recalcula al
+    // reanudar desde el instante de fin.
+    LaunchedEffect(state.stepIndex, state.timer.status, state.completedOrders) {
+        session.save(CookingSession.of(state, recipe, SystemClock.elapsedRealtime()))
+    }
+
+    // Salida explicita: se borra la sesion y despues se cierra el modo (la notificacion que quede en la
+    // bandeja ya no reanuda nada). El `onDispose` de abajo **no** borra nada.
+    LaunchedEffect(exiting) {
+        if (exiting) {
+            session.clear()
+            onClose()
+        }
+    }
+    val requestExit: () -> Unit = { exiting = true }
 
     // Transiciones del temporizador -> comando del aviso (programar al Iniciar/Reanudar, cancelar al
     // Pausar/Reiniciar/cambiar de paso/llegar a cero) y -> decision del permiso (rationale la primera
@@ -151,7 +201,9 @@ fun CookingModeScreen(
     }
 
     // Salir del modo (Atras, Terminar, `onClose` o cualquier descarte de la composicion) no debe dejar
-    // ningun aviso vivo: la cancelacion es idempotente, haya o no algo programado.
+    // ningun aviso vivo ni la cuenta atras pintandose: la cancelacion es idempotente, haya o no algo
+    // programado. **No** borra la sesion persistida (una rotacion o una muerte de actividad no deben
+    // perderla; solo la salida explicita la borra).
     DisposableEffect(Unit) {
         onDispose { alarm.apply(CookingAlarmPolicy.onExit()) }
     }
@@ -173,7 +225,7 @@ fun CookingModeScreen(
                 isLastStep = state.isLastStep,
                 onPrevious = { state = state.previous(recipe.steps) },
                 onNext = { state = state.next(recipe.steps) },
-                onClose = onClose,
+                onClose = requestExit,
             )
         },
     ) { padding ->
@@ -186,7 +238,7 @@ fun CookingModeScreen(
             CookingModeHeader(
                 stepIndex = state.stepIndex,
                 totalSteps = state.totalSteps,
-                onBack = onClose,
+                onBack = requestExit,
             )
             val step = recipe.steps.getOrNull(state.stepIndex)
             if (state.isEmpty || step == null) {

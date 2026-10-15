@@ -1,5 +1,6 @@
 package com.sazon.app.ui
 
+import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -51,7 +52,10 @@ import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingModeScreen
+import com.sazon.app.ui.cooking.CookingSession
+import com.sazon.app.ui.cooking.CookingSessionStore
 import com.sazon.app.ui.cooking.NoOpCookingAlarm
+import com.sazon.app.ui.cooking.NoOpCookingSessionStore
 import com.sazon.app.ui.cooking.NoOpNotificationPermissionPrompt
 import com.sazon.app.ui.cooking.NotificationPermissionPrompt
 import com.sazon.app.ui.detail.RecipeDetailScreen
@@ -104,6 +108,13 @@ import kotlinx.coroutines.launch
  * Desde el **Detalle**, "Empezar a cocinar" abre el **Modo cocina** ([CookingModeScreen]) como segundo
  * overlay: recorre los pasos con progreso, marcado y temporizador, y "Atras"/"Terminar" vuelven al
  * Detalle intacto.
+ *
+ * **Vuelta al paso desde la notificacion** (feature `cooking-timer-foreground-service`): cuando el
+ * `Intent` de arranque trae el flag de reanudacion, `MainActivity` incrementa [resumeRequest]; este
+ * armazon carga entonces la **sesion persistida** ([CookingSessionStore]) y, si es **resumible** (En
+ * marcha o Pausado), abre el Modo cocina en **ese** paso con la cuenta atras recalculada desde el
+ * instante de fin ([CookingSession.resumedMode]). Un arranque **normal** (sin el flag) no abre nada,
+ * aunque haya sesion persistida.
  */
 @Composable
 fun MainShell(
@@ -123,6 +134,8 @@ fun MainShell(
     modifier: Modifier = Modifier,
     cookingAlarm: CookingAlarm = NoOpCookingAlarm,
     notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
+    cookingSession: CookingSessionStore = NoOpCookingSessionStore,
+    resumeRequest: Int = 0,
 ) {
     var navigation by rememberSaveable(stateSaver = MainNavigationStateSaver) {
         mutableStateOf(MainNavigationState())
@@ -143,6 +156,9 @@ fun MainShell(
     // se vuelve al Detalle intacto. `Recipe` no es serializable, asi que vive en `remember` (rotar
     // cierra el modo, igual que el Detalle).
     var cookingRecipe by remember { mutableStateOf<Recipe?>(null) }
+    // Estado restaurado de una sesion persistida resumible: `null` = modo cocina normal (abierto desde
+    // el Detalle). Se limpia al cerrar el modo, de modo que la siguiente apertura vuelve a empezar.
+    var resumeSession by remember { mutableStateOf<CookingSession?>(null) }
     // Consulta de la Busqueda con IA: sobrevive a empujar/sacar la pagina (la Home se desmonta al
     // empujar) y a la rotacion.
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -156,6 +172,18 @@ fun MainShell(
     val imageBackground = imageGeneration.enabled
     LaunchedEffect(profile.preferences) {
         suggestionBatchService.ensureBatch(profile.preferences)
+    }
+    // Vuelta al paso desde la notificacion: `resumeRequest` se incrementa cuando el `Intent` trae el
+    // flag de reanudacion (con exito o no, solo una vez por peticion). Con una sesion **resumible**
+    // (En marcha o Pausado) se abre el Modo cocina en **ese** paso y con la cuenta atras recalculada
+    // desde el instante de fin; con el proceso vivo y el modo ya abierto no cambia nada (el estado del
+    // modo es `rememberSaveable` y no se reinicia). Sin sesion, no se abre nada.
+    LaunchedEffect(resumeRequest) {
+        if (resumeRequest <= 0) return@LaunchedEffect
+        val resumed = cookingSession.load() ?: return@LaunchedEffect
+        if (!resumed.isResumable) return@LaunchedEffect
+        cookingRecipe = resumed.recipe
+        resumeSession = resumed
     }
     val suggestions = remember(batch?.recipes, seedRecipes, profile.preferences, taxonomy) {
         HomeSuggestions.visible(
@@ -333,7 +361,8 @@ fun MainShell(
         }
 
         // Modo cocina: se pinta encima del Detalle sin desmontarlo; "Atras"/"Terminar" vuelven al
-        // Detalle con su estado intacto. Overlay vertical: entra desde abajo y sale hacia abajo.
+        // Detalle con su estado intacto. Overlay vertical: entra desde abajo y sale hacia abajo. Si
+        // viene de una notificacion (`resumeSession`), abre directamente en el paso restaurado.
         MotionContent(
             targetState = cookingRecipe,
             axis = MotionAxis.VERTICAL,
@@ -342,10 +371,15 @@ fun MainShell(
             recipe?.let { open ->
                 CookingModeScreen(
                     recipe = open,
-                    onClose = { cookingRecipe = null },
+                    onClose = {
+                        cookingRecipe = null
+                        resumeSession = null
+                    },
                     modifier = Modifier.fillMaxSize(),
                     alarm = cookingAlarm,
                     notificationPermission = notificationPermission,
+                    session = cookingSession,
+                    resume = resumeSession,
                 )
             }
         }
