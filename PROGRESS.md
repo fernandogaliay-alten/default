@@ -6411,3 +6411,36 @@
   `POST_NOTIFICATIONS` denegado sin romper el Modo cocina), no automatizable desde WSL; el acabado
   (tono, vibracion, pantalla de bloqueo) y la limitacion aceptada de proceso muerto quedan documentados y
   se corrigen, si molesta, con una feature correctiva.
+
+### Sesión 135 (orquestador `github-flow` + persona, alta de features de `cooking-timer-alarm`)
+
+- Fecha: 2026-10-15
+- Contexto: la persona probó en el emulador la feature **`cooking-timer-alarm`** (ya `accepted` y mergeada;
+  PR #149) y encontró tres cosas que no le convencen. Triage: (1) el diálogo de `POST_NOTIFICATIONS` salta
+  **al abrir la app y sin explicación** — defecto de UX y además incoherencia con el texto de evidencia
+  (que decía "contextual"); (2) no hay **foreground service** con la cuenta atrás visible — es un
+  **Non-Goal** explícito de la spec, luego es **cambio de alcance**; (3) el toque de la notificación abre
+  la app pero no vuelve al **paso** concreto si el proceso murió — también alcance (el "reanudar donde lo
+  dejé" estaba diferido).
+- Decisión de la persona (2026-10-15): permiso **en contexto + rationale**; **sí** a un **foreground
+  service** con notificación persistente del contador; **sí** a volver al **paso exacto** (persistir la
+  sesión del Modo cocina); empaquetado en **una correctiva + una ampliación**.
+- Alta (esta sesión): dos entradas nuevas en `feature_list.json`, ambas `not_started` y sin spec todavía.
+  - **`cooking-timer-alarm-permission-context`** (`area: ui`, depende de `cooking-timer-alarm`): retirar la
+    petición del arranque, pedirla en contexto al pulsar "Iniciar" (decisión pura testeable en JVM) y
+    mostrar un rationale antes del diálogo del sistema; reconciliar el texto de spec/evidencia.
+  - **`cooking-timer-foreground-service`** (`area: integration`, depende de
+    `cooking-timer-alarm-permission-context`): servicio en primer plano con notificación "ongoing" que
+    muestra la cuenta atrás y pasa a "¡Listo!" con sonido/vibración al llegar a cero; persistir la sesión
+    del Modo cocina para que el toque vuelva al paso exacto incluso con el proceso muerto. Permisos nuevos
+    `FOREGROUND_SERVICE` + tipo (API 34+). Revisa los Non-Goals de `cooking-timer-alarm` (sin foreground
+    service, sin persistencia) y enmienda de forma acotada el Non-Goal "Notificaciones y recordatorios" de
+    `docs/build-brief.md`.
+- Estado de features: `cooking-timer-alarm`, `app-launcher-icon` y el resto del plan siguen `accepted`; las
+  dos nuevas quedan `not_started`. Ninguna se implementa ni se planifica en esta sesión.
+- Harness: se commitearon los artefactos del orquestador `pr-flow`/`pr-review` (skill, subagente
+  `reviewer`, atajo `/review-pr`, `scripts/pr-worktree.sh`) y los ajustes de `AGENTS.md`/`github-flow`/
+  `PROGRESS.md` (Sesión 131 harness), que estaban sin commitear y bloqueaban el precondition de base
+  limpia de `github-flow`.
+- Siguiente paso: `github-flow execute cooking-timer-alarm-permission-context` (spec → implementación →
+  validación), publicar PR y `pr-flow` para revisión + merge; después `cooking-timer-foreground-service`.

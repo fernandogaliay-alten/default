@@ -1664,5 +1664,36 @@
       "Pendiente (no bloqueante, no automatizable desde WSL): prueba manual de la persona en el emulador segun el plan de la spec (iniciar un paso con duracion, dejar la app en segundo plano/bloquear el movil y comprobar el aviso sonoro/vibratorio en su instante, el toque de vuelta al paso, que con la app en primer plano no se duplica y que denegando POST_NOTIFICATIONS el Modo cocina y su '¡Listo!' siguen intactos); un defecto visual o de acabado se corrige con una feature correctiva."
     ],
     "notes": "Ampliacion pedida por la persona (2026-10-15) tras comprobar que el modo cocina no avisa fuera de la pantalla: hoy el reloj vive en un `LaunchedEffect` de `CookingModeScreen` (solo corre con la composicion activa) y el aviso es **solo visual** ('¡Listo!' en miel/oliva); no hay notificacion, sonido, vibracion ni persistencia (Non-Goals explicitos de `cooking-mode`). Esta feature **enmienda de forma acotada** el Non-Goal 'Notificaciones y recordatorios' de `docs/build-brief.md` (igual que `cooking-mode` enmendo el de 'modo cocina con temporizadores'): solo el aviso de fin del temporizador, no recordatorios programados por el usuario ni notificaciones de sugerencias/recetas. Enfoque: notificacion de sistema en un canal propio con sonido/vibracion, programada con `AlarmManager` para el instante de fin (no depende de que la composicion siga viva y suena con la pantalla apagada/Doze), cancelada al Pausar/Reiniciar/salir y disparada una sola vez al llegar a cero; minSdk 33 exige el permiso `POST_NOTIFICATIONS` en runtime (Android 13+) con una via de solicitud que no rompa el flujo. La decision del aviso es **pura y testeable en JVM** (patron `CookingTimerState`) con instantes inyectados (sin leer el reloj). Docs a reconciliar al aceptar: `docs/build-brief.md` (Non-Goal enmendado), `docs/technical-discovery.md` y `docs/risks-and-open-questions.md`. NO entra: lista de la compra, recordatorios programados, notificaciones de sugerencias, un foreground service permanente ni persistir el estado completo del modo cocina (el 'reanudar donde lo deje' es otra feature)."
+  },
+  {
+    "id": "cooking-timer-alarm-permission-context",
+    "area": "ui",
+    "title": "Permiso de notificaciones en contexto y con explicación",
+    "user_visible_behavior": "La app no pide el permiso de notificaciones al abrirse: lo pide la primera vez que arrancas el temporizador de un paso, tras un texto breve que explica para qué sirve, y si lo deniegas el modo cocina y su temporizador siguen igual.",
+    "depends_on": ["cooking-timer-alarm"],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' (test + lint) en verde, sin dependencias nuevas y sin tocar build/lockfile",
+      "Test JVM de la decisión pura de pedir el permiso (sin Android/Compose, patrón CookingAlarmPolicy, permiso e instante inyectados): al arrancar la app NO se pide; al arrancar el temporizador por primera vez y sin permiso concedido se pide UNA vez y con rationale; con permiso concedido no se pide; denegado no se vuelve a pedir en la misma sesión",
+      "Prueba manual (persona, emulador; no automatizable según AGENTS.md): abrir la app NO muestra el diálogo; al pulsar 'Iniciar' por primera vez aparece primero la explicación y luego el diálogo del sistema; denegarlo deja el modo cocina y el '¡Listo!' en pantalla intactos"
+    ],
+    "evidence": [],
+    "notes": "Correctiva de `cooking-timer-alarm` pedida por la persona (2026-10-15). Hoy `MainActivity.onCreate` llama a `requestNotificationsPermissionOncePerProcess()` (MainActivity.kt:229,268-283), asi que el dialogo del sistema salta al abrir la app y sin ninguna explicacion; ademas la evidencia escrita decia 'contextual' pero la spec (docs/specs/cooking-timer-alarm.md:64-67) y el codigo piden 'una vez por proceso al arrancar'. Alcance: (1) retirar la peticion del arranque; (2) pedir en contexto, al arrancar el temporizador, con la decision pura y testeable en JVM (patron CookingAlarmPolicy, permiso e instante inyectados); (3) mostrar un rationale antes del dialogo del sistema explicando que es para avisar cuando termina el paso; (4) reconciliar el texto de spec/evidencia incoherente. NO entra: el servicio en primer plano ni volver al paso (es `cooking-timer-foreground-service`); sin dependencias nuevas."
+  },
+  {
+    "id": "cooking-timer-foreground-service",
+    "area": "integration",
+    "title": "Temporizador en primer plano con cuenta atrás visible y vuelta al paso",
+    "user_visible_behavior": "Mientras corre el temporizador de un paso del modo cocina, una notificación persistente de un servicio en primer plano muestra la cuenta atrás aunque la app esté minimizada o el móvil bloqueado; al llegar a cero avisa con sonido y vibración ('¡Listo!') y, al tocar la notificación, la app vuelve al paso del modo cocina en el que estaba, incluso si el proceso se había cerrado.",
+    "depends_on": ["cooking-timer-alarm-permission-context"],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' (test + lint) en verde; el manifiesto declara el servicio con su tipo de foreground y la app arranca y funciona con el servicio apagado",
+      "Test JVM de la sesión del temporizador (reloj e instantes inyectados, patrón CookingAlarmPolicy): arrancar/reanudar proyectan el instante de fin y el paso; pausar/reiniciar/cambiar de paso/salir lo actualizan o lo paran; al llegar a cero se avisa una sola vez",
+      "Test JVM/Robolectric: la notificación persistente (cuenta atrás) y la de fin se construyen sin excepción y solo exponen lo necesario para volver al paso (sin clave de IA ni cuerpo de la receta)",
+      "Prueba manual (persona, emulador; no automatizable según AGENTS.md): con el temporizador en marcha, minimizar o bloquear el móvil y ver el contador decrecer en la notificación; al terminar, suena/vibra; tocar la notificación vuelve al paso, también tras cerrar la app (proceso muerto); pausar/reiniciar/salir detienen el servicio"
+    ],
+    "evidence": [],
+    "notes": "Ampliacion pedida por la persona (2026-10-15) tras probar `cooking-timer-alarm`: el aviso actual es solo el de fin (alarma one-shot) y la cuenta atras no se ve fuera de la app. Cambio de enfoque: un `foreground service` con notificacion 'ongoing' es el dueno del reloj y del contador; al terminar pasa a '¡Listo!' con sonido/vibracion. Requiere persistir la sesion del Modo cocina (receta + paso + temporizador) para que el toque de la notificacion abra el paso exacto aunque muera el proceso ('reanudar donde lo deje', hasta ahora diferido). Permisos nuevos: `FOREGROUND_SERVICE` + su tipo (API 34+: `FOREGROUND_SERVICE_SPECIAL_USE`); se reutiliza el canal `cooking_timer` y la degradacion silenciosa (ADR 0005). Sustituye el `AlarmManager` one-shot de `cooking-timer-alarm` o lo deja como respaldo (lo decide la spec). Enmienda acotada del Non-Goal 'Notificaciones y recordatorios' de docs/build-brief.md y revisa el Non-Goal 'sin foreground service' de `cooking-timer-alarm`. NO entra: recordatorios programados por el usuario, notificaciones de sugerencias/recetas, lista de la compra ni multi-idioma. Depende de `cooking-timer-alarm-permission-context` (reutiliza el permiso en contexto y el rationale); sin dependencias nuevas de librerias."
   }
 ]
