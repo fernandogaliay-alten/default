@@ -18,8 +18,3 @@ captures/
 # Sistema
 .DS_Store
 Thumbs.db
-
-# Estado local de una sesion de feature-flow lanzada en background (scripts/launch-feature-session.sh)
-.feature-session.log
-.feature-session.exit
-.feature-session.pid

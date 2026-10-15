@@ -80,14 +80,9 @@ aceptación.
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
   **`github-flow`**: crea issues, ramas y worktrees, lanza una sesión independiente por worktree
-  (`bash scripts/launch-feature-session.sh <feature-id>`, que fija el cwd del worktree) y delega el
-  ciclo de cada feature a `feature-flow`. La sesión se lanza **desacoplada** (`SAZON_DETACH=1`), sin
-  bloquear una tool call durante todo el ciclo (30–60+ min): el helper retorna al instante y escribe
-  su salida en `<worktree>/.feature-session.log` y el código de salida en
-  `<worktree>/.feature-session.exit`. La **señal de fin** es esa sentinela (o, si se pierde, los
-  artefactos: estado en `feature_list.json` + commit local), **no** el retorno de la llamada;
-  `bash scripts/wait-feature-session.sh <feature-id>` espera de forma acotada. `github-flow`
-  **nunca** hace merge.
+  (con `bash scripts/launch-feature-session.sh <feature-id>`, que fija el cwd del worktree y corre el
+  ciclo en primer plano hasta que termina) y delega el ciclo de cada feature a `feature-flow`.
+  `github-flow` **nunca** hace merge.
 - La revisión y el merge de los PRs abiertos los orquesta la skill **`pr-flow`**: lanza el subagente
   **`reviewer`**, delega las reparaciones en **`implementer`**, resuelve los conflictos como único
   integrador y mergea. Es el **único** flujo con permiso de merge.
