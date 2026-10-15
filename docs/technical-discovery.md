@@ -389,8 +389,39 @@ sus cuatro estados, aviso **en pantalla** "¡Listo!" en miel/oliva — nunca `er
 como hecho" y barra inferior "Anterior" + "Siguiente"→"Terminar", con `CookingModeStateSaver` y un
 `LaunchedEffect` que solo alimenta `tick(1000)`). Se hospeda como **overlay** en `MainShell`
 (`var cookingRecipe by remember`) **encima** del Detalle y cablea la costura `onStartCooking` que
-`recipe-detail-screen` dejo no-op. Sin notificacion de sistema, sonido, vibracion ni persistencia
-(Non-Goals del MVP). Ver `docs/specs/cooking-mode.md`.
+`recipe-detail-screen` dejo no-op. Sin persistencia del modo (Non-Goal del MVP): si el proceso muere, la
+app abre en su estado de arranque. Ver `docs/specs/cooking-mode.md`.
+
+El **aviso de sistema** de fin del temporizador (feature `cooking-timer-alarm`, 2026-10-15) es la
+**unica** integracion de alarmas y notificaciones del repo y enmienda de forma acotada el Non-Goal
+"Notificaciones y recordatorios" (`docs/adr/0007-cooking-timer-alarm.md`). La decision es **pura** y vive
+en `ui.cooking`: `CookingAlarmCommand` (`Schedule`/`Cancel`/`None`) y `CookingAlarmPolicy.onTimerChange`
+(+`onExit()`) traducen una transicion de `CookingTimerState` a un comando con el **instante inyectado**
+(`nowMillis`; nunca lee el reloj) — `Schedule(now + remaining)` solo en las aristas `IDLE→RUNNING` y
+`PAUSED→RUNNING`, `Cancel` al Pausar/Reiniciar/cambiar de paso (los `next`/`previous` reinician el
+temporizador a Inactivo)/llegar a cero/salir y `None` en los ticks y no-ops. La costura
+`CookingAlarm.apply(command)` tiene default `NoOpCookingAlarm` y viaja **por parametro** de `MainActivity`
+→ `SazonApp` → `MainShell` → `CookingModeScreen`, que gana **dos** efectos (`LaunchedEffect` con
+`state.timer.status` como clave, que pasa `SystemClock.elapsedRealtime()`, y `DisposableEffect` de
+cancelacion al desmontarse) sin tocar el reloj, la UI ni el microcopy "¡Listo!". Los adaptadores Android
+viven en `data.cooking`: `AndroidCookingAlarm` programa la alarma **exacta** de un solo disparo
+(`setExactAndAllowWhileIdle` sobre `ELAPSED_REALTIME_WAKEUP`; `requestCode` fijo ⇒ una sola viva) y
+**degrada** a `setAndAllowWhileIdle` si `canScheduleExactAlarms()` es `false` (nunca crash),
+`CookingAlarmReceiver` (receptor de manifiesto, `exported="false"`) publica la notificacion del canal
+propio `cooking_timer` (importancia alta, sonido y vibracion, visibilidad publica) con id **fijo** `1001`
+⇒ republicar **reemplaza**, nunca duplica, y `CookingNotifications` construye el contenido **generico**
+(`"¡Listo! El paso ha terminado"` / `"Toca para volver al modo cocina."`): la funcion **no recibe** la
+receta y el `PendingIntent` de la alarma **no lleva extras**, asi que los datos de la receta no cruzan al
+sistema. El toque abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP` (reutiliza
+la actividad viva); si el sistema mato el proceso, la app abre en su estado de arranque (limitacion
+aceptada: el modo no se persiste). `MainActivity` crea el canal al arrancar y pide `POST_NOTIFICATIONS`
+**una vez por proceso** con `registerForActivityResult` (no bloqueante: sin permiso no hay aviso, pero el
+Modo cocina y su "¡Listo!" siguen intactos); el manifiesto declara `POST_NOTIFICATIONS`, `USE_EXACT_ALARM`
+(normal, concedido al instalar, caso de uso documentado de temporizador) y `VIBRATE`. `Cancel` cancela
+**solo** la alarma pendiente, **no** retira una notificacion ya mostrada (si lo hiciera, el `Cancel` de
+`RUNNING→FINISHED` borraria el aviso recien disparado en primer plano). Sin dependencias nuevas
+(`NotificationCompat`/`NotificationManagerCompat` son `androidx.core`) y sin persistencia. Ver
+`docs/specs/cooking-timer-alarm.md`.
 
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,

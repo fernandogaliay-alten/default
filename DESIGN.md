@@ -284,6 +284,16 @@ redondo, con iconos tematizados, y el splash de arranque). Misma clase de excepc
 `recipe-artwork` (#77), `favorites-sort-controls` (#85), `profile-stats-heading` (#86) y
 `home-recently-opened-group` (#91): no se crea carpeta de capturas porque no hay pantalla nueva que
 revisar, y la dirección visual queda en la sección **App Icon**.
+**Excepción de capturas (desviación documentada, feature `cooking-timer-alarm`, 2026-10-15):** `cooking-timer-alarm`
+**no** genera capturas nuevas ni carpeta `docs/design/concepts/cooking-timer-alarm/`. El cambio visible es una
+**notificación del sistema operativo** (canal propio `cooking_timer`, aviso "¡Listo! El paso ha terminado"),
+no una pantalla de la app: no hay tokens nuevos ni microcopy de UI que revisar contra este documento. El
+único activo visual nuevo es el **small icon** `res/drawable/ic_notification_timer.xml`, **monocromo** y
+derivado del mismo lenguaje de glifos ya aceptado (`ClockGlyph` de `CookingModeScreen`): el color lo impone
+el sistema al teñirlo, así que no usa ningún token de `DESIGN.md`. El "¡Listo!" **en pantalla** sigue
+exactamente igual (lo pinta `cooking-mode`), y el acabado de la notificación (tono, patrón de vibración,
+aspecto en la pantalla de bloqueo) lo revisa la persona en el emulador tras el merge; un defecto se corrige
+con una **feature correctiva**.
 
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).

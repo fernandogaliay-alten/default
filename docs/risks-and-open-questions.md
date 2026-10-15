@@ -128,7 +128,10 @@ Evolutivos aceptados, a planificar después del MVP:
 - Modo cocina con temporizadores reales.
 - Compartir / exportar recetas.
 - Multi-idioma.
-- Notificaciones y recordatorios.
+- ~~Notificaciones y recordatorios.~~ **Enmendado de forma acotada (2026-10-15)**: entra **solo** el
+  aviso de fin del temporizador del Modo cocina (`cooking-timer-alarm`, ADR 0007) como notificación de
+  sistema con sonido y vibración. Los **recordatorios programados por el usuario** y las
+  **notificaciones de sugerencias/recetas** siguen fuera del MVP.
 - Editor de recetas propias.
 
 ## Assumptions
@@ -169,6 +172,8 @@ Evolutivos aceptados, a planificar después del MVP:
 | La retirada de las fotos renuncia al **atractivo apetitoso** y la ficha tipográfica puede resultar fría o menos convincente | Media | Medio | **Riesgo de producto consciente** (ADR 0006): la dirección pasa a un **registro editorial** (jerarquía tipográfica, color cálido y claridad de la ficha: qué plato es y qué lleva). Es **reversible**: volver a las fotos es un `revert`; el acabado se revisa en el emulador y, si no convence, se corrige con una **feature correctiva** |
 | La dirección tipográfica (ADR 0006) se decidió sobre **prototipos HTML locales**, no sobre export de Stitch, y las capturas `.png` por pantalla están **pendientes de autorización** | Media | Medio | **Desviación de la política de capturas** documentada en `DESIGN.md` y `docs/design/concepts/README.md`: los prototipos viven versionados en `docs/design/concepts/typographic-cards/`. La persona **autorizó** la desviación (2026-10-13) y **aportó** las capturas `.png` (2026-10-14, renderizadas de los prototipos con Chrome headless) para las cuatro features de esa dirección: `card-typographic-tokens-and-design` (`tarjeta-oscura`), `recipe-card-typographic` (`recipe-card`, `favoritos-lista`, `favoritos-rejilla`), `recipe-detail-typographic-header` (`detalle-receta`) y `dish-artwork-as-card-background` (`tarjeta-con-imagen`, `detalle-con-imagen`). **Queda para revisión visual de la persona** (emulador, tras el merge) el acabado de las variantes **no capturadas**: la tarjeta **estrecha** del carrusel y la **compacta** de la rejilla con la banda sólida L2 son una **extrapolación** de la captura ancha (OQ6 sigue abierta: ¿sube el carrusel a 3:2?); el contraste del título sobre una foto arbitraria depende del `scrim` y no es medible en JVM |
 | El **icono del lanzador y su splash** los resuelve y los cachea el launcher, y no todos re-resuelven la variante nocturna ni invalidan su caché de iconos al cambiar el tema | Media | Bajo | El contrato verificable (`LauncherIconTest`/`SplashThemeTest`, `app-launcher-icon`) ata las tres capas del icono, su paleta y los atributos del splash a `DESIGN.md`, y **el acabado lo revisa la persona en el emulador** (cajón/recientes/Ajustes en claro y oscuro, cuadrado y redondo, con iconos tematizados, y el splash de arranque); si en algún launcher no se ve el **fondo oscuro**, la corrección es una **feature correctiva** (p. ej. fondo único) sin reabrir la feature aceptada |
+| El aviso de fin del temporizador no llega porque el usuario **denegó `POST_NOTIFICATIONS`** o el sistema **no concede la alarma exacta** | Media | Medio | **Degradación silenciosa** (ADR 0007): con el permiso denegado `CookingNotifications.notify` no publica nada y **no** lanza, y el Modo cocina, la cuenta atrás y el "¡Listo!" en pantalla siguen **intactos** (el permiso se pide una vez por proceso al arrancar, sin gatear ninguna pantalla). Si `canScheduleExactAlarms()` es `false`, `AndroidCookingAlarm` **degrada** a `setAndAllowWhileIdle` (inexacta: el aviso puede llegar tarde, pero llega) y nunca hay crash (`runCatching` en todo el adaptador). El caso real (Doze, batería agresiva del fabricante, pantalla bloqueada) se comprueba en la **prueba manual** del emulador, no automatizable según AGENTS.md |
+| Tocar la notificación del aviso **no devuelve al paso** si el sistema mató la actividad o el proceso | Media | Bajo | **Limitación aceptada y documentada** (ADR 0007, Unknowns de `docs/specs/cooking-timer-alarm.md`): el Modo cocina **no se persiste** (Non-Goal de `cooking-timer-alarm`), así que la alarma sobrevive y el receptor publica, pero al tocar la app abre en su **estado de arranque**. El toque usa `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP`, de modo que con la actividad viva **sí** se reutiliza y se ve el paso con su "¡Listo!". Persistir el modo ("reanudar donde lo dejé") es una feature propia (dominio + Room) |
 
 
 ## Research Tasks
@@ -215,6 +220,14 @@ Evolutivos aceptados, a planificar después del MVP:
   `img/recipes/default.jpg`, 137.359 B, como ancla de estilo), la tarjeta gana **dos tokens en oscuro** (`darkCardSurface` `#3A2E26` /
   `darkCardOutline` `#7D6A5C`, 3,26:1) y `ui.artwork.RecipeArtwork` pasa a ser el **proveedor de la capa de
   fondo**. Ajusta los ADR **0004** y **0005**.
+- `docs/adr/0007-cooking-timer-alarm.md` — el fin del temporizador del Modo cocina avisa con una
+  **alarma exacta** (`AlarmManager`, `ELAPSED_REALTIME_WAKEUP`, `USE_EXACT_ALARM` con degradación
+  inexacta) y una **notificación propia** (canal `cooking_timer` de importancia alta con sonido y
+  vibración, id fijo, contenido **genérico** sin datos de la receta), disparada por un **receptor** de
+  manifiesto `exported="false"`; la decisión del aviso es **pura** (`CookingAlarmPolicy`, instantes
+  inyectados) y el permiso `POST_NOTIFICATIONS` se pide **una vez por proceso** al arrancar. **No** se
+  persiste el Modo cocina ni se introduce un `foreground service`. Enmienda acotada del Non-Goal
+  "Notificaciones y recordatorios" de `docs/build-brief.md`.
 
 `RecipeGenerator` como interfaz con implementación falsa **no se elevó a ADR**: introducir esa
 abstracción más tarde sería un refactor de una sola capa y el patrón es estándar. Queda documentado

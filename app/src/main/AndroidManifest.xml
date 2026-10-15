@@ -9,6 +9,26 @@
     <!-- Proveedor de IA real (data.ai, Ktor): sin este permiso la primera peticion falla. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Aviso de fin del temporizador del modo cocina. `POST_NOTIFICATIONS` es obligatorio en
+         Android 13+ para publicar la notificacion: se pide **una vez por proceso** al arrancar la
+         `MainActivity` (peticion no bloqueante) y, si el usuario lo deniega, el Modo cocina y su aviso
+         en pantalla siguen intactos (el sistema descarta la notificacion en silencio). `USE_EXACT_ALARM`
+         es un permiso **normal** (concedido al instalar) y es la via documentada para apps de
+         temporizador: la alarma del aviso es exacta incluso en Doze; el adaptador degrada a alarma
+         inexacta si el sistema no la concede. `VIBRATE` (normal, sin dialogo) habilita la vibracion del
+         canal. La app no se publica en Play (ver docs/technical-discovery.md). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- `SCHEDULE_EXACT_ALARM` con `maxSdkVersion="32"`: con `minSdk = 33` **nunca** se concede ni se usa
+         en runtime (en API 33+ la via es `USE_EXACT_ALARM`, que ya esta arriba). Se declara para que la
+         comprobacion de lint de `setExactAndAllowWhileIdle` reconozca el caso de uso de alarma exacta
+         (patron oficial del framework) y no emita un aviso nuevo sobre `data/cooking/`. -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -29,6 +49,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Receptor de la alarma del temporizador del modo cocina: publica la notificacion del aviso.
+             `exported="false"`: el `PendingIntent` que lo lanza es explicito y de la misma app. -->
+        <receiver
+            android:name=".data.cooking.CookingAlarmReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

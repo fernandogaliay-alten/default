@@ -1,5 +1,6 @@
 package com.sazon.app.ui.cooking
 
+import android.os.SystemClock
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -32,9 +33,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -84,15 +87,47 @@ private const val COMPLETED_ALPHA = 0.45f
  *
  * El reloj real vive **fuera** de la logica pura: un [LaunchedEffect] alimenta `tick(1000)` mientras
  * el temporizador esta En marcha. La receta es un parametro (no se guarda en el `Saver`).
+ *
+ * **Aviso de sistema** (feature `cooking-timer-alarm`): un segundo [LaunchedEffect] (con
+ * `state.timer.status` como clave, de modo que los `tick` no lo reinician) pregunta a la politica
+ * **pura** [CookingAlarmPolicy] que hacer con el aviso en cada transicion y lo aplica por la costura
+ * [CookingAlarm] (default [NoOpCookingAlarm]: la pantalla no conoce Android). El instante de fin se
+ * mide con `SystemClock.elapsedRealtime()`, que entra **inyectado** en la politica (que nunca lee el
+ * reloj). Un [DisposableEffect] cancela el aviso al desmontarse (Atras/Terminar/`onClose`).
  */
 @Composable
 fun CookingModeScreen(
     recipe: Recipe,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    alarm: CookingAlarm = NoOpCookingAlarm,
 ) {
     var state by rememberSaveable(stateSaver = CookingModeStateSaver) {
         mutableStateOf(CookingModeState.initial(recipe))
+    }
+    // Ultimo temporizador al que se le aplico la politica: el efecto solo corre al **cambiar de
+    // estado**, asi que basta con guardar el primero de cada estado (solo se consulta por
+    // `isRunning`/igualdad, nunca por `remainingMillis`).
+    var previousTimer by remember { mutableStateOf(state.timer) }
+
+    // Transiciones del temporizador -> comando del aviso (programar al Iniciar/Reanudar, cancelar al
+    // Pausar/Reiniciar/cambiar de paso/llegar a cero). Los `tick` devuelven `None`: no se reprograma
+    // cada segundo.
+    LaunchedEffect(state.timer.status) {
+        alarm.apply(
+            CookingAlarmPolicy.onTimerChange(
+                previous = previousTimer,
+                next = state.timer,
+                nowMillis = SystemClock.elapsedRealtime(),
+            ),
+        )
+        previousTimer = state.timer
+    }
+
+    // Salir del modo (Atras, Terminar, `onClose` o cualquier descarte de la composicion) no debe dejar
+    // ningun aviso vivo: la cancelacion es idempotente, haya o no algo programado.
+    DisposableEffect(Unit) {
+        onDispose { alarm.apply(CookingAlarmPolicy.onExit()) }
     }
 
     LaunchedEffect(state.timer.status) {
