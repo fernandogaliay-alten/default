@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
+import com.sazon.app.ui.motion.MotionPolicy
 import com.sazon.app.ui.preferences.CuisinesEditor
 import com.sazon.app.ui.preferences.DietPatternEditor
 import com.sazon.app.ui.preferences.DifficultyEditor
@@ -82,92 +85,100 @@ fun OnboardingFlow(
             }
         },
         content = {
-            when (progress.step) {
-                OnboardingStep.IDENTITY -> OnboardingIdentityScreen(
-                    identity = identity,
-                    taxonomy = taxonomy,
-                    onNameChange = { name = it },
-                    onColorChange = { avatarColorId = it },
-                    modifier = modifier,
-                )
-
-                OnboardingStep.DIET -> PreferenceStep(step = progress.step) {
-                    DietPatternEditor(
-                        patterns = taxonomy.dietPatterns,
-                        selectedId = draft.dietPatternId,
-                        onSelect = { draft = draft.selectDietPattern(it) },
+            // El cuerpo del paso entra deslizando en horizontal segun la direccion del indice; el
+            // progreso, "Atras" y el primario anclado de `OnboardingScaffold` quedan estaticos.
+            MotionContent(
+                targetState = progress.step,
+                axis = MotionAxis.HORIZONTAL,
+                direction = { from, to -> MotionPolicy.directionOf(from.ordinal, to.ordinal) },
+            ) { step ->
+                when (step) {
+                    OnboardingStep.IDENTITY -> OnboardingIdentityScreen(
+                        identity = identity,
+                        taxonomy = taxonomy,
+                        onNameChange = { name = it },
+                        onColorChange = { avatarColorId = it },
                         modifier = modifier,
                     )
-                }
 
-                OnboardingStep.STYLE -> PreferenceStep(step = progress.step) {
-                    SoftPreferencesEditor(
-                        options = taxonomy.softPreferences,
-                        selectedIds = draft.softPreferenceIds,
-                        onToggle = { draft = draft.toggleSoftPreference(it) },
-                        onClear = { draft = draft.clearSoftPreferences() },
-                        modifier = modifier,
-                    )
-                }
-
-                OnboardingStep.CUISINES -> PreferenceStep(step = progress.step) {
-                    CuisinesEditor(
-                        cuisines = taxonomy.cuisines,
-                        selectedIds = draft.cuisineIds,
-                        onToggle = { draft = draft.toggleCuisine(it) },
-                        modifier = modifier,
-                    )
-                }
-
-                OnboardingStep.INGREDIENTS -> PreferenceStep(step = progress.step) {
-                    IngredientsEditor(
-                        ingredients = taxonomy.ingredients,
-                        preferredIds = draft.preferredIngredientIds,
-                        dislikedIds = draft.dislikedIngredientIds,
-                        query = ingredientQuery,
-                        onQueryChange = { ingredientQuery = it },
-                        onTogglePreferred = { draft = draft.togglePreferredIngredient(it) },
-                        onToggleDisliked = { draft = draft.toggleDislikedIngredient(it) },
-                        modifier = modifier,
-                    )
-                }
-
-                OnboardingStep.RESTRICTIONS -> PreferenceStep(step = progress.step) {
-                    HardRestrictionsEditor(
-                        restrictions = taxonomy.hardRestrictions,
-                        selectedIds = draft.hardRestrictionIds,
-                        onToggle = { draft = draft.toggleHardRestriction(it) },
-                        onClear = { draft = draft.clearHardRestrictions() },
-                        modifier = modifier,
-                    )
-                }
-
-                OnboardingStep.KITCHEN -> PreferenceStep(step = progress.step) {
-                    LabeledGroup(title = "Nivel de cocina") {
-                        DifficultyEditor(
-                            difficulties = taxonomy.difficulties,
-                            selectedId = draft.difficultyId,
-                            onSelect = { draft = draft.selectDifficulty(it) },
+                    OnboardingStep.DIET -> PreferenceStep(step = step) {
+                        DietPatternEditor(
+                            patterns = taxonomy.dietPatterns,
+                            selectedId = draft.dietPatternId,
+                            onSelect = { draft = draft.selectDietPattern(it) },
                             modifier = modifier,
                         )
                     }
-                    Spacer(modifier = Modifier.height(SazonSpacing.lg))
-                    LabeledGroup(title = "¿Cuánto tiempo sueles tener?") {
-                        TimeBucketEditor(
-                            timeBuckets = taxonomy.timeBuckets,
-                            selectedId = draft.timeBucketId,
-                            onSelect = { draft = draft.selectTimeBucket(it) },
+
+                    OnboardingStep.STYLE -> PreferenceStep(step = step) {
+                        SoftPreferencesEditor(
+                            options = taxonomy.softPreferences,
+                            selectedIds = draft.softPreferenceIds,
+                            onToggle = { draft = draft.toggleSoftPreference(it) },
+                            onClear = { draft = draft.clearSoftPreferences() },
                             modifier = modifier,
                         )
                     }
-                    Spacer(modifier = Modifier.height(SazonSpacing.lg))
-                    LabeledGroup(title = "¿Para cuántos cocinas normalmente?") {
-                        ServingsStepper(
-                            servings = taxonomy.servings,
-                            value = draft.defaultServings,
-                            onChange = { draft = draft.setServings(it, taxonomy.servings) },
+
+                    OnboardingStep.CUISINES -> PreferenceStep(step = step) {
+                        CuisinesEditor(
+                            cuisines = taxonomy.cuisines,
+                            selectedIds = draft.cuisineIds,
+                            onToggle = { draft = draft.toggleCuisine(it) },
                             modifier = modifier,
                         )
+                    }
+
+                    OnboardingStep.INGREDIENTS -> PreferenceStep(step = step) {
+                        IngredientsEditor(
+                            ingredients = taxonomy.ingredients,
+                            preferredIds = draft.preferredIngredientIds,
+                            dislikedIds = draft.dislikedIngredientIds,
+                            query = ingredientQuery,
+                            onQueryChange = { ingredientQuery = it },
+                            onTogglePreferred = { draft = draft.togglePreferredIngredient(it) },
+                            onToggleDisliked = { draft = draft.toggleDislikedIngredient(it) },
+                            modifier = modifier,
+                        )
+                    }
+
+                    OnboardingStep.RESTRICTIONS -> PreferenceStep(step = step) {
+                        HardRestrictionsEditor(
+                            restrictions = taxonomy.hardRestrictions,
+                            selectedIds = draft.hardRestrictionIds,
+                            onToggle = { draft = draft.toggleHardRestriction(it) },
+                            onClear = { draft = draft.clearHardRestrictions() },
+                            modifier = modifier,
+                        )
+                    }
+
+                    OnboardingStep.KITCHEN -> PreferenceStep(step = step) {
+                        LabeledGroup(title = "Nivel de cocina") {
+                            DifficultyEditor(
+                                difficulties = taxonomy.difficulties,
+                                selectedId = draft.difficultyId,
+                                onSelect = { draft = draft.selectDifficulty(it) },
+                                modifier = modifier,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(SazonSpacing.lg))
+                        LabeledGroup(title = "¿Cuánto tiempo sueles tener?") {
+                            TimeBucketEditor(
+                                timeBuckets = taxonomy.timeBuckets,
+                                selectedId = draft.timeBucketId,
+                                onSelect = { draft = draft.selectTimeBucket(it) },
+                                modifier = modifier,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(SazonSpacing.lg))
+                        LabeledGroup(title = "¿Para cuántos cocinas normalmente?") {
+                            ServingsStepper(
+                                servings = taxonomy.servings,
+                                value = draft.defaultServings,
+                                onChange = { draft = draft.setServings(it, taxonomy.servings) },
+                                modifier = modifier,
+                            )
+                        }
                     }
                 }
             }

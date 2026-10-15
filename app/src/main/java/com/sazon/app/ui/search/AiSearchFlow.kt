@@ -1,5 +1,6 @@
 package com.sazon.app.ui.search
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,11 +15,24 @@ import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.generator.GeneratorGeneratingScreen
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
 import com.sazon.app.ui.results.ResultsScreen
 import kotlinx.coroutines.delay
 
 /** Duracion minima visible del estado de carga para que "Cancelar busqueda" sea observable (UX). */
 private const val MIN_VISIBLE_MILLIS = 900L
+
+/**
+ * Paso **visual** de la Busqueda con IA para la transicion vertical de `MotionContent`: carga u
+ * outcome con el `GenerationResult` que lo produjo. Clave **local** de la capa Compose (no toca
+ * `AiSearchStage`); llevar el resultado permite que la capa saliente siga pintando su estado durante
+ * la animacion aunque el `result` mutable ya sea `null`.
+ */
+private sealed interface AiSearchContent {
+    object Loading : AiSearchContent
+    data class Outcome(val result: GenerationResult) : AiSearchContent
+}
 
 /**
  * Huesped de la pagina empujada [com.sazon.app.ui.navigation.PushedScreen.SEARCH]: la Busqueda con IA.
@@ -68,48 +82,56 @@ fun AiSearchFlow(
     }
 
     val current = result
-    when {
-        current != null -> when (val stage = AiSearchOutcome.stageOf(current, query, preferences, taxonomy)) {
-            is AiSearchStage.Results -> ResultsScreen(
-                status = stage.status,
-                header = stage.header,
-                taxonomy = taxonomy,
-                onBack = onBack,
-                onChangeIngredients = onCreateRecipe,
-                onRetry = retry,
-                onOpenRecipe = onOpenRecipe,
-                modifier = modifier,
-                imageBackground = imageBackground,
+    val content: AiSearchContent =
+        if (current == null) AiSearchContent.Loading else AiSearchContent.Outcome(current)
+
+    // Carga -> outcome (y reintentos) como estados que se funden verticalmente, sin tocar la busqueda
+    // ni su memo: `LaunchedEffect(query, searchId)` y el `result` mutable siguen fuera de la animacion.
+    MotionContent(
+        targetState = content,
+        axis = MotionAxis.VERTICAL,
+        modifier = modifier.fillMaxSize(),
+    ) { state ->
+        when (state) {
+            AiSearchContent.Loading -> GeneratorGeneratingScreen(
+                headline = AiSearchProgress.HEADLINE,
+                subLines = AiSearchProgress.subLines(query),
+                onCancel = onBack,
+                cancelLabel = AiSearchCopy.CANCEL_LABEL,
             )
 
-            is AiSearchStage.Blocked -> BlockedState(
-                query = stage.query,
-                onBack = onBack,
-                onReviewProfile = onEditProfile,
-                modifier = modifier,
-            )
+            is AiSearchContent.Outcome -> when (
+                val stage = AiSearchOutcome.stageOf(state.result, query, preferences, taxonomy)
+            ) {
+                is AiSearchStage.Results -> ResultsScreen(
+                    status = stage.status,
+                    header = stage.header,
+                    taxonomy = taxonomy,
+                    onBack = onBack,
+                    onChangeIngredients = onCreateRecipe,
+                    onRetry = retry,
+                    onOpenRecipe = onOpenRecipe,
+                    imageBackground = imageBackground,
+                )
 
-            is AiSearchStage.NoResults -> NoResultsState(
-                query = stage.query,
-                onBack = onBack,
-                onCreateRecipe = onCreateRecipe,
-                modifier = modifier,
-            )
+                is AiSearchStage.Blocked -> BlockedState(
+                    query = stage.query,
+                    onBack = onBack,
+                    onReviewProfile = onEditProfile,
+                )
 
-            is AiSearchStage.Failure -> FailureState(
-                query = stage.query,
-                onBack = onBack,
-                onRetry = retry,
-                modifier = modifier,
-            )
+                is AiSearchStage.NoResults -> NoResultsState(
+                    query = stage.query,
+                    onBack = onBack,
+                    onCreateRecipe = onCreateRecipe,
+                )
+
+                is AiSearchStage.Failure -> FailureState(
+                    query = stage.query,
+                    onBack = onBack,
+                    onRetry = retry,
+                )
+            }
         }
-
-        else -> GeneratorGeneratingScreen(
-            headline = AiSearchProgress.HEADLINE,
-            subLines = AiSearchProgress.subLines(query),
-            onCancel = onBack,
-            modifier = modifier,
-            cancelLabel = AiSearchCopy.CANCEL_LABEL,
-        )
     }
 }
