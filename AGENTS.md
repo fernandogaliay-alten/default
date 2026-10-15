@@ -234,6 +234,13 @@ Una feature está hecha solo si se cumplen todas:
   `opencode api post /api/location/reload -H "x-opencode-directory:$PWD"` (o reinicia el TUI;
   `opencode service restart` para el servicio compartido). Los ficheros sí son válidos: el problema es
   solo de descubrimiento.
+- **Uso de herramientas en el harness (Code Mode)**: `shell`, `read`, `edit`, `grep`, `write`… se
+  invocan **directamente**, nunca dentro de la herramienta `execute`. `execute` corre JavaScript en un
+  runtime aislado (Code Mode) donde **solo** existen las herramientas de su catálogo (aquí, el
+  namespace `opencode`: sesiones, worktrees, modelos, recursos MCP). Meter una orden de shell dentro de
+  `execute` falla con `Unknown tool 'shell'`. El error se cuela sobre todo en las skills de
+  orquestación pesada (`pr-flow`, `github-flow`), que encadenan muchos `git`/`gh`/`scripts/*.sh`: la
+  tentación de agruparlos en `execute` es lo que lo provoca, no la skill en sí.
 - **Herramientas nativas del harness (WSL)**: `opencode` ya se instala nativo (`~/.opencode/bin/opencode`,
   binario Linux; el segfault intermitente al cerrar era de la build de Windows) y
   `bash scripts/wsl-bootstrap.sh` instala `gh` nativo en `~/.local/bin/gh`, reutilizando la sesión de
