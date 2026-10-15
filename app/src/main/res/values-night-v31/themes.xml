@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Android 12+ en modo oscuro. Esta carpeta es necesaria además de `values-v31/`: en la
+         precedencia de qualifiers *night* va ANTES que *platform version*, así que en un API 31+ en
+         oscuro el sistema elegiría `values-night/` por delante de `values-v31/` y el splash perdería
+         los atributos de marca. Por eso `Theme.Sazon` se redeclara completo aqui también.
+         El qualifier `-v31` es redundante para el lint con `minSdk 33` pero se mantiene a proposito; ese
+         unico aviso de CARPETA se silencia de forma acotada en `app/lint.xml` (por ruta). -->
+    <style name="Theme.Sazon" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/sazon_window_background</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowSplashScreenBackground">@color/sazon_window_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+    </style>
+</resources>

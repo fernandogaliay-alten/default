@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marca del splash de Android 12+ (el icono de splash del tema de plataforma): el mismo cuenco lineal
+     humeante del icono, sin fondo propio (el fondo lo pone el tema, la tesela calida).
+     El sistema dibuja este vector enmascarado: en API 31+ SplashscreenIconDrawableFactory lo envuelve en
+     AdaptiveForegroundDrawable, que dibuja al hijo en 1.5x los bounds (solo se ve el 2/3 central del
+     canvas; la misma regla es MASK_FACTOR=2/3 en androidx.core.splashscreen), asi que toda la geometria
+     (trazo incluido) tiene que caber en el circulo interior de 2/3: radio <= 36 de los 108 del canvas
+     respecto al centro (54,54). Por eso el motivo va dentro de un <group> escalado 0.78 (44 x 0.78 =
+     34.3 <= 36) y no a mayor escala relativa: sin ese ajuste el vientre del cuenco (radio 44) lo recorta
+     la mascara. La marca sigue siendo mayor que la del icono de lanzador (que cabe en su zona segura). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.78"
+        android:scaleY="0.78">
+        <path
+            android:pathData="M20,60h68"
+            android:strokeColor="@color/sazon_launcher_motif"
+            android:strokeLineCap="round"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M22,62a32,32 0 0,0 64,0"
+            android:strokeColor="@color/sazon_launcher_motif"
+            android:strokeLineCap="round"
+            android:strokeWidth="8" />
+        <path
+            android:pathData="M46,48c0,-9 6,-12 6,-22"
+            android:strokeColor="@color/sazon_launcher_accent"
+            android:strokeLineCap="round"
+            android:strokeWidth="6.5" />
+        <path
+            android:pathData="M62,48c0,-9 6,-12 6,-22"
+            android:strokeColor="@color/sazon_launcher_accent"
+            android:strokeLineCap="round"
+            android:strokeWidth="6.5" />
+    </group>
+</vector>
