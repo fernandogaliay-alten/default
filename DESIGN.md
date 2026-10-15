@@ -274,6 +274,16 @@ persona revisa el acabado en el emulador tras el merge:
 Las cuatro **no** generan capturas nuevas y **no** se crea
 `docs/design/concepts/<feature-id>/`.
 
+**Excepción de capturas (desviación documentada, `app-launcher-icon`):** `app-launcher-icon` **no**
+genera capturas nuevas ni carpeta `docs/design/concepts/app-launcher-icon/`. **Un icono de lanzador no
+es una pantalla**: no hay layout, tipografía ni estado de pantalla que revisar como captura, y el motivo,
+los roles de color, la zona segura, la capa monocroma y el splash quedan registrados en la sección
+**App Icon** de este documento (más abajo), que es la dirección visual contra la que la persona revisa el
+acabado en el emulador (cajón de aplicaciones, recientes y Ajustes, en claro y oscuro, cuadrado y
+redondo, con iconos tematizados, y el splash de arranque). Misma clase de excepción que
+`recipe-artwork` (#77), `favorites-sort-controls` (#85), `profile-stats-heading` (#86) y
+`home-recently-opened-group` (#91): no se crea carpeta de capturas porque no hay pantalla nueva que
+revisar, y la dirección visual queda en la sección **App Icon**.
 **Excepción de capturas (desviación documentada, feature `cooking-timer-alarm`, 2026-10-15):** `cooking-timer-alarm`
 **no** genera capturas nuevas ni carpeta `docs/design/concepts/cooking-timer-alarm/`. El cambio visible es una
 **notificación del sistema operativo** (canal propio `cooking_timer`, aviso "¡Listo! El paso ha terminado"),
@@ -547,6 +557,48 @@ imagen de plato** de 250 ms, `DishImageArtworkPolicy.CROSSFADE_MILLIS`).
 - **Buscador con IA**: píldora en la cabecera de la Home, con icono de destello para distinguirlo de
   un buscador normal. Al enviar, lleva a Resultados con la consulta como subtítulo.
 
+## App Icon
+
+**Nombre e icono definitivos: `Sazón`** con **icono propio** (feature `app-launcher-icon`, 2026-10-15;
+cierra la pregunta abierta 2). El icono lo diseña el agente **en el repositorio** como **vectores XML**
+derivados de la tabla de colores de este documento: **sin assets binarios** (nada de `.png`/`.webp`),
+**sin dependencias nuevas** y con el icono adaptativo en `app/src/main/res/mipmap-anydpi/`.
+
+- **Motivo**: un **cuenco lineal humeante** (trazo de extremos redondeados, sin relleno ni degradados),
+  centrado y contenido en la **zona segura** del icono adaptativo (el cuadrado de **66 de los 108 dp**).
+  Es "line-art", coherente con el resto de la dirección: pocos elementos, sin adornos y sin una tercera
+  tipografía.
+- **Roles de color**: la **tesela** (capa `background`) usa `colors.background` `#FFF8F0` en claro y
+  `colors.darkBackground` `#241C16` en oscuro (tokens `sazon_launcher_background` en
+  `res/values/colors.xml` y `res/values-night/colors.xml`); el **trazo del cuenco** usa `colors.primary`
+  `#D9552B` (`sazon_launcher_motif`) y el **vaho** usa `colors.accent` `#F2A93B`
+  (`sazon_launcher_accent`). Los acentos **no** cambian entre claro y oscuro (misma regla que el tema).
+- **Capa `monochrome`**: capa **propia** (`ic_launcher_monochrome`) con la **misma geometría** en negro,
+  para los **iconos tematizados**; el sistema usa el alfa como máscara y tiñe la silueta, así que ese
+  `#000000` es la **única excepción documentada** a la paleta (no reutiliza el motivo a color).
+- **Formas**: el mismo icono adaptativo sirve a la forma **cuadrada** (`ic_launcher`) y a la **redonda**
+  (`ic_launcher_round`); la máscara la aplica el launcher.
+- **Splash (Android 12+)**: `res/values-v31/themes.xml` y `res/values-night-v31/themes.xml` declaran
+  `android:windowSplashScreenBackground` (la tesela cálida) y `android:windowSplashScreenAnimatedIcon`
+  (`ic_splash_mark`, el mismo cuenco). El sistema **no** pinta ese vector a canvas completo: en API 31+
+  `SplashscreenIconDrawableFactory` lo envuelve en `AdaptiveForegroundDrawable`, que dibuja al hijo en
+  1.5× sus bounds, así que **solo se ve el 2/3 central** del canvas (la misma regla es
+  `MASK_FACTOR = 2/3` en `androidx.core.splashscreen`: el icono de 288 dp se recorta a un círculo de
+  192 dp). Por eso la marca lleva un `<group>` con escala **0.78** alrededor de su centro: su geometría
+  (trazo incluido) llegaba a **radio 44** de los 108 dp del canvas y la máscara cortaba el vientre del
+  cuenco; con el ajuste se queda en **~34.3 ≤ 36** (el radio visible), que sigue siendo **mayor** que el
+  motivo del icono de lanzador (~29.7, dentro de su zona segura de 33). La marca **no** puede ir a mayor
+  escala relativa: se recortaría. **No** se declara `windowSplashScreenIconBackgroundColor` (la marca va
+  directamente sobre el fondo, sin placa circular) ni se añade `androidx.core.splashscreen` (`minSdk 33`
+  ya garantiza los atributos de plataforma). La variante **nocturna** es imprescindible: *night* precede
+  a *platform version* en la precedencia de qualifiers.
+- **Contrato verificable**: `LauncherIconTest` y `SplashThemeTest` (JVM) atan el icono y el splash a esta
+  tabla y a estos tokens, e incluyen un caso negativo que **no pasa en vacío**; `SplashThemeTest`
+  comprueba además la **geometría** de `ic_splash_mark` (puntos, controles, arcos y semiancho de trazo
+  dentro del radio visible de 2/3) con su propio negativo. El **acabado** a 48–192 dp, la máscara redonda,
+  el tinte tematizado y que el fondo oscuro se vea en oscuro los revisa la persona en el emulador (el
+  icono lo cachea el launcher: no todos re-resuelven la variante nocturna).
+
 ## Core Screens
 
 1. **Onboarding** (7 pasos, obligatorio, sin barra inferior): bienvenida con **nombre y color de
@@ -640,7 +692,13 @@ Si el modo oscuro entra en el MVP (ver Open Design Questions), esbozarlo con `da
 1. **Prompt de Stitch**: generado y guardado en `docs/design/stitch-prompt.md`. Las pantallas
    actuales quedan obsoletas; hay que regenerarlas con ese prompt. Al aceptar exportaciones,
    guardarlas en `docs/design/concepts/` y registrar su estado en este documento.
-2. ¿Existe nombre de producto e icono definitivos, o "Sazón" es un marcador de posición?
+2. **Resuelto (2026-10-15, `app-launcher-icon`):** el **nombre** del producto y su **icono** son
+   **definitivos**: la app se llama **Sazón** (sigue siendo `@string/app_name`, sin renombrar el paquete
+   ni el `applicationId`) y su icono es el **cuenco lineal humeante** sobre la tesela cálida de marca,
+   con el fondo oscuro por `values-night` y una capa monocroma propia para los iconos tematizados, más
+   un **splash de marca** en Android 12+. El icono lo diseñó el agente en el repositorio como **vectores
+   XML** derivados de la tabla de colores (sin assets binarios ni dependencias). Ver **App Icon** (más
+   arriba).
 3. **Resuelto (2026-10-06):** el modo oscuro **entra en el MVP**. Se implementa la variante oscura con
    `darkBackground`/`darkSurface` y los acentos terracota y oliva (feature `design-tokens-and-theme`).
 4. **Resuelto y revisado (2026-10-13, ADR 0006):** la imagen de una receta es una **ficha tipográfica**

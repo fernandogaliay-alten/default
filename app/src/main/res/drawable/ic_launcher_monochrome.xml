@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Capa monocroma del icono adaptativo (iconos tematizados): la silueta del cuenco humeante con la
+     MISMA geometría que el `foreground`, en negro. La excepción de color es deliberada: el sistema usa
+     el alfa como máscara y sustituye el color por el tinte del icono tematizado, así que aquí no va
+     ningún token de la paleta. No reutiliza el motivo a color. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M29,54h46"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="6" />
+    <path
+        android:pathData="M31,56a21,21 0 0,0 42,0"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="6" />
+    <path
+        android:pathData="M44,44c0,-7 4,-9 4,-16"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+    <path
+        android:pathData="M56,44c0,-7 4,-9 4,-16"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+</vector>

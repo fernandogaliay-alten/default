@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="sazon_window_background">#FFF8F0</color>
+
+    <!-- Icono de lanzador: fondo de la tesela (`background`), motivo terracota (`primary`) y vaho
+         ámbar (`accent`). Los tres son tokens de DESIGN.md, no hex inventados. -->
+    <color name="sazon_launcher_background">#FFF8F0</color>
+    <color name="sazon_launcher_motif">#D9552B</color>
+    <color name="sazon_launcher_accent">#F2A93B</color>
 </resources>

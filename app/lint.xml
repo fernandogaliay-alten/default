@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Silencio ACOTADO de una única regla y una única carpeta (nada de reglas globales):
+
+    `ObsoleteSdkInt` avisa de que la carpeta cualificada `values-v31`/`values-night-v31` es redundante con
+    `minSdk 33`. La feature `app-launcher-icon` conserva a propósito esas dos carpetas como la puerta de
+    plataforma declarada del splash de Android 12+ (ver `DESIGN.md`, sección "App Icon"). El aviso es de
+    CARPETA, así que `tools:ignore="ObsoleteSdkInt"` en el `<style>`/`<resources>` no lo suprime: hay que
+    ignorarlo por ruta. El `lint.xml` del módulo es el único mecanismo soportado para ese alcance.
+
+    El objetivo es no añadir warnings nuevos bajo `app/src` (regla de verificación de la feature) sin
+    desactivar la comprobación para el resto del repositorio: cualquier `values-v31` futuro fuera de estas
+    dos rutas seguirá avisando.
+-->
+<lint>
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/values-v31" />
+        <ignore path="src/main/res/values-night-v31" />
+    </issue>
+</lint>

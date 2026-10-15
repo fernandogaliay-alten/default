@@ -137,4 +137,14 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("seed.recipes.asset.path", seedRecipesAssetFile.asFile.absolutePath)
     systemProperty("design.tokens.path", designTokensFile.asFile.absolutePath)
     systemProperty("dish.image.seed.assets.dir", dishImageSeedDir.asFile.absolutePath)
+    // Recursos Android reales para los tests JVM del icono y del splash (`LauncherIconTest`,
+    // `SplashThemeTest`): el manifiesto y el arbol `res/`, nunca rutas relativas a `user.dir`.
+    systemProperty(
+        "android.manifest.path",
+        layout.projectDirectory.file("src/main/AndroidManifest.xml").asFile.absolutePath,
+    )
+    systemProperty(
+        "android.res.dir",
+        layout.projectDirectory.dir("src/main/res").asFile.absolutePath,
+    )
 }

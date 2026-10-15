@@ -50,6 +50,44 @@
   la app esté en segundo plano o el móvil bloqueado; enmienda de forma acotada el Non-Goal
   "Notificaciones y recordatorios" de `docs/build-brief.md` (solo el aviso del temporizador). Detalle en
   `feature_list.json`. Ninguna se implementa ni se planifica en esta sesión.
+- **`app-launcher-icon`** implementada, autoverificada, **reparada** y **`accepted`**: **sesión 131**
+  (subagente `implementer`, skill `feature-implementer`), validación independiente **`revise`** en la
+  **sesión 132** (1 hallazgo **High**: la marca del splash se recortaba con la máscara de plataforma),
+  **reparación** en la **sesión 133** (subagente `implementer`) y **re-validación independiente con
+  veredicto `accept`** en la **sesión 134** (subagente `validator`, contexto limpio; ver
+  `docs/validations/app-launcher-icon.md`), cerrada por el orquestador de `feature-flow` en el mismo
+  worktree y rama `feature/app-launcher-icon` (**sin** commit/push/PR de los subagentes; el commit local
+  lo crea el orquestador y la publicación queda para `github-flow`). El icono de plantilla de Android
+  Studio queda sustituido por uno propio en **vectores XML** y sin binarios: icono adaptativo de **tres
+  capas** (`background` con la tesela cálida por token —`#FFF8F0` en claro, `#241C16` en oscuro vía
+  `values-night/`—, `foreground` con el **cuenco lineal humeante** en `primary` `#D9552B` + vaho `accent`
+  `#F2A93B`, y `monochrome` propio con la misma geometría en negro, para iconos tematizados) en cuadrado y
+  redondo, más el **splash de marca** de Android 12+ (`values-v31/` **y** `values-night-v31/`, sin
+  `androidx.core.splashscreen`). Se retiran los 10 `.webp` de plantilla y `DESIGN.md` gana `## App Icon`,
+  **cierra la pregunta abierta 2** (nombre e icono definitivos) y registra la excepción de capturas (no se
+  crea `docs/design/concepts/app-launcher-icon/`). **Reparación del hallazgo High (sesión 133)**:
+  `ic_splash_mark` llegaba a radio **44** de los 108 dp y la plataforma solo hace visible el **2/3
+  central** (radio 36) del canvas del icono de splash (`AdaptiveForegroundDrawable` en API 31+ /
+  `MASK_FACTOR = 2/3` en `androidx.core.splashscreen`), así que el vientre del cuenco se recortaba; el
+  motivo va ahora en un `<group>` con escala **0.78** sobre su centro (35.2 ≤ 36, con el trazo incluido) y
+  `DESIGN.md`/`docs/technical-discovery.md` recogen la regla correcta. Se añade además una comprobación
+  **JVM de geometría** (`AppResourceFiles.splashMarkGeometryProblems`) con caso negativo no vacío (XML
+  literal desbordado + mutación **real** del fichero: la prueba falla con `radio 38.53` y `radio 44.0`).
+  Gate re-ejecutado: `bash init.sh` exit 0, **104 suites / 776 tests / 0 fallos / 0 errores / 0 saltados**
+  (baseline re-derivada en `HEAD`: 102 ficheros con `@Test` / 764 anotaciones ⇒ delta **+2 suites / +12
+  tests**: `LauncherIconTest` 6 + `SplashThemeTest` 6), lint **0 errores y 13 warnings preexistentes (0
+  bajo `app/src`)**. Hallazgo resuelto en la primera autoverificación: las dos carpetas
+  `values-v31`/`values-night-v31` disparaban 2 warnings **nuevos** `ObsoleteSdkInt` **de carpeta** que
+  `tools:ignore` **no** suprime; se añadió `app/lint.xml` con `ignore` **por ruta** limitado a esas dos
+  carpetas (no como regla global) y lint volvió a 13/0. `app/lint.xml` es el único fichero fuera de
+  `Expected File Changes` de la spec (desviación acotada, documentada en `docs/technical-discovery.md` y en
+  la evidencia). **Re-validación independiente `accept` (sesión 134)**: el validador re-ejecutó el gate
+  (`bash init.sh` exit 0; `testDebugUnitTest --rerun-tasks` y `lint --rerun-tasks` forzados por su cuenta:
+  104 suites / 776 tests / 0 fallos y SARIF 13 resultados / 0 errores / 0 bajo `app/src`), reconstruyó la
+  geometría con un modelo propio (35.20 ≤ 36) y confirmó el negativo no vacío con **dos** mutaciones reales
+  del recurso; el hallazgo High queda resuelto y `app/lint.xml` (Low) se acepta. Queda la **prueba manual**
+  de la persona en el emulador (claro/oscuro, cuadrado/redondo, tematizado y splash con el cuenco completo),
+  no automatizable desde WSL; un defecto visual se corrige con una **feature correctiva**. WIP = 0.
 - Correctiva **`dish-image-settings-persistence`** implementada y autoverificada (**`passing`**) en la
   **sesión 128** y **`accepted`** en la **sesión 129** (validación independiente, veredicto `accept`;
   ver `docs/validations/dish-image-settings-persistence.md`) en su worktree
@@ -6004,6 +6042,196 @@
   antes de eliminar). Las ramas remotas `origin/feature/<id>` **no** se tocan.
 - Estado de features: sin cambios (`feature_list.json` intacto: ambas siguen `accepted`).
 
+### Sesión 131 (implementer, `app-launcher-icon`)
+
+- Fecha: 2026-10-15
+- Objetivo: implementar y autoverificar la feature **`app-launcher-icon`** según
+  `docs/specs/app-launcher-icon.md` (skill `feature-implementer`, subagente `implementer`), en el worktree
+  `app-launcher-icon`, rama `feature/app-launcher-icon`. Punto de partida real: la spec ya existía pero
+  había **trabajo parcial en disco sin commitear** de un intento interrumpido y la feature seguía
+  `in_progress` con `evidence: []` — sin entrada en este registro. Se releyó la spec, se revisó todo el
+  trabajo en disco contra los 8 escenarios y se completó/corrigió lo que faltaba.
+- Completado (estado final, verificado):
+  - **Colores por token**: `values/colors.xml` con `sazon_launcher_background` `#FFF8F0` (`background`),
+    `sazon_launcher_motif` `#D9552B` (`primary`) y `sazon_launcher_accent` `#F2A93B` (`accent`);
+    `values-night/colors.xml` redefine **solo** `sazon_launcher_background` = `#241C16`
+    (`darkBackground`).
+  - **Icono adaptativo de tres capas** en cuadrado y redondo (`mipmap-anydpi/ic_launcher.xml` y
+    `ic_launcher_round.xml`; se conserva el nombre de carpeta): `ic_launcher_background` (un path con
+    `@color/sazon_launcher_background`), `ic_launcher_foreground` (**cuenco lineal humeante**: borde
+    `M29,54h46` + cuerpo `M31,56a21,21 0 0,0 42,0` en `sazon_launcher_motif` `strokeWidth 6` y dos trazos
+    de vaho `M44,44c0,-7 4,-9 4,-16` / `M56,44c0,-7 4,-9 4,-16` en `sazon_launcher_accent`
+    `strokeWidth 5`, todo dentro de la zona segura ([21,87]²)) y `ic_launcher_monochrome` (misma geometría
+    en `#000000`, capa propia, no reutiliza el motivo a color).
+  - **Splash de Android 12+ sin dependencias**: `drawable/ic_splash_mark.xml` (mismo motivo a mayor escala
+    relativa, sin fondo) y `values-v31/themes.xml` + `values-night-v31/themes.xml`, cada uno redeclarando
+    `Theme.Sazon` completo (mismo `parent` que su variante base, repitiendo `windowBackground` y
+    `forceDarkAllowed=false`) y añadiendo `windowSplashScreenBackground` +
+    `windowSplashScreenAnimatedIcon`, **sin** `windowSplashScreenIconBackgroundColor` ni
+    `androidx.core.splashscreen`.
+  - **Retirada del icono de plantilla**: los 10 `.webp` de `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/`
+    borrados (carpetas vacías eliminadas) y 0 restos de `#3DDC84`/`#33FFFFFF`/`aapt:attr`/`M65.3,45.828`/
+    `strokeWidth="0.8"`.
+  - **Tests JVM nuevos** en `com.sazon.app.ui.theme`: `AppResourceFiles.kt` (parser de los recursos reales
+    por `android.manifest.path`/`android.res.dir`, con `javax.xml.parsers` del JDK, **sin** `android.util`
+    ni Robolectric), `LauncherIconTest` (6 tests; escenarios 1, 2, 3 y 6) y `SplashThemeTest` (4 tests;
+    escenarios 4, 5 y 6), ambos reutilizando `designMarkdown()`/`frontmatterSectionMap()` y con
+    **caso negativo que no pasa en vacío**.
+  - `app/build.gradle.kts`: solo las dos propiedades de sistema de test. **Corrección aplicada**: el
+    intento interrumpido había dejado las dos propiedades **duplicadas** (bloque repetido) — eliminado.
+- Verificación ejecutada (números observados en esta sesión, no heredados):
+  - `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`, sin procesos largos).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.theme.*"`: BUILD
+    SUCCESSFUL; `DesignTokensTest` 8, `LauncherIconTest` 6, `SplashThemeTest` 4, `CardTokensTest` 5,
+    `FavoriteTileContrastTest` 4, `MotionTokensTest` 3 (0 fallos).
+  - Rerun forzado `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas): **104 suites /
+    774 tests / 0 fallos / 0 errores / 0 saltados**, parseando los `TEST-*.xml` por cuenta propia
+    (baseline re-derivada en `HEAD`: `git grep -c '@Test'` = 102 ficheros / 764 anotaciones ⇒ delta
+    **+2 suites / +10 tests**). Se forzó el rerun porque el recurso se referencia por **ruta** (system
+    property) y Gradle dejaba `testDebugUnitTest` `UP-TO-DATE` aunque hubiera cambiado un `.xml` de `res/`.
+  - Lint (SARIF `app/build/reports/lint-results-debug.sarif`): **0 errores y 13 warnings preexistentes**
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+    `app/src`**.
+  - Inspecciones del plan: `find app/src/main/res -name '*.webp' -o -name '*.png' -o -name '*.jpg'` = 0;
+    `grep -rn '3DDC84\|33FFFFFF\|aapt:attr\|M65.3,45.828' app/src/main/res app/src/main/AndroidManifest.xml`
+    = 0; `grep -rn windowSplashScreen app/src/main/res` solo en `values-v31/` y `values-night-v31/`;
+    `git status --porcelain` solo `.xml`/`.kt`/`.md` (ningún binario nuevo); `gradle/libs.versions.toml`,
+    `init.sh`, `scripts/**`, `AndroidManifest.xml`, `values/themes.xml`, `values-night/themes.xml`,
+    `ui/**`, `domain/**`, `data/**` y `assets/**` intactos.
+- Ficheros creados/cambiados: **nuevos** `app/src/main/res/drawable/ic_launcher_monochrome.xml`,
+  `app/src/main/res/drawable/ic_splash_mark.xml`, `app/src/main/res/values-v31/themes.xml`,
+  `app/src/main/res/values-night-v31/themes.xml`,
+  `app/src/test/java/com/sazon/app/ui/theme/{AppResourceFiles,LauncherIconTest,SplashThemeTest}.kt` y
+  `app/lint.xml`; **modificados** `app/src/main/res/drawable/ic_launcher_background.xml`,
+  `app/src/main/res/drawable/ic_launcher_foreground.xml`,
+  `app/src/main/res/mipmap-anydpi/ic_launcher{,_round}.xml`, `app/src/main/res/values/colors.xml`,
+  `app/src/main/res/values-night/colors.xml`, `app/build.gradle.kts`, `DESIGN.md`,
+  `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`, `feature_list.json` y este registro;
+  **borrados** los 10 `app/src/main/res/mipmap-*dpi/ic_launcher{,_round}.webp`.
+- Hallazgos relevantes: (1) las dos propiedades de sistema de test estaban **duplicadas** en
+  `app/build.gradle.kts` (resto del intento interrumpido); (2) el `tools:ignore="ObsoleteSdkInt"` que el
+  intento interrumpido había puesto en los dos temas `-v31` **no suprime** un aviso de **carpeta**: el
+  lint real daba **15 warnings (2 nuevos bajo `app/src`)**. Resolución: `app/lint.xml` con `ignore` **por
+  ruta** limitado a `src/main/res/values-v31` y `src/main/res/values-night-v31` (no se desactiva la regla
+  para el resto del repo) y retirada del `xmlns:tools`/`tools:ignore` inefectivo; lint vuelve a **13
+  warnings / 0 bajo `app/src`**. La spec asumía que el `tools:ignore` bastaba, así que **`app/lint.xml` es
+  el único fichero fuera de `Expected File Changes`** (la spec no se ha modificado, por indicación
+  explícita del orquestador): conviene que el planner/orquestador lo recoja al cerrar la feature.
+- Riesgo o incógnita abierta: **validación independiente** (`feature-validator`) pendiente. La prueba
+  **manual** de la persona en el emulador (icono cuadrado/redondo/tematizado en claro y oscuro y splash)
+  no es automatizable desde WSL (AGENTS.md no automatiza UI y el `adb` de WSL no ve el emulador); un
+  defecto visual se corrige con una **feature correctiva**. Sigue abierta la incógnita de la spec sobre la
+  re-resolución de la variante `-night` del icono por el launcher (registrada en
+  `docs/risks-and-open-questions.md`).
+- Siguiente paso: validación independiente de `app-launcher-icon` con `feature-validator`; después,
+  commit local (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 133 (implementer, reparación de `app-launcher-icon`)
+
+- Punto de partida: la validación independiente de la **sesión 132** devolvió **`revise`**
+  (`docs/validations/app-launcher-icon.md`) con **un hallazgo High**: la marca del splash
+  (`drawable/ic_splash_mark.xml`) llegaba a radio **44** de los 108 dp del canvas (borde con caps
+  redondeados: 38.53), pero el sistema solo hace visible el **2/3 central** (radio 36) del vector del
+  icono de splash —en API 31+ `SplashscreenIconDrawableFactory` lo envuelve en
+  `AdaptiveForegroundDrawable`, que dibuja al hijo en **1.5×** sus bounds; la misma regla es
+  `MASK_FACTOR = 2/3` en `androidx.core.splashscreen` (288 dp → círculo de 192 dp)—, así que la máscara
+  recortaba el vientre del cuenco en el primer frame. Los negativos Low 2 (Lint) y 3 (parser XXE del test)
+  quedaron como **aceptados / no reparables** por el validador.
+- Cambios (dentro del alcance del hallazgo, sin tocar spec ni reglas de verificación):
+  - `drawable/ic_splash_mark.xml`: los cuatro `<path>` van ahora dentro de
+    `<group android:pivotX="54" android:pivotY="54" android:scaleX="0.78" android:scaleY="0.78">`
+    (44 × 0.78 ≈ 34.3 ≤ 36; con el trazo contado de forma conservadora, 35.2 ≤ 36). Motivo, roles de color
+    y contrato de test **intactos**; la marca sigue siendo mayor que la del icono de lanzador (~29.7). El
+    comentario del vector explica la regla del 2/3.
+  - Comprobación **JVM de geometría** nueva: `AppResourceFiles.splashMarkGeometryProblems(xml)` resuelve
+    `M`/`h`/`a`/`c` (arcos **muestreados** con la parametrización de centro, puntos de control, `<group>`
+    con escala/pivote/traslación; la rotación no soportada se declara como problema) y exige que todo
+    punto + semiancho de trazo quede dentro del círculo visible (radio = 1/3 del lado menor del viewport,
+    **36** de 108). `SplashThemeTest` gana dos tests: `la_marca_del_splash_cabe_en_el_circulo_visible_de_la_plataforma`
+    (fichero real → 0 problemas) y `una_marca_de_splash_desbordada_es_detectada` (XML literal con la
+    geometría previa → ≥1 problema; punto a radio 34 con trazo grueso → ≥1 problema, con **control** de
+    trazo fino → 0 problemas).
+  - Rationale corregido: `DESIGN.md` (`## App Icon`) ya **no** dice "a mayor escala relativa"; registra que
+    el sistema solo hace visible el 2/3 central, la escala 0.78 y su porqué, que la marca sigue siendo
+    mayor que la del lanzador y que no admite más escala sin recortarse. `docs/technical-discovery.md`
+    recoge la misma regla en la fila del recurso y en el bullet de los tests JVM (regla durable: cualquier
+    marca nueva del splash debe caber con su trazo en ese círculo).
+- Verificación ejecutada (números observados en esta sesión, no heredados):
+  - **Caso negativo no vacío, por mutación REAL del recurso**: con `scaleX`/`scaleY` forzados a `1.0` en
+    `ic_splash_mark.xml` (es decir, la geometría de la primera implementación),
+    `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.theme.SplashThemeTest" --rerun-tasks`
+    → **BUILD FAILED (exit 1)**, `6 tests completed, 1 failed`, con
+    `group[0]/path[0]: el trazo llega a radio 38.53 > 36.0` y
+    `group[0]/path[1]: el trazo llega a radio 44.0 > 36.0` (los mismos números que calculó el validador:
+    38.5 y 44). Fichero restaurado a continuación (md5 idéntico antes y después).
+  - **Modelado independiente de la geometría** (script propio sobre el fichero real): reparado = 30.93
+    (borde) / **35.2** (cuerpo del cuenco; 34.32 si el sistema escala el trazo con el grupo) / 27.67
+    (vaho) ≤ 36; geometría previa = 38.53 / 44.0 / 34.56 ⇒ el arreglo deja la marca dentro del círculo
+    visible.
+  - `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`, sin procesos largos).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.theme.*"`: BUILD
+    SUCCESSFUL; `SplashThemeTest` **6** (antes 4), `LauncherIconTest` 6, `DesignTokensTest` 8,
+    `CardTokensTest` 5, `FavoriteTileContrastTest` 4, `MotionTokensTest` 3 (0 fallos).
+  - Rerun forzado `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas): **104 suites /
+    776 tests / 0 fallos / 0 errores / 0 saltados**, parseando los `TEST-*.xml` por cuenta propia
+    (baseline re-derivada en `HEAD`: `git grep -c '@Test'` = 102 ficheros / 764 anotaciones ⇒ delta
+    **+2 suites / +12 tests**: `LauncherIconTest` 6 + `SplashThemeTest` 6).
+  - Lint `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), SARIF
+    `app/build/reports/lint-results-debug.sarif` parseado a mano: **13 resultados, 0 errores**
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1) y **0 bajo
+    `app/src`** (sin cambios respecto a la sesión 131).
+  - Inspecciones: 0 binarios en `res/`; 0 marcadores de plantilla; `windowSplashScreen` solo en
+    `values-v31/` y `values-night-v31/`; `git status --porcelain` acotado a `.xml`/`.kt`/`.md` más
+    `app/build.gradle.kts`, `feature_list.json` y las 10 bajas `.webp`.
+- Ficheros cambiados en la reparación: `app/src/main/res/drawable/ic_splash_mark.xml`,
+  `app/src/test/java/com/sazon/app/ui/theme/AppResourceFiles.kt`,
+  `app/src/test/java/com/sazon/app/ui/theme/SplashThemeTest.kt`, `DESIGN.md`,
+  `docs/technical-discovery.md`, `feature_list.json` y este registro. **No** se han tocado los otros
+  vectores, los colores, los temas base, `app/lint.xml`, el manifiesto ni los ficheros de build.
+- Hallazgos no reparados (por indicación del validador, Low/aceptados): el `ignore` **por ruta** de
+  `ObsoleteSdkInt` en `app/lint.xml` (Low-2) se mantiene; el endurecimiento XXE del parser de test (Low-3)
+  se deja como está (recursos versionados del propio repositorio, sin entrada externa). Low-4 sí se
+  corrige: `user_visible_behavior` de `feature_list.json` pasa de "terracota/oliva" a "terracota/ambar"
+  (paleta real: `primary` + `accent`).
+- Riesgo o incógnita abierta: **re-validación independiente** (`feature-validator`) pendiente; sigue
+  pendiente también la prueba **manual** de la persona en el emulador (ahora el cuenco del splash debe
+  verse completo). Sin commit/push/PR del implementer.
+- Siguiente paso: re-validar `app-launcher-icon` con `feature-validator` (contexto limpio) sobre la rama
+  `feature/app-launcher-icon`.
+
+### Sesión 134 (validator + orquestador `feature-flow`, `app-launcher-icon`)
+
+- Fecha: 2026-10-15
+- Objetivo: re-validar la reparación de la sesión 133 y cerrar la feature con el flujo `feature-flow`
+  (hasta `accept`), **sin** push ni PR (la publicación es de `github-flow`).
+- Validación independiente (subagente `validator`, contexto limpio): veredicto **`accept`**. Re-ejecutó
+  `bash init.sh` (exit 0; primera pasada `UP-TO-DATE`) y forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas); parseó por su cuenta los `TEST-*.xml`
+  (**104 suites / 776 tests / 0 fallos / 0 errores / 0 saltados**; baseline en `HEAD` 102 ficheros / 764
+  anotaciones ⇒ delta **+2 suites / +12 tests**) y el SARIF (**13 resultados / 0 errores**, 0 bajo
+  `app/src`). Reconstruyó el modelo de geometría con un script propio (borde 30.93 / cuerpo **35.20**
+  conservador —34.32 si el trazo escala con el grupo— / vaho 27.67, todo ≤ 36; sin el grupo: 38.53 y 44.00)
+  y confirmó el **caso negativo no vacío** con **dos** mutaciones reales del recurso (`0.78 → 1.0` y
+  `translateY="8"`), ambas BUILD FAILED, restaurando el fichero byte a byte (md5 idéntico). Verificó además
+  la regla de plataforma (docs de SplashScreen + `MASK_FACTOR = 2/3` de androidx; zona segura del icono de
+  lanzador 33 de 108), el rationale corregido en `DESIGN.md`/`docs/technical-discovery.md`, las docs
+  durables, la disciplina de alcance (solo lo previsto + `app/lint.xml`, desviación Low aceptada) y que no
+  había commit/push/PR ni rama remota. El hallazgo **High** de la ronda 1 queda **resuelto y verificado**;
+  sin Critical/High/Medium abiertos; Low 2 (`app/lint.xml`) y Low 3 (hardening XXE del parser de test) se
+  aceptan sin reparar; Low 4 (terracota/oliva → ámbar) resuelto; 3 informativos no bloqueantes.
+  Registro: `docs/validations/app-launcher-icon.md` (conserva la ronda 1 `revise` y la ronda 2 `accept`).
+- Persistencia de la aceptación (orquestador): `feature_list.json` de `passing` a **`accepted`** con la
+  evidencia del validador; bullet de estado actual y este registro actualizados. Commit local
+  `feat: complete app-launcher-icon` en la rama `feature/app-launcher-icon` (**sin** push ni PR); la
+  publicación queda para el orquestador de `github-flow`.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador tras el merge (icono
+  cuadrado/redondo/tematizado en claro y oscuro y el splash con el cuenco **completo**), no automatizable
+  desde WSL; la re-resolución de la variante `-night` del icono depende del launcher
+  (`docs/risks-and-open-questions.md`). Un defecto visual se corrige con una **feature correctiva**.
+- Estado de features: `app-launcher-icon` queda **`accepted`** (WIP = 0; no hay features `in_progress` ni
+  `passing`). Siguientes sin empezar: `cooking-timer-alarm` (`not_started`, dependencia `cooking-mode`
+  satisfecha) y `dish-image-call-diagnostics` (`not_started`); `seed-catalog-50` sigue `blocked`.
 ### Sesion 131 (implementer, `cooking-timer-alarm`)
 
 - Fecha: 2026-10-15

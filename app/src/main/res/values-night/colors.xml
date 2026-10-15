@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="sazon_window_background">#241C16</color>
+
+    <!-- En oscuro solo cambia el fondo de la tesela (`darkBackground`); el motivo y el vaho son los
+         mismos acentos que en claro (misma regla que el tema). -->
+    <color name="sazon_launcher_background">#241C16</color>
 </resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Android 12+ (API 31): `Theme.Sazon` se REDECLARA completo en esta carpeta cualificada porque un
+         estilo de una carpeta cualificada no hereda los items de la variante base. Se repiten
+         `windowBackground` y `forceDarkAllowed` y se añade el splash de plataforma (la tesela cálida
+         como fondo y la marca como icono); NO se declara el color de placa del icono de splash (la marca
+         va directamente sobre el fondo cálido, sin placa circular). Sin `androidx.core.splashscreen`:
+         minSdk 33 garantiza los atributos de plataforma.
+         El qualifier `-v31` es redundante para el lint con `minSdk 33`, pero se mantiene a proposito (es la
+         puerta de plataforma declarada del splash y el layout que fija la spec); ese unico aviso de
+         CARPETA se silencia de forma acotada en `app/lint.xml` (por ruta, no como regla global). -->
+    <style name="Theme.Sazon" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/sazon_window_background</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowSplashScreenBackground">@color/sazon_window_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+    </style>
+</resources>

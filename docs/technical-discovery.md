@@ -45,6 +45,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
 | Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` es el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retiró** con `retire-recipe-photos` (ADR 0006); solo queda `img/recipes/default.jpg` como ancla de estilo | Determinista, offline, sin red en runtime, sin dependencias nuevas |
+| Icono de lanzador y splash de arranque | **Vectores XML** en `app/src/main/res/` (**ningún** asset binario): icono adaptativo `mipmap-anydpi/ic_launcher{,_round}.xml` con **tres capas** (`drawable/ic_launcher_background`, `ic_launcher_foreground` y la monocroma propia `ic_launcher_monochrome`), colores por **token** (`sazon_launcher_background`/`sazon_launcher_motif`/`sazon_launcher_accent`) con la tesela cálida en claro y `darkBackground` en oscuro (`values-night/`), y marca del **splash** `drawable/ic_splash_mark` (`values-v31/` + `values-night-v31/`) | El icono lo dibuja el launcher (cuadrado, redondo y tematizado, en claro y oscuro) y el splash de Android 12+ lo pinta el sistema desde el tema; **sin dependencias** (`androidx.core.splashscreen` no hace falta con `minSdk 33`) y sin rasters por densidad (`minSdk 33` resuelve siempre `mipmap-anydpi/`). El icono de splash **no se dibuja a canvas completo**: en API 31+ `SplashscreenIconDrawableFactory` lo envuelve en `AdaptiveForegroundDrawable` (1.5× los bounds) y solo se ve el **2/3 central** del vector (misma regla que `MASK_FACTOR = 2/3` de `androidx.core.splashscreen`), así que cualquier marca nueva del splash debe caber con su trazo en ese círculo (radio ≤ 36 de los 108 dp respecto al centro); `ic_splash_mark` lo consigue con un `<group>` de escala 0.78 (radio 44 → ~34.3). Las dos carpetas del splash son la puerta de plataforma declarada (API 31+): su qualifier `-v31` es redundante con `minSdk 33` y su aviso de lint **de carpeta** se ignora por ruta en `app/lint.xml` |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
 | **Interruptor de imágenes del plato** (ajuste de gasto) | `SharedPreferences` privado de la app (`dish_image_settings` / `enabled`), detrás de la costura pura `data.image.DishImageSettingsStore` y del adaptador `AndroidDishImageSettingsStore`; se restaura **síncronamente** en el punto de composición (`MainActivity`) | Es **un bit** de ajuste (no estado relacional: Room queda para el Perfil, Favoritos, Resumen y Lote) y **sin dependencias nuevas** (API del framework). El **tope por sesión** **no** se persiste; ausencia de valor = default de la política (apagado) |
@@ -946,6 +947,35 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   más los desplazamientos `+24`/`-24`/`0`, con casos negativos. Ambos son JVM puros: `SazonMotion` y
   `MotionPolicy` no importan Compose ni Android; el acabado visual lo revisa la persona en el emulador
   (AGENTS.md no automatiza UI de emulador).
+- **Tests JVM del icono de lanzador y del splash** (`app-launcher-icon`, `ui.theme`): `LauncherIconTest`
+  parsea `mipmap-anydpi/ic_launcher{,_round}.xml` y comprueba que declaran las **tres capas**
+  (`background`, `foreground` y `monochrome`) apuntando a vectores XML propios, que el manifiesto sigue
+  declarando `icon`/`roundIcon`, que la paleta de los cuatro vectores (`ic_launcher_background`,
+  `ic_launcher_foreground`, `ic_launcher_monochrome` y `ic_splash_mark`) sale del frontmatter de
+  `DESIGN.md` (fondo claro `background`/oscuro `darkBackground`, motivo `primary` y acento `accent`, con
+  la única excepción documentada del `#000000` de la silueta monocroma) y que **no queda rastro** del
+  icono de plantilla (ni rasters `.webp`/`.png`/`.jpg`, ni `#3DDC84`, ni la rejilla `33FFFFFF`, ni el
+  `aapt:attr` del degradado, ni el robot `M65.3,45.828`). `SplashThemeTest` comprueba que `values-v31/`
+  **y** `values-night-v31/` redeclaran `Theme.Sazon` (mismo `parent` y los mismos
+  `android:windowBackground`/`android:forceDarkAllowed` que el tema base, que a su vez no gana atributos
+  de splash) y añaden `android:windowSplashScreenBackground` +
+  `android:windowSplashScreenAnimatedIcon`, **sin** `windowSplashScreenIconBackgroundColor`. Ambos leen
+  los ficheros reales por las propiedades de sistema `android.manifest.path` y `android.res.dir`
+  (`app/build.gradle.kts`; nunca rutas relativas a `user.dir`) y llevan un **caso negativo** que muta una
+  copia (el `primary` del frontmatter, `values-night/colors.xml`, o una variante v31 sin el icono o con
+  una placa circular) y exige **≥ 1 problema**: no pasan en vacío. `SplashThemeTest` comprueba además la
+  **geometría** de `ic_splash_mark` (`M`/`h`/`a`/`c` resueltos, arcos muestreados, `<group>` aplicado y
+  semiancho de trazo) contra el círculo interior de 2/3 (radio ≤ 36 de los 108 dp) y su negativo usa la
+  geometría desbordada que motivó la reparación (radio 44) más un trazo sobredimensionado, para probar que
+  la comprobación no pasa en vacío. El parseo XML usa `javax.xml.parsers`
+  del JDK (en un test JVM sin Robolectric las clases `android.*` son stubs). El acabado visual (48–192 dp,
+  máscara redonda, tinte tematizado y splash, en claro y oscuro) lo revisa la persona en el emulador.
+  Con `minSdk 33` el qualifier `-v31` de las dos carpetas del splash es redundante y el lint avisa
+  (`ObsoleteSdkInt`) **a nivel de carpeta**; como `tools:ignore` en el `<style>`/`<resources>` no alcanza
+  ese alcance, el aviso se silencia **por ruta** (solo esas dos carpetas, no como regla global) en
+  `app/lint.xml`, para no añadir warnings nuevos bajo `app/src` sin desactivar la comprobación en el resto
+  del repositorio. Las carpetas se conservan a propósito: son la puerta de plataforma declarada del
+  splash (API 31+) y el layout que fija la spec.
 - **Tests JVM de la imagen de receta** (`recipe-photos`, **retirados** con `retire-recipe-photos`, ADR
   0006): el test de la cadena de respaldo pura (`RecipePhotoAssetsTest`) **se borró** junto con la cadena
   (los 30 assets, `data.AssetRecipePhotoSource`, el seam `ui.artwork.RecipePhotoSource` y la propiedad
