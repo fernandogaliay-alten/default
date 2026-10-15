@@ -889,6 +889,29 @@
   SIGSEGV de un daemon de Gradle por builds concurrentes de otros worktrees, no atribuible a la feature).
   Queda la **revisión manual** de la persona en el emulador tras el merge (claro/oscuro × ajuste de imágenes
   encendido/apagado), no automatizable desde WSL.
+- Ampliación de UI **`screen-transitions`** (`area: ui`, pedida por la persona: "faltan transiciones y
+  queda visualmente mal"): implementada y autoverificada (**`passing`**) en la **sesión 128** y
+  **`accepted`** en la **sesión 129** (validación independiente, veredicto `accept`) en su
+  worktree `feature/screen-transitions` (rama `feature/screen-transitions`, **sin** commit/push/PR del
+  implementer; el commit local lo crea el orquestador de `feature-flow` y publica `github-flow`).
+  Sustituye los cortes secos por un **único lenguaje de movimiento** (fundido +
+  deslizamiento corto de **24 dp** con **240 ms** y `FastOutSlowInEasing`, capa entrante encima) en los
+  cuatro frentes: navegación principal (pestañas y páginas empujadas), overlays (Detalle y Modo cocina,
+  verticales), pasos del onboarding y del Generador, y aparición de contenido (Resultados, Favoritos y
+  bloques de la Home). Tokens **puros** en `ui/theme/Motion.kt` (`SazonMotion`, sin Compose/Android),
+  selector **puro** en `ui/motion/MotionPolicy.kt` (`MotionDirection` + offsets) y **única** primitiva
+  Compose `ui/motion/MotionContent` (`MotionAxis` sobre `AnimatedContent`, `sizeTransform = null`).
+  `androidx.compose.animation` llega **transitivamente** por `material3` → `foundation` (variante api):
+  **sin dependencias nuevas** y sin tocar build/lockfile/`init.sh`/`domain/**`/`data/**`/Taxonomía/
+  `seed-recipes.json`/`assets/**`/tokens visuales. `DESIGN.md` gana el bloque `motion:` del frontmatter,
+  la sección `## Motion` y la **excepción de capturas** (no se crea
+  `docs/design/concepts/screen-transitions/`); `docs/technical-discovery.md` actualizado. Gate: `bash
+  init.sh` exit 0, **100 suites / 747 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD`
+  98/739; delta **+2 suites / +8 tests**: `MotionTokensTest` 3, `MotionPolicyTest` 5), lint 0 errores y
+  13 warnings preexistentes (0 bajo `app/src`), 0 aserciones existentes modificadas. Validada de forma
+  independiente (veredicto `accept`; `docs/validations/screen-transitions.md`). Queda la **prueba manual**
+  de la persona en el emulador (claro/oscuro), no automatizable desde WSL. WIP = 0
+  (`screen-transitions` es la última entrada y queda `accepted`).
 
 ## Registro de sesiones
 
@@ -5830,3 +5853,89 @@
   escribe `docs/validations/chat-provider-opencode-go.md` y crea el **commit local** (Conventional
   Commit) en la rama `feature/chat-provider-opencode-go`. **Sin** push ni PR (publica `github-flow`).
   Pendiente para la persona la **prueba manual** en emulador, no automatizable desde WSL.
+
+### Sesión 128 (implementer, `screen-transitions`)
+
+- Fecha: 2026-10-15
+- Objetivo: implementar y autoverificar la ampliación de UI **`screen-transitions`** según
+  `docs/specs/screen-transitions.md` (skill `feature-implementer`, subagente `implementer`), en el
+  worktree `screen-transitions`, rama `feature/screen-transitions`, con la feature en `not_started`.
+- Completado:
+  - Tokens **puros** `com.sazon.app.ui.theme.SazonMotion` (`ui/theme/Motion.kt`: `DURATION_MILLIS` 240,
+    `SLIDE_OFFSET_DP` 24, `EASING` `standard`, `ENTER_ON_TOP` true; sin imports de Compose ni Android).
+  - Selector **puro** `com.sazon.app.ui.motion.MotionPolicy` (`MotionDirection` `FORWARD`/`BACKWARD`/`NONE`
+    + `directionOf`/`tabChange`/`pageChange`/`enterOffsetDp`/`exitOffsetDp`; solo depende de
+    `ui.navigation`).
+  - **Única** primitiva Compose `com.sazon.app.ui.motion.MotionContent` (`MotionAxis` HORIZONTAL/VERTICAL
+    sobre `AnimatedContent`, `ContentTransform` con `targetContentZIndex` desde `SazonMotion.ENTER_ON_TOP`
+    y `sizeTransform = null`, `label = "sazon-motion"`).
+  - Cableado de los cuatro frentes: `MainShell` (pestaña `tabChange`, página empujada `pageChange` y los
+    dos overlays verticales), `OnboardingFlow` (cuerpo del paso por dirección del índice),
+    `GeneratorFlow` (paso horizontal + stage vertical con clave local que lleva el `GenerationResult`),
+    `AiSearchFlow` (stage vertical con clave local que lleva el resultado), `ResultsScreen` (cuerpo por
+    estado), `FavoritesScreen` (vacío↔poblado, lista sigue lazy) y `HomeScreen` (bloque "Sugeridas" y
+    cuerpo de "Tus recetas"). Efectos secundarios (`ensureBatch`, generación, búsqueda) y `Saver` **fuera**
+    de las transiciones.
+  - `DESIGN.md`: bloque `motion:` del frontmatter + sección `## Motion` + excepción de capturas (no se
+    crea `docs/design/concepts/screen-transitions/`). `docs/technical-discovery.md`: ubicación de
+    tokens/política/primitiva, procedencia transitiva de `androidx.compose.animation` y verificación JVM.
+  - Tests JVM nuevos: `MotionTokensTest` (3) y `MotionPolicyTest` (5); helper compartido
+    `DesignFrontmatter.kt` con `frontmatterSectionMap`/`frontmatter`/`designMarkdown` extraídos de
+    `DesignTokensTest` (**sin cambiar aserciones**).
+- Verificación ejecutada:
+  - `bash init.sh` exit 0 (test + lint vía `scripts/gradle.sh`, sin procesos largos). Parseo propio de
+    `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **100 suites / 747 tests / 0 fallos /
+    0 errores / 0 saltados** (baseline re-derivada en `HEAD` 98 ficheros / 739 anotaciones ⇒ delta
+    **+2 suites / +8 tests**).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.motion.*" --tests
+    "com.sazon.app.ui.theme.MotionTokensTest" --tests "com.sazon.app.ui.theme.DesignTokensTest"`: BUILD
+    SUCCESSFUL; `MotionPolicyTest` 5, `MotionTokensTest` 3, `DesignTokensTest` 8 (sin cambios).
+  - Lint (SARIF `app/build/reports/lint-results-debug.sarif`): **0 errores, 13 warnings** preexistentes
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+    `app/src`**; sin warnings del compilador de Kotlin.
+  - Inspección: `SazonMotion`/`MotionPolicy` sin imports de Compose/Android; `androidx.compose.animation`
+    **no** declarada (llega por `material3` → `foundation`); `app/build.gradle.kts`,
+    `gradle/libs.versions.toml`, `init.sh`, `scripts/**`, `domain/**`, `data/**`, Taxonomía,
+    `seed-recipes.json`, `assets/**` y los tokens visuales intactos.
+- Ficheros creados/cambiados: `ui/theme/Motion.kt`, `ui/motion/MotionPolicy.kt`,
+  `ui/motion/MotionContent.kt`, `test/.../theme/MotionTokensTest.kt`, `test/.../motion/MotionPolicyTest.kt`,
+  `test/.../theme/DesignFrontmatter.kt` (nuevos); `MainShell.kt`, `onboarding/OnboardingFlow.kt`,
+  `generator/GeneratorFlow.kt`, `search/AiSearchFlow.kt`, `results/ResultsScreen.kt`,
+  `favorites/FavoritesScreen.kt`, `home/HomeScreen.kt`, `test/.../theme/DesignTokensTest.kt`, `DESIGN.md`,
+  `docs/technical-discovery.md`, `feature_list.json` y este registro (modificados).
+- Hallazgos relevantes: durante la transición, la capa saliente sigue compuesta; las claves locales de
+  `GeneratorFlow`/`AiSearchFlow`/`ResultsScreen` **llevan el dato** (`GenerationResult`/`ResultsStatus`)
+  para que el contenido saliente no lea el estado mutable ya `null` (evita `checkNotNull` en vuelo).
+- Riesgo o incógnita abierta: queda la **validación independiente** (`feature-validator`); la
+  **suavidad** del movimiento (240 ms / 24 dp) y la ausencia de parpadeo/salto de layout la revisa la
+  **persona** en el emulador (claro y oscuro) tras el merge — AGENTS.md no automatiza UI de emulador; un
+  defecto se corrige con una feature correctiva.
+- Siguiente paso: validación independiente de `screen-transitions` con `feature-validator`; después,
+  commit local (lo hace el orquestador de `feature-flow`) y publicación por `github-flow`.
+
+### Sesión 129 (orquestador `feature-flow` + validator, `screen-transitions`)
+
+- Fecha: 2026-10-15
+- Objetivo: cerrar la ampliación de UI **`screen-transitions`** con validación independiente
+  (`feature-validator`, subagente `validator`) y persistir la aceptación con commit **local** (nunca
+  push/PR: la publicación es de `github-flow`).
+- Resultado: veredicto **`accept`** (agente con contexto limpio). El validador re-ejecutó `bash init.sh`
+  (exit 0, UP-TO-DATE), forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), y **parseó por su cuenta** los XML
+  (**100 suites / 747 tests / 0 fallos / 0 errores / 0 saltados**; baseline `HEAD` 98/739 ⇒ **+2 suites /
+  +8 tests**) y el SARIF (**0 errores, 13 warnings**, 0 bajo `app/src`). Reimplementó el parser en `/tmp`
+  y confirmó que el **caso negativo** de tokens no pasa en vacío (real 0 derivas; `duration: 999ms` → 1
+  deriva). Verificó el checklist de la spec (13 puntos de llamada con la única primitiva `MotionContent`,
+  0 aserciones existentes modificadas, pureza de `SazonMotion`/`MotionPolicy`, efectos secundarios y
+  `Saver` fuera, crossfade 250 ms/spinner/pulso intactos, build/lockfile/`init.sh`/`domain/**`/`data/**`/
+  Taxonomía/`seed-recipes.json`/`assets/**` intactos, `DESIGN.md` con `motion:` + `## Motion` + excepción
+  de capturas, sin `docs/design/concepts/screen-transitions/`). Sin hallazgos Critical/High/Medium; 3
+  Low/informativos no bloqueantes (HomeScreen usa la lista observable como `targetState`; casillas del
+  Validator Checklist de la spec sin marcar; la transición de página envuelve el `Scaffold` completo).
+  Registro en `docs/validations/screen-transitions.md`.
+- Persistencia de la aceptación (orquestador): `feature_list.json` de `passing` a **`accepted`** con la
+  evidencia del validador; estado y sesión en este `PROGRESS.md`. Commit local `feat: complete
+  screen-transitions` en la rama `feature/screen-transitions` (sin push ni PR).
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (claro/oscuro; suavidad sin
+  corte, parpadeo ni salto de layout en los cuatro frentes), no automatizable desde WSL; un defecto se
+  corrige con una feature correctiva.

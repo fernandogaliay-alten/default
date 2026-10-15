@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.favorites.Favorite
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonShapes
@@ -91,71 +93,80 @@ fun FavoritesScreen(
 
     val visible = FavoritesList.visible(favorites, query, sort, taxonomy)
 
-    LazyColumn(
+    // El cuerpo (vacio <-> poblado) se revela con fundido y subida de 24 dp. La lista sigue siendo
+    // "lazy" dentro de la animacion y conserva buscador, orden y modo de vista cuando la identidad no
+    // cambia (solo se dispara la transicion al pasar de vacio a poblado o al reves).
+    MotionContent(
+        targetState = favorites.isEmpty(),
+        axis = MotionAxis.VERTICAL,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(SazonSpacing.md),
-        verticalArrangement = Arrangement.spacedBy(SazonSpacing.md),
-    ) {
-        item { FavoritesHeader(count = favorites.size) }
+    ) { isEmpty ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(SazonSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(SazonSpacing.md),
+        ) {
+            item { FavoritesHeader(count = favorites.size) }
 
-        if (favorites.isEmpty()) {
-            item { FavoritesEmptyState(onExplore = onExplore) }
-        } else {
-            item {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(text = "Buscar por título") },
-                    singleLine = true,
-                    shape = SazonShapes.small,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            item {
-                FavoritesSortRow(
-                    selected = sort,
-                    onSelect = { sort = it },
-                    viewMode = viewMode,
-                    onSelectViewMode = { viewMode = it },
-                )
-            }
-            item { OfflineNote() }
-
-            if (visible.isEmpty()) {
-                item {
-                    Text(
-                        text = "No hay favoritas con esta búsqueda.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else if (viewMode == FavoritesViewMode.LIST) {
-                items(visible, key = { it.recipeId }) { favorite ->
-                    FavoriteRecipeCard(
-                        favorite = favorite,
-                        taxonomy = taxonomy,
-                        onClick = { onOpenRecipe(favorite.recipe) },
-                        onRemove = { onToggleFavorite(favorite.recipe) },
-                    )
-                }
+            if (isEmpty) {
+                item { FavoritesEmptyState(onExplore = onExplore) }
             } else {
-                items(visible.chunked(2), key = { row -> row.first().recipeId }) { row ->
-                    Row(
+                item {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(text = "Buscar por título") },
+                        singleLine = true,
+                        shape = SazonShapes.small,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
-                    ) {
-                        row.forEach { favorite ->
-                            FavoriteRecipeTile(
-                                favorite = favorite,
-                                taxonomy = taxonomy,
-                                onClick = { onOpenRecipe(favorite.recipe) },
-                                onRemove = { onToggleFavorite(favorite.recipe) },
-                                modifier = Modifier.weight(1f),
-                                imageBackground = imageBackground,
-                            )
-                        }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
+                    )
+                }
+                item {
+                    FavoritesSortRow(
+                        selected = sort,
+                        onSelect = { sort = it },
+                        viewMode = viewMode,
+                        onSelectViewMode = { viewMode = it },
+                    )
+                }
+                item { OfflineNote() }
+
+                if (visible.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No hay favoritas con esta búsqueda.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else if (viewMode == FavoritesViewMode.LIST) {
+                    items(visible, key = { it.recipeId }) { favorite ->
+                        FavoriteRecipeCard(
+                            favorite = favorite,
+                            taxonomy = taxonomy,
+                            onClick = { onOpenRecipe(favorite.recipe) },
+                            onRemove = { onToggleFavorite(favorite.recipe) },
+                        )
+                    }
+                } else {
+                    items(visible.chunked(2), key = { row -> row.first().recipeId }) { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
+                        ) {
+                            row.forEach { favorite ->
+                                FavoriteRecipeTile(
+                                    favorite = favorite,
+                                    taxonomy = taxonomy,
+                                    onClick = { onOpenRecipe(favorite.recipe) },
+                                    onRemove = { onToggleFavorite(favorite.recipe) },
+                                    modifier = Modifier.weight(1f),
+                                    imageBackground = imageBackground,
+                                )
+                            }
+                            if (row.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }

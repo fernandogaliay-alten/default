@@ -549,6 +549,23 @@ propiedad de sistema `design.tokens.path` e incluye los dos tokens de tarjeta y 
 (`primaryContainer`, `secondaryContainer`, `tertiaryContainer`, `surfaceVariant`). Ver
 `docs/specs/design-tokens-and-theme.md` y `docs/specs/card-typographic-tokens-and-design.md`.
 
+El **movimiento** de la app es un **lenguaje unico** (feature `screen-transitions`, 2026-10-15): fundido
+con deslizamiento corto de **24 dp** durante **240 ms** con `FastOutSlowInEasing` y la capa entrante
+encima. Los cuatro valores viven como tokens **puros** en `com.sazon.app.ui.theme.SazonMotion`
+(`DURATION_MILLIS`, `SLIDE_OFFSET_DP`, `EASING`, `ENTER_ON_TOP`, sin imports de Compose ni Android) y se
+declaran tambien en el bloque `motion:` del frontmatter de `DESIGN.md`; el selector **puro**
+`com.sazon.app.ui.motion.MotionPolicy` (`MotionDirection` `FORWARD`/`BACKWARD`/`NONE` + offsets) decide
+la direccion de pestanas, paginas empujadas y pasos, y la unica primitiva Compose
+`com.sazon.app.ui.motion.MotionContent` (`MotionAxis` HORIZONTAL/VERTICAL sobre `AnimatedContent`, con
+`sizeTransform = null` y `targetContentZIndex` desde el token) la aplica en los cuatro frentes:
+navegacion principal (pestanas y paginas empujadas en `MainShell`), overlays (Detalle y Modo cocina,
+verticales), pasos del onboarding y del Generador y aparicion de contenido (Resultados, Favoritos y los
+bloques de la Home). `androidx.compose.animation` (`AnimatedContent` y las `slideIn`/`slideOut`/`fade`)
+llega **transitivamente** por `material3` -> `foundation` (variante **api**), asi que **no** se declara
+ninguna dependencia nueva. Los efectos secundarios (`ensureBatch`, generacion, busqueda) y los `Saver`
+siguen **fuera** de `MotionContent`, que solo pinta; el crossfade de imagen de 250 ms, el spinner del
+Generador y el pulso del temporizador quedan intactos.
+
 El punto de entrada real de la app vive en `com.sazon.app.ui`: `SazonApp` compone la raíz y la
 **puerta de primer arranque**, que en esta feature es la **presencia de Perfil** en Room
 (`ProfileRepository.observe()` → `AppGate.decide`): sin Perfil se muestra el onboarding obligatorio y
@@ -891,6 +908,13 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - **Tests unitarios de dominio en JVM** (obligatorios): integridad de la Taxonomía, `PromptBuilder`,
   parsing y validación de la respuesta, descarte por Restricciones duras, firma de preferencias y
   política de caché, escalado de raciones.
+- **Tests JVM del movimiento** (`screen-transitions`, `ui.theme` y `ui.motion`): `MotionTokensTest`
+  compara `duration`/`slide`/`easing`/`enterOnTop` con el bloque `motion:` del frontmatter de `DESIGN.md`
+  por `design.tokens.path` (con la copia mutada `duration: 999ms` que **falla**, de modo que no pasa en
+  vacío) y `MotionPolicyTest` cubre `FORWARD`/`BACKWARD`/`NONE` de pestañas, páginas empujadas y pasos
+  más los desplazamientos `+24`/`-24`/`0`, con casos negativos. Ambos son JVM puros: `SazonMotion` y
+  `MotionPolicy` no importan Compose ni Android; el acabado visual lo revisa la persona en el emulador
+  (AGENTS.md no automatiza UI de emulador).
 - **Tests JVM de la imagen de receta** (`recipe-photos`, **retirados** con `retire-recipe-photos`, ADR
   0006): el test de la cadena de respaldo pura (`RecipePhotoAssetsTest`) **se borró** junto con la cadena
   (los 30 assets, `data.AssetRecipePhotoSource`, el seam `ui.artwork.RecipePhotoSource` y la propiedad

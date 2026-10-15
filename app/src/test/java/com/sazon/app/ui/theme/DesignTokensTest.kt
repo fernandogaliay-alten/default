@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import java.io.File
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -127,13 +126,6 @@ class DesignTokensTest {
     }
 }
 
-private fun designMarkdown(): String {
-    val path = checkNotNull(System.getProperty("design.tokens.path")) {
-        "Falta la propiedad de sistema design.tokens.path"
-    }
-    return File(path).readText()
-}
-
 private fun Color.toHex(): String = String.format(Locale.ROOT, "#%06X", toArgb() and 0xFFFFFF)
 
 private fun rolesDeAmbosEsquemas(): List<Pair<String, Color>> = listOf(
@@ -242,27 +234,6 @@ private fun assertShape(token: String, designValue: String?, actual: Shape) {
     assertEquals("$token", RoundedCornerShape(expected.dp), actual)
 }
 
-/** Extrae las entradas `clave: valor` de una sección plana de dos espacios del frontmatter. */
-private fun frontmatterSectionMap(markdown: String, section: String): Map<String, String> {
-    val lines = frontmatter(markdown)
-    val start = lines.indexOfFirst { it.trimEnd() == "$section:" }
-    check(start >= 0) { "DESIGN.md no tiene la seccion '$section' en el frontmatter" }
-    val result = linkedMapOf<String, String>()
-    for (i in start + 1 until lines.size) {
-        val line = lines[i]
-        if (line.isBlank()) continue
-        if (!line.startsWith("  ")) break
-        if (line.startsWith("    ")) continue
-        val trimmed = line.trim()
-        val separator = trimmed.indexOf(':')
-        if (separator <= 0) continue
-        val key = trimmed.substring(0, separator).trim()
-        val value = trimmed.substring(separator + 1).trim().trim('"')
-        result[key] = value
-    }
-    return result
-}
-
 /** Extrae `typography` (dos niveles: estilo -> propiedades -> valor) del frontmatter. */
 private fun frontmatterTypographyMap(markdown: String): Map<String, Map<String, String>> {
     val lines = frontmatter(markdown)
@@ -287,14 +258,4 @@ private fun frontmatterTypographyMap(markdown: String): Map<String, Map<String, 
         }
     }
     return result
-}
-
-/** Devuelve las líneas internas del bloque frontmatter YAML delimitado por `---`. */
-private fun frontmatter(markdown: String): List<String> {
-    val lines = markdown.lines()
-    val start = lines.indexOfFirst { it.trim() == "---" }
-    check(start >= 0) { "DESIGN.md no tiene frontmatter YAML" }
-    val end = (start + 1 until lines.size).firstOrNull { lines[it].trim() == "---" }
-        ?: error("El frontmatter de DESIGN.md no se cierra con ---")
-    return lines.subList(start + 1, end)
 }

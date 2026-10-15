@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
 import com.sazon.app.ui.theme.SazonComponents
 import com.sazon.app.ui.theme.SazonPillShape
 import com.sazon.app.ui.theme.SazonShapes
@@ -69,23 +71,31 @@ fun ResultsScreen(
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            when (status) {
-                is ResultsStatus.Content -> ResultsList(
-                    recipes = status.recipes,
-                    taxonomy = taxonomy,
-                    onOpenRecipe = onOpenRecipe,
-                    imageBackground = imageBackground,
-                )
+            // El cuerpo por estado se revela con fundido y subida de 24 dp (clave local por estado).
+            // La clave es el propio `ResultsStatus` para que la capa saliente conserve sus datos.
+            MotionContent(
+                targetState = status,
+                axis = MotionAxis.VERTICAL,
+                modifier = Modifier.fillMaxSize(),
+            ) { current ->
+                when (current) {
+                    is ResultsStatus.Content -> ResultsList(
+                        recipes = current.recipes,
+                        taxonomy = taxonomy,
+                        onOpenRecipe = onOpenRecipe,
+                        imageBackground = imageBackground,
+                    )
 
-                ResultsStatus.Empty -> EmptyState()
+                    ResultsStatus.Empty -> EmptyState()
 
-                is ResultsStatus.Unavailable -> UnavailableState(
-                    seedRecipes = status.seedRecipes,
-                    taxonomy = taxonomy,
-                    onRetry = onRetry,
-                    onOpenRecipe = onOpenRecipe,
-                    imageBackground = imageBackground,
-                )
+                    is ResultsStatus.Unavailable -> UnavailableState(
+                        seedRecipes = current.seedRecipes,
+                        taxonomy = taxonomy,
+                        onRetry = onRetry,
+                        onOpenRecipe = onOpenRecipe,
+                        imageBackground = imageBackground,
+                    )
+                }
             }
         }
     }

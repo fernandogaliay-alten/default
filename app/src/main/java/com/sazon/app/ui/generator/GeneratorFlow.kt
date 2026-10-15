@@ -28,6 +28,9 @@ import com.sazon.app.domain.generation.GenerationService
 import com.sazon.app.domain.profile.PreferenceProfile
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
+import com.sazon.app.ui.motion.MotionPolicy
 import com.sazon.app.ui.results.ResultsHeaders
 import com.sazon.app.ui.results.ResultsOrigin
 import com.sazon.app.ui.results.ResultsScreen
@@ -65,6 +68,18 @@ private const val MIN_VISIBLE_MILLIS = 900L
  * pantallas de edicion; `onEditProfile` navega a la pestana Perfil (el Perfil real es de
  * `profile-screen`).
  */
+/**
+ * Paso **visual** del Generador para la transicion vertical de `MotionContent`: edicion, generacion
+ * en carga o resultados. Clave **local** de la capa Compose (no toca `GeneratorStep` ni
+ * `ResultsStatus`); lleva el `GenerationResult` para que la capa saliente siga pintando su estado
+ * durante la animacion (nunca lee el `result` mutable, que ya puede ser `null`).
+ */
+private sealed interface GeneratorStage {
+    object Edit : GeneratorStage
+    object Generating : GeneratorStage
+    data class Results(val result: GenerationResult) : GeneratorStage
+}
+
 @Composable
 fun GeneratorFlow(
     taxonomy: Taxonomy,
@@ -103,12 +118,23 @@ fun GeneratorFlow(
         result = generated
     }
 
-    when {
-        result != null -> {
-            val generationResult = checkNotNull(result)
-            ResultsScreen(
+    // Pintado por *stage*: la clave local lleva el `GenerationResult` para que la capa saliente siga
+    // pintando su estado durante la animacion vertical (nunca lee el `result` mutable, ya `null`).
+    val stage: GeneratorStage = when {
+        result != null -> GeneratorStage.Results(checkNotNull(result))
+        generationId != null -> GeneratorStage.Generating
+        else -> GeneratorStage.Edit
+    }
+
+    MotionContent(
+        targetState = stage,
+        axis = MotionAxis.VERTICAL,
+        modifier = modifier.fillMaxSize(),
+    ) { current ->
+        when (current) {
+            is GeneratorStage.Results -> ResultsScreen(
                 status = ResultsStatus.from(
-                    result = generationResult,
+                    result = current.result,
                     preferences = preferences,
                     taxonomy = taxonomy,
                     userIngredients = GeneratorRequestFactory.ingredients(ingredients),
@@ -138,75 +164,82 @@ fun GeneratorFlow(
                     generationId = (generationId ?: 0) + 1
                 },
                 onOpenRecipe = onOpenRecipe,
-                modifier = modifier,
                 imageBackground = imageBackground,
             )
-        }
 
-        generationId != null -> GeneratorGeneratingScreen(
-            headline = GeneratorProgressMessages.HEADLINE,
-            subLines = GeneratorProgressMessages.subLines(settings, taxonomy),
-            onCancel = {
-                generationId = null
-                result = null
-            },
-            modifier = modifier,
-        )
+            GeneratorStage.Generating -> GeneratorGeneratingScreen(
+                headline = GeneratorProgressMessages.HEADLINE,
+                subLines = GeneratorProgressMessages.subLines(settings, taxonomy),
+                onCancel = {
+                    generationId = null
+                    result = null
+                },
+            )
 
-        else -> Scaffold(
-            modifier = modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                GeneratorHeader(
-                    title = step.title,
-                    onBack = {
-                        val previous = step.previous()
-                        if (previous != null) step = previous else onClose()
-                    },
-                )
-            },
-            bottomBar = {
-                GeneratorPrimaryBar(
-                    label = step.primaryLabel,
-                    enabled = step != GeneratorStep.INGREDIENTS || ingredients.canContinue,
-                    onClick = {
-                        when (step) {
-                            GeneratorStep.INGREDIENTS -> step.next()?.let { step = it }
-                            GeneratorStep.SETTINGS -> generationId = (generationId ?: 0) + 1
+            GeneratorStage.Edit -> Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = MaterialTheme.colorScheme.background,
+                topBar = {
+                    GeneratorHeader(
+                        title = step.title,
+                        onBack = {
+                            val previous = step.previous()
+                            if (previous != null) step = previous else onClose()
+                        },
+                    )
+                },
+                bottomBar = {
+                    GeneratorPrimaryBar(
+                        label = step.primaryLabel,
+                        enabled = step != GeneratorStep.INGREDIENTS || ingredients.canContinue,
+                        onClick = {
+                            when (step) {
+                                GeneratorStep.INGREDIENTS -> step.next()?.let { step = it }
+                                GeneratorStep.SETTINGS -> generationId = (generationId ?: 0) + 1
+                            }
+                        },
+                    )
+                },
+            ) { padding ->
+                Column(
+                    modifier = Modifier
+                        .padding(padding)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = SazonSpacing.lg),
+                ) {
+                    // Paso del asistente: el cuerpo desliza en horizontal segun la direccion del indice.
+                    MotionContent(
+                        targetState = step,
+                        axis = MotionAxis.HORIZONTAL,
+                        direction = { from, to -> MotionPolicy.directionOf(from.ordinal, to.ordinal) },
+                    ) { activeStep ->
+                        when (activeStep) {
+                            GeneratorStep.INGREDIENTS -> GeneratorIngredientsScreen(
+                                state = ingredients,
+                                taxonomy = taxonomy,
+                                onQueryChange = { ingredients = ingredients.typeQuery(it) },
+                                onAddFree = { ingredients = ingredients.addFree() },
+                                onToggleTaxonomy = { ingredients = ingredients.toggleTaxonomy(it) },
+                                onRemove = { ingredients = ingredients.remove(it) },
+                            )
+
+                            GeneratorStep.SETTINGS -> GeneratorSettingsScreen(
+                                state = settings,
+                                taxonomy = taxonomy,
+                                onServingsChange = {
+                                    settings = settings.setServings(it, taxonomy.servings)
+                                },
+                                onMealTypeSelect = { settings = settings.selectMealType(it) },
+                                onTimeBucketSelect = { settings = settings.selectTimeBucket(it) },
+                                onDifficultySelect = { settings = settings.selectDifficulty(it) },
+                                onToggleRestriction = { settings = settings.toggleHardRestriction(it) },
+                                onClearRestrictions = { settings = settings.clearHardRestrictions() },
+                                onNotesChange = { settings = settings.typeNotes(it) },
+                                onEditProfile = onEditProfile,
+                            )
                         }
-                    },
-                )
-            },
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = SazonSpacing.lg),
-            ) {
-                when (step) {
-                    GeneratorStep.INGREDIENTS -> GeneratorIngredientsScreen(
-                        state = ingredients,
-                        taxonomy = taxonomy,
-                        onQueryChange = { ingredients = ingredients.typeQuery(it) },
-                        onAddFree = { ingredients = ingredients.addFree() },
-                        onToggleTaxonomy = { ingredients = ingredients.toggleTaxonomy(it) },
-                        onRemove = { ingredients = ingredients.remove(it) },
-                    )
-
-                    GeneratorStep.SETTINGS -> GeneratorSettingsScreen(
-                        state = settings,
-                        taxonomy = taxonomy,
-                        onServingsChange = { settings = settings.setServings(it, taxonomy.servings) },
-                        onMealTypeSelect = { settings = settings.selectMealType(it) },
-                        onTimeBucketSelect = { settings = settings.selectTimeBucket(it) },
-                        onDifficultySelect = { settings = settings.selectDifficulty(it) },
-                        onToggleRestriction = { settings = settings.toggleHardRestriction(it) },
-                        onClearRestrictions = { settings = settings.clearHardRestrictions() },
-                        onNotesChange = { settings = settings.typeNotes(it) },
-                        onEditProfile = onEditProfile,
-                    )
+                    }
                 }
             }
         }

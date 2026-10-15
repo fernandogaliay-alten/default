@@ -89,6 +89,11 @@ components:
     activeColor: "{colors.primary}"
     inactiveColor: "#9A8C7F"
     height: 80dp
+motion:
+  duration: 240ms
+  slide: 24px
+  easing: standard
+  enterOnTop: true
 ---
 
 # Design Direction
@@ -340,6 +345,38 @@ nada lo es.
   borde** (sin padding lateral de 16dp) desde la revisión de diseño del 2026-10-14
   (`detail-hero-full-bleed`) y, en esa misma fecha, el hero **dejó de redondear** su borde inferior para
   encajar a ras con la tira (`detail-hero-square-bottom`).
+
+## Motion
+
+Sazon usa **un único lenguaje de movimiento**, sobrio y coherente (`screen-transitions`, 2026-10-15).
+Cada cambio de vista es un **fundido con un deslizamiento corto** de **24 dp** durante **240 ms** con
+`FastOutSlowInEasing` (el `easing` `standard` del frontmatter): ni cortes secos ni adornos. Los cuatro
+valores del bloque `motion:` del frontmatter (`duration`, `slide`, `easing`, `enterOnTop`) son la fuente
+de verdad y **todos** los tokens viven en `com.sazon.app.ui.theme.SazonMotion`; la capa Compose los aplica
+por la única primitiva `com.sazon.app.ui.motion.MotionContent`, y el selector puro
+`com.sazon.app.ui.motion.MotionPolicy` decide la dirección. No hay duraciones ni desplazamientos
+literales fuera de `SazonMotion` (la única excepción documentada y preexistente es el **crossfade de la
+imagen de plato** de 250 ms, `DishImageArtworkPolicy.CROSSFADE_MILLIS`).
+
+- **Regla de dirección**: adelante entra **desde la derecha** (o **desde abajo** en vertical) y la capa
+  saliente se va al lado opuesto; atrás entra **desde el lado opuesto**. Sin cambio de destino no hay
+  desplazamiento (solo fundido).
+- **Regla de capas**: la capa **entrante se pinta encima** de la saliente (`enterOnTop: true`).
+- **Dónde aplica (los cuatro frentes)**: (1) navegación principal —cambio de pestaña (Inicio · Favoritos
+  · Perfil) y páginas empujadas (Generador, Búsqueda con IA)—; (2) **overlays** —entrada/salida del
+  Detalle de receta y del Modo cocina, **desde abajo**—; (3) **pasos** del onboarding y del Generador
+  (horizontal, según la dirección del índice); y (4) **aparición de contenido** —listas, resultados y
+  tarjetas de Resultados, Favoritos y los bloques de la Home—, con fundido y subida de 24 dp.
+- **Qué no se anima**: las pestañas Ingredientes/Pasos/Notas del Detalle y las hojas del Perfil
+  (`ModalBottomSheet`, que ya anima Material 3), el paso Onboarding → Home de `AppGate`, el citado
+  crossfade de imagen de 250 ms, el spinner del Generador y el pulso del temporizador del Modo cocina.
+- **Accesibilidad**: se respeta la **escala de animaciones del sistema** (Compose acorta las
+  transiciones a un corte cuando el usuario pide "quitar animaciones"); no se añade ningún ajuste propio.
+- **Excepción de capturas (desviación documentada, feature `screen-transitions`)**: **no** se crea
+  `docs/design/concepts/screen-transitions/`. El movimiento **no es capturable** en un `.png` estático,
+  así que la dirección visual aplicable es esta sección `Motion` más su bloque `motion:` del frontmatter;
+  el acabado se revisa en el emulador tras el merge (en claro y oscuro, sin corte, sin parpadeo y sin
+  salto de layout) y un defecto se corrige con una **feature correctiva**.
 
 ## Components
 

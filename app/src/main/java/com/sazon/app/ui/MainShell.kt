@@ -56,6 +56,9 @@ import com.sazon.app.ui.generator.GeneratorFlow
 import com.sazon.app.ui.home.HomeRecipes
 import com.sazon.app.ui.home.HomeScreen
 import com.sazon.app.ui.home.HomeSuggestions
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
+import com.sazon.app.ui.motion.MotionPolicy
 import com.sazon.app.ui.navigation.MainNavigationState
 import com.sazon.app.ui.navigation.MainTab
 import com.sazon.app.ui.navigation.PushedScreen
@@ -161,148 +164,182 @@ fun MainShell(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        when (navigation.pushed) {
-            null -> Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                bottomBar = {
-                    MainBottomBar(
-                        selected = navigation.tab,
-                        onSelect = { tab -> navigation = navigation.selectTab(tab) },
-                    )
-                },
-                floatingActionButton = {
-                    ExtendedFloatingActionButton(
-                        onClick = { navigation = navigation.push(PushedScreen.GENERATOR) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+        // Destino de nivel superior (pestanas vs pagina empujada): eje horizontal con la direccion de
+        // `MotionPolicy.pageChange`; la pestana se conserva al empujar y sacar (mismo `navigation`).
+        MotionContent(
+            targetState = navigation.pushed,
+            axis = MotionAxis.HORIZONTAL,
+            direction = MotionPolicy::pageChange,
+            modifier = Modifier.fillMaxSize(),
+        ) { pushed ->
+            when (pushed) {
+                null -> Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    bottomBar = {
+                        MainBottomBar(
+                            selected = navigation.tab,
+                            onSelect = { tab -> navigation = navigation.selectTab(tab) },
+                        )
+                    },
+                    floatingActionButton = {
+                        ExtendedFloatingActionButton(
+                            onClick = { navigation = navigation.push(PushedScreen.GENERATOR) },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ) {
+                            Text(text = "＋ Crear receta")
+                        }
+                    },
+                ) { padding ->
+                    Box(
+                        modifier = Modifier
+                            .padding(padding)
+                            .fillMaxSize(),
                     ) {
-                        Text(text = "＋ Crear receta")
-                    }
-                },
-            ) { padding ->
-                Box(modifier = Modifier.padding(padding)) {
-                    when (navigation.tab) {
-                        MainTab.HOME -> HomeScreen(
-                            profile = profile,
-                            taxonomy = taxonomy,
-                            suggestions = suggestions,
-                            recipes = HomeRecipes(
-                                saved = favorites.map { it.recipe },
-                            ),
-                            isOnline = isOnline,
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { searchQuery = it },
-                            onSearch = { navigation = navigation.push(PushedScreen.SEARCH) },
-                            onOpenGenerator = {
-                                navigation = navigation.push(PushedScreen.GENERATOR)
-                            },
-                            onOpenRecipe = { detailRecipe = it },
-                            onOpenFavorites = {
-                                navigation = navigation.selectTab(MainTab.FAVORITES)
-                            },
-                            imageBackground = imageBackground,
-                        )
+                        // Cambio de pestana: eje horizontal con la direccion de `MotionPolicy.tabChange`.
+                        MotionContent(
+                            targetState = navigation.tab,
+                            axis = MotionAxis.HORIZONTAL,
+                            direction = MotionPolicy::tabChange,
+                            modifier = Modifier.fillMaxSize(),
+                        ) { tab ->
+                            when (tab) {
+                                MainTab.HOME -> HomeScreen(
+                                    profile = profile,
+                                    taxonomy = taxonomy,
+                                    suggestions = suggestions,
+                                    recipes = HomeRecipes(
+                                        saved = favorites.map { it.recipe },
+                                    ),
+                                    isOnline = isOnline,
+                                    searchQuery = searchQuery,
+                                    onSearchQueryChange = { searchQuery = it },
+                                    onSearch = { navigation = navigation.push(PushedScreen.SEARCH) },
+                                    onOpenGenerator = {
+                                        navigation = navigation.push(PushedScreen.GENERATOR)
+                                    },
+                                    onOpenRecipe = { detailRecipe = it },
+                                    onOpenFavorites = {
+                                        navigation = navigation.selectTab(MainTab.FAVORITES)
+                                    },
+                                    imageBackground = imageBackground,
+                                )
 
-                        MainTab.FAVORITES -> FavoritesScreen(
-                            favorites = favorites,
-                            taxonomy = taxonomy,
-                            onOpenRecipe = { detailRecipe = it },
-                            onToggleFavorite = { recipe ->
-                                scope.launch { favoriteService.toggle(recipe) }
-                            },
-                            onExplore = { navigation = navigation.selectTab(MainTab.HOME) },
-                            imageBackground = imageBackground,
-                        )
+                                MainTab.FAVORITES -> FavoritesScreen(
+                                    favorites = favorites,
+                                    taxonomy = taxonomy,
+                                    onOpenRecipe = { detailRecipe = it },
+                                    onToggleFavorite = { recipe ->
+                                        scope.launch { favoriteService.toggle(recipe) }
+                                    },
+                                    onExplore = { navigation = navigation.selectTab(MainTab.HOME) },
+                                    imageBackground = imageBackground,
+                                )
 
-                        MainTab.PROFILE -> ProfileScreen(
-                            profile = profile,
-                            taxonomy = taxonomy,
-                            onSaveProfile = onSaveProfile,
-                            suggestionsGeneratedAt = batch?.generatedAt,
-                            isRefreshingSuggestions = refreshingSuggestions,
-                            onRefreshSuggestions = {
-                                if (!refreshingSuggestions) {
-                                    refreshingSuggestions = true
-                                    scope.launch {
-                                        try {
-                                            suggestionBatchService.ensureBatch(
-                                                profile.preferences,
-                                                force = true,
-                                            )
-                                        } finally {
-                                            refreshingSuggestions = false
+                                MainTab.PROFILE -> ProfileScreen(
+                                    profile = profile,
+                                    taxonomy = taxonomy,
+                                    onSaveProfile = onSaveProfile,
+                                    suggestionsGeneratedAt = batch?.generatedAt,
+                                    isRefreshingSuggestions = refreshingSuggestions,
+                                    onRefreshSuggestions = {
+                                        if (!refreshingSuggestions) {
+                                            refreshingSuggestions = true
+                                            scope.launch {
+                                                try {
+                                                    suggestionBatchService.ensureBatch(
+                                                        profile.preferences,
+                                                        force = true,
+                                                    )
+                                                } finally {
+                                                    refreshingSuggestions = false
+                                                }
+                                            }
                                         }
-                                    }
-                                }
-                            },
-                            recipesGeneratedCount = recipesGeneratedCount,
-                            favoritesCount = favorites.size,
-                            imageGeneration = imageGeneration,
-                            onImageGenerationChange = { dishImageSettings.setEnabled(it) },
-                        )
+                                    },
+                                    recipesGeneratedCount = recipesGeneratedCount,
+                                    favoritesCount = favorites.size,
+                                    imageGeneration = imageGeneration,
+                                    onImageGenerationChange = { dishImageSettings.setEnabled(it) },
+                                )
+                            }
+                        }
                     }
                 }
-            }
 
-            PushedScreen.GENERATOR -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing),
-            ) {
-                GeneratorFlow(
-                    taxonomy = taxonomy,
-                    preferences = profile.preferences,
-                    generationService = generationService,
-                    seedRecipes = seedRecipes,
-                    onClose = { navigation = navigation.pop() },
-                    onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
-                    onOpenRecipe = { detailRecipe = it },
-                    imageBackground = imageBackground,
-                )
-            }
+                PushedScreen.GENERATOR -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing),
+                ) {
+                    GeneratorFlow(
+                        taxonomy = taxonomy,
+                        preferences = profile.preferences,
+                        generationService = generationService,
+                        seedRecipes = seedRecipes,
+                        onClose = { navigation = navigation.pop() },
+                        onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
+                        onOpenRecipe = { detailRecipe = it },
+                        imageBackground = imageBackground,
+                    )
+                }
 
-            PushedScreen.SEARCH -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.safeDrawing),
-            ) {
-                AiSearchFlow(
-                    query = searchQuery,
-                    preferences = profile.preferences,
-                    taxonomy = taxonomy,
-                    searchService = aiSearchService,
-                    onBack = { navigation = navigation.pop() },
-                    onOpenRecipe = { detailRecipe = it },
-                    onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
-                    onCreateRecipe = { navigation = navigation.push(PushedScreen.GENERATOR) },
-                    imageBackground = imageBackground,
-                )
+                PushedScreen.SEARCH -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing),
+                ) {
+                    AiSearchFlow(
+                        query = searchQuery,
+                        preferences = profile.preferences,
+                        taxonomy = taxonomy,
+                        searchService = aiSearchService,
+                        onBack = { navigation = navigation.pop() },
+                        onOpenRecipe = { detailRecipe = it },
+                        onEditProfile = { navigation = navigation.pop().selectTab(MainTab.PROFILE) },
+                        onCreateRecipe = { navigation = navigation.push(PushedScreen.GENERATOR) },
+                        imageBackground = imageBackground,
+                    )
+                }
             }
         }
 
         // El Detalle se pinta **encima** de la Home o del Generador sin desmontarlos: al cerrarlo se
-        // vuelve al estado intacto (resultado y borrador del Generador incluidos).
-        detailRecipe?.let { recipe ->
-            RecipeDetailScreen(
-                recipe = recipe,
-                taxonomy = taxonomy,
-                isSaved = favorites.any { it.recipe.id == recipe.id },
-                onToggleSave = { scope.launch { favoriteService.toggle(recipe) } },
-                onStartCooking = { cookingRecipe = recipe },
-                onBack = { detailRecipe = null },
-                modifier = Modifier.fillMaxSize(),
-                imageBackground = imageBackground,
-            )
+        // vuelve al estado intacto (resultado y borrador del Generador incluidos). Overlay vertical:
+        // entra desde abajo y sale hacia abajo.
+        MotionContent(
+            targetState = detailRecipe,
+            axis = MotionAxis.VERTICAL,
+            modifier = Modifier.fillMaxSize(),
+        ) { recipe ->
+            recipe?.let { open ->
+                RecipeDetailScreen(
+                    recipe = open,
+                    taxonomy = taxonomy,
+                    isSaved = favorites.any { it.recipe.id == open.id },
+                    onToggleSave = { scope.launch { favoriteService.toggle(open) } },
+                    onStartCooking = { cookingRecipe = open },
+                    onBack = { detailRecipe = null },
+                    modifier = Modifier.fillMaxSize(),
+                    imageBackground = imageBackground,
+                )
+            }
         }
 
         // Modo cocina: se pinta encima del Detalle sin desmontarlo; "Atras"/"Terminar" vuelven al
-        // Detalle con su estado intacto.
-        cookingRecipe?.let { recipe ->
-            CookingModeScreen(
-                recipe = recipe,
-                onClose = { cookingRecipe = null },
-                modifier = Modifier.fillMaxSize(),
-            )
+        // Detalle con su estado intacto. Overlay vertical: entra desde abajo y sale hacia abajo.
+        MotionContent(
+            targetState = cookingRecipe,
+            axis = MotionAxis.VERTICAL,
+            modifier = Modifier.fillMaxSize(),
+        ) { recipe ->
+            recipe?.let { open ->
+                CookingModeScreen(
+                    recipe = open,
+                    onClose = { cookingRecipe = null },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }

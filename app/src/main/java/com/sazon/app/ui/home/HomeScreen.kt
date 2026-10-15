@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.sazon.app.domain.profile.UserProfile
 import com.sazon.app.domain.recipe.Recipe
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.motion.MotionAxis
+import com.sazon.app.ui.motion.MotionContent
 import com.sazon.app.ui.onboarding.AvatarPreview
 import com.sazon.app.ui.search.AiSearchBar
 import com.sazon.app.ui.theme.SazonInversePrimary
@@ -194,17 +196,23 @@ private fun SuggestionsSection(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
-            contentPadding = PaddingValues(vertical = 4.dp),
-        ) {
-            items(suggestions) { recipe ->
-                RecipeCard(
-                    recipe = recipe,
-                    taxonomy = taxonomy,
-                    onClick = { onOpenRecipe(recipe) },
-                    imageBackground = imageBackground,
-                )
+        // El carrusel se revela con fundido y subida de 24 dp cuando cambia la identidad visible.
+        MotionContent(
+            targetState = suggestions,
+            axis = MotionAxis.VERTICAL,
+        ) { visible ->
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(SazonSpacing.md),
+                contentPadding = PaddingValues(vertical = 4.dp),
+            ) {
+                items(visible) { recipe ->
+                    RecipeCard(
+                        recipe = recipe,
+                        taxonomy = taxonomy,
+                        onClick = { onOpenRecipe(recipe) },
+                        imageBackground = imageBackground,
+                    )
+                }
             }
         }
     }
@@ -244,20 +252,26 @@ private fun RecipesSection(
                 }
             }
         }
-        if (recipes.isEmpty) {
-            Text(
-                text = "Cuando guardes una receta aparecerá aquí.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            HomeRecipesGroup(
-                title = "Guardadas",
-                recipes = recipes.latest().saved,
-                taxonomy = taxonomy,
-                onOpenRecipe = onOpenRecipe,
-                imageBackground = imageBackground,
-            )
+        // El cuerpo del bloque (vacio <-> carrusel "Guardadas") entra con fundido y subida de 24 dp.
+        MotionContent(
+            targetState = recipes.latest().saved,
+            axis = MotionAxis.VERTICAL,
+        ) { saved ->
+            if (saved.isEmpty()) {
+                Text(
+                    text = "Cuando guardes una receta aparecerá aquí.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                HomeRecipesGroup(
+                    title = "Guardadas",
+                    recipes = saved,
+                    taxonomy = taxonomy,
+                    onOpenRecipe = onOpenRecipe,
+                    imageBackground = imageBackground,
+                )
+            }
         }
     }
 }
