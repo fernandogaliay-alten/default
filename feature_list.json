@@ -1534,5 +1534,36 @@
       "PENDIENTE manual (la persona, emulador de Android Studio en Windows; el adb de WSL no lo ve y no es automatizable): (1) con opencode.apiKey valida en local.properties y la app reconstruida, generar desde el Generador, buscar con IA y refrescar el Lote -> HTTP 200 del chat en logcat (SazonAi) con recetas que pasan el Validador; (2) vaciar opencode.apiKey y reconstruir -> modo semilla sin fallar (MISSING_KEY citando opencode.apiKey); (3) con el interruptor de imagenes encendido, confirmar que una imagen se sigue generando/ajustando en DevExpert (logcat SazonDishImage con GENERATED/SEED) y que la cuota semanal de DevExpert vuelve a usarse."
     ],
     "notes": "Correctiva de real-ai-provider pedida por la persona (2026-10-14) por agotamiento de la cuota semanal de DevExpert. Decision: solo el CHAT cambia de proveedor; las imagenes de plato siguen en DevExpert (docs/adr/0005-ai-dish-images.md). Verificacion de proveedor hecha a mano (2026-10-14): la clave de OpenCode Go funciona contra https://opencode.ai/zen/go/v1/chat/completions con HTTP 200 y modelo deepseek-v4.1-flash; ese endpoint EXIGE la cabecera x-opencode-session (sin ella devuelve 400 MissingSessionID) y recomienda un User-Agent propio; el endpoint Console (https://opencode.ai/inference/...) responde 402 Insufficient account funds (sin saldo). No hay 'alias' como en DevExpert: el id del modelo es deepseek-v4.1-flash. El wire del chat ya es compatible OpenAI (OpenAiChat), asi que el cambio es de base URL + modelo + cabeceras + clave, no de contrato. OJO (riesgo anotado): la doc de Go declara que esta pensado para agentes de programacion y monitoriza el abuso; la cuota de Go es compartida con el harness (limites por 5h/semana/mes). Actualizar docs/adr/0003-ai-provider.md, docs/adr/0005-ai-dish-images.md, docs/technical-discovery.md y docs/risks-and-open-questions.md."
+  },
+  {
+    "id": "dish-image-settings-persistence",
+    "area": "ui",
+    "title": "El interruptor 'Generar imagenes del plato' recuerda su estado entre reinicios",
+    "user_visible_behavior": "Si el usuario enciende el interruptor de imagenes del plato y cierra la app, al volver a abrirla sigue encendido; si lo apaga, sigue apagado. Ese estado persistido es el que decide si la app pide imagenes a la IA.",
+    "depends_on": ["dish-image-settings-toggle", "dish-image-settings-default-off"],
+    "status": "not_started",
+    "verification": [
+      "Test JVM: guardar el estado encendido y releerlo devuelve encendido; guardar apagado y releerlo devuelve apagado; sin estado guardado se usa el default de la politica (apagado)",
+      "Test JVM: al arrancar con el estado persistido encendido el gate del interruptor pide imagenes (invoca al productor); con el estado persistido apagado no las pide (0 invocaciones)",
+      "Test JVM: el tope de generaciones por sesion no se persiste; arranca en 12 aunque el estado guardado este encendido",
+      "'bash init.sh' sigue en verde y sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva pedida por la persona (2026-10-15): el interruptor no recordaba su estado entre reinicios porque DishImageSettings vive en memoria (sesion = proceso) por Decision 2 de dish-image-settings-toggle; persistirlo quedo explicitamente como otra feature (dish-image-settings-default-off, decision 2). Alcance: persistir SOLO el estado encendido/apagado del interruptor y restaurarlo al arrancar; el contador del tope por sesion sigue reseteandose a 12. NO entra en UserProfile (su campo de preferencias entraria en la Firma de preferencias y forzaria el refresco del Lote). La semantica del gate NO cambia (decision de la persona): apagado = no se llama a la API de imagenes ni se lee cache/semilla; encendido = cadena normal de resolucion."
+  },
+  {
+    "id": "dish-image-call-diagnostics",
+    "area": "integration",
+    "title": "Diagnostico de la llamada de imagen (cuota y estado HTTP visibles en logcat)",
+    "user_visible_behavior": "No cambia la UI. En logcat, cada llamada de generacion/ajuste de imagen deja una linea con el estado HTTP y el motivo clasificado (p. ej. CUOTA en 402/429), de modo que un fallo de cuota de DevExpert deja de ser invisible.",
+    "depends_on": ["dish-image-generator"],
+    "status": "not_started",
+    "verification": [
+      "Test JVM: la llamada de imagen emite un evento de diagnostico con el estado HTTP y el motivo clasificado (CUOTA en 402/429, AUTH en 401/403, SERVER en 5xx, TRANSPORT en fallo de red/timeout, INVALID en cuerpo/codificacion ilegible, OK en 2xx con bytes)",
+      "Test JVM: el generador sigue devolviendo null sin lanzar ante cualquier fallo y el evento no expone la clave ni la cabecera Authorization",
+      "'bash init.sh' sigue en verde y sin dependencias nuevas"
+    ],
+    "evidence": [],
+    "notes": "Correctiva pedida por la persona (2026-10-15) al comprobar que la llamada de imagen de DevExpert falla en silencio: DevExpertDishImageGenerator devuelve null ante cualquier no-2xx (incluida la cuota agotada) sin dejar rastro. Alcance: observar la llamada de imagen (estado HTTP + motivo) con el patron AiCallEvent del chat, consumida por un Log.d (tag SazonDishImage) en MainActivity; NO cambia la cadena de resolucion, la cache, el gate del interruptor ni el tope, y NO convierte un fallo en excepcion ni en UI de error."
   }
 ]
