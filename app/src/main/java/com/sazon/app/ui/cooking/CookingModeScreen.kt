@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -94,6 +96,14 @@ private const val COMPLETED_ALPHA = 0.45f
  * [CookingAlarm] (default [NoOpCookingAlarm]: la pantalla no conoce Android). El instante de fin se
  * mide con `SystemClock.elapsedRealtime()`, que entra **inyectado** en la politica (que nunca lee el
  * reloj). Un [DisposableEffect] cancela el aviso al desmontarse (Atras/Terminar/`onClose`).
+ *
+ * **Permiso de notificaciones en contexto** (feature `cooking-timer-alarm-permission-context`): en ese
+ * **mismo** efecto, [NotificationPermissionPolicy] (pura) decide si hay que mostrar el rationale la
+ * **primera** vez que arranca el temporizador sin permiso; si es asi se registra el intento
+ * (`markAsked`, una vez por sesion) y se muestra [NotificationPermissionRationale], que solo al pulsar
+ * "Continuar" lanza el dialogo del sistema por la costura [NotificationPermissionPrompt] (default
+ * [NoOpNotificationPermissionPrompt]). El rationale **no** gatea nada: el aviso ya esta programado y el
+ * reloj de la UI es un efecto aparte.
  */
 @Composable
 fun CookingModeScreen(
@@ -101,6 +111,7 @@ fun CookingModeScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     alarm: CookingAlarm = NoOpCookingAlarm,
+    notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
 ) {
     var state by rememberSaveable(stateSaver = CookingModeStateSaver) {
         mutableStateOf(CookingModeState.initial(recipe))
@@ -109,18 +120,33 @@ fun CookingModeScreen(
     // estado**, asi que basta con guardar el primero de cada estado (solo se consulta por
     // `isRunning`/igualdad, nunca por `remainingMillis`).
     var previousTimer by remember { mutableStateOf(state.timer) }
+    // Rationale del permiso: la primera vez que arranca el temporizador sin permiso concedido.
+    var showRationale by rememberSaveable { mutableStateOf(false) }
 
     // Transiciones del temporizador -> comando del aviso (programar al Iniciar/Reanudar, cancelar al
-    // Pausar/Reiniciar/cambiar de paso/llegar a cero). Los `tick` devuelven `None`: no se reprograma
-    // cada segundo.
+    // Pausar/Reiniciar/cambiar de paso/llegar a cero) y -> decision del permiso (rationale la primera
+    // vez que se arranca sin permiso). Los `tick` devuelven `None` en ambos casos: no se reprograma ni
+    // se pide permiso cada segundo.
     LaunchedEffect(state.timer.status) {
+        val now = SystemClock.elapsedRealtime()
         alarm.apply(
             CookingAlarmPolicy.onTimerChange(
                 previous = previousTimer,
                 next = state.timer,
-                nowMillis = SystemClock.elapsedRealtime(),
+                nowMillis = now,
             ),
         )
+        val permissionDecision = NotificationPermissionPolicy.onTimerChange(
+            previous = previousTimer,
+            next = state.timer,
+            state = notificationPermission.state(),
+        )
+        if (permissionDecision == NotificationPermissionCommand.AskWithRationale) {
+            // Se registra al MOSTRAR el rationale (no al responder): si el usuario lo deja sin
+            // contestar, la sesion tampoco vuelve a molestar.
+            notificationPermission.markAsked(now)
+            showRationale = true
+        }
         previousTimer = state.timer
     }
 
@@ -189,6 +215,51 @@ fun CookingModeScreen(
             Spacer(modifier = Modifier.height(SazonSpacing.lg))
         }
     }
+
+    // Rationale previo al dialogo del sistema: se muestra la primera vez que arranca el temporizador
+    // sin permiso. "Continuar" lanza el dialogo; "Ahora no" (o descartarlo) no pide nada y no vuelve a
+    // molestar en la sesion. La costura no conoce Android (default no-op).
+    if (showRationale) {
+        NotificationPermissionRationale(
+            onConfirm = {
+                showRationale = false
+                notificationPermission.request()
+            },
+            onDismiss = { showRationale = false },
+        )
+    }
+}
+
+/**
+ * Rationale del permiso de notificaciones: `AlertDialog` de Material 3 con el microcopy de
+ * [NotificationPermissionCopy] y los roles de `SazonTheme` (sin tokens, formas ni colores nuevos;
+ * `DESIGN.md` no cubre dialogos). Una sola accion principal ("Continuar") y el descarte "Ahora no".
+ */
+@Composable
+private fun NotificationPermissionRationale(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = NotificationPermissionCopy.TITLE) },
+        text = { Text(text = NotificationPermissionCopy.MESSAGE) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(text = NotificationPermissionCopy.CONFIRM)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = NotificationPermissionCopy.DISMISS)
+            }
+        },
+    )
 }
 
 /** Cabecera: "Atras" circular flotante, etiqueta de progreso y barra fina terracota. */

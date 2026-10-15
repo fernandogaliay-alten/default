@@ -10,9 +10,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Aviso de fin del temporizador del modo cocina. `POST_NOTIFICATIONS` es obligatorio en
-         Android 13+ para publicar la notificacion: se pide **una vez por proceso** al arrancar la
-         `MainActivity` (peticion no bloqueante) y, si el usuario lo deniega, el Modo cocina y su aviso
-         en pantalla siguen intactos (el sistema descarta la notificacion en silencio). `USE_EXACT_ALARM`
+         Android 13+ para publicar la notificacion y se pide **en contexto**: la primera vez que el
+         usuario arranca el temporizador de un paso y tras un rationale que explica para que sirve (ya
+         **no** al abrir la app; ver `docs/specs/cooking-timer-alarm-permission-context.md`). Si lo
+         deniega, el Modo cocina y su aviso en pantalla siguen intactos (el sistema descarta la
+         notificacion en silencio). `USE_EXACT_ALARM`
          es un permiso **normal** (concedido al instalar) y es la via documentada para apps de
          temporizador: la alarma del aviso es exacta incluso en Doze; el adaptador degrada a alarma
          inexacta si el sistema no la concede. `VIBRATE` (normal, sin dialogo) habilita la vibracion del

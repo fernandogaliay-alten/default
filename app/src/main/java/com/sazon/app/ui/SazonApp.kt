@@ -24,6 +24,8 @@ import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.NoOpCookingAlarm
+import com.sazon.app.ui.cooking.NoOpNotificationPermissionPrompt
+import com.sazon.app.ui.cooking.NotificationPermissionPrompt
 import com.sazon.app.ui.onboarding.OnboardingFlow
 import kotlinx.coroutines.launch
 
@@ -55,6 +57,7 @@ fun SazonApp(
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
     cookingAlarm: CookingAlarm = NoOpCookingAlarm,
+    notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
 ) {
     val state by produceState<ProfileObservation>(
         initialValue = ProfileObservation.Loading,
@@ -96,6 +99,7 @@ fun SazonApp(
                     onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
                     modifier = modifier,
                     cookingAlarm = cookingAlarm,
+                    notificationPermission = notificationPermission,
                 )
             }
         }

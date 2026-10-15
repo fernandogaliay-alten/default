@@ -27,8 +27,10 @@
   `CookingAlarm.apply(command)` (default `NoOpCookingAlarm`) viaja **por parametro** de `MainActivity` a
   `CookingModeScreen`, que gana dos efectos (`LaunchedEffect` por cambio de estado del temporizador con
   `SystemClock.elapsedRealtime()` y `DisposableEffect` de cancelacion) sin tocar el reloj, la UI ni el
-  "¡Listo!" aceptado. `MainActivity` crea el canal al arrancar y pide `POST_NOTIFICATIONS` **una vez por
-  proceso** (`registerForActivityResult`, no bloqueante); el manifiesto declara `POST_NOTIFICATIONS`,
+  "¡Listo!" aceptado. `MainActivity` crea el canal al arrancar y pedia `POST_NOTIFICATIONS` **una vez por
+  proceso** (`registerForActivityResult`, no bloqueante) — comportamiento **sustituido** por la correctiva
+  `cooking-timer-alarm-permission-context` (2026-10-15), que lo pide **en contexto**, la primera vez que
+  arranca el temporizador de un paso y tras un rationale —; el manifiesto declara `POST_NOTIFICATIONS`,
   `USE_EXACT_ALARM` y `VIBRATE` (mas `SCHEDULE_EXACT_ALARM` con `maxSdkVersion="32"`, remedio de lint
   documentado). Gate: `bash init.sh` exit 0, **105 suites / 797 tests / 0 fallos / 0 errores / 0
   saltados** (baseline re-derivada en `HEAD` `e758b43` = 102 ficheros / 764 anotaciones ⇒ delta **+3
@@ -40,6 +42,30 @@
   capturas). Queda la **prueba manual** de la persona en el emulador (aviso con la app en segundo
   plano/movil bloqueado, toque de vuelta al paso, no duplicacion en primer plano y permiso denegado), no
   automatizable desde WSL.
+- Correctiva **`cooking-timer-alarm-permission-context`** implementada y autoverificada (**`passing`**) por
+  el subagente `implementer` y **`accepted`** en la **sesión 136** (validación independiente del subagente
+  `validator`, veredicto `accept`; ver `docs/validations/cooking-timer-alarm-permission-context.md`) en el
+  worktree `cooking-timer-alarm-permission-context` (rama
+  `feature/cooking-timer-alarm-permission-context`; **sin** commit/push/PR de los subagentes; el commit
+  local lo crea el orquestador de `feature-flow` y la publicación queda para `github-flow`). El permiso
+  `POST_NOTIFICATIONS` ya **no** se pide al arrancar: se pide **en contexto**, la primera vez que arranca
+  el temporizador de un paso y **después** de un rationale, con la decisión **pura**
+  `ui.cooking.NotificationPermissionPolicy.onTimerChange` (permiso e instante **inyectados**; arista
+  `!previous.isRunning && next.isRunning` sin permiso y sin intento previo ⇒ `AskWithRationale`; el resto
+  ⇒ `None`), la costura `NotificationPermissionPrompt` (default `NoOpNotificationPermissionPrompt`) por
+  parámetro `MainActivity` → `SazonApp` → `MainShell` → `CookingModeScreen` (rationale como `AlertDialog`
+  de Material 3 con el microcopy de `NotificationPermissionCopy`) y el adaptador
+  `data.cooking.AndroidNotificationPermissionPrompt` (permiso + lanzador de `MainActivity` + memoria de
+  sesión, "no lanza"). Denegar o descartar el rationale deja el Modo cocina, la cuenta atrás y el
+  "¡Listo!" intactos y **no** gatea el temporizador. Gate: `bash init.sh` exit 0, **109 suites / 830 tests
+  / 0 fallos / 0 errores / 0 saltados** (baseline `HEAD b80421a` = 107 suites / 809 tests ⇒ delta **+2
+  suites / +21 tests**: `NotificationPermissionPolicyTest` 14 y
+  `AndroidNotificationPermissionPromptTest` 7; 0 suites modificadas), lint **0 errores, 13 warnings
+  preexistentes, 0 bajo `app/src`**. Reconciliación de texto: spec aceptada de `cooking-timer-alarm`, ADR
+  0007 (enmienda a la decisión 11 + alternativa 9 superada), `docs/technical-discovery.md`,
+  `docs/risks-and-open-questions.md`, comentario del manifiesto, `PROGRESS.md` (sesión 131) y `DESIGN.md`
+  (excepción de capturas). Queda la **prueba manual** de la persona en el emulador (rationale → diálogo,
+  conceder/denegar, no volver a pedir en la sesión), no automatizable desde WSL.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -6286,7 +6312,10 @@
   (`LocalCookingAlarmScheduler`), API con nombres distintos (`CookingAlarmPlan`/`forTimerChange`/`Keep`,
   `schedule`/`cancel`), contenido con titulo de receta y "Paso N de M" en los extras, `NOTIFICATION_ID
   = 1`, base `RTC_WAKEUP` + `System::currentTimeMillis`, peticion del permiso contextual en "Iniciar"
-  y `res/values/colors.xml` con un token nuevo (`sazon_notification_accent`). Todo eso **se alineo con
+  (ese "contextual" describia **el parcial descartado**, no el comportamiento aceptado: entonces la spec
+  y el codigo pedian el permiso **una vez por proceso al arrancar**, y la peticion contextual con
+  rationale se entrega despues en la correctiva `cooking-timer-alarm-permission-context`) y
+  `res/values/colors.xml` con un token nuevo (`sazon_notification_accent`). Todo eso **se alineo con
   la spec** (la spec manda): adaptadores movidos a `data/cooking/`, costura por parametro, API
   `CookingAlarmCommand`/`onTimerChange`/`onExit`/`None` + `CookingAlarm.apply(command)`, contenido
   generico, id `1001`, `ELAPSED_REALTIME_WAKEUP` + `SystemClock.elapsedRealtime()`, permiso en
@@ -6444,3 +6473,116 @@
   limpia de `github-flow`.
 - Siguiente paso: `github-flow execute cooking-timer-alarm-permission-context` (spec → implementación →
   validación), publicar PR y `pr-flow` para revisión + merge; después `cooking-timer-foreground-service`.
+
+### Sesión 136 (implementer, `cooking-timer-alarm-permission-context`)
+
+- Fecha: 2026-10-15
+- Objetivo: implementar **una** feature planificada, `cooking-timer-alarm-permission-context`
+  (`area: ui`, depende de `cooking-timer-alarm`, `accepted`), según su spec
+  `docs/specs/cooking-timer-alarm-permission-context.md` (skill `feature-implementer`), en el worktree
+  `cooking-timer-alarm-permission-context` (rama `feature/cooking-timer-alarm-permission-context`).
+  **Sin** commit, push ni PR (la publicación es del orquestador). WIP = 1.
+- Cambios entregados:
+  - Nuevos (lógica **pura**, `ui.cooking`, 0 imports de `android.*`/`androidx.*`):
+    `NotificationPermission.kt` (`NotificationPermissionState` con `asked(atMillis)`,
+    `NotificationPermissionCommand` `AskWithRationale`/`None`, `NotificationPermissionCopy` y la política
+    pura `NotificationPermissionPolicy.onTimerChange`) y `NotificationPermissionPrompt.kt` (costura +
+    `NoOpNotificationPermissionPrompt`, que declara el permiso concedido).
+  - Nuevo (adaptador): `data/cooking/AndroidNotificationPermissionPrompt.kt` — permiso del sistema con
+    `ContextCompat.checkSelfPermission`, `request()` que delega el lanzador en `runCatching` y memoria de
+    sesión (`markAsked`), "no lanza". Es el **único** fichero Android nuevo.
+  - `MainActivity.kt`: se retira la llamada del arranque, el método
+    `requestNotificationsPermissionOncePerProcess()` y el companion con
+    `@Volatile notificationsPermissionRequested`; se conservan el `registerForActivityResult`
+    (registrado antes de `onCreate`) y `CookingNotifications.ensureChannel`; se construye el adaptador y
+    se pasa a `SazonApp`.
+  - `SazonApp.kt`/`MainShell.kt`: parámetro `notificationPermission: NotificationPermissionPrompt =
+    NoOpNotificationPermissionPrompt` (por parámetro, como `cookingAlarm`) reenviado hasta
+    `CookingModeScreen`.
+  - `CookingModeScreen.kt`: parámetro nuevo, la decisión va en el **mismo** efecto del aviso (con un
+    único `SystemClock.elapsedRealtime()` inyectado), `markAsked` al **mostrar** el rationale y
+    `NotificationPermissionRationale` (Material 3 `AlertDialog`, roles del tema, una sola acción
+    principal, microcopy de `NotificationPermissionCopy`). El reloj, el temporizador, la UI y el
+    "¡Listo!" no cambian.
+  - Tests nuevos: `ui/cooking/NotificationPermissionPolicyTest.kt` (JUnit 4 puro, 14 tests, **la
+    verificación exigida**) y `data/cooking/AndroidNotificationPermissionPromptTest.kt` (Robolectric
+    `@Config(sdk = [33])`, 7 tests).
+- Reconciliación del texto incoherente (sin reescribir evidencia): `docs/specs/cooking-timer-alarm.md`
+  (nota de vigencia + bullet de `POST_NOTIFICATIONS`, §3 del `Technical Approach`, decisión y checklist;
+  los escenarios/plan/casillas quedan como registro histórico), `docs/adr/0007-cooking-timer-alarm.md`
+  (enmienda a la decisión 11 y alternativa 9 marcada superada por el defecto de UX), los dos párrafos de
+  `docs/technical-discovery.md` y las dos menciones de `docs/risks-and-open-questions.md` (más la fila
+  del riesgo, que ahora dice que la petición **no** gatea el temporizador), el comentario de
+  `POST_NOTIFICATIONS` del manifiesto (permisos y receptor intactos), un paréntesis aclaratorio en
+  `PROGRESS.md` (sesión 131: el "contextual" era el parcial descartado) y la nota de excepción de
+  capturas en `DESIGN.md`. `feature_list.json` de `cooking-timer-alarm` **no** se toca.
+- Verificación (evidencia real de esta sesión):
+  - Gate `bash init.sh` **exit 0** (test + lint; `init.sh` sin cambios). Parseo propio de
+    `app/build/test-results/testDebugUnitTest/TEST-*.xml` = **109 suites / 830 tests / 0 fallos / 0
+    errores / 0 saltados**; baseline re-derivada en `HEAD b80421a` (`git grep -c '@Test'` = 107 ficheros /
+    809 anotaciones) ⇒ delta **+2 suites / +21 tests** (`NotificationPermissionPolicyTest` 14,
+    `AndroidNotificationPermissionPromptTest` 7) y **0 suites modificadas** (las seis de `cooking`
+    preexistentes igual: `CookingAlarmPolicyTest` 15, `CookingTimerStateTest` 11, `CookingModeStateTest`
+    10, `CookingModeFormatTest` 8, `CookingNotificationsTest` 11, `AndroidCookingAlarmTest` 7).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"
+    --tests "com.sazon.app.data.cooking.*"` = BUILD SUCCESSFUL con las dos suites nuevas en verde.
+  - Lint: SARIF `app/build/reports/lint-results-debug.sarif` = **13 resultados / 0 errores** (los mismos
+    preexistentes: GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2,
+    OldTargetApi 1) y **0 bajo `app/src`** (ningún warning nuevo; ni el `AlertDialog` ni el lanzador
+    emitieron nada).
+  - Inspecciones: los dos ficheros nuevos de `ui/cooking` con **0 imports** de framework y **sin leer el
+    reloj**; `AndroidNotificationPermissionPrompt.kt` es el único fichero Android nuevo y `AlarmManager`/
+    `PendingIntent`/`NotificationManager` siguen solo en `data/cooking/`; `AlertDialog` solo en
+    `CookingModeScreen.kt`; `MainActivity.kt` con **0** apariciones de
+    `requestNotificationsPermissionOncePerProcess`/`notificationsPermissionRequested`;
+    `CookingAlarm.kt`/`CookingTimerState.kt`/`CookingModeState.kt`/`CookingModeFormat.kt`/
+    `CookingNotifications.kt`/`AndroidCookingAlarm.kt`/`CookingAlarmReceiver.kt`, los permisos y el
+    receptor del manifiesto, `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh` y `scripts/**`
+    **sin diff**; 0 dependencias nuevas; no se crea
+    `docs/design/concepts/cooking-timer-alarm-permission-context/`.
+- Estado: `feature_list.json` con `cooking-timer-alarm-permission-context` en **`passing`** y la evidencia
+  registrada (el rango máximo que puede dejar el implementer); pendiente la **validación independiente**
+  (`feature-validator`) y, después, el commit/push/PR del orquestador.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (abrir la app no muestra
+  nada; al "Iniciar" por primera vez aparece el rationale y, tras "Continuar", el diálogo del sistema;
+  conceder no rompe el aviso; denegar o "Ahora no" deja el Modo cocina, la cuenta atrás y el "¡Listo!"
+  intactos y no vuelve a pedir en la sesión), no automatizable según `AGENTS.md`; el acabado del diálogo
+  en claro/oscuro lo revisa la persona tras el merge y un defecto se corrige con una feature correctiva.
+  Limitación aceptada: con denegación permanente del sistema, el rationale se sigue mostrando una vez por
+  sesión (enderezarlo exige `shouldShowRequestPermissionRationale` o persistir el "ya pedido": otra
+  feature).
+
+### Sesión 136 (validator + orquestador `feature-flow`, `cooking-timer-alarm-permission-context`)
+
+- Fecha: 2026-10-15
+- **Validación independiente (validator, contexto limpio): veredicto `accept`** (registro completo en
+  `docs/validations/cooking-timer-alarm-permission-context.md`). Re-ejecutó `bash init.sh` (**exit 0**, con
+  29/30 tareas `up-to-date`) y, para no fiarse, forzó `bash scripts/gradle.sh testDebugUnitTest
+  --rerun-tasks` (**BUILD SUCCESSFUL 3m54s, 34/34 tareas**) y `bash scripts/gradle.sh lint --rerun-tasks`
+  (**BUILD SUCCESSFUL 3m13s, 30/30 tareas**); parseó por su cuenta los XML frescos (**109 suites / 830
+  tests / 0 fallos / 0 errores / 0 saltados**; `NotificationPermissionPolicyTest` 14 y
+  `AndroidNotificationPermissionPromptTest` 7; las seis suites de `cooking` preexistentes sin cambios),
+  re-derivó la baseline en `HEAD b80421a` (107 ficheros con `@Test` / 809 anotaciones ⇒ +2 suites / +21
+  tests) y el SARIF (**13 resultados / 0 errores, 0 bajo `app/src`**). Confirmó con greps propios la
+  pureza de la política, el punto de petición único, el rationale **después** de `alarm.apply(...)`, el
+  camino de denegación sin tocar el temporizador/cuenta atrás/"¡Listo!" ni gatear el reloj, la
+  reconciliación del texto (`grep "una vez por proceso"` deja solo ocurrencias históricas marcadas), la
+  disciplina de alcance y que la evidencia de `cooking-timer-alarm` en `feature_list.json` es byte-idéntica
+  a `HEAD`. Sin hallazgos Critical/High/Medium; **2 Low informativos no bloqueantes** (la memoria de sesión
+  del adaptador vive en la instancia de `Activity`, no a nivel de proceso —es el diseño que fija la spec—;
+  y `docs/validations/cooking-timer-alarm.md:33` conserva un registro fechado con "una vez por proceso",
+  que la spec preserva).
+- **Persistencia de la aceptación (orquestador):** `feature_list.json` de **`passing`** a **`accepted`** con
+  la evidencia del validador; estado y sesión en este `PROGRESS.md`; registro en
+  `docs/validations/cooking-timer-alarm-permission-context.md`. Commit local `feat: complete
+  cooking-timer-alarm-permission-context` en la rama `feature/cooking-timer-alarm-permission-context`
+  (**sin** push ni PR; la publicación es de `github-flow`).
+- Estados de features: `cooking-timer-alarm-permission-context` queda **`accepted`**;
+  `cooking-timer-foreground-service` sigue `not_started` y es la siguiente en orden (depende de esta, ya
+  satisfecha). WIP = 0.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (abrir la app no muestra
+  nada; primer "Iniciar" muestra rationale → diálogo; conceder mantiene el aviso; denegar/"Ahora no" deja
+  el Modo cocina, la cuenta atrás y el "¡Listo!" intactos y no re-pregunta en la sesión; reabrir no muestra
+  diálogo al arrancar; ya concedido, no hay rationale), no automatizable según `AGENTS.md`; el acabado del
+  diálogo en claro/oscuro se revisa tras el merge y un defecto se corrige con una feature correctiva. Los
+  dos hallazgos Low quedan como follow-up opcional.

@@ -52,6 +52,8 @@ import com.sazon.app.domain.taxonomy.Taxonomy
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingModeScreen
 import com.sazon.app.ui.cooking.NoOpCookingAlarm
+import com.sazon.app.ui.cooking.NoOpNotificationPermissionPrompt
+import com.sazon.app.ui.cooking.NotificationPermissionPrompt
 import com.sazon.app.ui.detail.RecipeDetailScreen
 import com.sazon.app.ui.favorites.FavoritesScreen
 import com.sazon.app.ui.generator.GeneratorFlow
@@ -120,6 +122,7 @@ fun MainShell(
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
     cookingAlarm: CookingAlarm = NoOpCookingAlarm,
+    notificationPermission: NotificationPermissionPrompt = NoOpNotificationPermissionPrompt,
 ) {
     var navigation by rememberSaveable(stateSaver = MainNavigationStateSaver) {
         mutableStateOf(MainNavigationState())
@@ -342,6 +345,7 @@ fun MainShell(
                     onClose = { cookingRecipe = null },
                     modifier = Modifier.fillMaxSize(),
                     alarm = cookingAlarm,
+                    notificationPermission = notificationPermission,
                 )
             }
         }

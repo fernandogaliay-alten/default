@@ -295,6 +295,8 @@ exactamente igual (lo pinta `cooking-mode`), y el acabado de la notificación (t
 aspecto en la pantalla de bloqueo) lo revisa la persona en el emulador tras el merge; un defecto se corrige
 con una **feature correctiva**.
 
+**Excepción de capturas (desviación documentada, feature `cooking-timer-alarm-permission-context`, 2026-10-15):** la correctiva **no** genera capturas nuevas ni carpeta `docs/design/concepts/cooking-timer-alarm-permission-context/`. **Un rationale de permiso no es una pantalla diseñada**: es un `AlertDialog` de Material 3 dentro del Modo cocina ya aceptado, con los **roles de `SazonTheme`** (superficie y texto) y las reglas vigentes de este documento (una **sola** acción principal, "Continuar"; "Ahora no" como descarte sin énfasis), **sin** colores, tipografía ni formas nuevas. La microcopy vive en la constante pura `NotificationPermissionCopy` (`ui.cooking`), no en recursos. No cubre ningún estado del Modo cocina que no estuviera ya aceptado (el temporizador, la cuenta atrás y el "¡Listo!" no cambian); el acabado del diálogo en claro y oscuro lo revisa la persona en el emulador tras el merge y un defecto se corrige con una **feature correctiva**. Misma clase de excepción que `cooking-timer-alarm`, #77/#85/#86/#91 y `app-launcher-icon`.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 

@@ -1,7 +1,5 @@
 package com.sazon.app
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -9,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.core.content.ContextCompat
 import com.sazon.app.data.AssetDishImageSeedSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
@@ -22,6 +19,7 @@ import com.sazon.app.data.ai.DevExpertRecipeGenerator
 import com.sazon.app.data.ai.image.AssetDishImageStyleReference
 import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.cooking.AndroidCookingAlarm
+import com.sazon.app.data.cooking.AndroidNotificationPermissionPrompt
 import com.sazon.app.data.cooking.CookingNotifications
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
@@ -60,8 +58,11 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Solicitud de `POST_NOTIFICATIONS` (registrada **antes** de `onCreate`, como exige
-     * `registerForActivityResult`). El resultado **no** gatea nada: sin permiso el Modo cocina, la
-     * cuenta atras y el "¡Listo!" en pantalla siguen intactos y simplemente no hay aviso de sistema.
+     * `registerForActivityResult`). Ya **no** se lanza al arrancar: la usa el adaptador
+     * [AndroidNotificationPermissionPrompt] en contexto, la primera vez que el usuario arranca el
+     * temporizador de un paso del Modo cocina y tras el rationale. El resultado **no** gatea nada: sin
+     * permiso el Modo cocina, la cuenta atras y el "¡Listo!" en pantalla siguen intactos y simplemente
+     * no hay aviso de sistema.
      */
     private val requestNotificationsPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
@@ -223,10 +224,14 @@ class MainActivity : ComponentActivity() {
             }
 
         // Aviso de fin del temporizador del modo cocina: se crea el canal propio desde el arranque (asi
-        // aparece en los ajustes del sistema) y se pide `POST_NOTIFICATIONS` **una vez por proceso**, de
-        // forma no bloqueante (nunca gatea una pantalla). Denegado, el aviso simplemente no aparece.
+        // aparece en los ajustes del sistema). `POST_NOTIFICATIONS` **no** se pide al arrancar: lo pide
+        // `AndroidNotificationPermissionPrompt` en contexto, la primera vez que arranca el temporizador
+        // de un paso y tras el rationale (feature `cooking-timer-alarm-permission-context`).
         CookingNotifications.ensureChannel(applicationContext)
-        requestNotificationsPermissionOncePerProcess()
+        val notificationPermission = AndroidNotificationPermissionPrompt(
+            applicationContext,
+            requestNotificationsPermission::launch,
+        )
 
         setContent {
             SazonTheme {
@@ -253,32 +258,10 @@ class MainActivity : ComponentActivity() {
                         dishImageSettings = dishImageSettings,
                         seedRecipes = seedRecipes,
                         cookingAlarm = AndroidCookingAlarm(applicationContext),
+                        notificationPermission = notificationPermission,
                     )
                 }
             }
         }
-    }
-
-    /**
-     * Pide `POST_NOTIFICATIONS` (Android 13+, obligatorio con `minSdk = 33`) **una vez por proceso**:
-     * el flag vive en el companion para no repetir el dialogo al recrear la Activity. Si el permiso ya
-     * esta concedido no se pide nada. La solicitud es **no bloqueante**: no espera respuesta ni cambia
-     * el flujo de la app.
-     */
-    private fun requestNotificationsPermissionOncePerProcess() {
-        if (notificationsPermissionRequested) return
-        notificationsPermissionRequested = true
-        val granted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) requestNotificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    private companion object {
-
-        /** Bandera de proceso: la solicitud de `POST_NOTIFICATIONS` se hace como maximo una vez. */
-        @Volatile
-        var notificationsPermissionRequested = false
     }
 }
