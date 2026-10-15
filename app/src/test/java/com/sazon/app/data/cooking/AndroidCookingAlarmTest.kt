@@ -1,10 +1,12 @@
 package com.sazon.app.data.cooking
 
 import android.app.AlarmManager
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.ui.cooking.CookingAlarmCommand
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,6 +31,8 @@ import org.robolectric.shadows.ShadowAlarmManager
 class AndroidCookingAlarmTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    private val application: Application get() = ApplicationProvider.getApplicationContext()
 
     private val alarmManager: AlarmManager
         get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -123,5 +127,52 @@ class AndroidCookingAlarmTest {
 
         assertEquals(1, shadowAlarms.scheduledAlarms.size)
         assertEquals(2_300_000L, shadowAlarms.scheduledAlarms.first().triggerAtMs)
+    }
+
+    // --- Pata del **servicio en primer plano** de la cuenta atras (feature
+    // `cooking-timer-foreground-service`, escenarios 1 y 4): el mismo comando que deja la alarma en su
+    // sitio arranca y para el servicio. Casos **anadidos**: los del aviso de fin no se alteran. ---
+
+    @Test
+    fun programar_arranca_tambien_el_servicio_de_la_cuenta_atras_con_el_instante_de_fin() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val alarm = AndroidCookingAlarm(context)
+        shadowOf(application).clearStartedServices()
+
+        alarm.apply(CookingAlarmCommand.Schedule(1_600_000L))
+
+        val arrancado = shadowOf(application).nextStartedService
+        assertEquals(CookingTimerService::class.java.name, arrancado.component?.className)
+        assertEquals(
+            "El servicio recibe el mismo instante de fin que la alarma",
+            1_600_000L,
+            arrancado.getLongExtra(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS, 0L),
+        )
+        assertEquals(
+            "Unico dato que viaja al servicio",
+            setOf(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS),
+            arrancado.extras?.keySet().orEmpty(),
+        )
+    }
+
+    @Test
+    fun cancelar_para_el_servicio_de_la_cuenta_atras() {
+        val alarm = AndroidCookingAlarm(context)
+        alarm.apply(CookingAlarmCommand.Schedule(1_600_000L))
+
+        alarm.apply(CookingAlarmCommand.Cancel)
+
+        val parado = shadowOf(application).nextStoppedService
+        assertEquals(CookingTimerService::class.java.name, parado.component?.className)
+    }
+
+    @Test
+    fun none_no_arranca_ni_para_el_servicio() {
+        val alarm = AndroidCookingAlarm(context)
+        shadowOf(application).clearStartedServices()
+
+        alarm.apply(CookingAlarmCommand.None)
+
+        assertNull("Los ticks no tocan el servicio", shadowOf(application).peekNextStartedService())
     }
 }

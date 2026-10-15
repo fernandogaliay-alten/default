@@ -38,14 +38,21 @@ Explícitamente **fuera del MVP**. Son evolutivos (backlog post-MVP), no se desc
   pantalla). Y **ampliación acotada del aviso (2026-10-15)**: con `cooking-timer-alarm` el aviso de fin
   del temporizador deja de ser solo visual y pasa a ser una **notificación de sistema** en un canal propio
   con sonido y vibración (alarma exacta + receptor), para que suene con la app en segundo plano o el móvil
-  bloqueado. El Non-Goal "Notificaciones y recordatorios" sigue vigente **para el resto**: no hay
+  bloqueado. **Ampliación acotada de la cuenta atrás (2026-10-15)**: con
+  `cooking-timer-foreground-service` el temporizador además **se ve fuera de la app** —notificación
+  persistente de un servicio en primer plano con la cuenta atrás que pinta el sistema— y el toque de
+  cualquiera de las dos notificaciones **vuelve al paso exacto**, también con el proceso muerto (sesión
+  persistida). El Non-Goal "Notificaciones y recordatorios" sigue vigente **para el resto**: no hay
   recordatorios programados por el usuario ni notificaciones de sugerencias/recetas.
 - Compartir / exportar recetas.
 - Multi-idioma.
-- ~~Notificaciones y recordatorios.~~ **Enmendado de forma acotada (2026-10-15)**: entra **solo** el aviso
-  de fin del temporizador del Modo cocina (`cooking-timer-alarm`); los recordatorios programados por el
-  usuario y las notificaciones de sugerencias/recetas **siguen fuera** del MVP (ver
-  `docs/adr/0007-cooking-timer-alarm.md`).
+- ~~Notificaciones y recordatorios.~~ **Enmendado de forma acotada (2026-10-15)**: entra **solo** el
+  aviso de fin del temporizador del Modo cocina (`cooking-timer-alarm`) y, en la misma clase de
+  enmienda, la **cuenta atrás visible** de ese temporizador en una notificación **persistente** de un
+  servicio en primer plano más la **reanudación del paso** desde esa notificación
+  (`cooking-timer-foreground-service`); los recordatorios programados por el usuario y las
+  notificaciones de sugerencias/recetas **siguen fuera** del MVP (ver
+  `docs/adr/0007-cooking-timer-alarm.md` y `docs/adr/0008-cooking-timer-foreground-service.md`).
 - Editor de recetas propias (crear o editar recetas a mano).
 - **Ampliación del MVP revocada (issue #83, 2026-10-13; revertida por ADR 0006).** La ampliación de #83
   metía las fotos de plato en el MVP: la feature `recipe-photos` añadió **31 fotos** (12 recetas semilla

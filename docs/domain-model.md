@@ -136,6 +136,16 @@ Las recetas `ai` no favoritas pueden descartarse al refrescar el lote; las `seed
 `inexistente` → `solicitado a IA` → `fresh` → `stale` (firma cambiada o caducidad) → `refresco`.
 Si la IA no está disponible, el lote cae a **solo semilla** y Home sigue siendo usable.
 
+### Sesión del Modo cocina (persistida)
+`En marcha` | `Pausado` | `Terminado` del temporizador, con la **receta**, el **paso actual**, el
+**marcado** de pasos y el **instante de fin** de la cuenta atrás. **No es una entidad de dominio**: es
+una foto de la interfaz del Modo cocina que se persiste en **una** fila (`cooking_session.db`, 2026-10-15,
+`docs/adr/0008-cooking-timer-foreground-service.md`) para poder **volver al paso exacto** desde la
+notificación del temporizador, incluso con el proceso muerto. `En marcha` y `Pausado` son **reanudables**
+(el toque abre el Modo cocina en ese paso, con la cuenta atrás recalculada desde el instante de fin);
+`Terminado` e `Inactivo` **no** lo son por sí solos. Se borra al salir del modo ("Atrás"/"Terminar");
+una rotación o la muerte de la actividad **no** la borran, y un arranque normal **no** la usa.
+
 ### Disponibilidad de IA
 `ai_available` | `ai_unavailable` (sin clave, sin red, error del proveedor o cuota). No es un estado
 de error de la app: es un modo degradado esperado.

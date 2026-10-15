@@ -44,6 +44,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Resumen de actividad | Contador `recipesGeneratedCount` en Room + nº de Favoritos observados | El contador se persiste; el conteo de favoritos se deriva |
 | Favoritos | Room | Disponibilidad offline garantizada |
 | Lote de sugerencias y recetas `ai` | Room, base propia `suggestion_batch.db` (`data.suggestions`); política y servicio puros en `domain.suggestions` | Evita llamadas repetidas a la IA y da soporte offline |
+| **Sesión del Modo cocina** (para volver al paso desde la notificación) | Room, base propia `cooking_session.db` (**una** fila: `recipeJson` con `RecipeJson` + `stepIndex` + `completedOrders` + estado/millis del temporizador + instante de fin), detrás de la costura pura `ui.cooking.CookingSessionStore` y del adaptador `data.cooking.RoomCookingSessionStore` | Es **una** foto de la sesión (la `Recipe` completa no cabe razonablemente en preferencias, `suggestion_batch` es el patrón) y se lee **solo** al tocar una notificación del temporizador; el borrado es explícito ("Atrás"/"Terminar") y **nunca** al desmontarse la composición. Ver `docs/adr/0008-cooking-timer-foreground-service.md` |
 | Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` es el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retiró** con `retire-recipe-photos` (ADR 0006); solo queda `img/recipes/default.jpg` como ancla de estilo | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Icono de lanzador y splash de arranque | **Vectores XML** en `app/src/main/res/` (**ningún** asset binario): icono adaptativo `mipmap-anydpi/ic_launcher{,_round}.xml` con **tres capas** (`drawable/ic_launcher_background`, `ic_launcher_foreground` y la monocroma propia `ic_launcher_monochrome`), colores por **token** (`sazon_launcher_background`/`sazon_launcher_motif`/`sazon_launcher_accent`) con la tesela cálida en claro y `darkBackground` en oscuro (`values-night/`), y marca del **splash** `drawable/ic_splash_mark` (`values-v31/` + `values-night-v31/`) | El icono lo dibuja el launcher (cuadrado, redondo y tematizado, en claro y oscuro) y el splash de Android 12+ lo pinta el sistema desde el tema; **sin dependencias** (`androidx.core.splashscreen` no hace falta con `minSdk 33`) y sin rasters por densidad (`minSdk 33` resuelve siempre `mipmap-anydpi/`). El icono de splash **no se dibuja a canvas completo**: en API 31+ `SplashscreenIconDrawableFactory` lo envuelve en `AdaptiveForegroundDrawable` (1.5× los bounds) y solo se ve el **2/3 central** del vector (misma regla que `MASK_FACTOR = 2/3` de `androidx.core.splashscreen`), así que cualquier marca nueva del splash debe caber con su trazo en ese círculo (radio ≤ 36 de los 108 dp respecto al centro); `ic_splash_mark` lo consigue con un `<group>` de escala 0.78 (radio 44 → ~34.3). Las dos carpetas del splash son la puerta de plataforma declarada (API 31+): su qualifier `-v31` es redundante con `minSdk 33` y su aviso de lint **de carpeta** se ignora por ruta en `app/lint.xml` |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
@@ -389,8 +390,15 @@ sus cuatro estados, aviso **en pantalla** "¡Listo!" en miel/oliva — nunca `er
 como hecho" y barra inferior "Anterior" + "Siguiente"→"Terminar", con `CookingModeStateSaver` y un
 `LaunchedEffect` que solo alimenta `tick(1000)`). Se hospeda como **overlay** en `MainShell`
 (`var cookingRecipe by remember`) **encima** del Detalle y cablea la costura `onStartCooking` que
-`recipe-detail-screen` dejo no-op. Sin persistencia del modo (Non-Goal del MVP): si el proceso muere, la
-app abre en su estado de arranque. Ver `docs/specs/cooking-mode.md`.
+`recipe-detail-screen` dejo no-op. Desde `cooking-timer-foreground-service` (2026-10-15) la **sesion del
+modo se persiste** (una fila en `cooking_session.db` detras de `ui.cooking.CookingSessionStore`, ver
+`docs/adr/0008-cooking-timer-foreground-service.md`): `CookingSession` es la foto **pura** (receta, paso,
+marcado, temporizador e **instante de fin**) con la que la pantalla sabe reanudarse en el **paso exacto**
+tras tocar una notificacion del temporizador, incluso si el proceso habia muerto. Se guarda por **cambio
+significativo** (no por `tick`), se **borra** al salir ("Atras"/"Terminar") y **no** se borra al
+desmontarse la composicion (una rotacion no puede perderla); un **arranque normal no abre el Modo cocina**
+porque la reanudacion es **explicita** (`EXTRA_RESUME_COOKING`). Ver `docs/specs/cooking-mode.md` y
+`docs/specs/cooking-timer-foreground-service.md`.
 
 El **aviso de sistema** de fin del temporizador (feature `cooking-timer-alarm`, 2026-10-15) es la
 **unica** integracion de alarmas y notificaciones del repo y enmienda de forma acotada el Non-Goal
@@ -413,8 +421,9 @@ propio `cooking_timer` (importancia alta, sonido y vibracion, visibilidad public
 (`"¡Listo! El paso ha terminado"` / `"Toca para volver al modo cocina."`): la funcion **no recibe** la
 receta y el `PendingIntent` de la alarma **no lleva extras**, asi que los datos de la receta no cruzan al
 sistema. El toque abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP` (reutiliza
-la actividad viva); si el sistema mato el proceso, la app abre en su estado de arranque (limitacion
-aceptada: el modo no se persiste). `MainActivity` crea el canal al arrancar, pero el permiso
+la actividad viva); si el sistema mato el proceso, la app abre en su estado de arranque —salvo que el
+toque venga de una notificacion del temporizador, que entonces vuelve al paso con la sesion persistida
+(ver el parrafo de la cuenta atras mas abajo)—. `MainActivity` crea el canal al arrancar, pero el permiso
 `POST_NOTIFICATIONS` **no** se pide al abrir la app: se pide **en contexto** —la **primera vez** que
 arranca el temporizador de un paso y **después** de un rationale— desde `cooking-timer-alarm-permission-context`
 (2026-10-15). La decision es **pura** (`ui.cooking.NotificationPermissionPolicy.onTimerChange`, con el
@@ -430,8 +439,34 @@ hay aviso pero el Modo cocina y su "¡Listo!" siguen intactos; el manifiesto dec
 (normal, concedido al instalar, caso de uso documentado de temporizador) y `VIBRATE`. `Cancel` cancela
 **solo** la alarma pendiente, **no** retira una notificacion ya mostrada (si lo hiciera, el `Cancel` de
 `RUNNING→FINISHED` borraria el aviso recien disparado en primer plano). Sin dependencias nuevas
-(`NotificationCompat`/`NotificationManagerCompat` son `androidx.core`) y sin persistencia. Ver
+(`NotificationCompat`/`NotificationManagerCompat` son `androidx.core`). Ver
 `docs/specs/cooking-timer-alarm.md`.
+
+La **cuenta atras fuera de la app** (feature `cooking-timer-foreground-service`, 2026-10-15) es la
+segunda integracion de sistema y la **unica** pieza en primer plano del repo
+(`docs/adr/0008-cooking-timer-foreground-service.md`): mientras corre el temporizador de un paso,
+`data.cooking.CookingTimerService` mantiene una notificacion **persistente** (id **fijo** `1000`, canal
+`cooking_timer` reutilizado, titulo fijo "Cocina en marcha", `ongoing` + `onlyAlertOnce` + `silent`,
+small icon monocromo, `CATEGORY_STOPWATCH`) cuya **cuenta atras la pinta el sistema**
+(`setUsesChronometer(true)` + `setChronometerCountDown(true)` + `setWhen(fin en hora de pared)`): no hay
+ni una publicacion por segundo ni un `tick` en el servicio, que solo espera **un** despertar (`delay`
+hasta el instante de fin monotono) y entonces retira la notificacion
+(`STOP_FOREGROUND_REMOVE`) y se detiene (`START_NOT_STICKY`). El servicio es un **pintor**: no cambia
+estado, no lee la sesion y **no** publica el "¡Listo!" (sigue siendo de la alarma aceptada, unica dueña
+del aviso, con `USE_EXACT_ALARM` y el receptor intactos). Su **unico** dato de entrada es el instante de
+fin (`EXTRA_END_AT_ELAPSED_MILLIS`), asi que la receta, los pasos y la clave de IA **no** cruzan al
+sistema. El servicio se declara con `foregroundServiceType="specialUse"` (+ el `<property>
+android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) y los dos permisos **normales** `FOREGROUND_SERVICE` y
+`FOREGROUND_SERVICE_SPECIAL_USE`; el servicio se arranca y se para desde el **mismo** adaptador del aviso
+(`AndroidCookingAlarm`: `Schedule` => `startForegroundService` + alarma; `Cancel` => `stopService` +
+`alarmManager.cancel`), de modo que no hay una segunda politica ni una segunda idempotencia. Un
+`PendingIntent` de contenido **compartido**
+(`CookingNotifications.contentIntent`, `NEW_TASK or SINGLE_TOP`) lleva **solo** el booleano
+`EXTRA_RESUME_COOKING`, que `MainActivity` convierte en el estado `resumeRequest` (de `onCreate` y de
+`onNewIntent`, con `setIntent`) para que `MainShell` lea la **sesion persistida** y abra el Modo cocina
+en el paso exacto. Sin dependencias nuevas; sin `ServiceCompat.startForeground` (no existe en
+`androidx.core` 1.10.1, se usa el `startForeground(id, notification)` del framework con el tipo del
+manifiesto). Ver `docs/specs/cooking-timer-foreground-service.md`.
 
 La pestana **Perfil** vive en `com.sazon.app.ui.profile`. El estado de edicion es **puro** y testeable
 en JVM (`ProfileEditState`): identidad (`displayName`, `avatarColorId`) + `OnboardingPreferencesDraft`,

@@ -98,10 +98,21 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
 3. **`foreground service` permanente mientras corre el temporizador.** Da más control y sobrevive al
    proceso, pero exige notificación permanente + permiso de tipo de servicio y contradice el Non-Goal
    ("solo el aviso de fin"). Descartado.
+   > **Revisada (`cooking-timer-foreground-service`, 2026-10-15):** la persona pidió ver la **cuenta
+   > atrás** fuera de la app tras probar esta feature, así que la alternativa se **adopta** con un
+   > alcance distinto al descartado: el servicio es un **pintor** de la cuenta atrás (notificación
+   > persistente `1000` con cronómetro descendente del sistema) y **no** sustituye a la alarma, que
+   > sigue siendo la única dueña del "¡Listo!". Ver `docs/adr/0008-cooking-timer-foreground-service.md`.
 4. **Persistir el Modo cocina (paso, marcado, instante de fin) para "reanudar donde lo dejé".** Es la
    feature que **haría falta** para que tocar la notificación devuelva al paso tras morir el proceso; hoy
    se acepta la limitación (la app abre en su estado de arranque) porque persistir el modo es otro
    alcance (dominio + Room) y un Non-Goal explícito de la entrada. Descartado **en esta feature**.
+   > **Adoptada (`cooking-timer-foreground-service`, 2026-10-15):** esa feature llegó y **sí** persiste la
+   > sesión del Modo cocina (una fila en `cooking_session.db`, base propia, columna JSON con
+   > `RecipeJson`), con lo que el toque devuelve al paso exacto incluso con el proceso muerto. Se
+   > mantiene que la persistencia es de la **sesión** (nada de historial ni de preferencias de cocina) y
+   > que la reanudación es **explícita** (solo desde la notificación). Ver
+   > `docs/adr/0008-cooking-timer-foreground-service.md`.
 5. **`CompositionLocal` para la costura** (patrón `LocalGeneratedRecipeArtworkSource`). Menos parámetros,
    pero la spec fija la costura **por parámetro** (como `dishImageSettings`) y un `CompositionLocal` haría
    que la dependencia no se viera en la firma; además los previews necesitarían proveer el default.
@@ -136,6 +147,10 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
 - **Proceso muerto o actividad destruida**: la alarma sigue programada y el receptor se recrea para
   publicar; al tocar, la app abre en su estado de arranque (sin Modo cocina) porque el modo **no** se
   persiste. Limitación aceptada y documentada en `docs/risks-and-open-questions.md`.
+  > **Revisada (`cooking-timer-foreground-service`, 2026-10-15):** con la sesión del Modo cocina
+  > persistida (ADR 0008), tocar la notificación **sí** devuelve al paso exacto —En marcha con el tiempo
+  > restante o Terminado si el instante de fin ya pasó—, también con el proceso muerto. El arranque
+  > **normal** (lanzador) sigue abriendo la app sin el Modo cocina.
 - **Reinicio del dispositivo**: `ELAPSED_REALTIME` y las alarmas no sobreviven a un reinicio; no se añade
   `RECEIVE_BOOT_COMPLETED` (el Modo cocina tampoco sobrevive).
 - **Precisión bajo batería agresiva**: `setExactAndAllowWhileIdle` está sujeto a las políticas del
