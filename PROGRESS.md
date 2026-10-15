@@ -10,6 +10,36 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Ampliacion **`cooking-timer-alarm`** implementada y autoverificada (**`passing`**) en la **sesion 131**
+  y **`accepted`** en la **sesion 132** (validacion independiente, veredicto `accept`; ver
+  `docs/validations/cooking-timer-alarm.md`) en la rama `feature/cooking-timer-alarm` (implementer, sin
+  commit/push/PR: el commit local lo crea el orquestador de `feature-flow` y publica `github-flow`). El
+  temporizador de un paso del Modo cocina ya
+  avisa **fuera de la pantalla**: una alarma **exacta** de un solo disparo en `AlarmManager`
+  (`ELAPSED_REALTIME_WAKEUP`, `setExactAndAllowWhileIdle` con degradacion a `setAndAllowWhileIdle` si el
+  sistema no concede la exacta) despierta a un receptor de manifiesto `exported="false"`
+  (`data/cooking/CookingAlarmReceiver`) que publica la notificacion del canal propio `cooking_timer`
+  (importancia alta, sonido y vibracion, visibilidad publica) con id **fijo** `1001` (republicar
+  **reemplaza**, nunca duplica) y contenido **generico** (`"¡Listo! El paso ha terminado"` / `"Toca para
+  volver al modo cocina."`): la funcion **no recibe la receta** y el `PendingIntent` de la alarma no lleva
+  extras, asi que no puede filtrar datos. La **decision es pura** (`ui.cooking.CookingAlarmPolicy` +
+  `CookingAlarmCommand`, con el instante **inyectado** y sin leer el reloj) y la costura
+  `CookingAlarm.apply(command)` (default `NoOpCookingAlarm`) viaja **por parametro** de `MainActivity` a
+  `CookingModeScreen`, que gana dos efectos (`LaunchedEffect` por cambio de estado del temporizador con
+  `SystemClock.elapsedRealtime()` y `DisposableEffect` de cancelacion) sin tocar el reloj, la UI ni el
+  "¡Listo!" aceptado. `MainActivity` crea el canal al arrancar y pide `POST_NOTIFICATIONS` **una vez por
+  proceso** (`registerForActivityResult`, no bloqueante); el manifiesto declara `POST_NOTIFICATIONS`,
+  `USE_EXACT_ALARM` y `VIBRATE` (mas `SCHEDULE_EXACT_ALARM` con `maxSdkVersion="32"`, remedio de lint
+  documentado). Gate: `bash init.sh` exit 0, **105 suites / 797 tests / 0 fallos / 0 errores / 0
+  saltados** (baseline re-derivada en `HEAD` `e758b43` = 102 ficheros / 764 anotaciones ⇒ delta **+3
+  suites / +33 tests**: `CookingAlarmPolicyTest` 15, `CookingNotificationsTest` 11 y
+  `AndroidCookingAlarmTest` 7; 0 suites modificadas), lint **0 errores y 13 warnings preexistentes (0 bajo
+  `app/src`)**. Docs durables: `docs/adr/0007-cooking-timer-alarm.md` (nuevo), `docs/build-brief.md`
+  (Non-Goal enmendado de forma acotada), `docs/technical-discovery.md` (integracion y parrafo del Modo
+  cocina corregido), `docs/risks-and-open-questions.md` (dos riesgos nuevos) y `DESIGN.md` (excepcion de
+  capturas). Queda la **prueba manual** de la persona en el emulador (aviso con la app en segundo
+  plano/movil bloqueado, toque de vuelta al paso, no duplicacion en primer plano y permiso denegado), no
+  automatizable desde WSL.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -5973,3 +6003,144 @@
   `accepted`, con PR mergeado y rama contenida en `origin/main` (guardas verificadas con `--dry-run`
   antes de eliminar). Las ramas remotas `origin/feature/<id>` **no** se tocan.
 - Estado de features: sin cambios (`feature_list.json` intacto: ambas siguen `accepted`).
+
+### Sesion 131 (implementer, `cooking-timer-alarm`)
+
+- Fecha: 2026-10-15
+- Objetivo: implementar **una** feature planificada, `cooking-timer-alarm` (`area: integration`, depende de
+  `cooking-mode`, `accepted`), segun su spec `docs/specs/cooking-timer-alarm.md` (skill
+  `feature-implementer`), en el worktree `cooking-timer-alarm` (rama `feature/cooking-timer-alarm`).
+  **Sin** commit, push ni PR (la publicacion es del orquestador). WIP = 1. La sesion **reconcilió** un
+  parcial interrumpido que estaba en disco (feature en `in_progress` con `evidence` vacia) y lo alineó
+  con la spec de punta a punta.
+- Punto de partida y reconciliacion: el parcial tenia los adaptadores Android dentro de
+  `ui/cooking/` (`AndroidCookingAlarmScheduler`, `CookingAlarmReceiver`, `CookingNotifications`,
+  `CookingAlarmScheduler`, `CookingAlarmCopy`), costura por `CompositionLocal`
+  (`LocalCookingAlarmScheduler`), API con nombres distintos (`CookingAlarmPlan`/`forTimerChange`/`Keep`,
+  `schedule`/`cancel`), contenido con titulo de receta y "Paso N de M" en los extras, `NOTIFICATION_ID
+  = 1`, base `RTC_WAKEUP` + `System::currentTimeMillis`, peticion del permiso contextual en "Iniciar"
+  y `res/values/colors.xml` con un token nuevo (`sazon_notification_accent`). Todo eso **se alineo con
+  la spec** (la spec manda): adaptadores movidos a `data/cooking/`, costura por parametro, API
+  `CookingAlarmCommand`/`onTimerChange`/`onExit`/`None` + `CookingAlarm.apply(command)`, contenido
+  generico, id `1001`, `ELAPSED_REALTIME_WAKEUP` + `SystemClock.elapsedRealtime()`, permiso en
+  `MainActivity` una vez por proceso, `colors.xml` revertido y `VIBRATE` anadido al manifiesto. Los
+  ficheros del parcial que no encajan se **borraron** (`CookingAlarmPolicy.kt`, `CookingAlarmScheduler.kt`,
+  `AndroidCookingAlarmScheduler.kt`, `CookingAlarmReceiver.kt`, `CookingNotifications.kt`,
+  `CookingAlarmCopy.kt` y `CookingAlarmCopyTest.kt`) y sus tests se reescribieron/movieron.
+- Cambios entregados:
+  - Nuevos: `ui/cooking/CookingAlarm.kt` (comando + politica pura + costura `CookingAlarm`/
+    `NoOpCookingAlarm`, sin `android.*`/`androidx.*`), `data/cooking/AndroidCookingAlarm.kt` (alarma
+    exacta con degradacion inexacta y "no lanza"), `data/cooking/CookingAlarmReceiver.kt` (receptor
+    `exported="false"`, contenido generico, `contentIntent` a `MainActivity` con
+    `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_SINGLE_TOP`), `data/cooking/CookingNotifications.kt` (canal
+    `cooking_timer` idempotente + construccion/publicacion con permiso) y
+    `res/drawable/ic_notification_timer.xml` (vector 24dp monocromo, circulo + agujas, derivado del
+    `ClockGlyph`; **sin** tokens de `DESIGN.md`).
+  - Modificados: `AndroidManifest.xml` (3 permisos + receptor `exported="false"` + el
+    `SCHEDULE_EXACT_ALARM maxSdkVersion="32"` documentado), `CookingModeScreen.kt` (parametro `alarm` al
+    final con default no-op + los dos efectos, sin tocar el reloj/UI/microcopy), `MainShell.kt` y
+    `SazonApp.kt` (parametro `cookingAlarm` con default y reenvio) y `MainActivity.kt` (costura por
+    parametro, `ensureChannel` y peticion de `POST_NOTIFICATIONS` una vez por proceso con
+    `registerForActivityResult`, sin gatear nada).
+  - Tests nuevos: `ui/cooking/CookingAlarmPolicyTest.kt` (15, JVM puro), `data/cooking/
+    CookingNotificationsTest.kt` (11, Robolectric) y `data/cooking/AndroidCookingAlarmTest.kt` (7,
+    Robolectric + `ShadowAlarmManager`).
+  - Docs durables: `docs/adr/0007-cooking-timer-alarm.md` (nuevo: decision, 9 alternativas descartadas y
+    consecuencias), `docs/build-brief.md` (Non-Goal "Notificaciones y recordatorios" enmendado de forma
+    acotada), `docs/technical-discovery.md` (parrafo del Modo cocina corregido y parrafo nuevo de la
+    integracion), `docs/risks-and-open-questions.md` ("Later / Not MVP" enmendado, dos riesgos nuevos y
+    el ADR 0007 en la lista) y `DESIGN.md` (nota de excepcion de capturas: superficie del sistema, small
+    icon monocromo, sin tokens ni pantalla nueva). `docs/specs/cooking-timer-alarm.md`: casillas de
+    `Implementation Tasks` marcadas.
+- Verificacion (evidencia medida):
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"
+    --tests "com.sazon.app.data.cooking.*"` => **BUILD SUCCESSFUL** (`CookingAlarmPolicyTest` **15**/0/0/0
+    —la verificacion exigida—, `CookingNotificationsTest` **11**/0/0/0 y `AndroidCookingAlarmTest`
+    **7**/0/0/0; `CookingTimerStateTest` 11, `CookingModeStateTest` 10 y `CookingModeFormatTest` 8 sin
+    cambios).
+  - Gate `bash init.sh` **exit 0** (test + lint via `scripts/gradle.sh`, sin procesos largos; `init.sh`
+    **sin cambios**) y tirada completa fresca `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks`
+    (BUILD SUCCESSFUL). Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`:
+    **105 suites / 797 tests / 0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD`
+    `e758b43` con el metodo del repo (`git grep -c '@Test'` = **102 ficheros / 764 anotaciones**, que
+    coincide con los XML de `HEAD`) ⇒ delta **+3 suites / +33 tests**, 0 suites modificadas. Nota: la
+    baseline que cita la spec (**100 suites / 747 tests**) era la de `HEAD` al planificar; el `HEAD`
+    actual ya incluia features posteriores.
+  - Lint (`app/build/reports/lint-results-debug.sarif`): **0 errores, 13 warnings** preexistentes
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1), **0 bajo
+    `app/src`**. Dos hallazgos **resueltos durante la autoverificacion** (1a pasada: 1 error + 14
+    warnings): (a) `MissingPermission` en `NotificationManagerCompat.notify` ⇒ la comprobacion de
+    `POST_NOTIFICATIONS` salio del `runCatching` y la publicacion se envuelve en un
+    `try/catch (SecurityException)` **explicito** (el remedio que pide lint); (b) warning nuevo de
+    `setExactAndAllowWhileIdle` pidiendo `SCHEDULE_EXACT_ALARM` ⇒ se aplico el **remedio documentado por
+    la spec** (`<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+    android:maxSdkVersion="32" />`, inocuo con `minSdk 33`) y el informe volvio a 13 / 0 bajo `app/src`.
+  - Inspeccion: `ui/cooking/CookingAlarm.kt` con **0** imports de `android.*`/`androidx.*`;
+    `AlarmManager`/`PendingIntent`/`NotificationManager` **solo** bajo `data/cooking/` (mas manifiesto y
+    `MainActivity`); receptor `exported="false"`; `CookingTimerState`/`CookingModeState`/`CookingModeFormat`
+    y el "¡Listo!" en pantalla **sin diff**; `app/build.gradle.kts`, `gradle/libs.versions.toml`,
+    `init.sh`, `scripts/**`, `domain/**`, `data/**` (salvo `data/cooking/`), Taxonomia,
+    `seed-recipes.json`, `assets/**`, `ui/theme/**` y los `mipmap` de lanzador **intactos**;
+    `res/values/colors.xml` **revertido** (sin tokens nuevos); sin dependencias nuevas; **no** se crea
+    `docs/design/concepts/cooking-timer-alarm/`; 0 referencias a la API antigua del parcial.
+- Desviaciones respecto a la spec (declaradas, ninguna funcional): (1) `SCHEDULE_EXACT_ALARM` con
+  `maxSdkVersion="32"` declarado en el manifiesto como **remedio de lint** —el propio `Verification Plan`
+  de la spec lo preve—; (2) las funciones `CookingNotifications.notification`/`notify` aceptan
+  `contentIntent: PendingIntent?` **nullable** (la spec solo escribe `contentIntent`) para poder
+  construir/publicar sin toque si el paquete no expusiera launch intent, manteniendo el contrato "no
+  lanza". Nada del comportamiento de los escenarios 1-8 queda alterado.
+- Ficheros cambiados: los 5 nuevos de `main` + `AndroidManifest.xml`, `CookingModeScreen.kt`,
+  `MainShell.kt`, `SazonApp.kt`, `MainActivity.kt`, los 3 tests nuevos, `docs/adr/0007-cooking-timer-alarm.md`,
+  `docs/build-brief.md`, `docs/technical-discovery.md`, `docs/risks-and-open-questions.md`, `DESIGN.md`,
+  `docs/specs/cooking-timer-alarm.md`, `feature_list.json` (`cooking-timer-alarm` => **`passing`** con 10
+  evidencias) y este registro. **Sin** commit, push ni PR.
+- Riesgo o incognita abierta: la **prueba manual** en el emulador (aviso sonoro/vibratorio con la app en
+  segundo plano o el movil bloqueado, toque de vuelta al paso, no duplicacion con la app en primer plano
+  y caso de permiso denegado) la hace la persona tras el merge; no es automatizable desde WSL (AGENTS.md)
+  y un defecto de acabado se corrige con una **feature correctiva**. Limitacion aceptada y registrada en
+  `docs/risks-and-open-questions.md`: si el sistema mata la actividad/proceso, el toque abre la app en su
+  estado de arranque (el Modo cocina no se persiste; "reanudar donde lo dejé" es otra feature).
+- Siguiente paso: **validacion independiente** de `cooking-timer-alarm` (skill `feature-validator`,
+  subagente `validator`, contexto limpio) sobre este worktree; al `accept`, el orquestador de
+  `feature-flow` crea el commit local y `github-flow` publica (push + PR `feature/cooking-timer-alarm` →
+  `main`).
+
+### Sesion 132 (orquestador `feature-flow` + validator, `cooking-timer-alarm`)
+
+- Fecha: 2026-10-15
+- Objetivo: cerrar la ampliacion **`cooking-timer-alarm`** (`area: integration`, depende de
+  `cooking-mode`) con validacion independiente (skill `feature-validator`, subagente `validator`,
+  contexto limpio) y persistir la aceptacion con commit **local** (nunca push/PR: la publicacion es de
+  `github-flow`). La sesion **reanudó** el parcial interrumpido desde la spec `docs/specs/cooking-timer-alarm.md`:
+  el `implementer` reconcilio el parcial con la spec y lo dejo **`passing`** (sesion 131) y el `validator`
+  emitio el veredicto **`accept`**.
+- Resultado: veredicto **`accept`** independiente. El validador re-ejecuto `bash init.sh` (exit 0, primera
+  pasada `UP-TO-DATE` ⇒ forzada), `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (34/34 tareas) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (30/30 tareas), y **parseo por su cuenta** los XML frescos
+  (**105 suites / 797 tests / 0 fallos / 0 errores / 0 saltados**; baseline `HEAD` `e758b43` = 102
+  ficheros / 764 anotaciones ⇒ **+3 suites / +33 tests**: `CookingAlarmPolicyTest` 15,
+  `CookingNotificationsTest` 11, `AndroidCookingAlarmTest` 7) y el SARIF (**0 errores, 13 warnings**
+  preexistentes, 0 bajo `app/src`). Verifico escenarios 1-8 y el Validator Checklist (pureza de
+  `CookingAlarm.kt` con **0** imports `android.*`/`androidx.*`, confinamiento Android a `data/cooking/`,
+  manifiesto con receptor `exported="false"` y permisos `POST_NOTIFICATIONS` + `USE_EXACT_ALARM` +
+  `VIBRATE`, contenido generico sin datos de receta ni extras propios, id fijo `1001`, alarma exacta con
+  degradacion, peticion de `POST_NOTIFICATIONS` no bloqueante una vez por proceso, `CookingTimerState`/
+  `CookingModeState`/`CookingModeFormat` y el "¡Listo!" en pantalla sin cambios, build/lockfile/`init.sh`/
+  `scripts`/dominio/Taxonomia/assets/mipmaps/`ui.theme`/concepts intactos, sin dependencias nuevas, sin
+  `docs/design/concepts/cooking-timer-alarm/`), la documentacion durable (ADR 0007, `build-brief`,
+  `technical-discovery`, `risks`, `DESIGN`) y la seguridad (receptor no exportado, `PendingIntent`
+  explicitos e `IMMUTABLE`, degradacion silenciosa sin crash). Sin hallazgos Critical/High/Medium; 4 **Low**
+  informativos no bloqueantes (la degradacion por `SecurityException` que pide la spec no esta
+  implementada —inalcanzable en la practica con `USE_EXACT_ALARM` concedido—; el test del adaptador no
+  distingue exacta de inexacta; `AndroidCookingAlarm` se instancia dentro de `setContent`; la necesidad del
+  remedio `SCHEDULE_EXACT_ALARM` no reproducible), corregibles con una **feature correctiva**. Registro en
+  `docs/validations/cooking-timer-alarm.md`.
+- Persistencia de la aceptacion (orquestador): `feature_list.json` de **`passing`** a **`accepted`** con la evidencia del
+  validador; estado y sesion en este `PROGRESS.md`. Commit local `feat: complete cooking-timer-alarm` en la
+  rama `feature/cooking-timer-alarm` (sin push ni PR).
+- Riesgo o incognita abierta: prueba **manual** de la persona en el emulador (aviso sonoro/vibratorio con
+  la app en segundo plano o el movil bloqueado, toque de vuelta al paso con su "¡Listo!", no duplicacion
+  con la app en primer plano, "Pausar"/"Reiniciar"/cambiar de paso/salir sin aviso y permiso
+  `POST_NOTIFICATIONS` denegado sin romper el Modo cocina), no automatizable desde WSL; el acabado
+  (tono, vibracion, pantalla de bloqueo) y la limitacion aceptada de proceso muerto quedan documentados y
+  se corrigen, si molesta, con una feature correctiva.

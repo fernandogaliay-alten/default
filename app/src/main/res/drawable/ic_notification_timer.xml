@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Icono monocromo del aviso de fin del temporizador del modo cocina (`setSmallIcon`): silueta de
+  temporizador de 24dp, sin color ni gradiente (blanco), sin assets binarios. El sistema lo tinta, de
+  modo que no se usan tokens de DESIGN.md ni se anade ningun recurso de color. Trazado a partir del
+  mismo lenguaje del `ClockGlyph` de `CookingModeScreen` (circulo + agujas) y dentro del area segura
+  de 24dp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Corona superior del temporizador. -->
+    <path
+        android:pathData="M9,3 h6"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2" />
+
+    <!-- Esfera: anillo trazado como dos semicircunferencias. -->
+    <path
+        android:pathData="M5.5,12 A6.5,6.5 0 0 1 18.5,12 A6.5,6.5 0 0 1 5.5,12 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2" />
+
+    <!-- Agujas del reloj. -->
+    <path
+        android:pathData="M12,8.5 L12,12 L15,12"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>
