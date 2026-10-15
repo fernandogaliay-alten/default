@@ -67,9 +67,10 @@ class MainActivity : ComponentActivity() {
         val activitySummaryRepository =
             RoomActivitySummaryRepository(activitySummaryDatabase.activitySummaryDao())
         val activitySummaryService = ActivitySummaryService(activitySummaryRepository)
-        // Proveedor de IA real (DevExpert Inference, Ktor) tras el puerto RecipeGenerator. La clave
-        // se inyecta en BuildConfig desde local.properties (no versionada); se crea tras cargar la
-        // Taxonomia y lo comparten los tres servicios, igual que antes con el generador falso.
+        // Proveedor de IA real del **chat** (OpenCode Go, Ktor) tras el puerto RecipeGenerator. La
+        // clave se inyecta en BuildConfig desde local.properties (no versionada); se crea tras cargar
+        // la Taxonomia y lo comparten los tres servicios, igual que antes con el generador falso. La
+        // **imagen de plato** sigue en DevExpert con su propia clave y su propia base (mas abajo).
         val aiClient = AiHttpClientFactory.create()
         // Almacen de sesion del descriptor visual (fase 5): el generador lo alimenta con el mapa del
         // decode y el `requestFor` de la imagen lo consulta por `id`. En memoria (se vacia al recrear
@@ -77,7 +78,7 @@ class MainActivity : ComponentActivity() {
         // tres usan el mismo generador.
         val dishVisualDescriptors = DishVisualDescriptorStore()
         val generator = DevExpertRecipeGenerator(
-            apiKey = BuildConfig.DEVEXPERT_API_KEY,
+            apiKey = BuildConfig.OPENCODE_API_KEY,
             taxonomy = taxonomy,
             client = aiClient,
             // Diagnostico verboso (detalle de descartes + JSON crudo) solo en debug; en release queda
@@ -134,8 +135,10 @@ class MainActivity : ComponentActivity() {
         val favoritesDatabase = FavoritesDatabase.build(applicationContext)
         val favoriteRepository = RoomFavoriteRepository(favoritesDatabase.favoriteDao())
         val favoriteService = FavoriteService(favoriteRepository)
-        // Imagen de plato generada (fases 2-4): reutiliza el `aiClient` compartido (los timeouts de
-        // imagen se aplican por peticion, ADR 0005; no se crea un segundo motor HTTP) y la cache de la
+        // Imagen de plato generada (fases 2-4): **sigue en DevExpert** (base y clave propias,
+        // `DishImagePolicy` + `BuildConfig.DEVEXPERT_API_KEY`), desacoplada del proveedor del chat.
+        // Reutiliza el `aiClient` compartido (los timeouts de imagen se aplican por peticion, ADR 0005;
+        // no se crea un segundo motor HTTP) y la cache de la
         // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como **capa de fondo opcional**
         // sobre la ficha tipografica; sin red ni I/O en el arranque (la cache solo se toca al resolver).
         // El ajuste de sesion (interruptor + tope por sesion) se gobierna en DOS puntos: el decorador
@@ -161,6 +164,7 @@ class MainActivity : ComponentActivity() {
             memory = MemoryDishImageCache(),
             generator = GatedDishImageGenerator(
                 delegate = DevExpertDishImageGenerator(
+                    // Clave **propia** de DevExpert: la imagen no usa la clave del chat (OpenCode Go).
                     apiKey = BuildConfig.DEVEXPERT_API_KEY,
                     client = aiClient,
                     styleReference = dishImageStyleReference,

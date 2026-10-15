@@ -1,20 +1,29 @@
 package com.sazon.app.data.ai.image
 
-import com.sazon.app.data.ai.AiProviderPolicy
 import kotlin.math.roundToInt
 
 /**
  * Politica de la **imagen de plato** en un unico sitio: endpoint, alias de modelo, tamano generado,
  * geometria de la reduccion local y timeouts propios. Son constantes y funciones **puras** (sin HTTP y
- * sin Android), de modo que se testean en JVM, igual que [AiProviderPolicy].
+ * sin Android), de modo que se testean en JVM.
  *
- * Se separa de [AiProviderPolicy] a proposito (fase 2 de `docs/ai-dish-images-proposal.md` y
- * `docs/adr/0005-ai-dish-images.md`): la imagen **no** reintenta ni comparte la cola de razonamiento
- * del chat, asi que ni sus timeouts ni su politica de intentos son los de chat.
+ * Tiene su **propia base** ([BASE_URL], DevExpert) y **no** la deriva de la base del chat
+ * (`com.sazon.app.data.ai.AiProviderPolicy`): el chat se sirve contra **OpenCode Go** y la imagen debe
+ * seguir en DevExpert (correctiva `chat-provider-opencode-go`; `docs/adr/0005-ai-dish-images.md`).
+ * Se separa tambien a proposito de la politica del chat (fase 2 de `docs/ai-dish-images-proposal.md`):
+ * la imagen **no** reintenta ni comparte la cola de razonamiento del chat, asi que ni sus timeouts ni su
+ * politica de intentos son los del chat.
  */
 object DishImagePolicy {
 
-    /** Ruta del endpoint de generacion de imagenes (misma base que el chat, ver [AiProviderPolicy]). */
+    /**
+     * Base de la API compatible con OpenAI de **DevExpert Inference**, proveedor **solo** de la imagen
+     * de plato (el chat vive en OpenCode Go, ver `docs/adr/0003-ai-provider.md`). Es una constante
+     * **propia**: cambiar el proveedor del chat no puede arrastrar las imagenes.
+     */
+    const val BASE_URL = "https://inference.devexpert.io/v1"
+
+    /** Ruta del endpoint de generacion de imagenes (sobre la base propia de DevExpert). */
     const val IMAGES_GENERATIONS_PATH = "/images/generations"
 
     /** Ruta del endpoint de ajuste con referencia de estilo (fase 6, variante C de la propuesta §4.2). */
@@ -35,8 +44,8 @@ object DishImagePolicy {
     /**
      * Interruptor del anclaje de estilo (fase 6). `true` (por defecto) pide el ajuste con la referencia;
      * `false` va directo a texto->imagen con **cero** peticiones al ajuste: es la palanca de rollback si
-     * el proveedor no soporta `/images/edits`. Un unico sitio, patron
-     * [AiProviderPolicy.RESPONSE_FORMAT_ENABLED]; la produccion lo lee y el adaptador lo recibe por
+     * el proveedor no soporta `/images/edits`. Un unico sitio, mismo patron que
+     * `AiProviderPolicy.RESPONSE_FORMAT_ENABLED`; la produccion lo lee y el adaptador lo recibe por
      * constructor.
      */
     const val STYLE_REFERENCE_ENABLED = true
@@ -76,11 +85,11 @@ object DishImagePolicy {
     /** Un solo intento: un reintento duplicaria la cuota (~2 % por imagen) sin cambiar la experiencia. */
     const val MAX_ATTEMPTS = 1
 
-    /** URL completa del endpoint (`BASE_URL` + [IMAGES_GENERATIONS_PATH]). */
-    fun endpointUrl(): String = AiProviderPolicy.BASE_URL + IMAGES_GENERATIONS_PATH
+    /** URL completa del endpoint (`BASE_URL` propia de DevExpert + [IMAGES_GENERATIONS_PATH]). */
+    fun endpointUrl(): String = BASE_URL + IMAGES_GENERATIONS_PATH
 
-    /** URL completa del endpoint de ajuste (`BASE_URL` + [IMAGES_EDITS_PATH]). */
-    fun editsUrl(): String = AiProviderPolicy.BASE_URL + IMAGES_EDITS_PATH
+    /** URL completa del endpoint de ajuste (`BASE_URL` propia de DevExpert + [IMAGES_EDITS_PATH]). */
+    fun editsUrl(): String = BASE_URL + IMAGES_EDITS_PATH
 
     /**
      * Un rechazo definitivo del ajuste ([EDIT_FALLBACK_STATUSES]) dispara el respaldo por texto; ningun

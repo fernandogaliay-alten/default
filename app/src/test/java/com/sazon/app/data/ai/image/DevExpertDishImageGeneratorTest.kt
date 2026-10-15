@@ -1,6 +1,7 @@
 package com.sazon.app.data.ai.image
 
 import com.sazon.app.data.ai.AiHttpClientFactory
+import com.sazon.app.data.ai.AiProviderPolicy
 import com.sazon.app.domain.image.DishImageRequest
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -64,6 +65,16 @@ class DevExpertDishImageGeneratorTest {
         assertEquals("https://inference.devexpert.io/v1/images/generations", req.url.toString())
         assertEquals(HttpMethod.Post, req.method)
         assertEquals("Bearer $KEY", req.headers[HttpHeaders.Authorization])
+        // Escenario 3 (correctiva `chat-provider-opencode-go`): las cabeceras del chat de OpenCode Go
+        // **no** pueden viajar en una peticion de imagen (seria acoplamiento del cliente compartido).
+        assertNull(
+            "La peticion de imagen no puede llevar la cabecera del chat",
+            req.headers[AiProviderPolicy.SESSION_HEADER],
+        )
+        assertNull(
+            "La peticion de imagen no puede llevar el User-Agent del chat",
+            req.headers[HttpHeaders.UserAgent]?.takeIf { it == AiProviderPolicy.USER_AGENT },
+        )
         val outgoingContentType = (req.body as OutgoingContent).contentType
         assertNotNull("La peticion debe declarar un Content-Type", outgoingContentType)
         assertTrue(
@@ -225,6 +236,10 @@ class DevExpertDishImageGeneratorTest {
         assertEquals("https://inference.devexpert.io/v1/images/edits", req.url.toString())
         assertEquals(HttpMethod.Post, req.method)
         assertEquals("Bearer $KEY", req.headers[HttpHeaders.Authorization])
+        assertNull(
+            "El ajuste tampoco puede llevar la cabecera del chat",
+            req.headers[AiProviderPolicy.SESSION_HEADER],
+        )
 
         val outgoingContentType = (req.body as OutgoingContent).contentType
         assertNotNull("La peticion debe declarar un Content-Type", outgoingContentType)

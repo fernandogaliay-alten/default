@@ -26,7 +26,7 @@ class OpenAiChatTest {
     @Test
     fun sin_formato_no_se_serializa_la_clave_ni_un_null() {
         val request = ChatCompletionRequest(
-            model = AiProviderPolicy.MODEL_ALIAS,
+            model = AiProviderPolicy.MODEL_ID,
             messages = listOf(ChatMessage(role = "user", content = "hola")),
         )
 
@@ -34,14 +34,17 @@ class OpenAiChatTest {
 
         assertFalse("Nunca la clave response_format", text.contains("response_format"))
         assertFalse("Nunca un response_format nulo", text.contains("null"))
-        assertTrue("El resto del contrato no cambia", text.contains("\"model\":\"chat\""))
+        assertTrue(
+            "El resto del contrato no cambia",
+            text.contains("\"model\":\"${AiProviderPolicy.MODEL_ID}\""),
+        )
         assertNull(responseFormatType(text))
     }
 
     @Test
     fun con_el_formato_activo_se_emite_json_object() {
         val request = ChatCompletionRequest(
-            model = AiProviderPolicy.MODEL_ALIAS,
+            model = AiProviderPolicy.MODEL_ID,
             messages = listOf(ChatMessage(role = "user", content = "hola")),
             responseFormat = ResponseFormat.JSON_OBJECT,
         )

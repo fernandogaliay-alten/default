@@ -17,8 +17,10 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
   excepción `android.disallowKotlinSourceSets=false` en `gradle.properties` para registrar sus fuentes
   generadas; sin ella, la configuración falla.
 - Coroutines + Flow para asincronía.
-- Cliente HTTP: **Ktor Client** (engine **OkHttp**) + `kotlinx.serialization` contra la API compatible
-  con OpenAI de **DevExpert Inference** (proveedor decidido; ver `docs/adr/0003-ai-provider.md`). El
+- Cliente HTTP: **Ktor Client** (engine **OkHttp**) + `kotlinx.serialization` contra APIs compatibles
+  con OpenAI: el **chat** va a **OpenCode Go** y la **imagen de plato** a **DevExpert Inference**
+  (correctiva `chat-provider-opencode-go`, 2026-10-14; ver `docs/adr/0003-ai-provider.md` y
+  `docs/adr/0005-ai-dish-images.md`). El
   version catalog fija **Ktor 3.6.0**; OkHttp queda **forzado a 5.4.0** en `app/build.gradle.kts`
   porque Ktor 3.6.0 arrastra 5.5.0, cuyo artefacto Android exige `compileSdk 37` (el repo compila
   contra API 36.1) y rompe `checkDebugAarMetadata`. Ver "Constraints".
@@ -40,7 +42,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Iconos e imágenes de receta | La **imagen base es una ficha tipográfica** (categoría, título y los tres ingredientes principales con cantidad + filete de cocina, ADR 0006): `ui.artwork.RecipeArtwork` es el **proveedor de la capa de fondo** del hueco (imagen generada 16:9 con `scrim`, categoría y título encima; ingredientes y metadatos en banda sólida), y conserva el **glifo por categoría** (marca de agua y último recurso) y el **acento por cocina**. La **cadena local de fotos** —assets en `app/src/main/assets/img/recipes/` (`seed/`, `category/cat-`, `default`), `data.RecipePhotoAssets` y `data.AssetRecipePhotoSource`— **se retiró** con `retire-recipe-photos` (ADR 0006); solo queda `img/recipes/default.jpg` como ancla de estilo | Determinista, offline, sin red en runtime, sin dependencias nuevas |
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
-| Clave de IA | `BuildConfig.DEVEXPERT_API_KEY`, desde `local.properties` (que no se versiona) | Decisión de demo; ver riesgos |
+| Claves de IA | **Dos**, desde `local.properties` (que no se versiona): `BuildConfig.OPENCODE_API_KEY` (`opencode.apiKey`) para el **chat** de OpenCode Go y `BuildConfig.DEVEXPERT_API_KEY` (`devexpert.apiKey`) para la **imagen** de DevExpert | Decisión de demo; cada consumidor degrada en silencio si falta la suya (chat → modo semilla; imagen → ficha tipográfica); ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
 versiones. Los `id` nunca se renombran.
@@ -441,9 +443,21 @@ la Firma de preferencias (es clave de cache del Lote, no contenido del prompt). 
 (`PromptBuilderTest`). La implementacion real del proveedor lo consumira. Ver
 `docs/specs/prompt-builder.md`.
 
-El **proveedor de IA real** vive en `com.sazon.app.data.ai` y es la **unica** capa que conoce Ktor
-(junto al cableado de `MainActivity`). `DevExpertRecipeGenerator` implementa el puerto
-`RecipeGenerator`: las tres operaciones componen su prompt con `PromptBuilder` y llaman al mismo
+El **proveedor de IA real del chat** vive en `com.sazon.app.data.ai` y es la **unica** capa que conoce
+Ktor (junto al cableado de `MainActivity`). Desde la correctiva `chat-provider-opencode-go`
+(2026-10-14, issue #141) el chat se sirve contra **OpenCode Go** (base
+`https://opencode.ai/zen/go/v1`, `POST /chat/completions`, `Authorization: Bearer OPENCODE_API_KEY`),
+con el **id de modelo literal** `deepseek-v4.1-flash` (`AiProviderPolicy.MODEL_ID`: Go **no** expone
+alias, a diferencia de DevExpert) y **dos cabeceras propias por peticion**:
+`x-opencode-session` —**obligatoria**: sin ella el proveedor responde `400 MissingSessionID`— con una
+constante estable y **no sensible** (`AiProviderPolicy.SESSION_ID = "sazon-android"`, **nunca** la
+clave) y un `User-Agent` propio (`Sazon-Android/1.0`). Las cabeceras van **por peticion**, nunca como
+defaults del cliente, porque el `aiClient` es **compartido** con la cadena de imagen: unos defaults
+filtrarian la cabecera de sesion a las peticiones de DevExpert. `DevExpertRecipeGenerator` implementa
+el puerto
+`RecipeGenerator` (el nombre del fichero y de la clase es **historico**: nacio sobre DevExpert y se
+conserva; renombrarlo provider-neutral seria otra correctiva): las tres operaciones componen su prompt
+con `PromptBuilder` y llaman al mismo
 `execute`, que aplica la politica fija de `AiProviderPolicy` en un **unico** sitio (connect 10 s,
 socket 120 s, timeout por intento 150 s, deadline total 240 s; maximo **1 reintento** ante
 timeout/`IOException`/408/429/5xx con backoff fijo de 500 ms y `Retry-After` solo si <= 5 s; nunca
@@ -454,7 +468,9 @@ calibrados contra la **peor latencia real medida** de la misma clave y el mismo 
 (issue #72): `mimo-v2.6-pro` **115,8 s**, con el alias diario `chat` entre 28,0 y 46,6 s y
 `chat`+`json_object` / `chat-pro`+`json_schema` / `deepseek-v4-flash` en 85,3 / 97,0 / 52,6 s; el
 socket cubre el peor caso con margen y el deadline deja sitio a otro intento igualmente lento tras el
-backoff. Cada peticion envia ademas `response_format: {"type":"json_object"}` (correctiva
+backoff. Esa calibracion se midio contra el proveedor **anterior** (DevExpert) y se **conserva como
+techo conservador** al pasar el chat a OpenCode Go (`deepseek-v4.1-flash`): no se recalibra en esta
+correctiva. Cada peticion envia ademas `response_format: {"type":"json_object"}` (correctiva
 `ai-response-format`, issue #74) para pedir **forma** JSON parseable, sin usar
 `json_schema`/structured outputs forzados: si el proveedor responde **400/422** con el formato activo
 se reintenta **una sola vez** sin la clave (fallback one-shot, sin backoff, consumiendo el 2.º
@@ -493,9 +509,10 @@ generador (apagado por defecto; `MainActivity` lo activa solo en debug, `BuildCo
 `CancellationException` se relanza
 siempre. `AiHttpClientFactory` construye el cliente (OkHttp, `ContentNegotiation` +
 `HttpTimeout`, `expectSuccess = false`; `MockEngine` en tests), los DTOs del envelope OpenAI estan en
-`OpenAiChat` y `MainActivity` inyecta `BuildConfig.DEVEXPERT_API_KEY` (desde `local.properties`) y
+`OpenAiChat` y `MainActivity` inyecta `BuildConfig.OPENCODE_API_KEY` (desde `local.properties`, la
+clave del chat) y
 cablea el diagnostico a `Log`. El manifiesto declara el permiso `INTERNET`. Ver
-`docs/specs/real-ai-provider.md`.
+`docs/specs/real-ai-provider.md` y `docs/specs/chat-provider-opencode-go.md`.
 
 El Tema de la app vive en `com.sazon.app.ui.theme` y es la unica fuente de verdad visual,
 materializada desde `DESIGN.md`: `Color.kt` (paleta + `LightColorScheme`/`DarkColorScheme` con todos
@@ -584,10 +601,18 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
 
 ## Integrations
 
-- **API de IA**: única integración externa. Proveedor decidido: **DevExpert Inference**, API
-  compatible con OpenAI (base `https://inference.devexpert.io/v1`, `POST /chat/completions`, auth
-  `Bearer DEVEXPERT_API_KEY`). Alias `chat` (diario) y `chat-pro` (avanzado); el modelo real puede
-  cambiar sin cambiar el alias. Cuota **semanal** por clave. Ver `docs/adr/0003-ai-provider.md`.
+- **API de IA (chat)**: integración externa. Proveedor del **chat**: **OpenCode Go**, API compatible
+  con OpenAI (base `https://opencode.ai/zen/go/v1`, `POST /chat/completions`, auth
+  `Bearer OPENCODE_API_KEY`). El modelo es un **id literal**, `deepseek-v4.1-flash` (`MODEL_ID`; Go no
+  expone alias) y la peticion lleva las cabeceras `x-opencode-session` (obligatoria) y `User-Agent`
+  (correctiva `chat-provider-opencode-go`, 2026-10-14, issue #141: la cuota semanal de DevExpert se
+  agoto). El endpoint Console de OpenCode (`https://opencode.ai/inference/...`) queda **descartado**
+  (`402 Insufficient account funds`). Ver `docs/adr/0003-ai-provider.md`.
+- **API de IA (imagen de plato)**: **DevExpert Inference**, API compatible con OpenAI (base **propia**
+  `https://inference.devexpert.io/v1` en `DishImagePolicy.BASE_URL`, `POST /images/generations` y
+  `/images/edits`, auth `Bearer DEVEXPERT_API_KEY`), con alias `image`/`image-edit`. La base de imagen
+  **no** se deriva de la base del chat: cambiar de proveedor el chat no puede arrastrar las imagenes
+  (ver `docs/adr/0005-ai-dish-images.md`).
 - **Salida estructurada**: la compatibilidad con OpenAI **no** garantiza `json_schema`/structured
   outputs. El contrato del prompt pide JSON y el `RecipeValidator` parsea de forma tolerante (sin
   lanzar), por lo que la app **no** depende de salida estructurada forzada. Sí se pide
@@ -648,7 +673,8 @@ Decisiones de arquitectura que afectan a este documento: `docs/adr/0001-taxonomy
   `retire-recipe-photos`; ver el bullet de la fase 4).
 - **Adaptador real de la imagen de plato (fase 2)**: `com.sazon.app.data.ai.image` implementa el puerto
   anterior con **Ktor Client** (la misma capa `data.ai`, única que conoce la red): `POST
-  /images/generations` sobre la base del proveedor con `Authorization: Bearer <clave>`, cuerpo
+  /images/generations` sobre la **base propia** de DevExpert (`DishImagePolicy.BASE_URL`, que **no** se
+  deriva de la base del chat) con `Authorization: Bearer <clave de DevExpert>`, cuerpo
   `{"model":"image","prompt":<request.prompt>,"size":"1024x1024"}` (512 no lo soporta el proveedor) y
   `expectSuccess = false`. Decodifica `data[0].b64_json` de forma tolerante (`DishImagePayload`) y
   **reduce en local** a WebP q80 de 960 px de ancho (`AndroidDishImageReducer`, único fichero con
@@ -958,7 +984,9 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 - `FakeRecipeGenerator` (determinista, datos fijos, sin red) disponible para el flujo completo sin
   red, incluidas recetas inseguras para el test negativo del Validador.
 - **Proveedor de IA probado en JVM con `MockEngine`** (sin red real ni clave real; la clave de test es
-  ficticia): contrato de la peticion (URL, `Authorization: Bearer`, `model` y `messages`), reintentos y
+  ficticia): contrato de la peticion (URL de **OpenCode Go**, `Authorization: Bearer`, `model`
+  `deepseek-v4.1-flash`, `messages` y las cabeceras del proveedor `x-opencode-session` +
+  `User-Agent`), reintentos y
   `Retry-After`, no-reintento de 4xx, deadline, cancelacion, clave ausente (0 peticiones), 200 ilegible
   y la degradacion de los llamadores reales. Ademas, la **holgura de la politica frente al peor caso
   medido** (`REAL_LATENCY_MILLIS = 115_800L`, `mimo-v2.6-pro`; `CHAT_WORST_LATENCY_MILLIS = 46_600L`:
@@ -1042,8 +1070,12 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 ## Constraints
 
 - **Sin backend**: la clave de IA viaja en el APK → solo válido para demo.
-- **Coste y cuota**: DevExpert Inference tiene cuota **semanal** por clave (al 100 % se rechazan las
-  peticiones hasta el reset) → la política cache-first y el modo semilla protegen el coste.
+- **Coste y cuota**: la **imagen** de plato sigue gastando la cuota **semanal** por clave de DevExpert
+  Inference (al 100 % se rechazan las peticiones hasta el reset) → la política cache-first, el set
+  semilla y el modo semilla protegen el coste. El **chat** pasa a **OpenCode Go** (correctiva
+  `chat-provider-opencode-go`, 2026-10-14): su cuota es **compartida con el harness de agentes** de este
+  repo (limites por 5 h/semana/mes) y Go **monitoriza el abuso**; si la cuota se agota o la clave falta,
+  el chat degrada a modo semilla (sin fallo de la app).
 - **Red intermitente**: solo la Búsqueda con IA necesita red; el Lote de sugerencias, "Tus recetas" y
   Favoritos deben funcionar sin conexión.
 - **Tamaño del APK**: el presupuesto de `app/src/main/assets/img/recipes/` (**≤ 8 MB**, WebP q80 a

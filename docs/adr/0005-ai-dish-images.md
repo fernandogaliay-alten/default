@@ -44,6 +44,17 @@ del APK y del repo; se **conserva** el asset neutro `img/recipes/default.jpg` (*
 pantalla. No cambian el puerto, el transporte, la caché, el tope, el interruptor ni la clave canónica
 (`DishImageCacheKey.VERSION` sigue `dish-image-v2`).
 
+**Base propia de la imagen (2026-10-14, `chat-provider-opencode-go`)**: `DishImagePolicy` gana su
+**propia** constante `BASE_URL = "https://inference.devexpert.io/v1"` y `endpointUrl()`/`editsUrl()` la
+usan; deja de derivar la base de `AiProviderPolicy.BASE_URL`. Motivo: el **chat** pasó a **OpenCode Go**
+(`docs/adr/0003-ai-provider.md`) y la generación de imágenes **sigue en DevExpert**; con la base
+compartida, el cambio de proveedor del chat habría arrastrado las imágenes a OpenCode Go, donde
+fallarían **en silencio** (`null` → ficha tipográfica). Además, las cabeceras obligatorias del chat
+(`x-opencode-session`, `User-Agent`) viajan **por petición** y **nunca** como defaults del `aiClient`
+compartido, para que no se filtren a las peticiones de imagen. **Nada más de este ADR cambia**: ni el
+puerto, ni el prompt, ni la clave canónica, ni la caché, ni el tope, ni el interruptor, ni los alias
+`image`/`image-edit`.
+
 ## Contexto
 
 `recipe-photos` (ADR 0004) resuelve la imagen con 31 fotos empaquetadas, pero las **18 de categoría son
@@ -109,7 +120,9 @@ Alcance de la **fase 2** (feature `dish-image-generator`): el **adaptador real**
 `com.sazon.app.data.ai.image` (`DevExpertDishImageGenerator`), **transporte + códec puros**. `POST
 /images/generations` con el alias `image` y `size 1024x1024` (`512` responde 400), decodificación
 tolerante de `data[0].b64_json` y **reducción local** a WebP q80 de **960 px** de ancho (nunca
-agranda). La política vive en `DishImagePolicy` (un único sitio): endpoint sobre la base del proveedor,
+agranda). La política vive en `DishImagePolicy` (un único sitio): endpoint sobre la base **propia** del
+proveedor de imagen (`DishImagePolicy.BASE_URL`, DevExpert; desde `chat-provider-opencode-go` **no** se
+deriva de la base del chat),
 timeouts propios **más cortos** que los de chat (connect 10 s / socket 30 s / request 40 s) y **un solo
 intento** (`MAX_ATTEMPTS = 1`): con ~2 % de cuota por imagen, reintentar duplicaría el gasto sin cambiar
 la experiencia. Fallo = `null` **sin excepción y sin reintento**; la cancelación se propaga. El

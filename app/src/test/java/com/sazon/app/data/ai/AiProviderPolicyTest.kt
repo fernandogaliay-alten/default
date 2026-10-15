@@ -8,6 +8,7 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -37,9 +38,24 @@ class AiProviderPolicyTest {
     }
 
     @Test
-    fun el_endpoint_es_la_url_de_chat_completions() {
-        assertEquals("https://inference.devexpert.io/v1/chat/completions", AiProviderPolicy.endpointUrl())
-        assertEquals("chat", AiProviderPolicy.MODEL_ALIAS)
+    fun el_endpoint_es_la_url_de_chat_completions_de_opencode_go() {
+        assertEquals("https://opencode.ai/zen/go/v1/chat/completions", AiProviderPolicy.endpointUrl())
+        assertEquals("deepseek-v4.1-flash", AiProviderPolicy.MODEL_ID)
+    }
+
+    // Escenario 1 (correctiva `chat-provider-opencode-go`): las cabeceras que OpenCode Go exige
+    // (`x-opencode-session`) y recomienda (`User-Agent`) viven en un unico sitio, son no vacias y **no**
+    // llevan la clave (la sesion es una constante estable y no sensible).
+    @Test
+    fun las_cabeceras_del_chat_son_no_vacias_y_no_llevan_la_clave() {
+        assertEquals("x-opencode-session", AiProviderPolicy.SESSION_HEADER)
+        assertTrue("La sesion no puede ser vacia", AiProviderPolicy.SESSION_ID.isNotBlank())
+        assertTrue("El User-Agent no puede ser vacio", AiProviderPolicy.USER_AGENT.isNotBlank())
+        assertNotEquals("La sesion nunca es la clave", FAKE_KEY, AiProviderPolicy.SESSION_ID)
+        assertFalse(
+            "La sesion no puede contener la clave",
+            AiProviderPolicy.SESSION_ID.contains(FAKE_KEY),
+        )
     }
 
     @Test
@@ -131,7 +147,9 @@ class AiProviderPolicyTest {
         // Positivos: timeouts del modelo/peticion (el socket de Ktor en JVM es java.net).
         assertEquals(
             AiUnavailableReason.TIMEOUT,
-            AiProviderPolicy.transportFailureReason(HttpRequestTimeoutException("https://inference.devexpert.io/v1", 120_000)),
+            AiProviderPolicy.transportFailureReason(
+                HttpRequestTimeoutException(AiProviderPolicy.endpointUrl(), 120_000),
+            ),
         )
         assertEquals(
             AiUnavailableReason.TIMEOUT,
@@ -211,3 +229,6 @@ private const val REAL_LATENCY_MILLIS = 115_800L
  * 28,0 / 33,1 / 42,1 s). El socket timeout debe cubrir al menos el doble.
  */
 private const val CHAT_WORST_LATENCY_MILLIS = 46_600L
+
+/** Clave **ficticia** (nunca la real): la sesion de OpenCode Go jamas puede ser ni contener la clave. */
+private const val FAKE_KEY = "test-key"

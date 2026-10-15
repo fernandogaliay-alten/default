@@ -18,6 +18,33 @@
   ella `400 MissingSessionID`) y el endpoint Console (`https://opencode.ai/inference/...`) responde
   **`402 Insufficient account funds`**. Claves en `local.properties` (`opencode.apiKey` para el chat +
   `devexpert.apiKey` para la imagen), nunca versionadas. Detalle en `feature_list.json`.
+- Correctiva **`chat-provider-opencode-go`** implementada y autoverificada (**`passing`**) en la
+  **sesión 126** y **`accepted`** en la **sesión 127** (validación independiente, veredicto `accept`;
+  ver `docs/validations/chat-provider-opencode-go.md`) en su worktree
+  `feature/chat-provider-opencode-go` (rama `feature/chat-provider-opencode-go`, **sin**
+  commit/push/PR del implementer; el commit local lo crea el orquestador de `feature-flow` y publica
+  `github-flow`). El **chat** (las tres operaciones del puerto `RecipeGenerator`) se sirve contra
+  **OpenCode Go** (`https://opencode.ai/zen/go/v1/chat/completions`, `Authorization: Bearer
+  OPENCODE_API_KEY`, modelo **literal** `deepseek-v4.1-flash` —`MODEL_ALIAS` del chat se renombra a
+  `MODEL_ID`: Go no expone alias—) con las **dos cabeceras por petición** que el proveedor exige
+  (`x-opencode-session` = constante estable y no sensible `sazon-android`; sin ella `400
+  MissingSessionID`) y recomienda (`User-Agent` `Sazon-Android/1.0`); van **por petición** y nunca como
+  defaults del `aiClient`, que es **compartido** con la imagen. La **imagen de plato sigue en DevExpert**
+  y deja de colgar de la base del chat: `DishImagePolicy` gana su **propia** `BASE_URL`
+  (`https://inference.devexpert.io/v1`) y `endpointUrl()`/`editsUrl()` la usan (sin el import de
+  `AiProviderPolicy`). Dos claves con consumidores separados: `BuildConfig.OPENCODE_API_KEY` (chat) y
+  `BuildConfig.DEVEXPERT_API_KEY` (imagen), ambas desde `local.properties` (nunca versionadas) y con
+  valor `""` + degradación silenciosa si falta la propiedad; el mensaje de `MISSING_KEY` cita
+  `opencode.apiKey`. Sin cambios en el dominio, `RecipeValidator`, el wire (`OpenAiChat`), la política de
+  timeouts/reintentos/`response_format`, el diagnóstico, la caché de imagen, la UI, los assets ni las
+  dependencias; `DevExpertRecipeGenerator` conserva su nombre (histórico, documentado). Gate: `bash
+  init.sh` exit 0, **98 suites / 739 tests / 0 fallos / 0 errores / 0 saltados** (baseline re-derivada en
+  `HEAD` 5b2de53: `git grep -c '@Test'` = 98 ficheros / 738 anotaciones ⇒ delta **+1 test / 0 suites**),
+  lint 0 errores y 13 warnings preexistentes (0 bajo `app/src`). Docs durables: `docs/adr/0003`,
+  `docs/adr/0005`, `docs/technical-discovery.md`, `docs/domain-model.md` y
+  `docs/risks-and-open-questions.md`. Queda la **prueba manual** de la persona tras el merge
+  (chat 200 en logcat `SazonAi`, modo semilla con la clave vaciada, imagen por DevExpert). Detalle en
+  `feature_list.json`.
 - Flujo de entrega: `github-flow` (worktrees + issues/PR) sobre `feature-flow`; rama base `main` y
   remoto `origin` → `https://github.com/fernandogaliay-alten/default.git` (privado)
 - Últimas features aceptadas: `fake-recipe-generator`, `recipe-validator`, `prompt-builder`,
@@ -5657,3 +5684,123 @@
 - Siguiente paso: el orquestador de **`github-flow`** publica (push de `feature/detail-hero-square-bottom`
   + PR con `Closes #<n>` contra `main`). En el plan sigue `dish-image-settings-default-off` (`not_started`,
   spec ya creada) y `seed-catalog-50` (`blocked`).
+
+### Sesión 126 (implementer, `chat-provider-opencode-go`)
+
+- Fecha: 2026-10-14
+- Objetivo: implementar `chat-provider-opencode-go` (correctiva de `real-ai-provider`, issue #141) según
+  `docs/specs/chat-provider-opencode-go.md`: el **chat** pasa a **OpenCode Go**
+  (`deepseek-v4.1-flash`) con su **propia clave** y sus **dos cabeceras obligatorias/recomendadas**, y
+  la **imagen de plato** se **desacopla** de la base del chat (sigue en DevExpert con base y clave
+  propias). Subagente `implementer` (skill `feature-implementer`), en el worktree
+  `chat-provider-opencode-go`, rama `feature/chat-provider-opencode-go`. **Sin** commit/push/PR.
+- Completado:
+  - `AiProviderPolicy`: `BASE_URL` → `https://opencode.ai/zen/go/v1`; `MODEL_ALIAS` (chat) →
+    **`MODEL_ID = "deepseek-v4.1-flash"`** (Go no expone alias); constantes nuevas `SESSION_HEADER =
+    "x-opencode-session"`, `SESSION_ID = "sazon-android"` (estable y **no sensible**, nunca la clave) y
+    `USER_AGENT = "Sazon-Android/1.0"`; KDoc del objeto (chat vs imagen) y matización del KDoc de
+    `SOCKET_TIMEOUT_MILLIS` (calibración medida contra el proveedor anterior; se conserva como techo).
+    Timeouts, reintentos, `Retry-After`, fallback de `response_format`, `NEUTRAL_CONSTRAINTS` y
+    `transportFailureReason` **sin cambios**.
+  - `DevExpertRecipeGenerator.sendAttempt`: las dos cabeceras **por petición** (`header(...)`, nunca
+    defaults del `aiClient` compartido); default `model = MODEL_ID`; mensaje de `MISSING_KEY` cita
+    `opencode.apiKey`; KDoc de clase (OpenCode Go + nombre histórico del fichero/clase + imágenes en
+    `DevExpertDishImageGenerator`).
+  - `DishImagePolicy`: constante **propia** `BASE_URL = "https://inference.devexpert.io/v1"`;
+    `endpointUrl()`/`editsUrl()` la usan; se retira el import de `AiProviderPolicy` y las menciones del
+    KDoc. Alias, rutas, tamaño, timeouts, `MAX_ATTEMPTS`, `EDIT_FALLBACK_STATUSES` y `scaledSize`
+    intactos.
+  - `app/build.gradle.kts`: lee `opencode.apiKey` de `local.properties` (mismo escapado) y publica
+    `BuildConfig.OPENCODE_API_KEY`; conserva `DEVEXPERT_API_KEY`.
+  - `MainActivity`: chat con `BuildConfig.OPENCODE_API_KEY`; imagen **mantiene**
+    `BuildConfig.DEVEXPERT_API_KEY`; comentarios de cableado actualizados.
+  - Tests: `AiProviderPolicyTest` (endpoint de Go, `MODEL_ID`, cabeceras no vacías y `SESSION_ID` ≠
+    clave; +1 test), `OpenAiChatTest` (`MODEL_ID`), `DevExpertRecipeGeneratorTest` (URL de Go,
+    `Bearer`, `x-opencode-session`, `User-Agent`, `model` y mensaje de `MISSING_KEY` con
+    `opencode.apiKey`), `DishImagePolicyTest` (literales de DevExpert + `assertNotEquals` de desacople)
+    y `DevExpertDishImageGeneratorTest` (**aserción negativa**: la petición de imagen no lleva
+    `x-opencode-session` ni el `User-Agent` del chat).
+  - Docs durables: `docs/adr/0003-ai-provider.md` (decisión partida chat/imagen + nota fechada),
+    `docs/adr/0005-ai-dish-images.md` (base de imagen propia), `docs/technical-discovery.md`
+    (stack, tabla de **dos** claves, adaptador de chat, Integrations, adaptador de imagen, Testing y
+    Constraints de cuota), `docs/domain-model.md` y `docs/risks-and-open-questions.md` (bullet del
+    proveedor + dos riesgos nuevos: cuota compartida/monitorización de abuso de Go e id de modelo
+    fijado).
+- Verificación ejecutada:
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.data.ai.*"` →
+    BUILD SUCCESSFUL.
+  - `bash init.sh` (exit 0; `./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`, sin procesos
+    largos; `init.sh` intacto) y, para tener XML frescos de **todas** las suites,
+    `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34/34 tareas).
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **98 suites / 739 tests /
+    0 fallos / 0 errores / 0 saltados**. Baseline re-derivada en `HEAD` 5b2de53: `git grep -c '@Test'`
+    = 98 ficheros / 738 anotaciones ⇒ **delta +1 test / 0 suites**. `data.ai` = 147 tests (14 suites),
+    con `AiProviderPolicyTest` 13 (12+1), `DevExpertRecipeGeneratorTest` 38, `OpenAiChatTest` 2,
+    `image/DishImagePolicyTest` 9 y `image/DevExpertDishImageGeneratorTest` 20.
+  - Lint (`app/build/reports/lint-results-debug.sarif`): **13 resultados, 0 errores, 0 bajo `app/src`**
+    (GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1),
+    preexistentes.
+  - Greps de alcance: `inference.devexpert.io` en `data/ai` → **solo** `image/DishImagePolicy.kt`;
+    `devexpert.apiKey` en `app/src` → **0**; `MODEL_ALIAS` en `data/ai` → **0** fuera de `image/`;
+    `x-opencode-session` solo se emite en `sendAttempt`. `git diff --name-only` = solo los 5 ficheros
+    de `main`/build, los 5 tests, las 5 docs durables y `feature_list.json`; sin diff en dominio,
+    `Recipe.kt`/`RecipeValidator.kt`/`PromptBuilder.kt`, wire (`OpenAiChat.kt`),
+    `AiHttpClientFactory.kt`, `data/ai/image/DevExpertDishImageGenerator.kt`, `data/image/**`, `ui/**`,
+    assets, `docs/domain/taxonomy.json`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**`,
+    `DESIGN.md` ni `docs/design/concepts/**`; sin dependencias nuevas.
+  - Claves: `local.properties` sigue ignorado por git y ninguna clave aparece en el diff ni en el
+    árbol versionado (solo nombres de propiedad/campo); los tests usan la clave ficticia `test-key`.
+- Ficheros cambiados: `app/build.gradle.kts`, `app/src/main/java/com/sazon/app/MainActivity.kt`,
+  `app/src/main/java/com/sazon/app/data/ai/{AiProviderPolicy,DevExpertRecipeGenerator}.kt`,
+  `app/src/main/java/com/sazon/app/data/ai/image/DishImagePolicy.kt`,
+  `app/src/test/java/com/sazon/app/data/ai/{AiProviderPolicyTest,OpenAiChatTest,DevExpertRecipeGeneratorTest}.kt`,
+  `app/src/test/java/com/sazon/app/data/ai/image/{DishImagePolicyTest,DevExpertDishImageGeneratorTest}.kt`,
+  `docs/adr/0003-ai-provider.md`, `docs/adr/0005-ai-dish-images.md`, `docs/domain-model.md`,
+  `docs/risks-and-open-questions.md`, `docs/technical-discovery.md`, `feature_list.json` y este
+  registro. **Sin** commit, push ni PR.
+- Hallazgos relevantes: el riesgo principal (que el cambio de base del chat arrastrara las imágenes a
+  OpenCode Go, donde fallarían en silencio) queda cerrado por la `BASE_URL` propia de `DishImagePolicy`
+  y por dos aserciones negativas de test. El `aiClient` compartido obliga a que las cabeceras de Go
+  viajen **por petición**: unos defaults del cliente habrían filtrado `x-opencode-session` a DevExpert.
+- Riesgo o incógnita abierta (no bloqueante, en `docs/risks-and-open-questions.md`): la cuota de
+  OpenCode Go es **compartida con el harness de agentes** de este repo y Go **monitoriza el abuso**;
+  además el **valor** de `x-opencode-session` está verificado como *presencia*, no como formato (cambio
+  de una línea si el proveedor lo rechazara) y el **id del modelo está fijado** (si Go lo renombra, el
+  chat degrada a semilla hasta cambiar la constante).
+- Siguiente paso: **validación independiente** de `chat-provider-opencode-go` (skill
+  `feature-validator`) sobre este worktree; al `accept`, el orquestador de `feature-flow` crea el commit
+  local y `github-flow` publica (push + PR `feature/chat-provider-opencode-go` → `main` con
+  `Closes #141`). Queda para la persona la **prueba manual** en emulador (chat 200 en logcat `SazonAi`,
+  modo semilla con la clave vaciada, imagen por DevExpert), no automatizable desde WSL.
+
+### Sesión 127 (validator, `chat-provider-opencode-go`)
+
+- Fecha: 2026-10-15
+- Objetivo: **validación independiente** de `chat-provider-opencode-go` (skill `feature-validator`,
+  subagente `validator` con contexto limpio) sobre el worktree `chat-provider-opencode-go`, rama
+  `feature/chat-provider-opencode-go`, con el estado previo `passing` (sesión 126, `HEAD` 5b2de53).
+  Veredicto: **`accept`**. Detalle en `docs/validations/chat-provider-opencode-go.md`.
+- Verificación ejecutada (sin fiarse del handoff):
+  - `bash init.sh` exit 0 (`./gradlew test` + `./gradlew lint` vía `scripts/gradle.sh`) y
+    `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, 34/34 tareas).
+  - Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml`: **98 suites / 739 tests /
+    0 fallos / 0 errores / 0 saltados**; baseline re-derivada en `HEAD` 5b2de53 (98 ficheros con `@Test`
+    / 738 anotaciones) ⇒ **delta +1 test / 0 suites**.
+  - Lint (SARIF): **0 errores, 13 warnings** preexistentes, **0 bajo `app/src`**.
+  - Escenarios 1-5 confirmados en código y en tests (no solo por grep): endpoint/cabeceras/modelo de Go
+    por petición; `MISSING_KEY` sin red citando `opencode.apiKey`; `DishImagePolicy.BASE_URL` propia con
+    `assertNotEquals` de desacople; peticiones de imagen **sin** `x-opencode-session` (`assertNull`); dos
+    claves con consumidores separados; timeouts/reintentos/`response_format`/diagnóstico/modo semilla
+    intactos.
+  - Alcance: `git diff --name-only` = exactamente los ficheros previstos por la spec + la spec sin
+    trackear; ninguna clave en el diff ni en el árbol versionado (`local.properties` sigue ignorado).
+- Hallazgos: **Critical/High/Medium: ninguno**; 1 Low informativo no bloqueante (en
+  `DevExpertDishImageGeneratorTest` la aserción negativa del `User-Agent` solo falla si coincide con el
+  del chat; la garantía fuerte es el `assertNull` de `x-opencode-session`, presente en ambas rutas).
+  Nota de entorno (no defecto): el primer `init.sh` chocó con un `lint --rerun-tasks` residual de un
+  intento previo compilando el mismo worktree en DrvFs; tras esperar, pasó limpio (no se usó
+  `./gradlew --stop`).
+- Cierre: el orquestador persiste `chat-provider-opencode-go` → **`accepted`** en `feature_list.json`,
+  escribe `docs/validations/chat-provider-opencode-go.md` y crea el **commit local** (Conventional
+  Commit) en la rama `feature/chat-provider-opencode-go`. **Sin** push ni PR (publica `github-flow`).
+  Pendiente para la persona la **prueba manual** en emulador, no automatizable desde WSL.

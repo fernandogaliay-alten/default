@@ -28,13 +28,23 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 
 /**
- * Implementacion real del puerto [RecipeGenerator] sobre **DevExpert Inference** (API compatible con
- * OpenAI). Vive en `data.ai`: es el unico sitio (junto al cableado de `MainActivity`) que conoce Ktor.
+ * Implementacion real del puerto [RecipeGenerator] sobre **OpenCode Go** (API compatible con OpenAI,
+ * modelo [AiProviderPolicy.MODEL_ID] `deepseek-v4.1-flash`). Vive en `data.ai`: es el unico sitio
+ * (junto al cableado de `MainActivity`) que conoce Ktor.
+ *
+ * **El nombre del fichero y de la clase es historico**: nacio sobre DevExpert Inference y se conserva
+ * (deuda de nomenclatura conocida y acotada; un renombrado provider-neutral seria otra correctiva). Las
+ * **imagenes de plato** las sirve `com.sazon.app.data.ai.image.DevExpertDishImageGenerator`, con base y
+ * clave **propias** de DevExpert (`DishImagePolicy`), desacopladas de la base del chat.
  *
  * Las tres operaciones componen su prompt con [PromptBuilder] y llaman al mismo [execute], que aplica
  * la politica de [AiProviderPolicy] (deadline total, timeout por intento recortado, un reintento con
  * backoff/`Retry-After`, nunca 4xx no reintentables) y traduce los fallos a [AiUnavailableException],
- * que los llamadores aceptados ya entienden como **modo semilla**.
+ * que los llamadores aceptados ya entienden como **modo semilla**. Cada peticion lleva, **ademas** del
+ * `Authorization: Bearer`, las dos cabeceras que exige/recomienda OpenCode Go
+ * ([AiProviderPolicy.SESSION_HEADER] con [AiProviderPolicy.SESSION_ID] y `User-Agent`), **por peticion**
+ * y nunca como defaults del cliente: el `aiClient` es **compartido** con la cadena de imagen y unos
+ * defaults filtrarian la cabecera de sesion a DevExpert.
  *
  * Con el interruptor [responseFormatEnabled] activo (por defecto) cada peticion pide
  * `response_format: {"type":"json_object"}`. Si el proveedor responde **400/422** con presupuesto de
@@ -54,7 +64,7 @@ class DevExpertRecipeGenerator(
     private val apiKey: String,
     private val taxonomy: Taxonomy,
     private val client: HttpClient,
-    private val model: String = AiProviderPolicy.MODEL_ALIAS,
+    private val model: String = AiProviderPolicy.MODEL_ID,
     private val responseFormatEnabled: Boolean = AiProviderPolicy.RESPONSE_FORMAT_ENABLED,
     private val onEvent: (AiCallEvent) -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
@@ -132,7 +142,7 @@ class DevExpertRecipeGenerator(
             )
             throw AiUnavailableException(
                 AiUnavailableReason.MISSING_KEY,
-                "Falta la clave del proveedor de IA (devexpert.apiKey); se degrada a modo semilla.",
+                "Falta la clave del proveedor de IA (opencode.apiKey); se degrada a modo semilla.",
             )
         }
 
@@ -238,6 +248,11 @@ class DevExpertRecipeGenerator(
             client.post(AiProviderPolicy.endpointUrl()) {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $apiKey")
+                // Cabeceras obligatoria/recomendada de OpenCode Go, **por peticion**: el `aiClient` es
+                // compartido con la cadena de imagen de DevExpert, asi que unos defaults en el cliente
+                // filtrarian `x-opencode-session` a sus peticiones.
+                header(AiProviderPolicy.SESSION_HEADER, AiProviderPolicy.SESSION_ID)
+                header(HttpHeaders.UserAgent, AiProviderPolicy.USER_AGENT)
                 timeout { requestTimeoutMillis = AiProviderPolicy.attemptRequestTimeoutMillis(remainingMillis) }
                 setBody(
                     ChatCompletionRequest(
