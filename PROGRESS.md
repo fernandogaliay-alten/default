@@ -5939,3 +5939,27 @@
 - Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (claro/oscuro; suavidad sin
   corte, parpadeo ni salto de layout en los cuatro frentes), no automatizable desde WSL; un defecto se
   corrige con una feature correctiva.
+
+### Sesión 130 (orquestador `github-flow`, sync + prune de `screen-transitions`)
+
+- Fecha: 2026-10-15
+- Objetivo: dejar mergeable el PR abierto **#146** (`screen-transitions` → `main`) y limpiar los
+  worktrees de las features ya mergeadas.
+- Integración (regla del único integrador): el PR estaba basado en `14bc91f` mientras `origin/main` ya
+  estaba en `ff24daa` (merge del PR #145, `dish-image-settings-persistence`). Se integró `origin/main`
+  en `feature/screen-transitions` con `scripts/sync-worktree.sh screen-transitions` (**merge**, nunca
+  rebase ni force-push). Sin conflictos textuales; `DESIGN.md`, `PROGRESS.md`,
+  `docs/technical-discovery.md` y `feature_list.json` se auto-mergearon conservando **ambas**
+  aportaciones (verificado: las dos features quedan `accepted`). El resultado se verificó en el
+  worktree con `bash init.sh` (**exit 0**, `test` + `lint` en verde) antes de publicar. `local.properties`
+  ya estaba copiado en el worktree.
+- Publicación: push de `feature/screen-transitions` (`bc75b51..54592f7`) reutilizando el PR #146 ya
+  existente (título `[screen-transitions] …`, cuerpo con evidencia de `accept` y `Closes #144`); tras
+  el push el PR quedó `MERGEABLE` / `CLEAN`. **Sin merge por parte del agente.**
+- Cierre de la publicación: la persona **mergeó** el PR #146 (merge commit `b441454`) y la issue #144
+  quedó **cerrada**.
+- Limpieza (`github-flow prune`, idempotente): se retiraron el worktree y la rama local de
+  **`screen-transitions`** (PR #146) y de **`dish-image-settings-persistence`** (PR #145), ambas
+  `accepted`, con PR mergeado y rama contenida en `origin/main` (guardas verificadas con `--dry-run`
+  antes de eliminar). Las ramas remotas `origin/feature/<id>` **no** se tocan.
+- Estado de features: sin cambios (`feature_list.json` intacto: ambas siguen `accepted`).
