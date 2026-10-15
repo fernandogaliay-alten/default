@@ -22,6 +22,8 @@ import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.cooking.CookingAlarm
+import com.sazon.app.ui.cooking.NoOpCookingAlarm
 import com.sazon.app.ui.onboarding.OnboardingFlow
 import kotlinx.coroutines.launch
 
@@ -52,6 +54,7 @@ fun SazonApp(
     dishImageSettings: DishImageSettings,
     seedRecipes: List<Recipe>,
     modifier: Modifier = Modifier,
+    cookingAlarm: CookingAlarm = NoOpCookingAlarm,
 ) {
     val state by produceState<ProfileObservation>(
         initialValue = ProfileObservation.Loading,
@@ -92,6 +95,7 @@ fun SazonApp(
                     seedRecipes = seedRecipes,
                     onSaveProfile = { updated -> scope.launch { profileRepository.save(updated) } },
                     modifier = modifier,
+                    cookingAlarm = cookingAlarm,
                 )
             }
         }

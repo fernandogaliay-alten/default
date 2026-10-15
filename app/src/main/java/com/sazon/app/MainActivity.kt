@@ -1,11 +1,15 @@
 package com.sazon.app
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.core.content.ContextCompat
 import com.sazon.app.data.AssetDishImageSeedSource
 import com.sazon.app.data.AssetSeedRecipeSource
 import com.sazon.app.data.AssetTaxonomySource
@@ -17,6 +21,8 @@ import com.sazon.app.data.ai.AiVerboseDiagnostics
 import com.sazon.app.data.ai.DevExpertRecipeGenerator
 import com.sazon.app.data.ai.image.AssetDishImageStyleReference
 import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
+import com.sazon.app.data.cooking.AndroidCookingAlarm
+import com.sazon.app.data.cooking.CookingNotifications
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
@@ -51,6 +57,15 @@ import com.sazon.app.ui.artwork.NoDishImageOriginDiagnostics
 import com.sazon.app.ui.theme.SazonTheme
 
 class MainActivity : ComponentActivity() {
+
+    /**
+     * Solicitud de `POST_NOTIFICATIONS` (registrada **antes** de `onCreate`, como exige
+     * `registerForActivityResult`). El resultado **no** gatea nada: sin permiso el Modo cocina, la
+     * cuenta atras y el "¡Listo!" en pantalla siguen intactos y simplemente no hay aviso de sistema.
+     */
+    private val requestNotificationsPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -207,6 +222,12 @@ class MainActivity : ComponentActivity() {
                 NoDishImageOriginDiagnostics
             }
 
+        // Aviso de fin del temporizador del modo cocina: se crea el canal propio desde el arranque (asi
+        // aparece en los ajustes del sistema) y se pide `POST_NOTIFICATIONS` **una vez por proceso**, de
+        // forma no bloqueante (nunca gatea una pantalla). Denegado, el aviso simplemente no aparece.
+        CookingNotifications.ensureChannel(applicationContext)
+        requestNotificationsPermissionOncePerProcess()
+
         setContent {
             SazonTheme {
                 CompositionLocalProvider(
@@ -231,9 +252,33 @@ class MainActivity : ComponentActivity() {
                         networkStatusSource = networkStatusSource,
                         dishImageSettings = dishImageSettings,
                         seedRecipes = seedRecipes,
+                        cookingAlarm = AndroidCookingAlarm(applicationContext),
                     )
                 }
             }
         }
+    }
+
+    /**
+     * Pide `POST_NOTIFICATIONS` (Android 13+, obligatorio con `minSdk = 33`) **una vez por proceso**:
+     * el flag vive en el companion para no repetir el dialogo al recrear la Activity. Si el permiso ya
+     * esta concedido no se pide nada. La solicitud es **no bloqueante**: no espera respuesta ni cambia
+     * el flujo de la app.
+     */
+    private fun requestNotificationsPermissionOncePerProcess() {
+        if (notificationsPermissionRequested) return
+        notificationsPermissionRequested = true
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) requestNotificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private companion object {
+
+        /** Bandera de proceso: la solicitud de `POST_NOTIFICATIONS` se hace como maximo una vez. */
+        @Volatile
+        var notificationsPermissionRequested = false
     }
 }

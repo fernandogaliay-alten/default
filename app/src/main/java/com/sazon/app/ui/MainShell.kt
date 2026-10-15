@@ -49,7 +49,9 @@ import com.sazon.app.domain.search.AiSearchService
 import com.sazon.app.domain.suggestions.SuggestionBatchRepository
 import com.sazon.app.domain.suggestions.SuggestionBatchService
 import com.sazon.app.domain.taxonomy.Taxonomy
+import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingModeScreen
+import com.sazon.app.ui.cooking.NoOpCookingAlarm
 import com.sazon.app.ui.detail.RecipeDetailScreen
 import com.sazon.app.ui.favorites.FavoritesScreen
 import com.sazon.app.ui.generator.GeneratorFlow
@@ -117,6 +119,7 @@ fun MainShell(
     seedRecipes: List<Recipe>,
     onSaveProfile: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
+    cookingAlarm: CookingAlarm = NoOpCookingAlarm,
 ) {
     var navigation by rememberSaveable(stateSaver = MainNavigationStateSaver) {
         mutableStateOf(MainNavigationState())
@@ -338,6 +341,7 @@ fun MainShell(
                     recipe = open,
                     onClose = { cookingRecipe = null },
                     modifier = Modifier.fillMaxSize(),
+                    alarm = cookingAlarm,
                 )
             }
         }

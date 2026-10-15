@@ -274,6 +274,17 @@ persona revisa el acabado en el emulador tras el merge:
 Las cuatro **no** generan capturas nuevas y **no** se crea
 `docs/design/concepts/<feature-id>/`.
 
+**Excepción de capturas (desviación documentada, feature `cooking-timer-alarm`, 2026-10-15):** `cooking-timer-alarm`
+**no** genera capturas nuevas ni carpeta `docs/design/concepts/cooking-timer-alarm/`. El cambio visible es una
+**notificación del sistema operativo** (canal propio `cooking_timer`, aviso "¡Listo! El paso ha terminado"),
+no una pantalla de la app: no hay tokens nuevos ni microcopy de UI que revisar contra este documento. El
+único activo visual nuevo es el **small icon** `res/drawable/ic_notification_timer.xml`, **monocromo** y
+derivado del mismo lenguaje de glifos ya aceptado (`ClockGlyph` de `CookingModeScreen`): el color lo impone
+el sistema al teñirlo, así que no usa ningún token de `DESIGN.md`. El "¡Listo!" **en pantalla** sigue
+exactamente igual (lo pinta `cooking-mode`), y el acabado de la notificación (tono, patrón de vibración,
+aspecto en la pantalla de bloqueo) lo revisa la persona en el emulador tras el merge; un defecto se corrige
+con una **feature correctiva**.
+
 Al aceptar cada exportación, registrar aquí su estado como **dirección visual** (no especificación
 pixel-perfect).
 
