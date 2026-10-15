@@ -20,6 +20,7 @@ import com.sazon.app.data.ai.image.DevExpertDishImageGenerator
 import com.sazon.app.data.favorites.FavoritesDatabase
 import com.sazon.app.data.favorites.RoomFavoriteRepository
 import com.sazon.app.data.image.AndroidDishImageCache
+import com.sazon.app.data.image.AndroidDishImageSettingsStore
 import com.sazon.app.data.image.DishImageOrigin
 import com.sazon.app.data.image.DishImageOriginSink
 import com.sazon.app.data.image.DishImageResolver
@@ -141,11 +142,14 @@ class MainActivity : ComponentActivity() {
         // no se crea un segundo motor HTTP) y la cache de la
         // fase 3. Se inyecta por `LocalGeneratedRecipeArtworkSource` como **capa de fondo opcional**
         // sobre la ficha tipografica; sin red ni I/O en el arranque (la cache solo se toca al resolver).
-        // El ajuste de sesion (interruptor + tope por sesion) se gobierna en DOS puntos: el decorador
-        // impone el tope en el borde de generacion (donde se gasta cuota) y el proveedor del seam
-        // gatea el interruptor (apagado = no se pide nada: ni cache ni generacion). Uno por proceso =
-        // una sesion; no se persiste.
-        val dishImageSettings = DishImageSettings()
+        // El ajuste de la imagen de plato (interruptor + tope por sesion) se gobierna en DOS puntos: el
+        // decorador impone el tope en el borde de generacion (donde se gasta cuota) y el proveedor del
+        // seam gatea el interruptor (apagado = no se pide nada: ni cache ni generacion). El
+        // **interruptor** se RESTAURA de SharedPreferences (un bit) al arrancar y se persiste al
+        // moverlo; su estado guardado decide este primer frame (sin parpadeo). El **tope** sigue siendo
+        // por sesion (un proceso = una sesion) y nunca se persiste: arranca en 12.
+        val dishImageSettings =
+            DishImageSettings.restored(AndroidDishImageSettingsStore(applicationContext))
         // Referencia de estilo (fase 6): el asset neutro y versionado de `recipe-photos`
         // (`img/recipes/default.<ext>`) viaja en el APK; no hay subida del usuario. Best-effort: `null`
         // (asset ausente o ilegible) deja la app exactamente en el comportamiento de la fase 2 (una

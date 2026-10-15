@@ -7,7 +7,9 @@
 `dish-image-settings-toggle` (fase 4, mitad de ajuste de usuario), `dish-visual-descriptor` (fase 5),
 `dish-style-reference` (fase 6) y `dish-image-seed` (fase 7), más el seguimiento de integración
 `dish-visual-descriptor-wiring` (entrega en runtime de la fase 5) y la correctiva `dish-image-prompt-v2`
-(prompt de imagen v2 + diagnóstico del origen), 2026-10-13. Fija la decisión de
+(prompt de imagen v2 + diagnóstico del origen), más las correctivas `dish-image-settings-default-off`
+(opt-in por defecto) y `dish-image-settings-persistence` (el interruptor se persiste en un bit detrás de
+una costura pura; el tope sigue por sesión), 2026-10-15. Fija la decisión de
 arquitectura y de política (puerto, prompt determinista y clave canónica), implementa el **adaptador
 real** de transporte + códec y la **caché** de disco + memoria, **conecta** el nivel generado por
 delante de la cadena local con una progresión con crossfade, añade el **control de gasto** (interruptor
@@ -169,8 +171,7 @@ tampoco dependencias nuevas ni `Log`. la cadena de `recipe-photos` pasa formalme
 
 Alcance de la **fase 4** (mitad de ajuste de usuario, feature `dish-image-settings-toggle`): el
 **control del gasto** en `data.image` + `ui.profile`, **sin pantalla nueva**. `DishImageSettings` reúne
-el **interruptor** y el **tope por sesión** (en memoria; sesión = vida del proceso, **sin**
-persistencia: no toca `UserProfile` ni Room) y expone un `StateFlow`
+el **interruptor** y el **tope por sesión** y expone un `StateFlow`
 (`enabled`/`used`/`max`/`remaining`/`exhausted`) que alimenta la sección "Imágenes del plato" del
 Perfil (`DishImageSettingsSection`, microcopy puro en `DishImageSettingsCopy`). Se gobierna en **dos
 puntos**: el proveedor de `LocalGeneratedRecipeArtworkSource` en `MainActivity` gatea el interruptor
@@ -185,8 +186,23 @@ hasta que la persona lo encienda, feature `dish-image-settings-default-off`, 202
 `AiProviderPolicy.RESPONSE_FORMAT_ENABLED`). Semántica **conservadora**: un **fallo** del proveedor
 consume la unidad (es donde se paga) y una generación **cancelada** también (la reserva precede a la
 llamada); apagar/encender **no** reinicia el tope. Degradación silenciosa intacta: apagado, agotado o
-fallo → foto local, nunca error de UI; la `CancellationException` se propaga. Sin dependencias nuevas,
-sin persistencia y sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
+fallo → foto local, nunca error de UI; la `CancellationException` se propaga. Sin dependencias nuevas y
+sin `Log`. Ver `docs/specs/dish-image-settings-toggle.md`.
+
+**Persistencia del interruptor** (feature `dish-image-settings-persistence`, 2026-10-15, supersede la
+parte de "sin persistencia" de la fase 4): el **estado del interruptor** (un solo bit) **se persiste**
+en `SharedPreferences` (`dish_image_settings` / `enabled`, `MODE_PRIVATE`, `apply()`) detrás de la
+costura **pura** `data.image.DishImageSettingsStore` (`loadEnabled`/`saveEnabled`, contrato "no lanza")
+y de su adaptador Android `AndroidDishImageSettingsStore`; `DishImageSettings.restored(store)` lo
+restaura **síncronamente** en el punto de composición (`MainActivity`) antes de `setContent`, así que el
+primer frame ya usa la última elección, y `setEnabled` escribe el bit (mejor esfuerzo). Sigue **sin**
+Room, **sin** `UserProfile` (su campo entraría en la Firma de preferencias y forzaría el refresco del
+Lote), **sin** DataStore (sería una dependencia nueva) y **sin** dependencias nuevas; `DEFAULT_ENABLED =
+false` aplica solo cuando no hay valor guardado. El **tope por sesión** sigue **sin persistirse**
+(`MAX_GENERATIONS_PER_SESSION = 12`, arranca intacto en cada proceso) y la costura no expone ninguna
+operación de tope, de modo que no puede persistirse por construcción. La semántica del gate no cambia
+(apagado = `null` sin leer caché, semilla ni API). Supersede la Decisión 2 de
+`docs/specs/dish-image-settings-toggle.md` en esa parte.
 
 Alcance de la **fase 5** (feature `dish-visual-descriptor`): el **contrato con la IA** y la **política
 pura** del descriptor visual opcional del plato (la entrega en runtime quedó diferida a su feature de
