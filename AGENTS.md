@@ -56,7 +56,10 @@ El flujo de entrega lo define `github-flow` (sobre `feature-flow`) y sus reglas 
   permanente**. No se pide autorización por ejecución. Una sesión que ejecute `feature-flow` (incluida
   la sesión hija de un worktree) **nunca** hace push ni abre PR, ni siquiera teniendo el permiso: su
   salida es el commit local.
-- El agente **nunca hace merge** ni activa auto-merge: el merge del PR lo hace la persona.
+- El merge lo hace **solo el orquestador de `pr-flow`**, con **merge commit** (`gh pr merge <n> --merge`)
+  y **solo** cuando el `reviewer` devuelve `accept`, no hay conflictos y no hay checks requeridos en
+  rojo. Ningún otro flujo mergea: `github-flow` publica el PR y ahí termina. Nunca se usa `--squash`,
+  `--rebase` ni `--auto`, y nunca se hace force-push.
 - **Verificación de UI**: no se automatizan pruebas de UI (emulador). Las features de UI se validan por
   lógica/estado en JVM cuando sea posible y contra `DESIGN.md` (fuente de verdad visual); lo puramente
   visual lo revisa la persona tras el merge. Un defecto visual se
@@ -72,6 +75,7 @@ aceptación.
 - La especificación (`feature-spec`) la hace el subagente **`planner`**.
 - La implementación (`feature-implementer`) la hace el subagente **`implementer`**.
 - La validación (`feature-validator`) la hace el subagente **`validator`**.
+- La revisión del PR (`pr-review`) la hace el subagente **`reviewer`**, orquestada por `pr-flow`.
 - El agente principal **no** ejecuta esas skills directamente: delega en el subagente del rol. El
   flujo completo (`feature-flow`) lo orquesta el agente principal.
 - Para varias features en paralelo sobre un repositorio GitHub, el orquestador usa la skill
@@ -79,8 +83,12 @@ aceptación.
   (con `bash scripts/launch-feature-session.sh <feature-id>`, que fija el cwd del worktree y corre el
   ciclo en primer plano hasta que termina) y delega el ciclo de cada feature a `feature-flow`.
   `github-flow` **nunca** hace merge.
-- Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]` y `/feature [id]`. El `id` es opcional;
-  sin él, la skill correspondiente selecciona la siguiente feature.
+- La revisión y el merge de los PRs abiertos los orquesta la skill **`pr-flow`**: lanza el subagente
+  **`reviewer`**, delega las reparaciones en **`implementer`**, resuelve los conflictos como único
+  integrador y mergea. Es el **único** flujo con permiso de merge.
+- Atajos: `/spec [id]`, `/implement [id]`, `/validate [id]`, `/feature [id]` y `/review-pr [nº|id]`.
+  El `id` es opcional; sin él, la skill correspondiente selecciona la siguiente feature (o, en
+  `pr-flow`, todos los PRs abiertos).
 
 ## Repositorio y publicación (github-flow)
 
@@ -107,6 +115,24 @@ aceptación.
   y su PR está mergeado; `execute` y `publish` lo ejecutan antes de trabajar). Identidades
   deterministas: rama `feature/<id>`, issue `[<id>] <título>`, PR `feature/<id>` → `main`. Nunca
   hace merge.
+
+## Revisión y merge de PRs (pr-flow)
+
+- `pr-flow` opera sobre los **PRs ya abiertos** por `github-flow`, no sobre ramas locales. Alcance por
+  ejecución: un PR (número o feature id) o todos los PRs abiertos contra la rama base, uno a uno.
+- Precondiciones: `gh` autenticado con permiso de merge y la base al día. Los PRs de un fork quedan
+  fuera (por ahora el head debe ser una rama `feature/<id>` de este repositorio).
+- Ciclo por PR: sincronizar la base en la rama (`scripts/sync-worktree.sh <id>`), revisar con el
+  subagente `reviewer`, reparar un `revise` con el subagente `implementer` (máx. 2 rondas) y mergear
+  al `accept`.
+- **Quién resuelve conflictos**: el orquestador de `pr-flow` (único integrador), manteniendo **ambas**
+  aportaciones en estado/docs; si el conflicto exige criterio de código, se delega en `implementer`.
+  El `reviewer` solo los **detecta** y los reporta.
+- **Merge**: solo con `accept` + sin conflictos + sin checks requeridos en rojo, con **merge commit**
+  (`gh pr merge <n> --merge`). Nunca `--squash`, `--rebase` ni `--auto`.
+- Worktree del PR: se reutiliza el de `github-flow`; si falta,
+  `scripts/pr-worktree.sh <nº-pr> [base-branch]` (imprime la ruta).
+- Tras mergear, el modo `prune` de `github-flow` limpia el worktree/rama mergeados; nunca se fuerza.
 
 ## Artefactos obligatorios
 
@@ -185,6 +211,11 @@ Una feature está hecha solo si se cumplen todas:
   (`~/.gradle`): bajo `/mnt/c` (DrvFs) cada acceso cuesta órdenes de magnitud más. `wsl-env.sh` fuerza
   `GRADLE_USER_HOME` a ext4 y desactiva el file-watching (`-Dorg.gradle.vfs.watch=false`), que no es
   fiable en DrvFs.
+- **Mezcla de rutas Windows/WSL**: si Gradle en WSL falla con
+  `this and base files have different roots: C:\... and /mnt/c/...` (habitual tras compilar en Android
+  Studio de Windows sobre el mismo `build/`), son cachés incrementales de KSP/Kotlin que guardaron
+  rutas de Windows. Arreglo: borrar `app/build/kotlin`, `app/build/kspCaches`, `app/build/generated/ksp`
+  y `.kotlin/sessions`, y reintentar `bash init.sh` (visto en la Sesión 131); no es un fallo de código.
 - **Worktrees (`github-flow`)**: crea el worktree de una feature con
   `bash scripts/new-worktree.sh <feature-id>`, **desde WSL**. El script hace `git fetch origin main`
   antes de ramificar (para no partir de un `origin/main` obsoleto), crea la rama `feature/<feature-id>`
@@ -196,6 +227,13 @@ Una feature está hecha solo si se cumplen todas:
   WSL (y `git status` dentro de él falla con `not a git repository`); uno creado en WSL deja de poder
   abrirse desde Git Bash. Reparar uno roto: reescribir con rutas `/mnt/c/...` el `.git` del worktree
   (`gitdir: ...`) y el back-link `.git/worktrees/<id>/gitdir` del checkout base.
+- **Recarga del harness en caliente**: OpenCode (`v2`) descubre `.opencode/agent/`, `.opencode/command/`
+  y `.opencode/skills/` al cargar la location, pero en este checkout (`/mnt/c`, DrvFs) su watcher de
+  ficheros no dispara y los artefactos **nuevos no aparecen solos** (misma causa que el file-watching
+  desactivado de Gradle). Tras añadir o editar agentes, comandos o skills, recarga la location:
+  `opencode api post /api/location/reload -H "x-opencode-directory:$PWD"` (o reinicia el TUI;
+  `opencode service restart` para el servicio compartido). Los ficheros sí son válidos: el problema es
+  solo de descubrimiento.
 - **Herramientas nativas del harness (WSL)**: `opencode` ya se instala nativo (`~/.opencode/bin/opencode`,
   binario Linux; el segfault intermitente al cerrar era de la build de Windows) y
   `bash scripts/wsl-bootstrap.sh` instala `gh` nativo en `~/.local/bin/gh`, reutilizando la sesión de

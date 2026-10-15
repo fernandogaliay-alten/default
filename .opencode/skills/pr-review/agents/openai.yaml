@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review"
+  short_description: "Review one open pull request and report errors and conflicts."
+  default_prompt: "Use $pr-review to review the open pull request."

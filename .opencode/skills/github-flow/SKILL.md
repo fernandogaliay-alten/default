@@ -22,13 +22,14 @@ The first four inputs are required. If any is missing, ask before doing anything
 - Plan mode is read-only. It must not mutate git, GitHub, or files: no fetch, push, commit, checkout, stash, or worktree add; no issue/PR create, comment, or edit; no file writes.
 - Without acceptance there is no publish. `publish` requires each feature's status to be `accepted` in `feature_list.json` (independent validator `accept`). `passing` is not accepted.
 - Push and PR are automatic after acceptance. The orchestrator has standing push permission: once a feature is `accepted`, it pushes `feature/<feature-id>` and opens (or reuses) the PR without asking for a separate per-run grant. There is no push gate beyond acceptance.
-- Merge is always out of scope. Never merge a PR and never enable auto-merge.
+- Merge is always out of scope **for this skill**. Never merge a PR and never enable auto-merge. Merging a published PR is owned exclusively by the `pr-flow` orchestrator, behind its review + conflict + checks gate; `github-flow` publishes only.
 - If a request repeats, reuse the existing issue, worktree, and PR. Never duplicate them. Never delete or rewrite existing work outside `prune`: no worktree removal, branch deletion, force push, or issue/PR closing. The single exception is `prune`, which removes the worktree and local branch only of a feature whose PR is already merged into `base_branch`, behind the guards in `## Mode: prune`. `plan` never removes anything.
 - One feature per session. Never two features in the same session. One independent session per worktree, launched with `opencode run` **from the worktree directory** (opencode v2 has no `--dir`; the session's working directory is the process cwd).
 - All worktrees branch from one common base SHA fixed at the start of `execute`.
 - The orchestrator is the single integrator of shared state and docs (`feature_list.json`, `PROGRESS.md`, `docs/technical-discovery.md`, ...). Before publishing, it brings the latest `origin/<base_branch>` into the feature branch with a **merge** (never rebase, never force-push), resolving conflicts by keeping the feature's additions alongside the base's. After any other feature's PR merges, it re-syncs the remaining open feature branches the same way.
 - A blocked feature is reported with its blocking dependency ids or missing required inputs (e.g. missing credentials). Never silently skip it and never substitute a later feature.
 - `feature-flow` owns the role loop and acceptance inside a worktree session; its commit and validation rules still apply there.
+- Publishing stops at the open PR. Reviewing, repairing, resolving conflicts, and merging that PR are owned by `pr-flow` (the only merge authority); `github-flow` never performs those steps.
 
 ## Preconditions
 

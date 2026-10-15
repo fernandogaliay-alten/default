@@ -6042,6 +6042,45 @@
   antes de eliminar). Las ramas remotas `origin/feature/<id>` **no** se tocan.
 - Estado de features: sin cambios (`feature_list.json` intacto: ambas siguen `accepted`).
 
+### Sesión 131 (harness: orquestador `pr-flow` de revisión y merge de PRs)
+
+- Fecha: 2026-10-15
+- Objetivo: crear un orquestador que revise los PRs abiertos, corrija los errores detectados, resuelva
+  conflictos y mergee los PRs aprobados.
+- Cambio de política (decisión de la persona): el merge deja de estar reservado a la persona. Ahora lo
+  hace **solo** el orquestador de `pr-flow`, con **merge commit** (`gh pr merge <n> --merge`), y **solo**
+  con `accept` del reviewer + sin conflictos + sin checks requeridos en rojo. Nunca `--squash`,
+  `--rebase`, `--auto` ni force-push. `AGENTS.md` y `github-flow` quedan acotados a esta excepción.
+- Artefactos nuevos:
+  - `.opencode/agent/reviewer.md` — subagente `reviewer` (solo lectura: `edit` denegado; sin commit,
+    push, merge ni edición de PRs; carga la skill `pr-review`).
+  - `.opencode/skills/pr-review/SKILL.md` — revisión independiente de un PR (spec, diff, reglas, checks,
+    seguridad, `DESIGN.md`); **detecta** conflictos y devuelve `accept`/`revise`/`block` + brief de
+    reparación. Reutiliza el rubric y el checklist de seguridad de `feature-validator` (sin duplicar).
+  - `.opencode/skills/pr-flow/SKILL.md` — orquestador: por cada PR abierto sincroniza la base, revisa
+    con `reviewer`, repara `revise` con `implementer` (máx. 2 rondas), resuelve conflictos como único
+    integrador y mergea al `accept`; recuperación de fallos acotada e idempotencia.
+  - `.opencode/command/review-pr.md` — atajo `/review-pr [nº|id]`.
+  - `scripts/pr-worktree.sh <nº-pr|id> [base]` — asegura/reutiliza el worktree de la rama head del PR
+    (los PRs de fork quedan fuera por ahora); imprime la ruta.
+- Ediciones: `AGENTS.md` (regla de merge, rol `reviewer`, atajos, nueva sección `## Revisión y merge de
+  PRs (pr-flow)` y nota de caché) y `github-flow` (su «never merge» queda acotado a su propio skill con
+  puntero a `pr-flow`).
+- Verificación: `bash init.sh` en el checkout base → **BUILD SUCCESSFUL** (test + lint en verde). El
+  primer intento falló en `:app:kspDebugKotlin` por rutas Windows/WSL mezcladas en cachés incrementales
+  (heredadas de Android Studio en Windows), no por este cambio; se resolvió borrando las cachés
+  KSP/Kotlin y `.kotlin/sessions` (documentado en `AGENTS.md`, Notas de entorno). `scripts/pr-worktree.sh`
+  pasa `bash -n`.
+- Estado de features: sin cambios (`feature_list.json` intacto). El nuevo flujo es de harness, no una
+  feature de producto; no se añade entrada a `feature_list.json`.
+- Riesgo abierto: `pr-flow` no se ha ejecutado todavía contra PRs reales; el primer uso debe validarse a
+  mano (PRs de fork no soportados; sin CI en el repo, el gate es `bash init.sh` re-ejecutado por el
+  reviewer). El merge real de un PR queda como prueba manual de la persona.
+- Hallazgo de entorno: los artefactos nuevos **no** se descubrieron en caliente (el watcher de OpenCode
+  no dispara en DrvFs). Se forzó con `POST /api/location/reload` y el servicio pasó a registrar
+  `reviewer`, `/review-pr`, `pr-flow` y `pr-review` (verificado por API). Documentado en `AGENTS.md`
+  (Notas de entorno).
+
 ### Sesión 131 (implementer, `app-launcher-icon`)
 
 - Fecha: 2026-10-15

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Flow"
+  short_description: "Review, repair, resolve conflicts, and merge open pull requests."
+  default_prompt: "Use $pr-flow to review and merge the open pull requests."
