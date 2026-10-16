@@ -25,7 +25,12 @@ import kotlinx.coroutines.CancellationException
  * Es **transporte + codec puros**: no conoce el modelo de recetas ni la Taxonomia (recibe un
  * [DishImageRequest] ya resuelto y usa `request.prompt` tal cual) y es la **unica** capa nueva que usa
  * Ktor. La clave llega por constructor y solo viaja en la cabecera `Authorization`: no aparece en el
- * cuerpo, ni en logs (el adaptador **no registra nada**) ni en el arbol versionado.
+ * cuerpo, ni en el diagnostico (que nunca lleva la clave), ni en el arbol versionado. Emite **un evento
+ * de diagnostico local por cada llamada HTTP real** por la costura aditiva `onEvent` (correctiva
+ * `dish-image-call-diagnostics`): llamada, motivo clasificado, estado HTTP, duracion y tamano de los
+ * bytes entregados; `MainActivity` lo cablea a `Log.d("SazonDishImage", ...)`. Es **observacion
+ * pasiva**: el resultado de [generate] no depende de que se emita o no y el evento nunca causa una
+ * excepcion, una UI de error, un reintento ni un respaldo nuevos.
  *
  * Contrato de fallo (ADR 0005): **fallo o latencia = `null`, nunca excepcion** (la app deja visible la
  * ficha tipografica y no muestra error por imagen); la **cancelacion** de la corrutina si se propaga en
@@ -50,6 +55,13 @@ class DevExpertDishImageGenerator(
     private val styleReference: DishImageStyleReference? = null,
     /** Interruptor del anclaje ([DishImagePolicy.STYLE_REFERENCE_ENABLED]); apagado = solo texto. */
     private val styleReferenceEnabled: Boolean = DishImagePolicy.STYLE_REFERENCE_ENABLED,
+    /**
+     * Costura aditiva de diagnostico (default no-op): se invoca con un [DishImageCallEvent] por cada
+     * llamada HTTP real. No altera el resultado de [generate] y nunca lleva clave ni `Authorization`.
+     */
+    private val onEvent: (DishImageCallEvent) -> Unit = {},
+    /** Reloj inyectable para medir la duracion; en produccion, el reloj de pared del sistema. */
+    private val now: () -> Long = System::currentTimeMillis,
 ) : DishImageGenerator {
 
     override suspend fun generate(request: DishImageRequest): ByteArray? {
@@ -75,14 +87,16 @@ class DevExpertDishImageGenerator(
 
     /**
      * Un intento contra `/images/edits` con el multipart de [editsFormData]. `CancellationException` se
-     * relanza; transporte/timeout y `401/403/429/5xx` son [EditOutcome.Unavailable]; un rechazo
-     * definitivo ([DishImagePolicy.editFailureRequiresTextFallback]) o una carga `2xx` inutilizable son
-     * [EditOutcome.FallbackToText].
+     * relanza (sin evento: la llamada no llego a nada); transporte/timeout y `401/403/429/5xx` son
+     * [EditOutcome.Unavailable]; un rechazo definitivo
+     * ([DishImagePolicy.editFailureRequiresTextFallback]) o una carga `2xx` inutilizable son
+     * [EditOutcome.FallbackToText]. Emite **un** evento `EDIT` por llamada HTTP real.
      */
     private suspend fun editImage(
         reference: DishImageStyleReference,
         prompt: String,
     ): EditOutcome {
+        val startedAt = now()
         val response = try {
             client.post(DishImagePolicy.editsUrl()) {
                 header(HttpHeaders.Authorization, "Bearer $apiKey")
@@ -100,12 +114,15 @@ class DevExpertDishImageGenerator(
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (failure: Exception) {
+            // Transporte antes de respuesta: TRANSPORT sin estado HTTP.
+            report(DishImageCall.EDIT, httpStatus = null, startedAt = startedAt)
             return EditOutcome.Unavailable
         }
 
         // Fuera de 2xx: solo un rechazo definitivo dispara el respaldo (400/404/405/413/415/422).
         val status = response.status.value
         if (status !in 200..299) {
+            report(DishImageCall.EDIT, httpStatus = status, startedAt = startedAt)
             return if (DishImagePolicy.editFailureRequiresTextFallback(status)) {
                 EditOutcome.FallbackToText
             } else {
@@ -113,30 +130,47 @@ class DevExpertDishImageGenerator(
             }
         }
 
-        // El fallo de transporte al leer el cuerpo del 2xx tambien degrada a `null`, sin respaldo.
+        // El fallo de transporte al leer el cuerpo del 2xx tambien degrada a `null`, sin respaldo: se
+        // conserva el estado (la respuesta si llego) pero el motivo es TRANSPORT.
         val rawBody = try {
             response.bodyAsText()
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (failure: Exception) {
+            report(
+                DishImageCall.EDIT,
+                httpStatus = status,
+                startedAt = startedAt,
+                reason = DishImageCallReason.TRANSPORT,
+            )
             return EditOutcome.Unavailable
         }
 
         // Carga inutilizable (decode o reduce nulos/vacios) dispara el respaldo por texto.
-        val rawBytes = DishImagePayload.decode(rawBody) ?: return EditOutcome.FallbackToText
+        val rawBytes = DishImagePayload.decode(rawBody)
+        if (rawBytes == null) {
+            // 2xx sin base64 utilizable: INVALID.
+            report(DishImageCall.EDIT, httpStatus = status, startedAt = startedAt)
+            return EditOutcome.FallbackToText
+        }
         val reduced = reducer.reduceToWebp(rawBytes)
         return if (reduced != null && reduced.isNotEmpty()) {
+            report(DishImageCall.EDIT, httpStatus = status, startedAt = startedAt, bytes = reduced.size)
             EditOutcome.Edited(reduced)
         } else {
+            // 2xx con bytes que el reductor no convierte: INVALID.
+            report(DishImageCall.EDIT, httpStatus = status, startedAt = startedAt)
             EditOutcome.FallbackToText
         }
     }
 
     /**
      * Camino de texto->imagen de la fase 2 (`POST /images/generations`), reutilizado tal cual por el
-     * respaldo. Una sola peticion; no-2xx, transporte/timeout o carga ilegible devuelven `null`.
+     * respaldo. Una sola peticion; no-2xx, transporte/timeout o carga ilegible devuelven `null`. Emite
+     * **un** evento `GENERATE` por llamada HTTP real (una cancelacion no emite: se relanza antes).
      */
     private suspend fun generateFromText(prompt: String): ByteArray? {
+        val startedAt = now()
         val response = try {
             client.post(DishImagePolicy.endpointUrl()) {
                 contentType(ContentType.Application.Json)
@@ -151,21 +185,72 @@ class DevExpertDishImageGenerator(
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (failure: Exception) {
+            // Transporte antes de respuesta: TRANSPORT sin estado HTTP.
+            report(DishImageCall.GENERATE, httpStatus = null, startedAt = startedAt)
             return null
         }
 
-        if (response.status.value !in 200..299) return null
+        val status = response.status.value
+        if (status !in 200..299) {
+            report(DishImageCall.GENERATE, httpStatus = status, startedAt = startedAt)
+            return null
+        }
 
+        // 2xx con fallo al leer el cuerpo: TRANSPORT conservando el estado (la respuesta si llego).
         val rawBody = try {
             response.bodyAsText()
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (failure: Exception) {
+            report(
+                DishImageCall.GENERATE,
+                httpStatus = status,
+                startedAt = startedAt,
+                reason = DishImageCallReason.TRANSPORT,
+            )
             return null
         }
 
-        val rawBytes = DishImagePayload.decode(rawBody) ?: return null
-        return reducer.reduceToWebp(rawBytes)
+        val rawBytes = DishImagePayload.decode(rawBody)
+        if (rawBytes == null) {
+            // 2xx sin base64 utilizable: INVALID.
+            report(DishImageCall.GENERATE, httpStatus = status, startedAt = startedAt)
+            return null
+        }
+        val reduced = reducer.reduceToWebp(rawBytes)
+        if (reduced == null || reduced.isEmpty()) {
+            // 2xx con bytes que el reductor no convierte: INVALID.
+            report(DishImageCall.GENERATE, httpStatus = status, startedAt = startedAt)
+            return reduced
+        }
+        report(DishImageCall.GENERATE, httpStatus = status, startedAt = startedAt, bytes = reduced.size)
+        return reduced
+    }
+
+    /**
+     * Emite **un** [DishImageCallEvent] al consumidor [onEvent] (observacion pasiva: nunca cambia el
+     * resultado de [generate]). El motivo se deriva de [DishImagePolicy.reasonFor] salvo cuando el
+     * estado HTTP y el motivo no se corresponden, que se pasa explicito en [reason] (un fallo al leer
+     * el cuerpo de un `2xx` es [DishImageCallReason.TRANSPORT] conservando el estado). [detail] es
+     * determinista (`"HTTP <status>"` o `"transport"`) y nunca lleva prompt ni cuerpo.
+     */
+    private fun report(
+        call: DishImageCall,
+        httpStatus: Int?,
+        startedAt: Long,
+        bytes: Int? = null,
+        reason: DishImageCallReason = DishImagePolicy.reasonFor(httpStatus, bytes != null),
+    ) {
+        onEvent(
+            DishImageCallEvent(
+                call = call,
+                reason = reason,
+                httpStatus = httpStatus,
+                durationMillis = (now() - startedAt).coerceAtLeast(0L),
+                detail = if (httpStatus != null) "HTTP $httpStatus" else "transport",
+                bytes = bytes,
+            ),
+        )
     }
 
     /** Resultado de un intento de ajuste: entrega bytes, cae al texto o degrada a `null` sin respaldo. */

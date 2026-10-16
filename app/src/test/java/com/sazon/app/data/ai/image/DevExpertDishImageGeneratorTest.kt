@@ -586,6 +586,374 @@ class DevExpertDishImageGeneratorTest {
         assertNotNull("Debe relanzarse CancellationException", propagated)
     }
 
+    // Scenario 1 (correctiva `dish-image-call-diagnostics`): el 2xx con bytes emite un unico evento OK.
+    @Test
+    fun una_llamada_de_texto_con_bytes_emite_un_evento_ok() = runTest {
+        val rawBytes = byteArrayOf(0x10, 0x20, 0x30)
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { _, _ -> okBody(encodedResponse(rawBytes)) }
+
+        val result = generator(
+            client = AiHttpClientFactory.create(mock.engine),
+            reducer = passThrough(),
+            onEvent = events::add,
+        ).generate(request())
+
+        assertEquals(rawBytes.toList(), result!!.toList())
+        assertEquals("Exactamente una peticion", 1, mock.calls)
+        val event = events.single()
+        assertEquals(DishImageCall.GENERATE, event.call)
+        assertEquals(DishImageCallReason.OK, event.reason)
+        assertEquals(200, event.httpStatus)
+        assertEquals("El evento expone el tamano entregado", rawBytes.size, event.bytes)
+        assertTrue("La duracion no puede ser negativa", event.durationMillis >= 0L)
+        assertEquals("HTTP 200", event.detail)
+    }
+
+    // Scenario 1 (variante): la duracion se mide con el reloj inyectado (por llamada, no por generate).
+    @Test
+    fun la_duracion_del_evento_usa_el_reloj_inyectado() = runTest {
+        val events = mutableListOf<DishImageCallEvent>()
+        val clock = ArrayDeque(listOf(1_000L, 1_250L))
+        val mock = MockImages { _, _ -> okBody(encodedResponse(byteArrayOf(1))) }
+
+        generator(
+            client = AiHttpClientFactory.create(mock.engine),
+            reducer = passThrough(),
+            onEvent = events::add,
+            now = { clock.removeFirst() },
+        ).generate(request())
+
+        assertEquals(250L, events.single().durationMillis)
+    }
+
+    // Scenario 2: los estados no-2xx se clasifican, no entregan bytes y no reintentan.
+    @Test
+    fun los_estados_no_2xx_emiten_el_motivo_clasificado() = runTest {
+        val expected = linkedMapOf(
+            402 to DishImageCallReason.CUOTA,
+            429 to DishImageCallReason.CUOTA,
+            401 to DishImageCallReason.AUTH,
+            403 to DishImageCallReason.AUTH,
+            500 to DishImageCallReason.SERVER,
+            503 to DishImageCallReason.SERVER,
+            400 to DishImageCallReason.HTTP_ERROR,
+            404 to DishImageCallReason.HTTP_ERROR,
+            408 to DishImageCallReason.HTTP_ERROR,
+        )
+
+        expected.forEach { (status, reason) ->
+            val events = mutableListOf<DishImageCallEvent>()
+            val mock = MockImages { _, _ ->
+                respond(content = "", status = HttpStatusCode.fromValue(status))
+            }
+
+            val result = generator(
+                client = AiHttpClientFactory.create(mock.engine),
+                onEvent = events::add,
+            ).generate(request())
+
+            assertNull("El estado $status debe devolver null", result)
+            assertEquals("El estado $status no debe reintentar", 1, mock.calls)
+            val event = events.single()
+            assertEquals("El estado $status debe ser $reason", reason, event.reason)
+            assertEquals(status, event.httpStatus)
+            assertNull("El estado $status no entrega bytes", event.bytes)
+            assertEquals("HTTP $status", event.detail)
+        }
+    }
+
+    // Scenario 2 (variante): un fallo de transporte emite TRANSPORT sin estado HTTP ni bytes.
+    @Test
+    fun un_fallo_de_transporte_emite_transport_sin_estado() = runTest {
+        val failures = listOf<Throwable>(
+            SocketTimeoutException("timeout de socket"),
+            HttpRequestTimeoutException("https://inference.devexpert.io/v1/images/generations", 40_000L),
+            IOException("sin red"),
+        )
+
+        failures.forEach { failure ->
+            val events = mutableListOf<DishImageCallEvent>()
+            val mock = MockImages { _, _ -> throw failure }
+
+            val result = generator(
+                client = AiHttpClientFactory.create(mock.engine),
+                onEvent = events::add,
+            ).generate(request())
+
+            assertNull("El fallo ${failure::class.simpleName} debe devolver null", result)
+            assertEquals(1, mock.calls)
+            val event = events.single()
+            assertEquals(DishImageCallReason.TRANSPORT, event.reason)
+            assertNull("Sin respuesta no hay estado HTTP", event.httpStatus)
+            assertNull(event.bytes)
+            assertEquals("transport", event.detail)
+        }
+    }
+
+    // Scenario 3: un 2xx ilegible emite INVALID con el estado 200 y sin bytes.
+    @Test
+    fun un_200_ilegible_emite_invalid() = runTest {
+        val unusableBodies = listOf(
+            "no soy json",
+            "{}",
+            "{\"data\":[]}",
+            "{\"data\":[{\"b64_json\":\"\"}]}",
+            "{\"data\":[{\"b64_json\":\"@@@no-base64\"}]}",
+        )
+
+        unusableBodies.forEach { body ->
+            val events = mutableListOf<DishImageCallEvent>()
+            val mock = MockImages { _, _ -> okBody(body) }
+
+            val result = generator(
+                client = AiHttpClientFactory.create(mock.engine),
+                onEvent = events::add,
+            ).generate(request())
+
+            assertNull("La carga '$body' debe degradar a null", result)
+            assertEquals(1, mock.calls)
+            val event = events.single()
+            assertEquals(DishImageCallReason.INVALID, event.reason)
+            assertEquals(200, event.httpStatus)
+            assertNull(event.bytes)
+        }
+    }
+
+    // Scenario 3 (variante): un 2xx decodificable que el reductor rechaza tambien es INVALID.
+    @Test
+    fun un_200_que_el_reductor_rechaza_emite_invalid() = runTest {
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { _, _ -> okBody(encodedResponse(byteArrayOf(0x00, 0x01))) }
+
+        val result = generator(
+            client = AiHttpClientFactory.create(mock.engine),
+            reducer = DishImageReducer { null },
+            onEvent = events::add,
+        ).generate(request())
+
+        assertNull(result)
+        assertEquals(1, mock.calls)
+        val event = events.single()
+        assertEquals(DishImageCallReason.INVALID, event.reason)
+        assertEquals(200, event.httpStatus)
+        assertNull(event.bytes)
+    }
+
+    // Scenario 4: con referencia, el 200 del ajuste emite un unico EDIT OK.
+    @Test
+    fun el_ajuste_con_bytes_emite_un_evento_edit_ok() = runTest {
+        val responseBytes = byteArrayOf(0x0A, 0x0B, 0x0C)
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { _, _ -> okBody(encodedResponse(responseBytes)) }
+
+        val result = generator(
+            reference = styleReference(),
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = events::add,
+        ).generate(request())
+
+        assertEquals(responseBytes.toList(), result!!.toList())
+        assertEquals(1, mock.calls)
+        val event = events.single()
+        assertEquals(DishImageCall.EDIT, event.call)
+        assertEquals(DishImageCallReason.OK, event.reason)
+        assertEquals(200, event.httpStatus)
+        assertEquals(responseBytes.size, event.bytes)
+    }
+
+    // Scenario 4: el transporte del ajuste emite un unico EDIT TRANSPORT y NO respalda.
+    @Test
+    fun el_transporte_del_ajuste_emite_un_solo_edit_transport() = runTest {
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { _, _ -> throw IOException("sin red") }
+
+        val result = generator(
+            reference = styleReference(),
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = events::add,
+        ).generate(request())
+
+        assertNull(result)
+        assertEquals("Sin respaldo ante transporte", 1, mock.calls)
+        val event = events.single()
+        assertEquals(DishImageCall.EDIT, event.call)
+        assertEquals(DishImageCallReason.TRANSPORT, event.reason)
+        assertNull(event.httpStatus)
+    }
+
+    // Scenario 4: un rechazo definitivo del ajuste emite EDIT y despues GENERATE (dos eventos).
+    @Test
+    fun un_rechazo_del_ajuste_emite_edit_y_luego_generate() = runTest {
+        val fallbackBytes = byteArrayOf(0x42, 0x43)
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { req, _ ->
+            if (req.isEdits()) {
+                respond(content = "", status = HttpStatusCode.NotFound)
+            } else {
+                okBody(encodedResponse(fallbackBytes))
+            }
+        }
+
+        val result = generator(
+            reference = styleReference(),
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = events::add,
+        ).generate(request())
+
+        assertEquals(fallbackBytes.toList(), result!!.toList())
+        assertEquals("edits + generations, sin tercera", 2, mock.calls)
+        assertEquals("Un evento por llamada HTTP", 2, events.size)
+        assertEquals(DishImageCall.EDIT, events[0].call)
+        assertEquals(DishImageCallReason.HTTP_ERROR, events[0].reason)
+        assertEquals(404, events[0].httpStatus)
+        assertEquals(DishImageCall.GENERATE, events[1].call)
+        assertEquals(DishImageCallReason.OK, events[1].reason)
+        assertEquals(200, events[1].httpStatus)
+        assertEquals(fallbackBytes.size, events[1].bytes)
+    }
+
+    // Scenario 4: un 200 inutilizable del ajuste emite EDIT INVALID y despues GENERATE OK.
+    @Test
+    fun un_200_inutilizable_del_ajuste_emite_edit_invalid_y_generate() = runTest {
+        val fallbackBytes = byteArrayOf(0x51, 0x52)
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { req, _ ->
+            if (req.isEdits()) okBody("{}") else okBody(encodedResponse(fallbackBytes))
+        }
+
+        val result = generator(
+            reference = styleReference(),
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = events::add,
+        ).generate(request())
+
+        assertEquals(fallbackBytes.toList(), result!!.toList())
+        assertEquals(2, mock.calls)
+        assertEquals(2, events.size)
+        assertEquals(DishImageCall.EDIT, events[0].call)
+        assertEquals(DishImageCallReason.INVALID, events[0].reason)
+        assertEquals(200, events[0].httpStatus)
+        assertEquals(DishImageCall.GENERATE, events[1].call)
+        assertEquals(DishImageCallReason.OK, events[1].reason)
+    }
+
+    // Scenario 6: sin clave no hay peticiones ni eventos (no hay llamada que observar).
+    @Test
+    fun sin_clave_no_hay_peticiones_ni_eventos() = runTest {
+        listOf("", "   ").forEach { blank ->
+            val events = mutableListOf<DishImageCallEvent>()
+            val mock = MockImages { _, _ -> okBody(encodedResponse(byteArrayOf(1))) }
+
+            val result = generator(
+                apiKey = blank,
+                reference = styleReference(),
+                client = AiHttpClientFactory.create(mock.engine),
+                onEvent = events::add,
+            ).generate(request())
+
+            assertNull("La clave '$blank' debe degradar a null", result)
+            assertEquals("La clave '$blank' no debe hacer ninguna peticion", 0, mock.calls)
+            assertTrue("La clave '$blank' no emite evento", events.isEmpty())
+        }
+    }
+
+    // Scenario 6: una llamada cancelada se relanza y NO emite evento.
+    @Test
+    fun una_llamada_cancelada_no_emite_evento() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val events = mutableListOf<DishImageCallEvent>()
+        val mock = MockImages { _, _ ->
+            started.complete(Unit)
+            awaitCancellation()
+        }
+        val generator = generator(
+            client = AiHttpClientFactory.create(mock.engine),
+            onEvent = events::add,
+        )
+
+        var propagated: CancellationException? = null
+        val job = launch {
+            try {
+                generator.generate(request())
+            } catch (cancellation: CancellationException) {
+                propagated = cancellation
+                throw cancellation
+            }
+        }
+
+        started.await()
+        job.cancelAndJoin()
+
+        assertNotNull("Debe relanzarse CancellationException", propagated)
+        assertTrue("Una llamada cancelada no emite evento", events.isEmpty())
+    }
+
+    // Scenario 5: ningun toString() de evento expone la clave, Authorization ni el prompt.
+    @Test
+    fun ningun_evento_expone_la_clave_la_cabecera_ni_el_prompt() = runTest {
+        val secretPrompt = "Fotografía gastronómica de paella valenciana"
+        val events = mutableListOf<DishImageCallEvent>()
+
+        // Camino de texto OK.
+        generator(
+            client = AiHttpClientFactory.create(
+                MockImages { _, _ -> okBody(encodedResponse(byteArrayOf(0x11, 0x12))) }.engine,
+            ),
+            reducer = passThrough(),
+            onEvent = events::add,
+        ).generate(request(prompt = secretPrompt))
+
+        // Camino de texto con error de cuota.
+        generator(
+            client = AiHttpClientFactory.create(
+                MockImages { _, _ -> respond("", status = HttpStatusCode.fromValue(429)) }.engine,
+            ),
+            onEvent = events::add,
+        ).generate(request(prompt = secretPrompt))
+
+        // Camino de texto con fallo de transporte.
+        generator(
+            client = AiHttpClientFactory.create(
+                MockImages { _, _ -> throw IOException("sin red") }.engine,
+            ),
+            onEvent = events::add,
+        ).generate(request(prompt = secretPrompt))
+
+        // Camino de ajuste con respaldo por texto (dos eventos).
+        generator(
+            reference = styleReference(),
+            client = AiHttpClientFactory.create(
+                MockImages { req, _ ->
+                    if (req.isEdits()) {
+                        respond(content = "", status = HttpStatusCode.NotFound)
+                    } else {
+                        okBody(encodedResponse(byteArrayOf(1)))
+                    }
+                }.engine,
+            ),
+            onEvent = events::add,
+        ).generate(request(prompt = secretPrompt))
+
+        assertEquals("Se esperaban eventos de varios caminos", 5, events.size)
+        events.forEach { event ->
+            val rendered = event.toString()
+            assertFalse("El evento no puede contener la clave: $rendered", rendered.contains(KEY))
+            assertFalse(
+                "El evento no puede contener Bearer: $rendered",
+                rendered.contains("Bearer", ignoreCase = true),
+            )
+            assertFalse(
+                "El evento no puede contener Authorization: $rendered",
+                rendered.contains("Authorization", ignoreCase = true),
+            )
+            assertFalse(
+                "El evento no puede contener el prompt: $rendered",
+                rendered.contains(secretPrompt),
+            )
+        }
+    }
+
     private fun generator(
         apiKey: String = KEY,
         client: io.ktor.client.HttpClient,
@@ -593,6 +961,8 @@ class DevExpertDishImageGeneratorTest {
         reference: DishImageStyleReference? = null,
         referenceEnabled: Boolean = DishImagePolicy.STYLE_REFERENCE_ENABLED,
         timeouts: DishImageTimeouts = DishImagePolicy.TIMEOUTS,
+        onEvent: (DishImageCallEvent) -> Unit = {},
+        now: () -> Long = System::currentTimeMillis,
     ) = DevExpertDishImageGenerator(
         apiKey = apiKey,
         client = client,
@@ -600,6 +970,8 @@ class DevExpertDishImageGeneratorTest {
         timeouts = timeouts,
         styleReference = reference,
         styleReferenceEnabled = referenceEnabled,
+        onEvent = onEvent,
+        now = now,
     )
 
     private fun MockRequestHandleScope.okBody(content: String) = respond(

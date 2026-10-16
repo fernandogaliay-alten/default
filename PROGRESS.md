@@ -233,6 +233,47 @@
   manual; L2 la decisión se congela al abrir el diálogo; L3 el test de microcopy congela los literales; L4
   `pendingStepChange` es `remember` y se pierde al rotar, comportamiento seguro). Detalle en
   `docs/validations/cooking-mode-step-change-confirmation.md`.
+- Correctiva **`dish-image-call-diagnostics`** (área `integration`, depende de `dish-image-generator`,
+  `accepted`) **implementada y autoverificada** (**`passing`**) por el subagente `implementer` en la
+  **sesión 142** y **`accepted`** en la **sesión 143** (validación independiente del subagente `validator`,
+  contexto limpio, veredicto **`accept`**; ver `docs/validations/dish-image-call-diagnostics.md`), según su
+  spec `docs/specs/dish-image-call-diagnostics.md`, en el worktree
+  `dish-image-call-diagnostics` (rama `feature/dish-image-call-diagnostics`; **sin** commit/push/PR de los
+  subagentes: el commit local lo crea el orquestador de `feature-flow` y la publicación queda para
+  `github-flow`). La llamada HTTP de imagen de DevExpert deja de ser **muda**: `DevExpertDishImageGenerator`
+  gana la costura **aditiva** `onEvent: (DishImageCallEvent) -> Unit = {}` (más `now` inyectable) y emite
+  **un evento por cada llamada HTTP real** (`EDIT` para `/images/edits`, `GENERATE` para
+  `/images/generations`) con llamada, **motivo clasificado** (`DishImagePolicy.reasonFor`, único sitio:
+  `CUOTA` 402/429, `AUTH` 401/403, `SERVER` 5xx, `TRANSPORT` sin respuesta —o al leer el cuerpo de un
+  `2xx`—, `INVALID` `2xx` sin bytes entregables, `OK` `2xx` con bytes y residual `HTTP_ERROR`), estado HTTP,
+  duración y tamaño de los bytes entregados; `MainActivity` lo cablea a `Log.d("SazonDishImage", …)` sin
+  gate de debug (igual que el `onEvent` del chat `SazonAi`). Es **observación pasiva**: no cambia la cadena
+  de resolución, la caché, el gate del interruptor ni el tope, y un fallo sigue siendo `null` sin excepción
+  (la cancelación se relanza **antes** de emitir; la clave en blanco hace 0 peticiones y **0** eventos). El
+  evento **nunca** lleva clave, `Authorization`, `prompt` ni cuerpo. Gate: `bash init.sh` **exit 0**, **115
+  suites / 927 tests / 0 fallos / 0 errores / 0 saltados** (baseline `HEAD 5ef8f7a` = 115 suites / 911 tests
+  ⇒ delta **+16 tests**: `DevExpertDishImageGeneratorTest` +13 y `DishImagePolicyTest` +3; 0 suites nuevas
+  ni aserciones existentes modificadas), lint **0 errores, 13 warnings preexistentes, 0 bajo `app/src`**;
+  `data/image/**`, `domain/**`, `ui/**`, `data/ai/AiDiagnostics.kt`, `DevExpertRecipeGenerator.kt`,
+  build/lockfile, `AndroidManifest.xml`, assets, `init.sh` y `scripts/**` **sin diff**; sin dependencias
+  nuevas. Docs durables: `docs/technical-discovery.md` (Observability), `docs/adr/0005-ai-dish-images.md`
+  (las dos menciones "sin `Log`") y nota en `docs/specs/dish-image-generator.md` (decisión 7). Queda la
+  **prueba manual** de la persona en el emulador (una línea `SazonDishImage` por llamada con
+  llamada/motivo/estado/duración/bytes; `CUOTA status=402|429` ante cuota agotada; ninguna línea en aciertos
+  de caché/semilla), no automatizable desde WSL. **Validación independiente `accept` (sesión 143)**: el
+  validador no modificó código/estado/HEAD; `bash init.sh` salió `UP-TO-DATE` (no vale como evidencia
+  fresca), así que forzó `testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL 4m02s; XML frescos **115
+  suites / 927 tests / 0 fallos / 0 errores / 0 saltados**) y `lint --rerun-tasks` (exit 0; SARIF **13
+  warning preexistentes / 0 errores / 0 bajo `app/src`**); re-derivó la baseline (`HEAD 5ef8f7a` = 911
+  anotaciones ⇒ delta **+16 tests**, exactamente `DevExpertDishImageGeneratorTest` 20→33 y
+  `DishImagePolicyTest` 9→12; 0 suites nuevas/eliminadas y 0 aserciones existentes modificadas). Confirmó
+  los escenarios 1-7 (un solo evento por llamada, sin doble emisión; cancelación relanzada **antes** de
+  `report`; clave en blanco ⇒ 0 peticiones y 0 eventos; ajuste con respaldo = 2 eventos / 2 peticiones;
+  no-fuga sobre `toString()` de 5 eventos), la pureza de `reasonFor` con caso negativo, la disciplina de
+  alcance y la seguridad. Sin hallazgos critical/high/medium; **4 Low informativos no bloqueantes** (frase
+  preexistente del ADR 0005 sobre "nadie lo consume"; `onEvent` sin `try/catch`; `Log.d` sin gate
+  `BuildConfig.DEBUG`; baseline de la spec infravalorada). Detalle en
+  `docs/validations/dish-image-call-diagnostics.md`.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -7128,3 +7169,83 @@
   L4 `pendingStepChange` se pierde al rotar, comportamiento seguro). Sin hallazgos de seguridad.
 - Estado de features: `cooking-mode-step-change-confirmation` queda **`accepted`** (commit local del
   orquestador, **sin** push ni PR). WIP = 0.
+
+### Sesión 142 (implementer, `dish-image-call-diagnostics`)
+
+- Fecha: 2026-10-16
+- Objetivo: implementar y **autoverificar** `dish-image-call-diagnostics` (spec
+  `docs/specs/dish-image-call-diagnostics.md`, skill `feature-implementer`) hasta `passing`, sin
+  commit/push/PR (el commit local lo crea el orquestador al `accept` y lo publica `github-flow`).
+- Qué cambió:
+  - **Nuevo** `app/src/main/java/com/sazon/app/data/ai/image/DishImageDiagnostics.kt` — tipos públicos
+    puros: `DishImageCall` (`GENERATE`/`EDIT`), `DishImageCallReason`
+    (`OK`/`CUOTA`/`AUTH`/`SERVER`/`TRANSPORT`/`INVALID`/`HTTP_ERROR`) y `DishImageCallEvent` (`call`,
+    `reason`, `httpStatus`, `durationMillis`, `detail`, `bytes`); **0 imports**, sin clave/`Authorization`
+    /`prompt`/cuerpo.
+  - **Modificado** `DishImagePolicy.kt` — `reasonFor(httpStatus, deliveredBytes)` pura y total (único
+    sitio de la política) con KDoc del mapeo y del residual.
+  - **Modificado** `DevExpertDishImageGenerator.kt` — `onEvent`/`now` al final con default (aditivos);
+    helper privado `report(...)`; un evento por llamada en `editImage`/`generateFromText` (transporte sin
+    respuesta → `TRANSPORT`/`httpStatus=null`; no-2xx → `reasonFor(status, false)`; 2xx con fallo al leer
+    el cuerpo → `TRANSPORT` conservando el estado; 2xx sin bytes entregables → `INVALID`; 2xx con bytes →
+    `OK` + tamaño). Cancelación relanzada **antes** de emitir; KDoc actualizada (ya no es "mudo").
+  - **Modificado** `MainActivity.kt` — `onEvent` → `Log.d("SazonDishImage", …)` en la construcción del
+    adaptador (sin gate de debug).
+  - **Tests**: `DishImagePolicyTest` +3 (mapeo completo, 2xx con/sin bytes, caso negativo) y
+    `DevExpertDishImageGeneratorTest` +13 (OK, clasificación no-2xx, transporte, INVALID, EDIT + respaldo,
+    sin clave, cancelación sin evento, no-fuga y duración con reloj inyectado).
+  - **Docs durables**: `docs/technical-discovery.md` (Observability), `docs/adr/0005-ai-dish-images.md`
+    (las dos menciones "sin `Log`") y nota en `docs/specs/dish-image-generator.md` (decisión 7).
+- Verificación ejecutada:
+  - `bash init.sh` → **exit 0** (test + lint; `init.sh` sin cambios).
+  - `bash scripts/gradle.sh testDebugUnitTest --tests com.sazon.app.data.ai.image.*` → **BUILD SUCCESSFUL
+    4m19s**; **6 suites / 62 tests / 0 fallos** (`DevExpertDishImageGeneratorTest` 33,
+    `DishImagePolicyTest` 12, `DishImageStyleReferenceTest` 7, `AndroidDishImageReducerTest` 5,
+    `DishImagePayloadTest` 3, `AssetDishImageStyleReferenceTest` 2).
+  - Tirada completa: **115 suites / 927 tests / 0 fallos / 0 errores / 0 saltados** (baseline `HEAD
+    5ef8f7a` = 115 suites / 911 tests ⇒ delta **+16 tests**, 0 suites nuevas).
+  - Lint: SARIF = **13 resultados / 0 errores** (los preexistentes) y **0 bajo `app/src`**.
+  - Inspección: `git diff --stat` limitado a lo previsto; `data/image/**`, `domain/**`, `ui/**`,
+    `data/ai/AiDiagnostics.kt`, `DevExpertRecipeGenerator.kt`, build/lockfile, `AndroidManifest.xml`,
+    assets, `init.sh` y `scripts/**` sin diff; `DishImageDiagnostics.kt` con 0 imports; sin dependencias
+    nuevas.
+- Hallazgo: la spec estimaba "4 suites / 22 tests" (y "22 tests actuales") en `data.ai.image`; la baseline
+  real del `HEAD` es **6 suites / 46 tests** (el planner no ejecutó la tirada). No se eliminó ni se cambió
+  ninguna aserción existente.
+- Desviación menor documentada: el helper `report` añade un parámetro `reason` opcional (la tabla del
+  Technical Approach pide `TRANSPORT` con estado conservado en el fallo al leer el cuerpo de un `2xx`, que
+  `reasonFor(200, false)` no puede expresar por sí solo).
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (línea `SazonDishImage` por
+  llamada con llamada/motivo/estado/duración/bytes; `CUOTA status=402|429` ante cuota agotada; ninguna
+  línea en aciertos de caché/semilla), no automatizable desde WSL. Incógnita ya anotada en la spec: el
+  estado real de la cuota agotada de DevExpert (si no fuera 402/429 se leería `AUTH`); revisable en
+  `reasonFor`.
+- Estado de features: `dish-image-call-diagnostics` queda **`passing`** (implementada y autoverificada;
+  pendiente de validación independiente, que la puede dejar en `accepted`). WIP = 1.
+
+### Sesión 143 (validator + orquestador `feature-flow`, `dish-image-call-diagnostics`)
+
+- Fecha: 2026-10-16
+- Objetivo: validar de forma **independiente** (subagente `validator`, contexto limpio) la feature dejada
+  `passing` en la sesión 142 y, con veredicto `accept`, persistir la aceptación y crear el commit local
+  (sin push ni PR: la publicación es de `github-flow`).
+- Qué cambió: **ningún** fichero de código. El validador no modificó código, estado ni HEAD y escribió el
+  registro `docs/validations/dish-image-call-diagnostics.md` (solo docs). El orquestador cambió
+  `feature_list.json` (`passing` → `accepted` + evidencia del validador) y este `PROGRESS.md`.
+- Verificación del validador (re-ejecutada por su cuenta):
+  - `bash init.sh` → exit 0, pero `testDebugUnitTest`/`lint` salieron **`UP-TO-DATE`** ⇒ no válido como
+    evidencia fresca; forzado: `testDebugUnitTest --rerun-tasks` **BUILD SUCCESSFUL 4m02s** (XML frescos =
+    **115 suites / 927 tests / 0 fallos / 0 errores / 0 saltados**) y `lint --rerun-tasks` exit 0 (SARIF
+    **13 warning preexistentes / 0 errores / 0 bajo `app/src`**).
+  - Baseline re-derivada: `HEAD 5ef8f7a` 911 anotaciones → árbol 927 ⇒ delta **+16 tests**
+    (`DevExpertDishImageGeneratorTest` 20→33, `DishImagePolicyTest` 9→12), 0 suites nuevas/eliminadas y 0
+    aserciones existentes modificadas.
+  - Confirmó los escenarios 1-7, la emisión de un solo evento por llamada (sin doble emisión), la
+    cancelación relanzada **antes** de `report`, clave en blanco ⇒ 0 peticiones/0 eventos, el respaldo del
+    ajuste = 2 eventos/2 peticiones, la no-fuga sobre `toString()` de 5 eventos, `reasonFor` pura y total
+    con caso negativo, la pureza (`DishImageDiagnostics.kt` con 0 imports) y la disciplina de alcance.
+- Veredicto: **`accept`**. Sin hallazgos critical/high/medium; **4 Low** informativos no bloqueantes (frase
+  preexistente del ADR 0005 sobre "nadie lo consume"; `onEvent` sin `try/catch`; `Log.d` sin gate
+  `BuildConfig.DEBUG`; baseline de la spec infravalorada). Sin hallazgos de seguridad.
+- Estado de features: `dish-image-call-diagnostics` queda **`accepted`** (commit local del orquestador,
+  **sin** push ni PR). WIP = 0.
