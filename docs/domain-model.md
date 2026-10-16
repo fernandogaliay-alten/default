@@ -142,8 +142,12 @@ Si la IA no está disponible, el lote cae a **solo semilla** y Home sigue siendo
 una foto de la interfaz del Modo cocina que se persiste en **una** fila (`cooking_session.db`, 2026-10-15,
 `docs/adr/0008-cooking-timer-foreground-service.md`) para poder **volver al paso exacto** desde la
 notificación del temporizador, incluso con el proceso muerto. `En marcha` y `Pausado` son **reanudables**
-(el toque abre el Modo cocina en ese paso, con la cuenta atrás recalculada desde el instante de fin);
-`Terminado` e `Inactivo` **no** lo son por sí solos. Se borra al salir del modo ("Atrás"/"Terminar");
+(el toque abre el Modo cocina en ese paso, con la cuenta atrás recalculada desde el instante de fin) y
+`Terminado` **también reabre el paso** desde la notificación (el aviso "¡Listo!" sigue en la bandeja y el
+toque vuelve al paso con `remaining = 0`; correctiva `cooking-timer-finish-notification`, 2026-10-16);
+solo `Inactivo` queda fuera (no hay nada que reabrir). La puerta es
+`CookingSession.reopensFromNotification`; `isResumable` conserva su semántica ("hay cuenta atrás que
+reanudar"). Se borra al salir del modo ("Atrás"/"Terminar");
 una rotación o la muerte de la actividad **no** la borran, y un arranque normal **no** la usa.
 
 ### Disponibilidad de IA

@@ -423,7 +423,9 @@ en `ui.cooking`: `CookingAlarmCommand` (`Schedule`/`Cancel`/`None`) y `CookingAl
 (+`onExit()`) traducen una transicion de `CookingTimerState` a un comando con el **instante inyectado**
 (`nowMillis`; nunca lee el reloj) — `Schedule(now + remaining)` solo en las aristas `IDLE→RUNNING` y
 `PAUSED→RUNNING`, `Cancel` al Pausar/Reiniciar/cambiar de paso (los `next`/`previous` reinician el
-temporizador a Inactivo)/llegar a cero/salir y `None` en los ticks y no-ops. La costura
+temporizador a Inactivo)/salir, `None` en los ticks y no-ops y tambien `None` al **entrar en Terminado**
+(la alarma se deja **viva**: es el unico productor del aviso de fin, y cancelarla ahi abriria una carrera
+con el disparo de `AlarmManager`; correctiva `cooking-timer-finish-notification`, 2026-10-16). La costura
 `CookingAlarm.apply(command)` tiene default `NoOpCookingAlarm` y viaja **por parametro** de `MainActivity`
 → `SazonApp` → `MainShell` → `CookingModeScreen`, que gana **dos** efectos (`LaunchedEffect` con
 `state.timer.status` como clave, que pasa `SystemClock.elapsedRealtime()`, y `DisposableEffect` de
@@ -453,10 +455,12 @@ intento previo o fuera de esa arista), la costura `NotificationPermissionPrompt`
 efecto que programa el aviso: la peticion **no** gatea el temporizador ni la cuenta atras, y sin permiso no
 hay aviso pero el Modo cocina y su "¡Listo!" siguen intactos; el manifiesto declara `POST_NOTIFICATIONS`, `USE_EXACT_ALARM`
 (normal, concedido al instalar, caso de uso documentado de temporizador) y `VIBRATE`. `Cancel` cancela
-**solo** la alarma pendiente, **no** retira una notificacion ya mostrada (si lo hiciera, el `Cancel` de
-`RUNNING→FINISHED` borraria el aviso recien disparado en primer plano). Sin dependencias nuevas
+**solo** la alarma pendiente, **no** retira una notificacion ya mostrada (decision 9 del ADR 0007); la
+limpieza del aviso `1001` al salir del Modo cocina es un comando **aparte** de la costura
+(`CookingAlarm.dismissFinishNotification`, 2026-10-16), que solo emite la salida explicita y **nunca** el
+`onDispose`. Sin dependencias nuevas
 (`NotificationCompat`/`NotificationManagerCompat` son `androidx.core`). Ver
-`docs/specs/cooking-timer-alarm.md`.
+`docs/specs/cooking-timer-alarm.md` y `docs/specs/cooking-timer-finish-notification.md`.
 
 La **cuenta atras fuera de la app** (feature `cooking-timer-foreground-service`, 2026-10-15) es la
 segunda integracion de sistema y la **unica** pieza en primer plano del repo
@@ -480,7 +484,14 @@ android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) y los dos permisos **normales** `
 (`CookingNotifications.contentIntent`, `NEW_TASK or SINGLE_TOP`) lleva **solo** el booleano
 `EXTRA_RESUME_COOKING`, que `MainActivity` convierte en el estado `resumeRequest` (de `onCreate` y de
 `onNewIntent`, con `setIntent`) para que `MainShell` lea la **sesion persistida** y abra el Modo cocina
-en el paso exacto. Sin dependencias nuevas; sin `ServiceCompat.startForeground` (no existe en
+en el paso exacto: la puerta es `CookingSession.reopensFromNotification`
+(`isResumable` **o** Terminado, correctiva `cooking-timer-finish-notification`, 2026-10-16), de modo que
+tocar el aviso **tambien** vuelve al paso cuando el temporizador ya esta en Terminado
+(`resumedMode` da `FINISHED` con `remaining = 0`, sin rearmar alarma ni servicio). El servicio se para
+**solo** con su `delay` al llegar a cero (la transicion a Terminado **no** emite `Cancel`) y con el
+`Cancel` de Pausar/Reiniciar/cambiar de paso/salir; al salir del modo, la costura retira ademas el aviso
+de fin `1001` ya mostrado (`CookingAlarm.dismissFinishNotification`). Sin dependencias nuevas; sin
+`ServiceCompat.startForeground` (no existe en
 `androidx.core` 1.10.1, se usa el `startForeground(id, notification)` del framework con el tipo del
 manifiesto). Ver `docs/specs/cooking-timer-foreground-service.md`.
 

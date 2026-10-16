@@ -108,11 +108,13 @@ private const val COMPLETED_ALPHA = 0.45f
  *
  * **Sesion persistida** (feature `cooking-timer-foreground-service`): la pantalla guarda su estado por
  * **cambio significativo** en la costura [CookingSessionStore] (default [NoOpCookingSessionStore]) y lo
- * **borra** al salir ("Atras"/"Terminar"). Si llega [resume] (el usuario toco una notificacion y el
+ * **borra** al salir ("Atras"/"Terminar"), momento en el que tambien **retira** el aviso de fin que
+ * pudiera quedar en la bandeja ([CookingAlarm.dismissFinishNotification], feature
+ * `cooking-timer-finish-notification`). Si llega [resume] (el usuario toco una notificacion y el
  * proceso habia muerto), el estado inicial es el **paso exacto** con la cuenta atras **recalculada**
  * desde el instante de fin y el trabajo del sistema (alarma + servicio) se **rearma** una vez. El
- * desmontaje de la composicion **no** borra la sesion: una muerte de actividad o una rotacion no debe
- * perderla.
+ * desmontaje de la composicion **no** borra la sesion ni limpia el aviso: una muerte de actividad o una
+ * rotacion no debe perderla.
  *
  * **Confirmacion al salir** (feature `cooking-mode-exit-confirmation`): las **tres** vias de salida
  * ("Atras" de la cabecera, "Terminar" de la barra inferior —o "Atras" con una receta sin pasos— y el
@@ -177,10 +179,12 @@ fun CookingModeScreen(
         session.save(CookingSession.of(state, recipe, SystemClock.elapsedRealtime()))
     }
 
-    // Salida explicita: se borra la sesion y despues se cierra el modo (la notificacion que quede en la
-    // bandeja ya no reanuda nada). El `onDispose` de abajo **no** borra nada.
+    // Salida explicita: se retira el aviso de fin que quede en la bandeja, se borra la sesion y despues
+    // se cierra el modo (la notificacion ya no reanuda nada). El `onDispose` de abajo **no** borra nada
+    // ni limpia la notificacion: una rotacion no debe perder la sesion ni borrar el aviso.
     LaunchedEffect(exiting) {
         if (exiting) {
+            alarm.dismissFinishNotification()
             session.clear()
             onClose()
         }

@@ -32,6 +32,18 @@ data class CookingSession(
      */
     val isResumable: Boolean get() = isRunning || timer.status == CookingTimerStatus.PAUSED
 
+    /**
+     * `true` si **la via de la notificacion** debe reabrir el paso: [isResumable] **o** una sesion en
+     * Terminado (el aviso "¡Listo!" sigue en la bandeja y tocar vuelve al paso, ya a cero). `Inactivo`
+     * queda fuera: no hay nada que reabrir y no puede coexistir con un aviso de fin.
+     *
+     * Es un predicado **compuesto** a proposito: [isResumable] conserva su semantica aceptada ("hay
+     * cuenta atras que reanudar") y sigue siendo codigo vivo. Lo consume `MainShell` en el arranque por
+     * `EXTRA_RESUME_COOKING`; un arranque **normal** no lo consulta.
+     */
+    val reopensFromNotification: Boolean
+        get() = isResumable || timer.status == CookingTimerStatus.FINISHED
+
     /** Estado del modo cocina tal cual se persistio (sin recalcular la cuenta atras). */
     fun mode(): CookingModeState = CookingModeState(
         stepIndex = stepIndex,

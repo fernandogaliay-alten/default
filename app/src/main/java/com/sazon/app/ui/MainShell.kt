@@ -111,10 +111,11 @@ import kotlinx.coroutines.launch
  *
  * **Vuelta al paso desde la notificacion** (feature `cooking-timer-foreground-service`): cuando el
  * `Intent` de arranque trae el flag de reanudacion, `MainActivity` incrementa [resumeRequest]; este
- * armazon carga entonces la **sesion persistida** ([CookingSessionStore]) y, si es **resumible** (En
- * marcha o Pausado), abre el Modo cocina en **ese** paso con la cuenta atras recalculada desde el
- * instante de fin ([CookingSession.resumedMode]). Un arranque **normal** (sin el flag) no abre nada,
- * aunque haya sesion persistida.
+ * armazon carga entonces la **sesion persistida** ([CookingSessionStore]) y, si **reabre desde la
+ * notificacion** ([CookingSession.reopensFromNotification]: En marcha, Pausado o Terminado), abre el
+ * Modo cocina en **ese** paso con la cuenta atras recalculada desde el instante de fin
+ * ([CookingSession.resumedMode]). Un arranque **normal** (sin el flag) no abre nada, aunque haya sesion
+ * persistida.
  */
 @Composable
 fun MainShell(
@@ -174,14 +175,14 @@ fun MainShell(
         suggestionBatchService.ensureBatch(profile.preferences)
     }
     // Vuelta al paso desde la notificacion: `resumeRequest` se incrementa cuando el `Intent` trae el
-    // flag de reanudacion (con exito o no, solo una vez por peticion). Con una sesion **resumible**
-    // (En marcha o Pausado) se abre el Modo cocina en **ese** paso y con la cuenta atras recalculada
-    // desde el instante de fin; con el proceso vivo y el modo ya abierto no cambia nada (el estado del
-    // modo es `rememberSaveable` y no se reinicia). Sin sesion, no se abre nada.
+    // flag de reanudacion (con exito o no, solo una vez por peticion). Con una sesion que **reabre desde
+    // la notificacion** (En marcha, Pausado o Terminado) se abre el Modo cocina en **ese** paso y con la
+    // cuenta atras recalculada desde el instante de fin; con el proceso vivo y el modo ya abierto no
+    // cambia nada (el estado del modo es `rememberSaveable` y no se reinicia). Sin sesion, no se abre nada.
     LaunchedEffect(resumeRequest) {
         if (resumeRequest <= 0) return@LaunchedEffect
         val resumed = cookingSession.load() ?: return@LaunchedEffect
-        if (!resumed.isResumable) return@LaunchedEffect
+        if (!resumed.reopensFromNotification) return@LaunchedEffect
         cookingRecipe = resumed.recipe
         resumeSession = resumed
     }

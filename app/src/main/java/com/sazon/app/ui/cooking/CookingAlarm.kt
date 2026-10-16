@@ -16,7 +16,11 @@ sealed interface CookingAlarmCommand {
      */
     data class Schedule(val triggerAtMillis: Long) : CookingAlarmCommand
 
-    /** No debe quedar ningun aviso vivo (Pausar, Reiniciar, cambio de paso, llegar a cero o salir). */
+    /**
+     * No debe quedar ningun aviso vivo (Pausar, Reiniciar, cambio de paso o salir). **No** se emite al
+     * llegar a cero ([CookingTimerStatus.FINISHED]): la alarma pendiente es la que publica el aviso de
+     * fin y cancelarla ahi abriria una carrera con el disparo de `AlarmManager`.
+     */
     data object Cancel : CookingAlarmCommand
 
     /** La alarma ya esta donde debe: no se toca (ticks, no-ops y casos residuales). */
@@ -36,12 +40,18 @@ sealed interface CookingAlarmCommand {
  * 2. Cualquier otro caso con `next` En marcha (los **ticks**, el doble "Iniciar" no-op y el caso
  *    defensivo `remainingMillis <= 0`) -> `None`: **no** se reprograma en cada segundo (seria el bug
  *    clasico de "una alarma por tick").
- * 3. `next` fuera de Marcha con **transicion real** (`previous != next`: Pausar, Reiniciar, cambio de
- *    paso o llegar a cero) -> `Cancel`.
- * 4. `next` fuera de Marcha y **no-op** del temporizador (`previous == next`) -> `None`.
+ * 3. `next` **entra en Terminado** con **transicion real** (`previous != next`: el `tick` que cruza el
+ *    cero) -> `None`: la alarma pendiente se deja **viva**, porque es la **unica** productora del aviso
+ *    de fin. Si aqui se cancelara, un `tick` de la composicion que llegue a cero antes de que dispare
+ *    `AlarmManager` borraria el aviso antes de publicarse (carrera no determinista). El servicio de la
+ *    cuenta atras se para **solo**, con su propio `delay`.
+ * 4. `next` fuera de Marcha y de Terminado con **transicion real** (`previous != next`: Pausar,
+ *    Reiniciar, cambio de paso o salir) -> `Cancel`.
+ * 5. `next` **no-op** del temporizador (`previous == next`) -> `None`.
  *
  * Un cambio de paso no necesita una regla propia: [CookingModeState.next]/[CookingModeState.previous]
- * **reinician** el temporizador a Inactivo, asi que la regla 3 ya cancela el aviso del paso anterior.
+ * **reinician** el temporizador a Inactivo, asi que la regla 4 ya cancela el aviso del paso anterior.
+ * "Reiniciar" desde Terminado (`FINISHED -> IDLE`) tambien cae en la regla 4 y cancela.
  */
 object CookingAlarmPolicy {
 
@@ -55,6 +65,8 @@ object CookingAlarmPolicy {
             CookingAlarmCommand.Schedule(nowMillis + next.remainingMillis)
 
         next.isRunning -> CookingAlarmCommand.None
+
+        next.isFinished && previous != next -> CookingAlarmCommand.None
 
         previous != next -> CookingAlarmCommand.Cancel
 
@@ -83,6 +95,17 @@ interface CookingAlarm {
 
     /** Deja el aviso en el estado que pide [command] (programar, cancelar o no tocar nada). */
     fun apply(command: CookingAlarmCommand)
+
+    /**
+     * **Retira** de la bandeja el aviso de fin ya mostrado (id fijo `1001`), si lo hubiera. Es un
+     * comando **aparte** de [CookingAlarmCommand.Cancel] —que no retira notificaciones mostradas
+     * (decision 9 del ADR 0007)— y lo llama **solo** la salida explicita del Modo cocina
+     * ("Atras"/"Terminar"), **no** el desmontaje de la composicion: una rotacion no debe borrar el aviso.
+     *
+     * Contrato: **no lanza** (degradacion silenciosa, ADR 0005); sin permiso o sin notificacion
+     * mostrada no hace nada.
+     */
+    fun dismissFinishNotification()
 }
 
 /**
@@ -91,4 +114,6 @@ interface CookingAlarm {
  */
 object NoOpCookingAlarm : CookingAlarm {
     override fun apply(command: CookingAlarmCommand) = Unit
+
+    override fun dismissFinishNotification() = Unit
 }
