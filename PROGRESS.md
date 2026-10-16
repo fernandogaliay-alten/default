@@ -158,6 +158,68 @@
   combina permiso denegado y ausencia de notificación mostrada; L3: la frase "el adaptador NO cancela la
   alarma al llegar a cero" se acredita de forma transitiva), todos como follow-up, sin bloquear. Detalle en
   `docs/validations/cooking-timer-finish-notification.md`.
+- Correctiva **`cooking-timer-notification-reliability`** (`area: integration`, depende de
+  `cooking-timer-foreground-service` y `cooking-timer-finish-notification`, ambas `accepted`)
+  implementada y autoverificada (**`passing`**) por el subagente `implementer` (skill
+  `feature-implementer`) en la **sesión 140**, según su spec
+  `docs/specs/cooking-timer-notification-reliability.md`, en el worktree
+  `cooking-timer-notification-reliability` (rama `feature/cooking-timer-notification-reliability`;
+  **sin** commit/push/PR: el commit local lo crea el orquestador de `feature-flow` y publica
+  `github-flow`). Cierra las cuatro causas del reporte de la persona en el dispositivo ColorOS con el
+  alcance acordado **(1)-(4)**: (1) **reloj único** — `CookingTimerState` gana el **ancla
+  absoluta** `endAtElapsedMillis` (no nula solo En marcha con tiempo que contar), `start/pause/resume(nowMillis)`
+  anclan/congelan/reanclan, `at(nowMillis)` **deriva** el restante (`(endAt - now).coerceAtLeast(0)`,
+  nunca negativo, `FINISHED`/`0` sin ancla al alcanzar el fin) y `projectedEndMillis(nowMillis)` prefiere
+  el ancla; **se elimina `tick(deltaMillis)`**, así que los latidos tardíos/desiguales **no** acumulan
+  deriva y la pantalla y la notificación dicen lo mismo; (2) el **servicio** pasa a ser el **productor
+  primario** del "¡Listo!" (publica la `1001` al vencer su `delay`, con el **sello de fin** como `when`,
+  **retira** la `1000` y se detiene) y la **alarma queda como respaldo** (enmienda las decisiones 1/2/6/9/12
+  y la alternativa 1 del ADR 0008 y 3/5/7/8 del ADR 0007); la **idempotencia** con dos publicadores la da
+  el **sello de fin** compartido (`currentTimeMillis() + (at - elapsedRealtime())`, calculado **una vez**
+  en `AndroidCookingAlarm` y llevado en los **dos** `Intent`) más la decisión **pura** nueva
+  `data.cooking.CookingFinishPublication` (mismo sello mostrado ⇒ `ALREADY_ANNOUNCED`; sello más viejo que
+  la **ventana de frescura** de 60 s ⇒ `STALE`; `setOnlyAlertOnce` **no** se usa); (3) **sin negativo** —
+  el servicio **no pinta** la persistente si el fin ya pasó, el `when` del cronómetro se **recalcula al
+  publicar** y el receptor de respaldo al disparar **para el servicio y retira la `1000`**; (4) **menos
+  acoplamiento** — la pantalla consulta `CookingAlarmPolicy` y `NotificationPermissionPolicy` en **un
+  único punto por gesto** (`onUserAction`, con **una sola** lectura de `SystemClock.elapsedRealtime()`),
+  se **borran** el `LaunchedEffect` con `state.timer.status` que armaba el aviso y el estado
+  `previousTimer`, el latido del reloj recalcula `at(elapsedRealtime())` alineado al segundo
+  (`remaining % 1000`) y el `Saver` **persiste el ancla**. Gate: `bash init.sh` **exit 0**, **115 suites /
+  916 tests / 0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD e5012d1` = 114 ficheros /
+  896 anotaciones ⇒ delta **+1 suite / +20 tests**: `CookingTimerStateTest` 11→15, `CookingAlarmPolicyTest`
+  16→17, `CookingSessionTest` 16→16, `CookingTimerServiceTest` 10→11, `CookingNotificationsTest` 17→22,
+  `AndroidCookingAlarmTest` 13→14 y **nueva** `CookingFinishPublicationTest` 8; `NotificationPermissionPolicyTest`,
+  `CookingModeStateTest`, `CookingExitPolicyTest` y `RoomCookingSessionStoreTest` adaptadas sin cambio de
+  recuento), lint **0 errores y 13 warnings preexistentes, 0 bajo `app/src`**; sin dependencias nuevas y
+  **sin diff** en build/lockfile/manifiesto/permisos/`init.sh`/`scripts/**`/`domain/**`/`assets/**`/
+  `docs/design/**`/Room/`ui/theme/**`. Docs durables: notas de enmienda en **ADR 0007** (decisiones 3, 5,
+  7, 8, 9 y consecuencias) y **ADR 0008** (decisiones 1, 2, 6, 9, 12, alternativa 1 y consecuencias),
+  reescritura de los párrafos del reloj, del aviso y de la cuenta atrás en `docs/technical-discovery.md`,
+  la sesión del Modo cocina en `docs/domain-model.md`, las filas del aviso/cronómetro/heads-up más una
+  **fila nueva** del aplazamiento de la alarma (ColorOS, ventana de frescura y retraso del primer arranque)
+  en `docs/risks-and-open-questions.md`, y notas de **vigencia** (sin reescribir la evidencia histórica) en
+  `docs/specs/cooking-timer-foreground-service.md` y `docs/specs/cooking-timer-finish-notification.md`.
+  Desviaciones acotadas: la lectura del aviso ya mostrado usa `NotificationManager.getActiveNotifications()`
+  del framework porque `NotificationManagerCompat` de `androidx.core 1.10.1` **no** expone esa consulta (la
+  spec la citaba; el dato y su verificabilidad en Robolectric son los mismos); `CookingFinishPublication`
+  vive en `data/cooking/` como fija la spec (es pura, 0 imports de Android); y cuatro suites no listadas en
+  la spec se adaptaron de forma mecánica al desaparecer `tick`. **`accepted`** en la **sesión 142**
+  (validación independiente del subagente `validator`, contexto limpio, veredicto **`accept`**; ver
+  `docs/validations/cooking-timer-notification-reliability.md`): el validador reprodujo el gate por su
+  cuenta (XML frescos **115 suites / 916 tests / 0 fallos / 0 errores / 0 saltados**; SARIF **13 / 0
+  errores / 0 bajo `app/src`**; baseline `HEAD e5012d1` = 114 ficheros / 896 anotaciones ⇒ delta **+1
+  suite / +20 tests**), confirmó los 9 escenarios y los 10 ítems del Validator Checklist, la pureza y el
+  confinamiento Android, la privacidad (solo escalares al sistema), la disciplina de alcance y la
+  coherencia de los ADR; sin hallazgos Critical/High/Medium y **5 Low no bloqueantes** (L1 respaldo que
+  para el servicio también con sello `STALE`; L2 salto de reloj de pared >60 s descarta el aviso; L3 warning
+  de Kotlin por `ScheduledAlarm.operation` deprecado en un test; L4 `at()` sin ancla devuelve el número
+  congelado; L5 `docs/risks-and-open-questions.md` conserva en presente "la alarma sigue siendo el único
+  productor"). El commit local `feat: complete cooking-timer-notification-reliability` lo crea el
+  orquestador de `feature-flow` en la rama `feature/cooking-timer-notification-reliability`
+  (**sin** push ni PR). Queda la **prueba manual** de la persona en el dispositivo ColorOS (primera cuenta
+  atrás sin retraso, pantalla y notificación sincronizadas, sin negativo, "¡Listo!" en el instante y una
+  sola vez con el móvil bloqueado, sin aviso del paso anterior), no automatizable desde WSL (`AGENTS.md`).
 - Feature **`cooking-mode-exit-confirmation`** (área `ui`, depende de `cooking-mode` y
   `cooking-timer-foreground-service`, ambas `accepted`) implementada y autoverificada (**`passing`**) por
   el subagente `implementer` en la **sesión 138** y **`accepted`** en la **sesión 139** (validación
@@ -7128,3 +7190,45 @@
   L4 `pendingStepChange` se pierde al rotar, comportamiento seguro). Sin hallazgos de seguridad.
 - Estado de features: `cooking-mode-step-change-confirmation` queda **`accepted`** (commit local del
   orquestador, **sin** push ni PR). WIP = 0.
+### Sesión 142 (planner + implementer + validator + orquestador `feature-flow`; `cooking-timer-notification-reliability`)
+
+- Fecha: 2026-10-16
+- Objetivo: cerrar el ciclo completo (`planner` → `implementer` → `validator`) de
+  `cooking-timer-notification-reliability` hasta **`accept`**, **sin** push ni PR (la publicación es de
+  `github-flow`).
+- Planificación (subagente `planner`): creó `docs/specs/cooking-timer-notification-reliability.md`
+  (480 líneas) con el alcance (1)-(4) de las `notes` y las 4 verificaciones exigidas; único fichero
+  escrito, sin commit.
+- Implementación (subagente `implementer`): reloj único con ancla `endAtElapsedMillis` y **eliminación de
+  `tick`**; **servicio productor primario** del "¡Listo!" con la **alarma como respaldo** e **idempotencia
+  por sello de fin** (decisión pura nueva `data.cooking.CookingFinishPublication`); **sin negativo** (no
+  pinta si el fin ya pasó, `when` recalculado al publicar, retirada exacta); y **desacoplo del gesto**
+  (un único `onUserAction` con una sola lectura del reloj). `bash init.sh` exit 0; frescas forzadas:
+  `testDebugUnitTest --rerun-tasks` (34/34, 3m37s) y `lint --rerun-tasks` (30/30, 3m04s), XML **115 suites
+  / 916 tests / 0 fallos / 0 errores / 0 saltados** (baseline `HEAD e5012d1` = 114 ficheros / 896
+  anotaciones ⇒ delta **+1 suite / +20 tests**), SARIF **13 / 0 errores / 0 bajo `app/src`**.
+- Validación independiente (subagente `validator`, contexto limpio): veredicto **`accept`**. No modificó
+  nada (solo escribió `docs/validations/cooking-timer-notification-reliability.md`); reprodujo el gate por
+  su cuenta (`init.sh` exit 0 con `UP-TO-DATE` ⇒ forzado: `testDebugUnitTest --rerun-tasks` BUILD
+  SUCCESSFUL 3m46s y `lint --rerun-tasks` BUILD SUCCESSFUL 3m13s; XML frescos **115 suites / 916 tests / 0
+  fallos / 0 errores / 0 saltados**; SARIF **13 / 0 errores / 0 bajo `app/src`**), re-derivó la baseline
+  (delta +1 suite / +20 tests cuadrado uno a uno), verificó con `javap` las dos desviaciones declaradas y
+  confirmó los 9 escenarios, los 10 ítems del Validator Checklist, la pureza, el confinamiento Android, la
+  privacidad y la disciplina de alcance. Sin hallazgos Critical/High/Medium; **5 Low informativos no
+  bloqueantes** (L1-L5 en el registro), todos como follow-up (feature correctiva o aclaración) sin
+  bloquear.
+- Persistencia de la aceptación (orquestador): `feature_list.json` de `passing` a **`accepted`** con la
+  evidencia del validador (4 entradas nuevas); bullet de estado actual y este registro actualizados.
+  Commit local `feat: complete cooking-timer-notification-reliability` en la rama
+  `feature/cooking-timer-notification-reliability` (**sin** push ni PR); la publicación queda para el
+  orquestador de `github-flow`.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el dispositivo ColorOS (primera cuenta
+  atrás sin el retraso de 10-15 s; pantalla y notificación sincronizadas; sin negativo al llegar a cero;
+  "¡Listo!" en el instante con la app minimizada y el móvil bloqueado, **una sola vez**; sin aviso del paso
+  anterior durante el siguiente), no automatizable desde WSL. Un defecto aquí sería una **feature
+  correctiva**.
+- Estado de features: `cooking-timer-notification-reliability` queda **`accepted`** (WIP = 0). Siguiente
+  feature de `github-flow`/`feature-flow`: `cooking-timer-notification-step-label` (`not_started`; su
+  dependencia `cooking-timer-notification-reliability` queda **satisfecha**; `cooking-timer-foreground-service`
+  ya lo estaba). Nota: `cooking-mode-step-change-confirmation` también está `not_started` con dependencias
+  satisfechas; se elige por orden de `feature_list.json`.

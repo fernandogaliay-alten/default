@@ -20,14 +20,14 @@ class CookingExitPolicyTest {
 
     @Test
     fun en_marcha_pide_confirmacion_por_los_dos_puntos_de_salida() {
-        val enMarcha = enPasoCon(CookingTimerState.of(10).start())
+        val enMarcha = enPasoCon(CookingTimerState.of(10).start(0L))
 
         assertAmbosPuntos(enMarcha, esperado = true)
     }
 
     @Test
     fun pausado_sin_pasos_marcados_pide_confirmacion_por_los_dos_puntos_de_salida() {
-        val pausado = enPasoCon(CookingTimerState.of(10).start().tick(120_000L).pause())
+        val pausado = enPasoCon(CookingTimerState.of(10).start(0L).at(120_000L).pause(1_000L))
 
         assertEquals(CookingTimerStatus.PAUSED, pausado.timer.status)
         assertTrue(pausado.completedOrders.isEmpty())
@@ -44,7 +44,7 @@ class CookingExitPolicyTest {
 
     @Test
     fun terminado_con_pasos_marcados_pide_confirmacion_por_los_dos_puntos_de_salida() {
-        val terminadoConMarcado = enPasoCon(CookingTimerState.of(1).start().tick(60_000L))
+        val terminadoConMarcado = enPasoCon(CookingTimerState.of(1).start(0L).at(60_000L))
             .toggleCompleted(1)
 
         assertEquals(CookingTimerStatus.FINISHED, terminadoConMarcado.timer.status)
@@ -87,7 +87,7 @@ class CookingExitPolicyTest {
 
     @Test
     fun terminado_solo_no_pide_confirmacion() {
-        val terminadoSinMarcados = enPasoCon(CookingTimerState.of(1).start().tick(60_000L))
+        val terminadoSinMarcados = enPasoCon(CookingTimerState.of(1).start(0L).at(60_000L))
 
         assertEquals(CookingTimerStatus.FINISHED, terminadoSinMarcados.timer.status)
         assertTrue(terminadoSinMarcados.completedOrders.isEmpty())
@@ -118,9 +118,9 @@ class CookingExitPolicyTest {
 
     @Test
     fun los_ticks_no_cambian_la_decision_mientras_corre_el_temporizador() {
-        var timer = CookingTimerState.of(10).start()
+        var timer = CookingTimerState.of(10).start(0L)
         val decisiones = (1..599).map { segundo ->
-            timer = timer.tick(1_000L)
+            timer = timer.at(segundo * 1_000L)
             val decision = ambosPuntos(enPasoCon(timer))
             assertEquals("Segundo $segundo", CookingTimerStatus.RUNNING, timer.status)
             decision
@@ -132,10 +132,10 @@ class CookingExitPolicyTest {
     @Test
     fun los_dos_puntos_de_salida_piden_siempre_lo_mismo() {
         val casos = listOf(
-            enPasoCon(CookingTimerState.of(10).start()),
-            enPasoCon(CookingTimerState.of(10).start().pause()),
+            enPasoCon(CookingTimerState.of(10).start(0L)),
+            enPasoCon(CookingTimerState.of(10).start(0L).pause(1_000L)),
             enPasoCon(CookingTimerState.of(10)).toggleCompleted(1),
-            enPasoCon(CookingTimerState.of(1).start().tick(60_000L)),
+            enPasoCon(CookingTimerState.of(1).start(0L).at(60_000L)),
             enPasoCon(CookingTimerState.of(10)),
             enPasoCon(CookingTimerState.of(0)),
             CookingModeState.initial(recetaCon(emptyList())),

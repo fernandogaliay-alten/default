@@ -12,14 +12,16 @@ sealed interface CookingAlarmCommand {
 
     /**
      * Hay que programar (o **reemplazar**) el aviso para el instante [triggerAtMillis] (el fin de la
-     * cuenta atras): `now + remaining` del temporizador que acaba de arrancar.
+     * cuenta atras): el **ancla** del temporizador que acaba de arrancar o, si no la tiene, `now +
+     * remaining`.
      */
     data class Schedule(val triggerAtMillis: Long) : CookingAlarmCommand
 
     /**
      * No debe quedar ningun aviso vivo (Pausar, Reiniciar, cambio de paso o salir). **No** se emite al
-     * llegar a cero ([CookingTimerStatus.FINISHED]): la alarma pendiente es la que publica el aviso de
-     * fin y cancelarla ahi abriria una carrera con el disparo de `AlarmManager`.
+     * llegar a cero ([CookingTimerStatus.FINISHED]): la alarma pendiente es el **respaldo** del aviso de
+     * fin (el productor primario es el servicio) y cancelarla ahi abriria una carrera con el disparo de
+     * `AlarmManager`.
      */
     data object Cancel : CookingAlarmCommand
 
@@ -31,20 +33,26 @@ sealed interface CookingAlarmCommand {
  * Politica **pura** del aviso de fin del temporizador del modo cocina (sin Compose ni Android;
  * testeable en JVM, patron [CookingTimerState]).
  *
- * Es **determinista** y **nunca lee el reloj**: el instante entra por parametro (`nowMillis`), igual
- * que el tiempo de [CookingTimerState.tick] entra por `deltaMillis`.
+ * Es **determinista** y **nunca lee el reloj**: el instante entra por parametro (`nowMillis`).
+ *
+ * Es la politica del **trabajo de respaldo**: el productor **primario** del "¡Listo!" es el servicio en
+ * primer plano (que conoce el instante de fin y publica el aviso al vencer); la **alarma exacta** sigue
+ * cubriendo la muerte del proceso. Como hay dos publicadores posibles, la idempotencia no la da esta
+ * politica ni el id fijo, sino el **sello de fin** compartido (ver `CookingFinishPublication` y
+ * `AndroidCookingAlarm`).
  *
  * Reglas de [onTimerChange], evaluadas en este orden:
  * 1. **Iniciar/Reanudar** (`next.isRunning && !previous.isRunning` y `next.remainingMillis > 0`) ->
- *    `Schedule(nowMillis + next.remainingMillis)`: el instante de fin.
- * 2. Cualquier otro caso con `next` En marcha (los **ticks**, el doble "Iniciar" no-op y el caso
+ *    `Schedule(next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis))`: **el ancla** del
+ *    temporizador si la tiene (para que UI, sesion persistida, alarma y servicio compartan el **mismo**
+ *    `Long`) y, si no, la proyeccion `now + remaining` (degradacion defensiva).
+ * 2. Cualquier otro caso con `next` En marcha (los latidos, el doble "Iniciar" no-op y el caso
  *    defensivo `remainingMillis <= 0`) -> `None`: **no** se reprograma en cada segundo (seria el bug
  *    clasico de "una alarma por tick").
- * 3. `next` **entra en Terminado** con **transicion real** (`previous != next`: el `tick` que cruza el
- *    cero) -> `None`: la alarma pendiente se deja **viva**, porque es la **unica** productora del aviso
- *    de fin. Si aqui se cancelara, un `tick` de la composicion que llegue a cero antes de que dispare
- *    `AlarmManager` borraria el aviso antes de publicarse (carrera no determinista). El servicio de la
- *    cuenta atras se para **solo**, con su propio `delay`.
+ * 3. `next` **entra en Terminado** con **transicion real** (`previous != next`: el ultimo latido que
+ *    cruza el cero) -> `None`: la alarma pendiente se deja **viva**. Si aqui se cancelara, un latido de
+ *    la composicion que llegue a cero antes de que dispare `AlarmManager` borraria el respaldo antes de
+ *    dispararse (carrera no determinista). El servicio se para **solo**, con su propio `delay`.
  * 4. `next` fuera de Marcha y de Terminado con **transicion real** (`previous != next`: Pausar,
  *    Reiniciar, cambio de paso o salir) -> `Cancel`.
  * 5. `next` **no-op** del temporizador (`previous == next`) -> `None`.
@@ -62,7 +70,9 @@ object CookingAlarmPolicy {
         nowMillis: Long,
     ): CookingAlarmCommand = when {
         next.isRunning && !previous.isRunning && next.remainingMillis > 0 ->
-            CookingAlarmCommand.Schedule(nowMillis + next.remainingMillis)
+            CookingAlarmCommand.Schedule(
+                next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis),
+            )
 
         next.isRunning -> CookingAlarmCommand.None
 

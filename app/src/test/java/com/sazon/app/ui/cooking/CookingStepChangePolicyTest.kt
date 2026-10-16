@@ -23,7 +23,7 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun en_marcha_en_un_paso_intermedio_pide_confirmacion_en_las_dos_direcciones() {
-        val enMarcha = enPasoIntermedioCon(CookingTimerState.of(10).start())
+        val enMarcha = enPasoIntermedioCon(CookingTimerState.of(10).start(0L))
 
         assertEquals(CookingTimerStatus.RUNNING, enMarcha.timer.status)
         assertAmbasDirecciones(enMarcha, esperado = true)
@@ -31,7 +31,7 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun pausado_en_un_paso_intermedio_pide_confirmacion_en_las_dos_direcciones() {
-        val pausado = enPasoIntermedioCon(CookingTimerState.of(10).start().tick(120_000L).pause())
+        val pausado = enPasoIntermedioCon(CookingTimerState.of(10).start(0L).at(120_000L).pause(120_000L))
 
         assertEquals(CookingTimerStatus.PAUSED, pausado.timer.status)
         assertTrue(pausado.completedOrders.isEmpty())
@@ -48,7 +48,7 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun terminado_en_un_paso_intermedio_no_pide_confirmacion_en_ninguna_direccion() {
-        val terminado = enPasoIntermedioCon(CookingTimerState.of(1).start().tick(60_000L))
+        val terminado = enPasoIntermedioCon(CookingTimerState.of(1).start(0L).at(60_000L))
 
         assertEquals(CookingTimerStatus.FINISHED, terminado.timer.status)
         assertAmbasDirecciones(terminado, esperado = false)
@@ -72,7 +72,7 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun terminado_con_marcados_no_pide_confirmacion_en_ninguna_direccion() {
-        val terminadoConMarcados = enPasoIntermedioCon(CookingTimerState.of(1).start().tick(60_000L))
+        val terminadoConMarcados = enPasoIntermedioCon(CookingTimerState.of(1).start(0L).at(60_000L))
             .toggleCompleted(1)
 
         assertEquals(CookingTimerStatus.FINISHED, terminadoConMarcados.timer.status)
@@ -90,7 +90,7 @@ class CookingStepChangePolicyTest {
     @Test
     fun el_primer_paso_no_pide_confirmacion_al_retroceder_pero_si_al_avanzar() {
         val primerPasoEnMarcha = CookingModeState.initial(recetaDeTresPasos)
-            .withTimer(CookingTimerState.of(10).start())
+            .withTimer(CookingTimerState.of(10).start(0L))
 
         assertTrue(primerPasoEnMarcha.isFirstStep)
         assertFalse(
@@ -114,7 +114,7 @@ class CookingStepChangePolicyTest {
         val ultimoPasoEnMarcha = CookingModeState.initial(recetaDeTresPasos)
             .next(recetaDeTresPasos.steps)
             .next(recetaDeTresPasos.steps)
-            .withTimer(CookingTimerState.of(5).start())
+            .withTimer(CookingTimerState.of(5).start(0L))
 
         assertTrue(ultimoPasoEnMarcha.isLastStep)
         assertFalse(
@@ -139,7 +139,7 @@ class CookingStepChangePolicyTest {
             listOf(RecipeStep(order = 1, title = "Unico", description = "", minutes = 10)),
         )
         // Aunque el temporizador corra, ninguna direccion cambia de paso (es primero y ultimo a la vez).
-        val unicoPaso = CookingModeState.initial(receta).withTimer(CookingTimerState.of(10).start())
+        val unicoPaso = CookingModeState.initial(receta).withTimer(CookingTimerState.of(10).start(0L))
 
         assertTrue(unicoPaso.isFirstStep)
         assertTrue(unicoPaso.isLastStep)
@@ -150,7 +150,7 @@ class CookingStepChangePolicyTest {
     fun una_receta_sin_pasos_no_pide_confirmacion_en_ninguna_direccion() {
         // Caso defensivo: el dominio garantiza `1..n`, pero con `isEmpty` ninguna direccion navega.
         val sinPasos = CookingModeState.initial(recetaCon(emptyList()))
-            .withTimer(CookingTimerState.of(5).start())
+            .withTimer(CookingTimerState.of(5).start(0L))
 
         assertTrue(sinPasos.isEmpty)
         assertAmbasDirecciones(sinPasos, esperado = false)
@@ -158,7 +158,7 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun desmarcar_no_cambia_la_decision_con_el_temporizador_en_marcha() {
-        val enMarcha = enPasoIntermedioCon(CookingTimerState.of(10).start())
+        val enMarcha = enPasoIntermedioCon(CookingTimerState.of(10).start(0L))
         val marcado = enMarcha.toggleCompleted(1)
         val desmarcado = marcado.toggleCompleted(1)
 
@@ -169,9 +169,9 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun los_ticks_no_cambian_la_decision_mientras_corre_el_temporizador() {
-        var timer = CookingTimerState.of(10).start()
+        var timer = CookingTimerState.of(10).start(0L)
         val decisiones = (1..599).map { segundo ->
-            timer = timer.tick(1_000L)
+            timer = timer.at(segundo * 1_000L)
             val decision = ambasDirecciones(enPasoIntermedioCon(timer))
             assertEquals("Segundo $segundo", CookingTimerStatus.RUNNING, timer.status)
             decision
@@ -182,13 +182,13 @@ class CookingStepChangePolicyTest {
 
     @Test
     fun la_decision_es_determinista_y_no_muta_el_estado() {
-        val estado = enPasoIntermedioCon(CookingTimerState.of(10).start()).toggleCompleted(1)
+        val estado = enPasoIntermedioCon(CookingTimerState.of(10).start(0L)).toggleCompleted(1)
 
         val primera = CookingStepChangePolicy.requiresConfirmation(estado, CookingStepChangePoint.NEXT)
         val segunda = CookingStepChangePolicy.requiresConfirmation(estado, CookingStepChangePoint.NEXT)
 
         assertEquals(primera, segunda)
-        assertEquals(estado, enPasoIntermedioCon(CookingTimerState.of(10).start()).toggleCompleted(1))
+        assertEquals(estado, enPasoIntermedioCon(CookingTimerState.of(10).start(0L)).toggleCompleted(1))
     }
 
     /** El microcopy vive en una constante pura del mismo paquete (sin recursos ni `strings.xml`). */

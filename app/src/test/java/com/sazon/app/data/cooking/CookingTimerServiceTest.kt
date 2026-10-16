@@ -29,11 +29,13 @@ import org.robolectric.shadows.ShadowService
 
 /**
  * Servicio en primer plano de la cuenta atras
- * (`docs/specs/cooking-timer-foreground-service.md`, escenarios 1, 4, 7 y 9): se arranca con la
+ * (`docs/specs/cooking-timer-foreground-service.md`, escenarios 1, 4, 7 y 9; y
+ * `docs/specs/cooking-timer-notification-reliability.md`, escenarios 3 y 5): se arranca con la
  * notificacion **persistente** (id `1000`, cronometro descendente, sin datos de la receta), espera al
- * instante de fin con **un unico** despertar y entonces retira la notificacion y se detiene; sin el
- * extra no arranca nada; con `POST_NOTIFICATIONS` denegado arranca igual, sin lanzar. El servicio
- * **no** publica el aviso de fin (id `1001`), que sigue siendo de la alarma aceptada.
+ * instante de fin con **unico** despertar y entonces **publica el aviso de fin** (`1001`, productor
+ * primario del "¡Listo!"), **retira** la persistente y se detiene; con el instante de fin **ya pasado**
+ * no pinta nada (no hay cronometro caducado ni cuenta atras en negativo); sin el extra no arranca nada;
+ * con `POST_NOTIFICATIONS` denegado arranca igual, sin lanzar.
  *
  * El comportamiento real (pantalla bloqueada, Doze, bateria agresiva) no es automatizable (AGENTS.md):
  * lo revisa la persona en el emulador.
@@ -47,11 +49,26 @@ class CookingTimerServiceTest {
     private val notificationManager: NotificationManager
         get() = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+    private val shadowNotifications get() = shadowOf(notificationManager)
+
+    private fun grantPostNotifications() {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>())
+            .grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        shadowNotifications.setNotificationsEnabled(true)
+    }
+
     private fun lanzar(intent: Intent): ServiceController<CookingTimerService> =
         Robolectric.buildService(CookingTimerService::class.java, intent).create().startCommand(0, 1)
 
+    /** Arranca el servicio con una cuenta atras de [restanteMillis] y su sello de fin coherente. */
     private fun conCuentaAtras(restanteMillis: Long): ServiceController<CookingTimerService> =
-        lanzar(CookingTimerService.intent(context, SystemClock.elapsedRealtime() + restanteMillis))
+        lanzar(
+            CookingTimerService.intent(
+                context = context,
+                endAtElapsedMillis = SystemClock.elapsedRealtime() + restanteMillis,
+                finishWallClockMillis = System.currentTimeMillis() + restanteMillis,
+            ),
+        )
 
     private val ServiceController<CookingTimerService>.shadow: ShadowService
         get() = shadowOf(get())
@@ -70,8 +87,8 @@ class CookingTimerServiceTest {
         assertEquals(1000, CookingNotifications.ONGOING_NOTIFICATION_ID)
         assertTrue("El servicio queda en primer plano", shadow.isLastForegroundNotificationAttached())
         assertNull(
-            "El servicio no publica la notificacion del aviso de fin",
-            shadowOf(notificationManager).getNotification(CookingNotifications.NOTIFICATION_ID),
+            "Al arrancar (fin futuro) todavia no hay aviso de fin",
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
         )
 
         controller.destroy()
@@ -144,21 +161,32 @@ class CookingTimerServiceTest {
     }
 
     @Test
-    fun el_unico_dato_que_viaja_al_servicio_es_el_instante_de_fin() {
-        val intent = CookingTimerService.intent(context, 1_600_000L)
+    fun los_dos_escalares_del_temporizador_son_lo_unico_que_viaja_al_servicio() {
+        val intent = CookingTimerService.intent(context, 1_600_000L, 1_700_000L)
 
         assertEquals(CookingTimerService::class.java.name, intent.component?.className)
         assertEquals(1_600_000L, intent.getLongExtra(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS, 0L))
         assertEquals(
+            "El sello de fin compartido con la alarma",
+            1_700_000L,
+            intent.getLongExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, 0L),
+        )
+        assertEquals(
             "Nada mas cruza al sistema",
-            setOf(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS),
+            setOf(
+                CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS,
+                CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS,
+            ),
             intent.extras?.keySet().orEmpty(),
         )
     }
 
     @Test
-    fun al_vencer_la_cuenta_atras_retira_la_notificacion_y_se_detiene() {
-        val controller = conCuentaAtras(600_000L)
+    fun al_vencer_la_cuenta_atras_publica_el_aviso_retira_la_persistente_y_se_detiene() {
+        grantPostNotifications()
+        val endAt = SystemClock.elapsedRealtime() + 600_000L
+        val sello = System.currentTimeMillis() + 600_000L
+        val controller = lanzar(CookingTimerService.intent(context, endAt, sello))
         val shadow = controller.shadow
         assertFalse("Antes de vencer sigue vivo", shadow.isStoppedBySelf())
 
@@ -167,18 +195,55 @@ class CookingTimerServiceTest {
         assertTrue("Al vencer se detiene", shadow.isStoppedBySelf())
         assertTrue("Y retira la notificacion persistente", shadow.isForegroundStopped)
         assertTrue(shadow.notificationShouldRemoved)
+        val aviso = checkNotNull(
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+        assertEquals(
+            "Publica el aviso de fin (productor primario)",
+            CookingNotifications.TITLE,
+            aviso.extras.getString(Notification.EXTRA_TITLE),
+        )
+        assertEquals(CookingNotifications.TEXT, aviso.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals(
+            "El aviso lleva el sello de fin compartido como `when`",
+            sello,
+            aviso.`when`,
+        )
 
         controller.destroy()
     }
 
     @Test
-    fun con_el_instante_de_fin_ya_pasado_no_se_queda_pintando() {
+    fun el_aviso_de_fin_del_servicio_no_lleva_datos_de_la_receta() {
+        grantPostNotifications()
+        val controller = conCuentaAtras(600_000L)
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMinutes(10))
+
+        val aviso = checkNotNull(shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID))
+        assertFalse(
+            "Sin claves propias de la app",
+            aviso.extras.keySet().any { it.startsWith("com.sazon") },
+        )
+        assertFalse(
+            "Sin rastro de la receta",
+            aviso.extras.toString().contains("Tortilla de patatas"),
+        )
+
+        controller.destroy()
+    }
+
+    @Test
+    fun con_el_instante_de_fin_ya_pasado_no_pinta_la_cuenta_atras() {
         val controller = conCuentaAtras(-1_000L)
 
         val shadow = controller.shadow
 
         assertTrue(shadow.isStoppedBySelf())
-        assertTrue(shadow.isForegroundStopped)
+        assertNull(
+            "No hay cronometro caducado: no se pinta nunca en negativo",
+            shadow.lastForegroundNotification,
+        )
 
         controller.destroy()
     }
@@ -202,7 +267,11 @@ class CookingTimerServiceTest {
         assertEquals(
             "Sin intent no se recrea: el toque vuelve al paso por la sesion persistida",
             android.app.Service.START_NOT_STICKY,
-            controller.get().onStartCommand(CookingTimerService.intent(context, 1L), 0, 2),
+            controller.get().onStartCommand(
+                CookingTimerService.intent(context, 1L, 1L),
+                0,
+                2,
+            ),
         )
 
         controller.destroy()
@@ -228,7 +297,11 @@ class CookingTimerServiceTest {
     fun arrancar_dos_veces_es_idempotente_y_no_duplica_la_notificacion() {
         val controller = Robolectric.buildService(
             CookingTimerService::class.java,
-            CookingTimerService.intent(context, SystemClock.elapsedRealtime() + 600_000L),
+            CookingTimerService.intent(
+                context,
+                SystemClock.elapsedRealtime() + 600_000L,
+                System.currentTimeMillis() + 600_000L,
+            ),
         ).create()
         controller.startCommand(0, 1)
 

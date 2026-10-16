@@ -46,12 +46,33 @@ Restricciones del repositorio que condicionan la decisión:
    entre dos relojes, y se conserva tal cual el comportamiento aceptado (id fijo `1001`, disparo único,
    degradación a alarma inexacta). `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `VIBRATE`,
    `SCHEDULE_EXACT_ALARM (maxSdkVersion=32)` y el receptor **no se tocan**.
+
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** la persona comprobó en un
+   > dispositivo **ColorOS** que el aviso llegaba tarde (o llegaba el de un paso anterior) porque quien lo
+   > publicaba era la **alarma**, que el fabricante difiere/coalesce, y no el servicio, que conoce el
+   > instante exacto. El **servicio pasa a ser el productor primario** del "¡Listo!" (publica al vencer su
+   > `delay`) y la alarma queda como **respaldo** para la muerte/congelación del proceso. Con **dos**
+   > publicadores el "sin sonido/vibración duplicados" deja de sostenerse en el publicador único y pasa a
+   > sostenerse en el **sello de fin** compartido + la decisión pura `CookingFinishPublication`
+   > (mismo sello ya mostrado o sello fuera de la ventana de frescura ⇒ no se publica). El id fijo, el
+   > disparo único y la degradación a alarma inexacta no cambian; `USE_EXACT_ALARM`,
+   > `POST_NOTIFICATIONS`, `VIBRATE`, `SCHEDULE_EXACT_ALARM (maxSdkVersion=32)` y el receptor siguen
+   > **intactos** como declaración.
 2. **La cuenta atrás la pinta el sistema**: `setUsesChronometer(true)` + `setChronometerCountDown(true)`
    + `setWhen(fin en hora de pared)` en la notificación persistente (id **fijo** `1000`, `ongoing`,
    `onlyAlertOnce`, `silent`, `CATEGORY_STOPWATCH`, el small icon monocromo aceptado, el **mismo** canal
    `cooking_timer`). Cero despertares por segundo, sin deriva del lado de la app y sin depender de que el
    proceso esté despierto para repintar texto. El servicio solo espera **un** despertar (el instante de
    fin real, monotónico) y entonces retira la notificación (`STOP_FOREGROUND_REMOVE`) y se detiene.
+
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** en ese mismo despertar el
+   > servicio, **antes** de retirar la `1000` y detenerse, **publica el aviso de fin** (`1001`) con el
+   > sello compartido (`when`), porque es quien conoce el instante exacto. Además: el `when` del
+   > cronómetro se **recalcula al publicar** (`currentTimeMillis() + (endAt - elapsedRealtime())`) para no
+   > heredar un valor obsoleto y, si al arrancar el instante de fin **ya pasó**, **no se pinta** nada (no
+   > hay cronómetro caducado ni cuenta atrás en negativo) y el servicio se apaga. El receptor de respaldo
+   > **también** para el servicio y retira la `1000` al disparar, para que la retirada sea exacta incluso
+   > con el FGS congelado o muerto.
 3. **Tipo de primer plano `specialUse`** con su `<property
    android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" …>` y los dos permisos **normales**
    `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`. No existe un tipo específico para
@@ -71,6 +92,14 @@ Restricciones del repositorio que condicionan la decisión:
    costura `CookingSessionStore` tiene default `NoOpCookingSessionStore` y contrato "no lanza". El
    adaptador (`RoomCookingSessionStore`) absorbe con `runCatching`: una fila ilegible se comporta como
    "sin sesión".
+
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** la sesión **reutiliza el ancla**
+   > del temporizador (`CookingTimerState.projectedEndMillis`) en vez de recalcular `now + remaining` (que
+   > arrastraba hasta un latido de retraso), de modo que UI, sesión persistida, alarma y servicio comparten
+   > el **mismo** `Long`. `resumedMode` reancla el temporizador con el `endAtElapsedMillis` de la fila y
+   > pasa por `CookingTimerState.at`, conservando la degradación defensiva si el ancla fuera `null`. El
+   > `Saver` de la pantalla persiste el ancla (si no, una rotación derivaría de un `remainingMillis`
+   > obsoleto).
 7. **La reanudación es explícita**: solo el `Intent` con `EXTRA_RESUME_COOKING` (booleano, lo **único**
    que cruza al sistema junto al instante de fin del servicio) abre el Modo cocina en su paso; un
    arranque normal **no** lo abre, así que una sesión antigua no secuestra el arranque y no hace falta
@@ -93,6 +122,12 @@ Restricciones del repositorio que condicionan la decisión:
    Las dos patas son independientes (cada una con su `runCatching`) y el arranque ocurre siempre desde una
    interacción del usuario con la app en primer plano, así que no aplica la restricción de arranque en
    segundo plano.
+
+   > **Ampliada (`cooking-timer-notification-reliability`, 2026-10-16):** cada `Intent` (el del servicio y
+   > el del `PendingIntent` de la alarma) lleva **también** el **sello de fin** en hora de pared,
+   > calculado **una vez** en `schedule(at)`: es el escalar que comparten los dos publicadores para que un
+   > fin ya anunciado no se repita. `Cancel` busca el `PendingIntent` existente sin recrearlo
+   > (`FLAG_NO_CREATE`), para no reescribir el sello de una alarma viva.
 10. **`onDispose` no borra la sesión; "Atrás"/"Terminar" sí**: una muerte de actividad o una rotación no
     debe perderla (es justo el caso a cubrir), mientras que salir del modo es una decisión explícita del
     usuario; el borrado se completa **antes** de cerrar la composición.
@@ -112,6 +147,18 @@ Restricciones del repositorio que condicionan la decisión:
     > `CookingAlarm` (método nuevo `dismissFinishNotification`), que eran las piezas declaradas "sin
     > diff". El servicio (`CookingTimerService`), el receptor, el canal, los ids y el microcopy **siguen**
     > intactos.
+    >
+    > **Revisado (`cooking-timer-notification-reliability`, 2026-10-16):** la lista de "sin diff" deja de
+    > aplicar también a `CookingTimerState` (gana el **ancla** `endAtElapsedMillis`, `start/pause/resume(now)`,
+    > `at(now)` y `projectedEndMillis(now)`; se elimina `tick`), `CookingAlarmPolicy` (`Schedule` prefiere
+    > el ancla), `CookingSession` (reutiliza el ancla), `CookingTimerService` (publica la `1001` y retira
+    > la `1000` al vencer), `CookingNotifications` (`when` de la `1001`, `notifyFinish` con el guard de
+    > idempotencia y el extra del sello), `CookingAlarmReceiver` (para el servicio/retira la `1000` y
+    > publica con el sello), `AndroidCookingAlarm` (sello en los dos `Intent`) y `CookingModeScreen`
+    > (latido derivado y **un punto por gesto**). Lo que **sigue** sin diff: `CookingModeState`,
+    > `CookingModeFormat`, el canal, los ids, el microcopy, el manifiesto, la persistencia Room
+    > (`CookingSessionEntity`/`Dao`/`Database`/`Mappers`/`RoomCookingSessionStore`) y
+    > `NotificationPermissionPolicy`/`NotificationPermissionPrompt`.
 
 Alcance: `ui/cooking/CookingSession.kt` y `CookingSessionStore.kt` (nuevos, puros), `data/cooking/`
 (persistencia Room, servicio y notificación persistente; adaptador y receptor con la pata nueva),
@@ -133,6 +180,13 @@ JVM/Robolectric. **No** se toca `domain/**`, la Taxonomía, `seed-recipes.json`,
    > en el proceso de la app, que el sistema puede matar), mientras que la alarma la ejecuta el sistema y
    > publica el aviso **siempre**. La misma decisión de "Opción A" (servicio pintor, alarma como único
    > productor) se mantiene.
+   >
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** se adopta una versión **híbrida**
+   > de esta alternativa: el servicio **sí** publica el "¡Listo!" (pasa a ser el **productor primario**,
+   > porque es el único que conoce el instante exacto en el proceso vivo y el fabricante difiere la alarma)
+   > y la alarma **no** se elimina: queda como **respaldo** para la muerte/congelación del proceso. La
+   > razón por la que la alternativa estaba descartada ("sin publicador único habría sonido duplicado") se
+   > resuelve con el **sello de fin** compartido y `CookingFinishPublication`, verificado en JVM.
 2. **`shortService`** como tipo de primer plano. Es el más afín pero está limitado a ~3 minutos: un
    temporizador de cocina puede durar más y el servicio moriría a mitad. Descartado.
 3. **Bucle de texto por segundo** (republicar la notificación con `NotificationManager.notify` en cada
@@ -169,6 +223,19 @@ JVM/Robolectric. **No** se toca `domain/**`, la Taxonomía, `seed-recipes.json`,
   > arista devuelve `None`: la alarma se deja viva y publica **siempre**; el servicio se para **solo**
   > con su `delay` (no se mantiene vivo para sostener el aviso), y la `1001` se retira en la salida
   > explícita con `dismissFinishNotification`.
+  >
+  > **Corregida (`cooking-timer-notification-reliability`, 2026-10-16):** el aviso **puntual** lo publica
+  > ahora el **servicio** en el instante de fin (el fabricante difería/coalescía la alarma, de ahí el
+  > retraso y el aviso de un paso anterior); la alarma queda como **respaldo** y no duplica (mismo sello
+  > ya mostrado) ni vuelve a alertar. Un fin distinto **sí** vuelve a alertar y un sello fuera de la
+  > ventana de frescura (60 s) se descarta.
+- **La cuenta atrás del sistema nunca se pinta en negativo**: el servicio no pinta la persistente si el
+  instante de fin ya pasó y la retira en el mismo despertar en que publica el aviso; si el FGS está
+  congelado o muerto, la retirada exacta la hace el receptor de respaldo (parar servicio + `cancel(1000)`).
+  > **Añadida (`cooking-timer-notification-reliability`, 2026-10-16):** el `when` del cronómetro se
+  > recalcula **al publicar** (`currentTimeMillis() + (endAt - elapsedRealtime())`) para no heredar un
+  > valor obsoleto. Queda como riesgo vivo el **doble reloj** de pared/monotónico del cronómetro del
+  > sistema (un cambio de hora durante la cuenta atrás puede desviar lo mostrado; aceptado y documentado).
 - **El toque vuelve al paso exacto** (escenarios 5 y 6), con la cuenta atrás recalculada desde el instante
   de fin: con el proceso muerto, la app lee la sesión persistida y monta el paso (En marcha con el tiempo
   restante o Terminado si ya pasó).

@@ -88,23 +88,29 @@ private const val COMPLETED_ALPHA = 0.45f
  * - **Fila de marcado** "Marcar paso como hecho" y **barra inferior** fija "Anterior" + primario
  *   "Siguiente" (o "Terminar" en el ultimo paso).
  *
- * El reloj real vive **fuera** de la logica pura: un [LaunchedEffect] alimenta `tick(1000)` mientras
- * el temporizador esta En marcha. La receta es un parametro (no se guarda en el `Saver`).
+ * El reloj real vive **fuera** de la logica pura: [CookingTimerState] lleva el instante de fin
+ * **absoluto** mientras la cuenta atras corre, y un [LaunchedEffect] recalcula `at(elapsedRealtime())`
+ * con un latido **alineado al segundo** de la cuenta atras (nunca acumula deriva). La receta es un
+ * parametro (no se guarda en el `Saver`).
  *
- * **Aviso de sistema** (feature `cooking-timer-alarm`): un segundo [LaunchedEffect] (con
- * `state.timer.status` como clave, de modo que los `tick` no lo reinician) pregunta a la politica
- * **pura** [CookingAlarmPolicy] que hacer con el aviso en cada transicion y lo aplica por la costura
- * [CookingAlarm] (default [NoOpCookingAlarm]: la pantalla no conoce Android). El instante de fin se
- * mide con `SystemClock.elapsedRealtime()`, que entra **inyectado** en la politica (que nunca lee el
- * reloj). Un [DisposableEffect] cancela el aviso al desmontarse (Atras/Terminar/`onClose`).
+ * **Trabajo del sistema por gesto** (feature `cooking-timer-notification-reliability`): cada gesto del
+ * temporizador o de navegacion ("Iniciar"/"Reanudar"/"Pausar"/"Reiniciar"/"Anterior"/"Siguiente") pasa
+ * por un **unico punto de entrada** que hace **una sola** lectura del reloj y con ella aplica el estado
+ * nuevo y las **dos** decisiones puras ([CookingAlarmPolicy.onTimerChange], que programa el respaldo en
+ * el **ancla** del temporizador + arranca el servicio, y [NotificationPermissionPolicy.onTimerChange],
+ * que muestra el rationale la primera vez que arranca sin permiso). Ya **no** hay un efecto con
+ * `state.timer.status` como clave ni estado `previousTimer`: la alarma y el servicio se arman/cancelan
+ * en el mismo punto que el gesto, no en la composicion.
  *
- * **Permiso de notificaciones en contexto** (feature `cooking-timer-alarm-permission-context`): en ese
- * **mismo** efecto, [NotificationPermissionPolicy] (pura) decide si hay que mostrar el rationale la
- * **primera** vez que arranca el temporizador sin permiso; si es asi se registra el intento
- * (`markAsked`, una vez por sesion) y se muestra [NotificationPermissionRationale], que solo al pulsar
- * "Continuar" lanza el dialogo del sistema por la costura [NotificationPermissionPrompt] (default
- * [NoOpNotificationPermissionPrompt]). El rationale **no** gatea nada: el aviso ya esta programado y el
- * reloj de la UI es un efecto aparte.
+ * Un [DisposableEffect] cancela el aviso al desmontarse (Atras/Terminar/`onClose`); la pantalla **no**
+ * conoce Android (default [NoOpCookingAlarm]).
+ *
+ * **Permiso de notificaciones en contexto** (feature `cooking-timer-alarm-permission-context`): la
+ * decision [NotificationPermissionPolicy] (pura) se consulta en ese **mismo** punto por gesto; si pide
+ * el rationale se registra el intento (`markAsked`, una vez por sesion) y se muestra
+ * [NotificationPermissionRationale], que solo al pulsar "Continuar" lanza el dialogo del sistema por la
+ * costura [NotificationPermissionPrompt] (default [NoOpNotificationPermissionPrompt]). El rationale
+ * **no** gatea nada: el aviso ya esta programado y el reloj de la UI es un efecto aparte.
  *
  * **Sesion persistida** (feature `cooking-timer-foreground-service`): la pantalla guarda su estado por
  * **cambio significativo** en la costura [CookingSessionStore] (default [NoOpCookingSessionStore]) y lo
@@ -112,9 +118,9 @@ private const val COMPLETED_ALPHA = 0.45f
  * pudiera quedar en la bandeja ([CookingAlarm.dismissFinishNotification], feature
  * `cooking-timer-finish-notification`). Si llega [resume] (el usuario toco una notificacion y el
  * proceso habia muerto), el estado inicial es el **paso exacto** con la cuenta atras **recalculada**
- * desde el instante de fin y el trabajo del sistema (alarma + servicio) se **rearma** una vez. El
- * desmontaje de la composicion **no** borra la sesion ni limpia el aviso: una muerte de actividad o una
- * rotacion no debe perderla.
+ * desde el instante de fin (el ancla) y el trabajo del sistema (alarma + servicio) se **rearma** una
+ * vez. El desmontaje de la composicion **no** borra la sesion ni limpia el aviso: una muerte de
+ * actividad o una rotacion no debe perderla.
  *
  * **Confirmacion al salir** (feature `cooking-mode-exit-confirmation`): las **tres** vias de salida
  * ("Atras" de la cabecera, "Terminar" de la barra inferior —o "Atras" con una receta sin pasos— y el
@@ -151,11 +157,6 @@ fun CookingModeScreen(
             resume?.resumedMode(SystemClock.elapsedRealtime()) ?: CookingModeState.initial(recipe),
         )
     }
-    // Ultimo temporizador al que se le aplico la politica: el efecto solo corre al **cambiar de
-    // estado**, asi que basta con guardar el primero de cada estado (solo se consulta por
-    // `isRunning`/igualdad, nunca por `remainingMillis`). Arranca ya igual al estado (incluida la
-    // reanudacion), de modo que el efecto de transiciones no rearma lo que rearma la reanudacion.
-    var previousTimer by remember { mutableStateOf(state.timer) }
     // Rationale del permiso: la primera vez que arranca el temporizador sin permiso concedido.
     var showRationale by rememberSaveable { mutableStateOf(false) }
     // Salida explicita ("Atras"/"Terminar"): primero se **borra** la sesion y solo despues se cierra el
@@ -171,11 +172,34 @@ fun CookingModeScreen(
     // `remember` (no `rememberSaveable`), como `confirmExit`: al rotar se pierde, limitacion aceptada.
     var pendingStepChange by remember { mutableStateOf<CookingStepChangePoint?>(null) }
 
+    // **Punto unico por gesto** (feature `cooking-timer-notification-reliability`): una sola lectura del
+    // reloj alimenta el estado nuevo y las **dos** decisiones puras. Asi la alarma (respaldo) y el
+    // servicio se arman/cancelan en el propio gesto, no en un efecto dependiente de la composicion.
+    // Un no-op del temporizador (doble "Iniciar", "Pausar" en Inactivo, "Reiniciar" ya Inactivo, un paso
+    // sin duracion) no toca nada.
+    fun onUserAction(transform: (CookingModeState, Long) -> CookingModeState) {
+        val previous = state.timer
+        val now = SystemClock.elapsedRealtime()
+        val next = transform(state, now)
+        if (next == state) return
+        state = next
+        alarm.apply(CookingAlarmPolicy.onTimerChange(previous, next.timer, now))
+        val permissionDecision = NotificationPermissionPolicy.onTimerChange(
+            previous = previous,
+            next = next.timer,
+            state = notificationPermission.state(),
+        )
+        if (permissionDecision == NotificationPermissionCommand.AskWithRationale) {
+            // Se registra al MOSTRAR el rationale (no al responder): si el usuario lo deja sin
+            // contestar, la sesion tampoco vuelve a molestar.
+            notificationPermission.markAsked(now)
+            showRationale = true
+        }
+    }
+
     // Reanudacion de una sesion En marcha (el proceso murio a mitad): la cuenta atras ya se recalculo
-    // desde el instante de fin, pero la alarma y el servicio murieron con el proceso, asi que se
-    // **rearma** el trabajo del sistema **una vez**, tratando la reanudacion como `IDLE -> RUNNING`.
-    // `previousTimer` arranca ya igual al temporizador del estado para que el efecto de transiciones no
-    // lo repita.
+    // desde el ancla, pero la alarma y el servicio murieron con el proceso, asi que se **rearma** el
+    // trabajo del sistema **una vez**, tratando la reanudacion como `IDLE -> RUNNING`.
     LaunchedEffect(Unit) {
         val resumed = resume ?: return@LaunchedEffect
         if (resumed.timer.status != CookingTimerStatus.RUNNING) return@LaunchedEffect
@@ -189,8 +213,8 @@ fun CookingModeScreen(
     }
 
     // Persistencia por **cambio significativo** (arrancar, pausar, reanudar, reiniciar, cambiar de paso,
-    // marcar, llegar a cero): **nunca** por `tick`, porque lo que queda de cuenta atras se recalcula al
-    // reanudar desde el instante de fin.
+    // marcar, llegar a cero): **nunca** por latido, porque lo que queda de cuenta atras se recalcula al
+    // reanudar desde el instante de fin (el ancla).
     LaunchedEffect(state.stepIndex, state.timer.status, state.completedOrders) {
         session.save(CookingSession.of(state, recipe, SystemClock.elapsedRealtime()))
     }
@@ -232,14 +256,14 @@ fun CookingModeScreen(
         if (CookingStepChangePolicy.requiresConfirmation(state, CookingStepChangePoint.PREVIOUS)) {
             pendingStepChange = CookingStepChangePoint.PREVIOUS
         } else {
-            state = state.previous(recipe.steps)
+            onUserAction { s, _ -> s.previous(recipe.steps) }
         }
     }
     val requestNext: () -> Unit = {
         if (CookingStepChangePolicy.requiresConfirmation(state, CookingStepChangePoint.NEXT)) {
             pendingStepChange = CookingStepChangePoint.NEXT
         } else {
-            state = state.next(recipe.steps)
+            onUserAction { s, _ -> s.next(recipe.steps) }
         }
     }
 
@@ -256,33 +280,6 @@ fun CookingModeScreen(
         }
     }
 
-    // Transiciones del temporizador -> comando del aviso (programar al Iniciar/Reanudar, cancelar al
-    // Pausar/Reiniciar/cambiar de paso/llegar a cero) y -> decision del permiso (rationale la primera
-    // vez que se arranca sin permiso). Los `tick` devuelven `None` en ambos casos: no se reprograma ni
-    // se pide permiso cada segundo.
-    LaunchedEffect(state.timer.status) {
-        val now = SystemClock.elapsedRealtime()
-        alarm.apply(
-            CookingAlarmPolicy.onTimerChange(
-                previous = previousTimer,
-                next = state.timer,
-                nowMillis = now,
-            ),
-        )
-        val permissionDecision = NotificationPermissionPolicy.onTimerChange(
-            previous = previousTimer,
-            next = state.timer,
-            state = notificationPermission.state(),
-        )
-        if (permissionDecision == NotificationPermissionCommand.AskWithRationale) {
-            // Se registra al MOSTRAR el rationale (no al responder): si el usuario lo deja sin
-            // contestar, la sesion tampoco vuelve a molestar.
-            notificationPermission.markAsked(now)
-            showRationale = true
-        }
-        previousTimer = state.timer
-    }
-
     // Salir del modo (Atras, Terminar, `onClose` o cualquier descarte de la composicion) no debe dejar
     // ningun aviso vivo ni la cuenta atras pintandose: la cancelacion es idempotente, haya o no algo
     // programado. **No** borra la sesion persistida (una rotacion o una muerte de actividad no deben
@@ -291,10 +288,17 @@ fun CookingModeScreen(
         onDispose { alarm.apply(CookingAlarmPolicy.onExit()) }
     }
 
-    LaunchedEffect(state.timer.status) {
+    // Latido del reloj **derivado del instante absoluto** (no arma el aviso: eso vive en el gesto de
+    // arriba): en cada vuelta se recalculcula `at(elapsedRealtime())` (proyeccion exacta, sin acumular
+    // deriva) y se espera hasta el proximo cambio de segundo de la cuenta atras (`remaining % 1000`),
+    // de modo que el numero de la pantalla voltea con el cronometro del sistema. La clave es "esta En
+    // marcha": el bucle arranca al Iniciar/Reanudar y sale al Pausar/Reiniciar/llegar a cero.
+    LaunchedEffect(state.timer.isRunning) {
         while (state.timer.isRunning) {
-            delay(1_000L)
-            state = state.withTimer(state.timer.tick(1_000L))
+            state = state.withTimer(state.timer.at(SystemClock.elapsedRealtime()))
+            if (!state.timer.isRunning || state.timer.remainingMillis <= 0L) break
+            val untilNextSecond = state.timer.remainingMillis % 1_000L
+            delay(if (untilNextSecond == 0L) 1_000L else untilNextSecond)
         }
     }
 
@@ -336,10 +340,10 @@ fun CookingModeScreen(
                     TimerBlock(
                         minutes = step.minutes,
                         timer = state.timer,
-                        onStart = { state = state.withTimer(state.timer.start()) },
-                        onPause = { state = state.withTimer(state.timer.pause()) },
-                        onResume = { state = state.withTimer(state.timer.resume()) },
-                        onReset = { state = state.withTimer(state.timer.reset()) },
+                        onStart = { onUserAction { s, now -> s.withTimer(s.timer.start(now)) } },
+                        onPause = { onUserAction { s, now -> s.withTimer(s.timer.pause(now)) } },
+                        onResume = { onUserAction { s, now -> s.withTimer(s.timer.resume(now)) } },
+                        onReset = { onUserAction { s, _ -> s.withTimer(s.timer.reset()) } },
                     )
                 }
                 MarkStepRow(
@@ -386,9 +390,11 @@ fun CookingModeScreen(
         CookingStepChangeDialog(
             onConfirm = {
                 pendingStepChange = null
-                state = when (point) {
-                    CookingStepChangePoint.NEXT -> state.next(recipe.steps)
-                    CookingStepChangePoint.PREVIOUS -> state.previous(recipe.steps)
+                onUserAction { s, _ ->
+                    when (point) {
+                        CookingStepChangePoint.NEXT -> s.next(recipe.steps)
+                        CookingStepChangePoint.PREVIOUS -> s.previous(recipe.steps)
+                    }
                 }
             },
             onDismiss = { pendingStepChange = null },
@@ -1039,8 +1045,9 @@ private fun ChevronGlyph(
 
 /**
  * Saver de [CookingModeState] para `rememberSaveable`, en la capa Compose: guarda el indice, el total,
- * los `order` marcados y el estado/millis del temporizador. La `Recipe` **no** se guarda (es un
- * parametro), de modo que la logica pura queda libre de Compose.
+ * los `order` marcados, el estado/millis del temporizador y su **ancla** ([CookingTimerState.endAtElapsedMillis],
+ * sin la cual una rotacion volveria a derivar de un `remainingMillis` obsoleto). La `Recipe` **no** se
+ * guarda (es un parametro), de modo que la logica pura queda libre de Compose.
  */
 private val CookingModeStateSaver: Saver<CookingModeState, Any> = listSaver(
     save = { state ->
@@ -1051,6 +1058,7 @@ private val CookingModeStateSaver: Saver<CookingModeState, Any> = listSaver(
             state.timer.status.name,
             state.timer.totalMillis.toString(),
             state.timer.remainingMillis.toString(),
+            state.timer.endAtElapsedMillis?.toString().orEmpty(),
         )
     },
     restore = { saved ->
@@ -1067,6 +1075,10 @@ private val CookingModeStateSaver: Saver<CookingModeState, Any> = listSaver(
                 status = CookingTimerStatus.valueOf(saved[3] as String),
                 totalMillis = (saved[4] as String).toLong(),
                 remainingMillis = (saved[5] as String).toLong(),
+                endAtElapsedMillis = saved.getOrNull(6)
+                    ?.let { it as String }
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.toLongOrNull(),
             ),
         )
     },

@@ -9,7 +9,7 @@ import com.sazon.app.domain.recipe.Recipe
  * escenarios 1, 3 y 6).
  *
  * Es **determinista** y **no lee el reloj**: el instante entra siempre **inyectado** (`nowMillis`), igual
- * que el tiempo de [CookingTimerState.tick] entra por `deltaMillis`. Es serializable por construccion
+ * que el resto del modelo del temporizador ([CookingTimerState]). Es serializable por construccion
  * (la `Recipe` ya lo es) y no importa `android.*` ni `androidx.*`, de modo que se prueba en JVM.
  *
  * [endAtElapsedMillis] es **no nulo solo En marcha**: en Inactivo, Pausado y Terminado no hay nada que
@@ -54,9 +54,10 @@ data class CookingSession(
 
     /**
      * Estado del modo cocina **recalculado** con el instante [nowMillis]: En marcha, lo que queda de
-     * cuenta atras es `endAtElapsedMillis - nowMillis` y, si el instante ya paso, el temporizador queda
-     * **Terminado** con `remaining = 0` (Scenario 6: muerte del proceso a mitad o despues del fin). Los
-     * demas estados se reconstruyen tal cual.
+     * cuenta atras sale de [CookingTimerState.at] sobre el **ancla** de la fila persistida
+     * (`endAtElapsedMillis`), de modo que la pantalla reabre con el **mismo** reloj que la sesion; si el
+     * instante ya paso, el temporizador queda **Terminado** con `remaining = 0` (Scenario 6: muerte del
+     * proceso a mitad o despues del fin). Los demas estados se reconstruyen tal cual.
      *
      * Defensivo y **sin lanzar**: si `endAtElapsedMillis` fuera `null` con el temporizador En marcha
      * (fila corrupta), degrada al `remainingMillis` persistido.
@@ -65,43 +66,40 @@ data class CookingSession(
         val persisted = mode()
         if (!isRunning) return persisted
         val endAt = endAtElapsedMillis ?: return persisted
-        val remaining = (endAt - nowMillis).coerceAtLeast(0L)
-        return persisted.withTimer(
-            timer.copy(
-                status = if (remaining == 0L) CookingTimerStatus.FINISHED else CookingTimerStatus.RUNNING,
-                remainingMillis = remaining,
-            ),
-        )
+        return persisted.withTimer(timer.copy(endAtElapsedMillis = endAt).at(nowMillis))
     }
 
     /**
      * Instante de fin (`ELAPSED_REALTIME`) que le corresponde a la sesion En marcha con el instante
-     * [nowMillis] inyectado: `nowMillis + remainingMillis`. `null` fuera de Marcha o sin tiempo que
-     * contar (nada que rearrancar).
+     * [nowMillis] inyectado: el **ancla** del temporizador ([CookingTimerState.projectedEndMillis]).
+     * `null` fuera de Marcha o sin tiempo que contar (nada que rearrancar).
      */
-    fun projectedEndMillis(nowMillis: Long): Long? =
-        if (isRunning && timer.remainingMillis > 0L) nowMillis + timer.remainingMillis else null
+    fun projectedEndMillis(nowMillis: Long): Long? = timer.projectedEndMillis(nowMillis)
 
     companion object {
 
         /**
          * Proyecta la sesion del modo [mode] sobre [recipe] con el instante [nowMillis] inyectado:
-         * `endAtElapsedMillis = nowMillis + timer.remainingMillis` **solo** En marcha con tiempo que
-         * contar; `null` en Inactivo, Pausado y Terminado (pausar/reiniciar/cambiar de paso/llegar a
-         * cero lo paran, Scenario 3 y 4).
+         * `endAtElapsedMillis` **reutiliza el ancla** del temporizador (`projectedEndMillis`), de modo
+         * que UI, sesion persistida, alarma y servicio comparten el **mismo** `Long` (no hay hasta un
+         * latido de retraso). Es `null` en Inactivo, Pausado y Terminado (pausar/reiniciar/cambiar de
+         * paso/llegar a cero lo paran, Scenario 3 y 4).
          */
-        fun of(mode: CookingModeState, recipe: Recipe, nowMillis: Long): CookingSession = CookingSession(
-            recipe = recipe,
-            stepIndex = mode.stepIndex,
-            completedOrders = mode.completedOrders,
-            timer = mode.timer,
-            endAtElapsedMillis = if (
-                mode.timer.status == CookingTimerStatus.RUNNING && mode.timer.remainingMillis > 0L
-            ) {
-                nowMillis + mode.timer.remainingMillis
-            } else {
-                null
-            },
-        )
+        fun of(mode: CookingModeState, recipe: Recipe, nowMillis: Long): CookingSession {
+            val timer = mode.timer
+            return CookingSession(
+                recipe = recipe,
+                stepIndex = mode.stepIndex,
+                completedOrders = mode.completedOrders,
+                timer = timer,
+                endAtElapsedMillis = if (
+                    timer.status == CookingTimerStatus.RUNNING && timer.remainingMillis > 0L
+                ) {
+                    timer.projectedEndMillis(nowMillis)
+                } else {
+                    null
+                },
+            )
+        }
     }
 }
