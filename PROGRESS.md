@@ -158,6 +158,39 @@
   combina permiso denegado y ausencia de notificación mostrada; L3: la frase "el adaptador NO cancela la
   alarma al llegar a cero" se acredita de forma transitiva), todos como follow-up, sin bloquear. Detalle en
   `docs/validations/cooking-timer-finish-notification.md`.
+- Feature **`cooking-mode-exit-confirmation`** (área `ui`, depende de `cooking-mode` y
+  `cooking-timer-foreground-service`, ambas `accepted`) implementada y autoverificada (**`passing`**) por
+  el subagente `implementer` en la **sesión 138** y **`accepted`** en la **sesión 139** (validación
+  independiente, veredicto **`accept`**; ver `docs/validations/cooking-mode-exit-confirmation.md`), según
+  su spec
+  `docs/specs/cooking-mode-exit-confirmation.md`, en el worktree `cooking-mode-exit-confirmation` (rama
+  `feature/cooking-mode-exit-confirmation`; **sin** commit/push/PR de los subagentes: el commit local lo
+  crea el orquestador de `feature-flow` y la publicación queda para `github-flow`). Las **tres** vías de
+  salida del Modo cocina ("Atrás" de la cabecera, "Terminar" de la barra inferior y el **gesto/tecla atrás
+  del sistema**) pasan por la decisión **pura** `ui.cooking.CookingExitPolicy.requiresConfirmation(state,
+  point)` (estado inyectado, sin Compose/Android y sin leer el reloj): pide confirmación solo si hay **algo
+  que perder** —temporizador del paso **En marcha o Pausado**, o algún paso marcado (`completedOrders`)—;
+  con el temporizador **Inactivo/Terminado sin marcados** (o una receta sin pasos) se sale **directo** (un
+  Terminado **solo** no cuenta). Los **dos** puntos de salida son parte del contrato (`CookingExitPoint`:
+  `BACK_BUTTON` para "Atrás" **y** el atrás del sistema, `FINISH` para "Terminar") y comparten la misma
+  puerta; el atrás del sistema se intercepta con `BackHandler` **solo** mientras el modo está compuesto (la
+  app **no** gana pila de navegación global) y, con el diálogo abierto, lo **descarta**. El diálogo es un
+  `AlertDialog` de Material 3 (`CookingExitDialog`, `private`) con el microcopy puro `CookingExitCopy` y los
+  roles de `SazonTheme` (sin tokens nuevos). Abrir/cerrar el diálogo **no** toca la sesión, la
+  alarma/servicio ni el reloj —la cuenta atrás sigue corriendo detrás y "Seguir cocinando" no cambia
+  nada—: solo "Salir" ejecuta el camino aceptado (`exiting` → `CookingSessionStore.clear()` → `onClose()` →
+  `onDispose` con `CookingAlarmPolicy.onExit()`). Gate: `bash init.sh` **exit 0**, **114 suites / 888 tests /
+  0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD 83d0549`: `git grep -c '@Test'` = 113
+  ficheros / 874 anotaciones ⇒ delta **+1 suite / +14 tests**: `CookingExitPolicyTest` 14, **la verificación
+  exigida**; 0 suites aceptadas modificadas), lint **0 errores, 13 warnings preexistentes, 0 bajo `app/src`**;
+  `init.sh`, build/lockfile, `domain/**`, `data/**`, `ui/theme/**`, `ui/MainShell.kt` y las piezas aceptadas
+  de `cooking` **sin diff**; sin dependencias nuevas (`BackHandler` ya venía de
+  `androidx.activity:activity-compose` 1.8.0) y **sin** capturas nuevas. Docs durables: párrafo de
+  `ui.cooking` ampliado en `docs/technical-discovery.md` y nota de **excepción de capturas** en `DESIGN.md`.
+  Queda la **prueba manual** de la persona en el emulador (las tres vías con y sin algo que perder, "Seguir
+  cocinando" con la cuenta atrás viva, atrás con el diálogo abierto y acabado del diálogo en claro/oscuro),
+  no automatizable desde WSL; la validación independiente devolvió **`accept`** y la feature queda
+  **`accepted`** (commit local del orquestador, **sin** push ni PR).
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -6871,3 +6904,109 @@
   persona (emulador): el aviso duradero en primer plano y minimizado, el toque en Terminado, la limpieza con
   "Atrás"/"Terminar", la rotación que **no** lo borra, el heads-up sin duplicado (mismo id `1001`) y sin
   permiso sin crash; un defecto de acabado se corrige con una **feature correctiva**.
+
+### Sesión 138 (implementer, `cooking-mode-exit-confirmation`)
+
+- Fecha: 2026-10-16
+- Objetivo: implementar **una** feature planificada, `cooking-mode-exit-confirmation` (`area: ui`, depende
+  de `cooking-mode` y `cooking-timer-foreground-service`, ambas `accepted`), según su spec
+  `docs/specs/cooking-mode-exit-confirmation.md` (skill `feature-implementer`), en el worktree
+  `cooking-mode-exit-confirmation` (rama `feature/cooking-mode-exit-confirmation`). **Sin** commit, push ni
+  PR. WIP = 1.
+- Cambios entregados:
+  - Nuevo (`ui/cooking/CookingExitConfirmation.kt`, lógica **pura**: 0 imports, sin Compose/Android, sin
+    reloj y sin la `Recipe`): `CookingExitPoint` (`BACK_BUTTON`, `FINISH`), `CookingExitPolicy.
+    requiresConfirmation(state, point)` —un solo `when` por punto que delega en la condición única "algo
+    que perder": temporizador **En marcha o Pausado**, o `completedOrders` no vacío; Inactivo/Terminado
+    cuentan solo por los marcados— y `CookingExitCopy` (título, cuerpo, "Salir", "Seguir cocinando").
+  - `ui/cooking/CookingModeScreen.kt` (+90/-3, **único** fichero de código modificado): import
+    `androidx.activity.compose.BackHandler`, estado `confirmExit`, las dos entradas gateadas
+    (`requestBack` → `BACK_BUTTON` para la cabecera; `requestFinish` → `FINISH` para la barra inferior,
+    que sustituyen a `requestExit`), `BackHandler { if (confirmExit) confirmExit = false else requestBack() }`
+    y `CookingExitDialog` (`private`, `AlertDialog` de Material 3 con `CookingExitCopy`, "Salir" en
+    `colorScheme.primary` y descarte "Seguir cocinando"; sin `colorScheme.error` ni tokens nuevos). El
+    camino de salida aceptado **no** cambia (`exiting` → `session.clear()` → `onClose()` → `onDispose` con
+    `CookingAlarmPolicy.onExit()`), el `LaunchedEffect` del reloj **no** se toca y abrir/cerrar el diálogo
+    no altera sesión, alarma/servicio ni cuenta atrás. KDoc de la pantalla ampliado con el párrafo de la
+    confirmación al salir.
+  - Test nuevo `app/src/test/java/com/sazon/app/ui/cooking/CookingExitPolicyTest.kt` (JUnit 4, 14 tests,
+    **la verificación exigida**): matriz de estados × **los dos** puntos de salida con aserción explícita
+    por punto, incluidos los negativos (Inactivo/Terminado sin marcados, paso sin duración, receta sin
+    pasos), el escenario de "Terminar" (último paso Inactivo con un paso marcado), el invariante "los dos
+    puntos piden siempre lo mismo", 599 ticks intermedios, determinismo/no mutación y microcopy estable.
+- Verificación (evidencia real de esta sesión):
+  - Gate `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`; `init.sh` **sin cambios**, no
+    aparece en `git status`). Parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml` =
+    **114 suites / 888 tests / 0 fallos / 0 errores / 0 saltados**; baseline re-derivada en `HEAD 83d0549`
+    (`git grep -c '@Test' HEAD -- app/src/test` = 113 ficheros / 874 anotaciones) ⇒ delta **+1 suite /
+    +14 tests** (`CookingExitPolicyTest`), con las suites aceptadas de `cooking` sin cambios de recuento
+    (`CookingAlarmPolicyTest` 15, `CookingTimerStateTest` 11, `CookingModeStateTest` 10,
+    `CookingModeFormatTest` 8, `CookingSessionTest` 14, `NotificationPermissionPolicyTest` 14).
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"` = BUILD
+    SUCCESSFUL (7 suites / 86 tests / 0 fallos) y sin avisos nuevos del compilador.
+  - Lint: SARIF `app/build/reports/lint-results-debug.sarif` = **13 resultados / 0 errores** (los mismos
+    preexistentes: GradleDependency 7, NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi
+    1) y **0 bajo `app/src`**.
+  - Inspecciones: `CookingExitConfirmation.kt` con 0 imports y 0 lecturas del reloj; `BackHandler` **solo**
+    en `CookingModeScreen.kt` (y no existía antes en `app/src`); `git status` = 2 ficheros nuevos de código
+    + `CookingModeScreen.kt` modificado + `docs/specs/cooking-mode-exit-confirmation.md` (del planner);
+    **sin diff** en `app/build.gradle.kts`, `gradle/libs.versions.toml`, `init.sh`, `scripts/**`,
+    `domain/**`, `data/**`, `ui/theme/**`, `ui/MainShell.kt`, `CookingTimerState.kt`, `CookingModeState.kt`,
+    `CookingModeFormat.kt`, `CookingAlarm*.kt`, `CookingSession*.kt`, `NotificationPermission*.kt`, el
+    manifiesto y `res/**`; sin dependencias nuevas; sin `docs/design/concepts/cooking-mode-exit-confirmation/`.
+- Estado: `feature_list.json` con `cooking-mode-exit-confirmation` en **`passing`** y 9 entradas de
+  evidencia (el rango máximo que puede dejar el implementer); `cooking-mode-step-change-confirmation` sigue
+  `not_started`; pendiente la **validación independiente** (`feature-validator`) y, después, el
+  commit/push/PR del orquestador.
+- Docs durables: `docs/technical-discovery.md` (párrafo de `ui.cooking` ampliado con la salida gateada) y
+  `DESIGN.md` (nota de **excepción de capturas**); `docs/domain-model.md`, `AGENTS.md`,
+  `docs/build-brief.md` y `docs/adr/` sin cambios (sin entidad/estado nuevos, sin regla de repo nueva y sin
+  decisión arquitectónica nueva).
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (puntos del `Verification
+  Plan` de la spec: con el temporizador En marcha, "Atrás", "Terminar" y el gesto atrás piden confirmación;
+  "Seguir cocinando" no pierde nada y la cuenta atrás sigue; "Salir" cierra el modo, vuelve al Detalle y
+  limpia el aviso/servicio; sin nada que perder se sale directo; con el diálogo abierto el atrás lo
+  descarta; acabado del diálogo en claro y oscuro), no automatizable según `AGENTS.md`. Incógnitas ya
+  documentadas en la spec: el reparto del atrás entre la ventana del diálogo y `BackHandler` (se verifica
+  por inspección y a mano, no en JVM), la pérdida de `confirmExit` al rotar (misma limitación ya aceptada
+  del modo) y el microcopy del diálogo (decisión del planner; un defecto ⇒ feature correctiva).
+
+### Sesión 139 (validator + orquestador `feature-flow`, `cooking-mode-exit-confirmation`)
+
+- Fecha: 2026-10-16
+- Objetivo: validar de forma independiente y cerrar `cooking-mode-exit-confirmation` con el flujo
+  `feature-flow` (hasta `accept`), **sin** push ni PR (la publicación es de `github-flow`).
+- Validación independiente (subagente `validator`, contexto limpio): veredicto **`accept`**. Re-ejecutó
+  `bash init.sh` (exit 0; `testDebugUnitTest`/`lint` salieron `UP-TO-DATE`, así que no valía como evidencia
+  fresca) y forzó `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (BUILD SUCCESSFUL, XML frescos =
+  **114 suites / 888 tests / 0 fallos / 0 errores / 0 saltados**; `CookingExitPolicyTest` 14/14) y
+  `bash scripts/gradle.sh lint --rerun-tasks` (exit 0, 30/30 tareas; SARIF = **13 resultados / 0 errores /
+  0 bajo `app/src`**). Re-derivó la baseline (`git grep -c '@Test' HEAD -- app/src/test` = 874 → 888, delta
+  **+14** = la suite nueva) y confirmó los escenarios 1-8 de la spec, el gate por los dos puntos
+  (`requestBack` → `BACK_BUTTON`, `requestFinish` → `FINISH`; invariante "los dos puntos piden lo mismo"),
+  `BackHandler` **solo** en `CookingModeScreen.kt` (0 apariciones antes en `app/src`), el camino de salida
+  aceptado **intacto** (`exiting → session.clear() → onClose() → onDispose`; sin rastro de `requestExit`),
+  la pureza de `CookingExitConfirmation.kt` (**0** imports, 0 `SystemClock`, sin `Recipe`) y la disciplina de
+  alcance (sin diff en build/lockfile, `init.sh`, `scripts/**`, `domain/**`, `data/**`, `ui/theme/**`,
+  `MainShell.kt`, estado-temporizador, `CookingAlarm*`/`CookingSession*`/`NotificationPermission*`,
+  manifiesto ni `res/**`; sin dependencias nuevas; sin capturas). Sin hallazgos Critical/High/Medium; 3 Low
+  informativos no bloqueantes (el test del microcopy congela las 4 cadenas; la decisión se evalúa al pulsar,
+  así que un temporizador que termina con el diálogo abierto lo deja abierto; el descarte hereda `primary`,
+  acabado visual a revisión manual). Nota de infra (deuda **preexistente** D2, no de la feature):
+  `testDebugUnitTest lint --rerun-tasks` en **una sola** invocación falla por validación de Gradle
+  (`generateDebugLintReportModel`/`lintAnalyzeDebug` usan la salida de `syncTaxonomy` sin dependencia
+  declarada); el gate canónico (`init.sh`) los invoca por separado y pasa.
+  Registro: `docs/validations/cooking-mode-exit-confirmation.md`.
+- Persistencia de la aceptación (orquestador): `feature_list.json` de `passing` a **`accepted`** con la
+  evidencia del validador (10 entradas); bullet de estado actual y este registro actualizados. Commit local
+  `feat: complete cooking-mode-exit-confirmation` en la rama `feature/cooking-mode-exit-confirmation`
+  (**sin** push ni PR); la publicación queda para el orquestador de `github-flow`.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador tras el merge (las tres vías
+  de salida con y sin algo que perder; "Seguir cocinando" con la cuenta atrás viva; "Salir" limpia la sesión
+  y el aviso/servicio; atrás con el diálogo abierto; acabado del diálogo en claro/oscuro frente a
+  `DESIGN.md`), no automatizable desde WSL. Incógnitas ya documentadas en la spec: reparto del atrás entre la
+  ventana del diálogo y `BackHandler`, pérdida de `confirmExit` al rotar y microcopy. Un defecto visual se
+  corrige con una **feature correctiva**.
+- Estado de features: `cooking-mode-exit-confirmation` queda **`accepted`** (WIP = 0). Siguiente feature de
+  `github-flow`/`feature-flow`: `cooking-mode-step-change-confirmation` (`not_started`; sus dependencias
+  `cooking-mode` y `cooking-mode-exit-confirmation` quedan **satisfechas**, sin spec todavía).

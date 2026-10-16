@@ -1,6 +1,7 @@
 package com.sazon.app.ui.cooking
 
 import android.os.SystemClock
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -114,6 +115,15 @@ private const val COMPLETED_ALPHA = 0.45f
  * desde el instante de fin y el trabajo del sistema (alarma + servicio) se **rearma** una vez. El
  * desmontaje de la composicion **no** borra la sesion ni limpia el aviso: una muerte de actividad o una
  * rotacion no debe perderla.
+ *
+ * **Confirmacion al salir** (feature `cooking-mode-exit-confirmation`): las **tres** vias de salida
+ * ("Atras" de la cabecera, "Terminar" de la barra inferior —o "Atras" con una receta sin pasos— y el
+ * **gesto/tecla atras del sistema**, interceptado con [BackHandler] mientras el modo esta compuesto)
+ * pasan por la decision **pura** [CookingExitPolicy]. Si hay algo que perder (temporizador En marcha o
+ * Pausado, o algun paso marcado) se muestra [CookingExitDialog]; solo "Salir" activa el camino de salida
+ * aceptado (`exiting` -> `session.clear()` -> `onClose()` -> `onDispose`). Abrir/cerrar el dialogo no toca
+ * la sesion, la alarma/servicio ni el reloj: la cuenta atras sigue corriendo detras y "Seguir cocinando" no
+ * cambia nada. Sin nada que perder, la salida es directa.
  */
 @Composable
 fun CookingModeScreen(
@@ -140,6 +150,10 @@ fun CookingModeScreen(
     // Salida explicita ("Atras"/"Terminar"): primero se **borra** la sesion y solo despues se cierra el
     // modo, para que el borrado no se quede a medias si la composicion se desmonta antes.
     var exiting by remember { mutableStateOf(false) }
+    // Confirmacion de salida visible (feature `cooking-mode-exit-confirmation`): se abre solo cuando la
+    // decision **pura** [CookingExitPolicy] dice que hay algo que perder. Abrir/cerrar el dialogo **no**
+    // toca `exiting`, la sesion, la alarma ni el reloj: solo "Salir" activa el camino de salida de abajo.
+    var confirmExit by remember { mutableStateOf(false) }
 
     // Reanudacion de una sesion En marcha (el proceso murio a mitad): la cuenta atras ya se recalculo
     // desde el instante de fin, pero la alarma y el servicio murieron con el proceso, asi que se
@@ -175,7 +189,35 @@ fun CookingModeScreen(
             onClose()
         }
     }
-    val requestExit: () -> Unit = { exiting = true }
+    // Las tres vias de salida pasan por la misma decision pura: "Atras" (cabecera y gesto/tecla atras del
+    // sistema) por [CookingExitPoint.BACK_BUTTON] y "Terminar" por [CookingExitPoint.FINISH]. Con algo que
+    // perder se abre el dialogo; sin nada que perder se sale directamente, como antes de esta feature.
+    val requestBack: () -> Unit = {
+        if (CookingExitPolicy.requiresConfirmation(state, CookingExitPoint.BACK_BUTTON)) {
+            confirmExit = true
+        } else {
+            exiting = true
+        }
+    }
+    val requestFinish: () -> Unit = {
+        if (CookingExitPolicy.requiresConfirmation(state, CookingExitPoint.FINISH)) {
+            confirmExit = true
+        } else {
+            exiting = true
+        }
+    }
+
+    // Gesto/tecla atras del sistema: se intercepta **solo mientras el Modo cocina esta compuesto** (fuera
+    // del modo, la app no gana pila de navegacion y el atras sigue como hoy). Con el dialogo abierto, el
+    // atras lo **descarta** (equivale a "Seguir cocinando": no sale, no reabre y no cambia nada); con el
+    // dialogo cerrado, enruta por el mismo gate que "Atras".
+    BackHandler {
+        if (confirmExit) {
+            confirmExit = false
+        } else {
+            requestBack()
+        }
+    }
 
     // Transiciones del temporizador -> comando del aviso (programar al Iniciar/Reanudar, cancelar al
     // Pausar/Reiniciar/cambiar de paso/llegar a cero) y -> decision del permiso (rationale la primera
@@ -229,7 +271,7 @@ fun CookingModeScreen(
                 isLastStep = state.isLastStep,
                 onPrevious = { state = state.previous(recipe.steps) },
                 onNext = { state = state.next(recipe.steps) },
-                onClose = requestExit,
+                onClose = requestFinish,
             )
         },
     ) { padding ->
@@ -242,7 +284,7 @@ fun CookingModeScreen(
             CookingModeHeader(
                 stepIndex = state.stepIndex,
                 totalSteps = state.totalSteps,
-                onBack = requestExit,
+                onBack = requestBack,
             )
             val step = recipe.steps.getOrNull(state.stepIndex)
             if (state.isEmpty || step == null) {
@@ -284,6 +326,51 @@ fun CookingModeScreen(
             onDismiss = { showRationale = false },
         )
     }
+
+    // Confirmacion de salida: "Salir" activa la salida explicita de arriba (borra la sesion y cierra el
+    // modo; el desmontaje cancela alarma/servicio); "Seguir cocinando" (o el descarte) solo cierra el
+    // dialogo, sin tocar nada mas. El reloj sigue corriendo detras del dialogo.
+    if (confirmExit) {
+        CookingExitDialog(
+            onConfirm = {
+                confirmExit = false
+                exiting = true
+            },
+            onDismiss = { confirmExit = false },
+        )
+    }
+}
+
+/**
+ * Dialogo de confirmacion de salida del Modo cocina: `AlertDialog` de Material 3 con el microcopy de
+ * [CookingExitCopy] y los **roles** de `SazonTheme` (sin tokens, formas ni colores nuevos; `DESIGN.md` no
+ * cubre dialogos). Una sola accion principal ("Salir", en `primary`) y el descarte "Seguir cocinando".
+ */
+@Composable
+private fun CookingExitDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = CookingExitCopy.TITLE) },
+        text = { Text(text = CookingExitCopy.MESSAGE) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(text = CookingExitCopy.CONFIRM)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = CookingExitCopy.DISMISS)
+            }
+        },
+    )
 }
 
 /**

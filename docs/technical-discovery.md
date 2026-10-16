@@ -400,6 +400,22 @@ desmontarse la composicion (una rotacion no puede perderla); un **arranque norma
 porque la reanudacion es **explicita** (`EXTRA_RESUME_COOKING`). Ver `docs/specs/cooking-mode.md` y
 `docs/specs/cooking-timer-foreground-service.md`.
 
+La **salida** del Modo cocina (feature `cooking-mode-exit-confirmation`, 2026-10-16) pasa por una decision
+**pura** en `ui.cooking`: `CookingExitPolicy.requiresConfirmation(state, point)` (con el `CookingModeState`
+**inyectado**, sin Compose/Android y **sin** leer el reloj) pide confirmacion solo si hay **algo que
+perder** —temporizador del paso actual **En marcha o Pausado**, o algun paso marcado (`completedOrders`
+no vacio)— y deja la salida **directa** con el temporizador Inactivo/Terminado sin marcados (un Terminado
+**solo** no cuenta: su tiempo ya se consumio) y con una receta sin pasos (caso defensivo). Los **dos**
+puntos de salida forman parte del contrato (`CookingExitPoint.BACK_BUTTON` para "Atras" de la cabecera y
+para el **gesto/tecla atras del sistema**, que se intercepta con `BackHandler` **solo** mientras el Modo
+cocina esta compuesto, de modo que fuera del modo la app no gana pila de navegacion; y
+`CookingExitPoint.FINISH` para "Terminar") y comparten la misma puerta. El dialogo es un `AlertDialog` de
+Material 3 con el microcopy puro `CookingExitCopy` y los roles de `SazonTheme` (sin tokens nuevos);
+abrir/cerrar el dialogo **no** toca la sesion, la alarma/servicio ni el reloj —la cuenta atras sigue
+corriendo detras y "Seguir cocinando" no cambia nada—: solo "Salir" ejecuta el camino de salida aceptado
+(`exiting` -> `CookingSessionStore.clear()` -> `onClose()` -> `onDispose` con `CookingAlarmPolicy.onExit()`).
+Ver `docs/specs/cooking-mode-exit-confirmation.md`.
+
 El **aviso de sistema** de fin del temporizador (feature `cooking-timer-alarm`, 2026-10-15) es la
 **unica** integracion de alarmas y notificaciones del repo y enmienda de forma acotada el Non-Goal
 "Notificaciones y recordatorios" (`docs/adr/0007-cooking-timer-alarm.md`). La decision es **pura** y vive
