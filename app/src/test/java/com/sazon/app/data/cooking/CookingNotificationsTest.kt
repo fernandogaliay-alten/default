@@ -12,7 +12,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +53,9 @@ class CookingNotificationsTest {
         shadowNotifications.setNotificationsEnabled(true)
     }
 
+    /** Sello de fin fresco (hora de pared) para las llamadas de publicacion. */
+    private fun selloFresco(offsetMillis: Long = 0L): Long = System.currentTimeMillis() + offsetMillis
+
     @Test
     fun el_canal_se_crea_con_importancia_alta_sonido_vibracion_y_visibilidad_publica() {
         CookingNotifications.ensureChannel(context)
@@ -88,7 +93,7 @@ class CookingNotificationsTest {
 
     @Test
     fun la_notificacion_se_construye_sin_excepcion_con_el_copy_generico() {
-        val notificacion = CookingNotifications.notification(context, contentIntent = null)
+        val notificacion = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
 
         assertEquals(CookingNotifications.CHANNEL_ID, notificacion.channelId)
         assertEquals(
@@ -101,11 +106,16 @@ class CookingNotificationsTest {
         )
         assertEquals(CookingNotifications.TITLE, notificacion.extras.getString(Notification.EXTRA_TITLE))
         assertEquals(CookingNotifications.TEXT, notificacion.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals(
+            "El `when` es el sello de fin (idempotencia entre los dos publicadores)",
+            1_600_000L,
+            notificacion.`when`,
+        )
     }
 
     @Test
     fun la_notificacion_lleva_icono_monocromo_autocancel_y_categoria_de_alarma() {
-        val notificacion = CookingNotifications.notification(context, contentIntent = null)
+        val notificacion = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
 
         assertNotNull("El small icon no es nulo", notificacion.smallIcon)
         assertTrue(
@@ -123,7 +133,7 @@ class CookingNotificationsTest {
     fun la_notificacion_de_fin_es_descartable_y_no_es_ongoing() {
         // El aviso duradero (feature `cooking-timer-finish-notification`, P2) **no** se sostiene con un
         // servicio vivo: sigue siendo descartable (autoCancel y **no** `FLAG_ONGOING_EVENT`).
-        val notificacion = CookingNotifications.notification(context, contentIntent = null)
+        val notificacion = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
 
         assertTrue(
             "Descartable: el usuario puede quitarla de la bandeja",
@@ -138,7 +148,7 @@ class CookingNotificationsTest {
 
     @Test
     fun el_aviso_de_fin_y_la_persistente_no_comparten_el_modo_ongoing() {
-        val avisoDeFin = CookingNotifications.notification(context, contentIntent = null)
+        val avisoDeFin = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
         val persistente = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
 
         assertEquals(
@@ -155,7 +165,7 @@ class CookingNotificationsTest {
 
     @Test
     fun la_notificacion_no_tiene_extras_propios_y_su_contenido_es_solo_el_copy_generico() {
-        val notificacion = CookingNotifications.notification(context, contentIntent = null)
+        val notificacion = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
         val claves = notificacion.extras.keySet()
         val contenido = notificacion.extras.toString()
 
@@ -176,15 +186,21 @@ class CookingNotificationsTest {
     @Test
     fun la_funcion_no_puede_filtrar_la_receta_porque_no_la_recibe() {
         // Garantia **estructural** (no una convencion): la construccion y la publicacion solo aceptan
-        // `Context` y el `PendingIntent` de contenido; no hay ningun parametro de receta ni de paso.
+        // `Context`, el `PendingIntent` de contenido y el escalar del sello de fin; no hay ningun
+        // parametro de receta ni de paso.
         val firma = CookingNotifications::class.java.methods
-            .filter { it.name == "notification" || it.name == "notify" }
+            .filter { it.name == "notification" || it.name == "notifyFinish" }
             .flatMap { it.parameterTypes.toList() }
             .toSet()
 
         assertTrue(
-            "Solo `Context` y `PendingIntent` cruzan a la notificacion",
-            firma.all { it == Context::class.java || it == android.app.PendingIntent::class.java },
+            "Solo `Context`, `PendingIntent` y el escalar del sello cruzan a la notificacion",
+            firma.all {
+                it == Context::class.java ||
+                    it == android.app.PendingIntent::class.java ||
+                    it == java.lang.Long.TYPE ||
+                    it == java.lang.Long::class.java
+            },
         )
     }
 
@@ -192,7 +208,7 @@ class CookingNotificationsTest {
     fun publicar_reemplaza_el_aviso_y_nunca_lo_duplica() {
         grantPostNotifications()
 
-        CookingNotifications.notify(context, contentIntent = null)
+        CookingNotifications.notifyFinish(context, selloFresco(), contentIntent = null)
 
         assertEquals("Un unico aviso publicado", 1, shadowNotifications.size())
         assertNotNull(
@@ -200,16 +216,69 @@ class CookingNotificationsTest {
             shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
         )
 
-        CookingNotifications.notify(context, contentIntent = null)
+        CookingNotifications.notifyFinish(context, selloFresco(1_000L), contentIntent = null)
 
         assertEquals("El id fijo reemplaza la notificacion anterior", 1, shadowNotifications.size())
+    }
+
+    @Test
+    fun el_mismo_sello_no_vuelve_a_publicar_ni_a_alertar() {
+        grantPostNotifications()
+        val sello = selloFresco()
+
+        CookingNotifications.notifyFinish(context, sello, contentIntent = null)
+        val primera = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
+
+        // Segunda publicacion del MISMO fin (la alarma de respaldo coincidiendo con el servicio): el
+        // aviso no se republica, asi que el objeto mostrado sigue siendo el mismo (una sola alerta).
+        CookingNotifications.notifyFinish(context, sello, contentIntent = null)
+
+        assertSame(
+            "El fin ya anunciado no se vuelve a publicar (una sola notificacion y una sola alerta)",
+            primera,
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+    }
+
+    @Test
+    fun un_fin_fuera_de_la_ventana_de_frescura_no_se_publica() {
+        grantPostNotifications()
+
+        CookingNotifications.notifyFinish(
+            context,
+            finishWallClockMillis = selloFresco(-120_000L),
+            contentIntent = null,
+        )
+
+        assertEquals(
+            "El aviso de un paso anterior se descarta en vez de sonar fuera de contexto",
+            0,
+            shadowNotifications.size(),
+        )
+    }
+
+    @Test
+    fun un_fin_nuevo_vuelve_a_alertar_aunque_el_anterior_siga_en_la_bandeja() {
+        grantPostNotifications()
+
+        CookingNotifications.notifyFinish(context, selloFresco(), contentIntent = null)
+        val anterior = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
+
+        // Fin del paso siguiente: sello distinto y fresco -> se publica (no se silencia con
+        // `setOnlyAlertOnce`, que apagaria el aviso legitimo siguiente).
+        CookingNotifications.notifyFinish(context, selloFresco(1_000L), contentIntent = null)
+
+        assertNotSame(
+            anterior,
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
     }
 
     @Test
     fun con_el_permiso_denegado_no_publica_y_no_lanza() {
         shadowOf(application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
 
-        CookingNotifications.notify(context, contentIntent = null)
+        CookingNotifications.notifyFinish(context, selloFresco(), contentIntent = null)
 
         assertEquals("Sin permiso no se publica nada", 0, shadowNotifications.size())
     }
@@ -219,7 +288,7 @@ class CookingNotificationsTest {
         shadowOf(application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         shadowNotifications.setNotificationsEnabled(false)
 
-        CookingNotifications.notify(context, contentIntent = null)
+        CookingNotifications.notifyFinish(context, selloFresco(), contentIntent = null)
 
         assertEquals("Con las notificaciones apagadas no se publica nada", 0, shadowNotifications.size())
     }
@@ -227,21 +296,65 @@ class CookingNotificationsTest {
     @Test
     fun el_receptor_publica_el_aviso_generico_con_el_id_fijo() {
         grantPostNotifications()
+        val sello = selloFresco()
 
-        CookingAlarmReceiver().onReceive(context, Intent(context, CookingAlarmReceiver::class.java))
+        CookingAlarmReceiver().onReceive(
+            context,
+            Intent(context, CookingAlarmReceiver::class.java)
+                .putExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, sello),
+        )
 
         val publicada = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
         assertNotNull("El receptor publica el aviso", publicada)
         assertEquals(CookingNotifications.TITLE, publicada.extras.getString(Notification.EXTRA_TITLE))
         assertEquals(CookingNotifications.TEXT, publicada.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals("Con el sello del fin que le llego", sello, publicada.`when`)
         assertNotNull("La notificacion tiene intent de contenido", publicada.contentIntent)
+    }
+
+    @Test
+    fun el_receptor_de_respaldo_no_duplica_un_fin_ya_anunciado_por_el_servicio() {
+        grantPostNotifications()
+        val sello = selloFresco()
+        // El servicio publico primero (productor primario) con ese sello.
+        CookingNotifications.notifyFinish(context, sello, contentIntent = null)
+        val delServicio = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
+
+        // La alarma de respaldo dispara despues con el MISMO sello.
+        CookingAlarmReceiver().onReceive(
+            context,
+            Intent(context, CookingAlarmReceiver::class.java)
+                .putExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, sello),
+        )
+
+        assertSame(
+            "Mismo fin -> una sola notificacion y una sola alerta",
+            delServicio,
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+    }
+
+    @Test
+    fun el_receptor_sin_sello_degrada_al_instante_actual_sin_lanzar() {
+        grantPostNotifications()
+
+        CookingAlarmReceiver().onReceive(context, Intent(context, CookingAlarmReceiver::class.java))
+
+        assertNotNull(
+            "Sin el escalar del sello el aviso sigue publicandose (degradacion silenciosa)",
+            shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
     }
 
     @Test
     fun el_toque_de_la_notificacion_vuelve_a_la_actividad_de_sazon() {
         grantPostNotifications()
 
-        CookingAlarmReceiver().onReceive(context, Intent(context, CookingAlarmReceiver::class.java))
+        CookingAlarmReceiver().onReceive(
+            context,
+            Intent(context, CookingAlarmReceiver::class.java)
+                .putExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, selloFresco()),
+        )
 
         val publicada = shadowNotifications.getNotification(CookingNotifications.NOTIFICATION_ID)
         val shadowIntent = shadowOf(publicada.contentIntent)

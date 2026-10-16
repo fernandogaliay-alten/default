@@ -45,6 +45,13 @@ Restricciones del repositorio que condicionan la decisión:
    `canScheduleExactAlarms()` fuera `false` **degrada** a `setAndAllowWhileIdle` (inexacta: puede llegar
    tarde, pero **nunca** hay crash). El `requestCode` fijo ⇒ una sola alarma viva; cada programación
    **reemplaza** la anterior.
+
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** la alarma deja de ser el
+   > **productor primario** del "¡Listo!" y pasa a ser el **respaldo** del servicio en primer plano, que
+   > conoce el instante de fin y publica al vencer su `delay`. La alarma sigue siendo imprescindible para
+   > el caso de **proceso muerto o congelado** (la ejecuta el sistema) y la idempotencia entre los dos
+   > publicadores la da el **sello de fin**, no el publicador único. El resto de esta decisión (una sola
+   > alarma viva, degradación sin crash) no cambia.
 4. **`USE_EXACT_ALARM`** (y no `SCHEDULE_EXACT_ALARM`): con `minSdk 33` es un permiso **normal**,
    concedido en la instalación, para apps cuyo caso de uso documentado es un **temporizador** (la app no
    se publica, así que la política de Play no aplica) y evita mandar al usuario a Ajustes. Se acompaña de
@@ -52,14 +59,33 @@ Restricciones del repositorio que condicionan la decisión:
 5. **Receptor de broadcast declarado en el manifiesto** (`data.cooking.CookingAlarmReceiver`,
    `exported="false"`): es lo único que dispara con la app en segundo plano, el proceso muerto o la
    pantalla bloqueada/Doze, sin depender de la composición ni de un `foreground service` (Non-Goal).
+
+   > **Matizada (`cooking-timer-notification-reliability`, 2026-10-16):** el servicio en primer plano ya
+   > existe (ADR 0008) y publica el aviso en el instante exacto; el receptor queda como **respaldo** para
+   > la muerte/congelación del proceso y, además de publicar, **para el servicio y retira la `1000`** en
+   > ese instante (la retirada también es exacta cuando el FGS está congelado o muerto).
 6. **Canal propio `cooking_timer`** de importancia **alta**, con sonido y vibración y visibilidad
    pública, creado **idempotentemente** desde `MainActivity` (y de nuevo antes de publicar, defensivo).
 7. **Contenido genérico y sin datos sensibles**: `CookingNotifications.notification(context,
-   contentIntent)` **no recibe la receta** (título fijo `"¡Listo! El paso ha terminado"`, texto fijo
+   contentIntent, whenMillis)` **no recibe la receta** (título fijo `"¡Listo! El paso ha terminado"`, texto fijo
    `"Toca para volver al modo cocina."`), y el `PendingIntent` de la alarma **no lleva extras**. La
    ausencia de datos de receta es **estructural**, no una convención de la capa Android.
+
+   > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** el `PendingIntent` de la
+   > alarma lleva **un escalar**: el **sello del fin** en hora de pared
+   > (`CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS`), que viaja también en el `Intent` del
+   > servicio y se publica como `when` de la `1001` para reconocer un fin ya anunciado. Sigue **sin**
+   > ningún dato de la receta (ni título, ni paso, ni ingredientes) y la garantía estructural se mantiene
+   > (los tests de firma aceptan solo `Context`, `PendingIntent` y ese escalar).
 8. **Id de notificación fijo (`1001`)**: publicarla otra vez **reemplaza** la anterior ⇒ nunca se duplica,
    tampoco con la app en primer plano (donde el `tick` de la app y el receptor pueden coincidir).
+
+   > **Ampliada (`cooking-timer-notification-reliability`, 2026-10-16):** con **dos** publicadores
+   > posibles (servicio y alarma) el id fijo evita dos **notificaciones**, pero **no** dos
+   > sonidos/vibraciones; la idempotencia la cierra la decisión pura `CookingFinishPublication` sobre el
+   > **sello de fin** (mismo sello ya mostrado ⇒ no se republica; sello más viejo que la ventana de
+   > frescura de 60 s ⇒ es el aviso de un paso anterior y se descarta). `setOnlyAlertOnce` **no** se usa
+   > (silenciaría el fin legítimo siguiente mientras la `1001` anterior siga en la bandeja).
 9. **`Cancel` cancela solo la alarma pendiente, no la notificación ya mostrada.** Si la cancelación
    retirara también la notificación, el `Cancel` de `RUNNING → FINISHED` (cuando el `tick` de la app
    llega a cero en primer plano) borraría el aviso recién disparado por el receptor.
@@ -68,11 +94,15 @@ Restricciones del repositorio que condicionan la decisión:
    > aviso de fin **no siempre llegaba** con la app en primer plano, por una carrera entre el `tick` de
    > la composición y el disparo de `AlarmManager`: el `Cancel` de `RUNNING → FINISHED` cancelaba la
    > alarma pendiente (y paraba el servicio) antes de que pudiera publicar. La arista `RUNNING → FINISHED`
-   > **ya no emite `Cancel`** (devuelve `None`: la alarma es el **único** productor del aviso y el
-   > servicio se para solo con su `delay`). `Cancel` sigue con la semántica de esta decisión —**no**
-   > retira notificaciones ya mostradas— y la limpieza de la `1001` en la salida explícita es un comando
-   > **aparte** de la costura (`CookingAlarm.dismissFinishNotification`), que **no** se emite en el
-   > `onDispose`.
+   > **ya no emite `Cancel`** (devuelve `None`) y el servicio se para solo con su `delay`. `Cancel` sigue
+   > con la semántica de esta decisión —**no** retira notificaciones ya mostradas— y la limpieza de la
+   > `1001` en la salida explícita es un comando **aparte** de la costura
+   > (`CookingAlarm.dismissFinishNotification`), que **no** se emite en el `onDispose`.
+   >
+   > **Matizada (`cooking-timer-notification-reliability`, 2026-10-16):** con el servicio como productor
+   > **primario** del aviso, "la alarma es el **único** productor" ya no aplica: la alarma se deja viva
+   > como **respaldo** y la garantía "una sola notificación y una sola alerta" pasa a sostenerse en el
+   > **sello de fin**. La semántica de `Cancel` **no** cambia.
 10. **Sin persistencia**: el instante de fin vive en la alarma del sistema; el estado del Modo cocina
     sigue sin persistirse (Non-Goal). "Reanudar donde lo dejé" es otra feature.
 11. **El permiso se pide una vez por proceso al arrancar** (`MainActivity.onCreate`, con
@@ -149,6 +179,10 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
 - **Pausar, Reiniciar, cambiar de paso y salir cancelan** (escenario 4): el efecto de la política corre al
   **cambiar de estado** del temporizador, así que los `tick` no reprograman nada; la cancelación es
   idempotente y la salida la cubre también el `DisposableEffect` del `onDispose`.
+  > **Matizada (`cooking-timer-notification-reliability`, 2026-10-16):** ya no hay efecto con
+  > `state.timer.status` como clave; cada gesto ("Iniciar"/"Reanudar"/"Pausar"/"Reiniciar"/"Anterior"/
+  > "Siguiente") consulta la política en el **mismo punto** con la **misma** lectura del reloj que
+  > alimenta el estado. La cancelación sigue siendo idempotente y el `onDispose` sigue cubriendo la salida.
 - **Disparo único** (escenario 5): `RUNNING → FINISHED` devuelve `Cancel` (no reprograma), los `tick`
   posteriores `None` y el id fijo reemplaza en lugar de duplicar.
   > **Revisada (`cooking-timer-finish-notification`, 2026-10-16):** `RUNNING → FINISHED` ya **no** emite

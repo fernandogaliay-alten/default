@@ -376,9 +376,12 @@ El **Modo cocina** (ampliacion del MVP, issue #76) vive en `com.sazon.app.ui.coo
 **pura** testeable en JVM (sin Compose ni Android) y capa Compose delgada. `CookingTimerState` es la
 maquina de estados del **temporizador por paso** (`IDLE`/`RUNNING`/`PAUSED`/`FINISHED`): `of(minutes)`
 fija `total`/`remaining` en Inactivo (`minutes <= 0` deja `hasDuration = false` y la UI oculta el bloque
-entero), y `start`/`pause`/`resume`/`reset`/`tick(deltaMillis)` son transiciones inmutables y
-**deterministas**: el tiempo solo entra por `tick`, que descuenta unicamente en Marcha, acota a cero y
-pasa a Terminado sin seguir contando (las transiciones invalidas son no-op). `CookingModeState` guarda
+entero), y `start(now)`/`pause(now)`/`resume(now)`/`reset()`/`at(now)` son transiciones inmutables y
+**deterministas**: con el **reloj unico** de `cooking-timer-notification-reliability` (2026-10-16) el
+temporizador En marcha lleva el **ancla** `endAtElapsedMillis` y el restante se **deriva** de ella
+(`at(now) = (endAt - now).coerceAtLeast(0)`), acotado a cero y a Terminado sin seguir contando (las
+transiciones invalidas son no-op); **ya no existe `tick(deltaMillis)`**, asi que latidos tardios o
+desiguales no acumulan deriva. `CookingModeState` guarda
 el paso actual (`stepIndex`/`totalSteps`), los pasos hechos (`completedOrders`, por `RecipeStep.order`)
 y el temporizador; **no** guarda la `Recipe` (para el `Saver`), y `next`/`previous` reciben la
 `List<RecipeStep>`, acotan a `0..totalSteps-1` y **reinan el temporizador al del paso nuevo** mientras
@@ -387,8 +390,10 @@ barra, `0f` sin pasos), la duracion (`"10 min"`) y la cuenta atras `mm:ss` en `L
 `CookingModeScreen` es la capa Compose (cabecera con "Atras" circular y barra fina terracota, tarjeta
 del paso con circulo numerado y tachado/atenuado `0.45` si esta hecho, bloque miel del temporizador con
 sus cuatro estados, aviso **en pantalla** "¡Listo!" en miel/oliva — nunca `error` —, fila "Marcar paso
-como hecho" y barra inferior "Anterior" + "Siguiente"→"Terminar", con `CookingModeStateSaver` y un
-`LaunchedEffect` que solo alimenta `tick(1000)`). Se hospeda como **overlay** en `MainShell`
+como hecho" y barra inferior "Anterior" + "Siguiente"→"Terminar", con `CookingModeStateSaver` —que
+persiste tambien el **ancla**— y un `LaunchedEffect` que solo realiza el **latido del reloj**:
+recalcula `at(elapsedRealtime())` y espera al proximo cambio de segundo de la cuenta atras
+(`remaining % 1000`), sin acumular deriva y sin armar el aviso). Se hospeda como **overlay** en `MainShell`
 (`var cookingRecipe by remember`) **encima** del Detalle y cablea la costura `onStartCooking` que
 `recipe-detail-screen` dejo no-op. Desde `cooking-timer-foreground-service` (2026-10-15) la **sesion del
 modo se persiste** (una fila en `cooking_session.db` detras de `ui.cooking.CookingSessionStore`, ver
@@ -421,24 +426,36 @@ El **aviso de sistema** de fin del temporizador (feature `cooking-timer-alarm`, 
 "Notificaciones y recordatorios" (`docs/adr/0007-cooking-timer-alarm.md`). La decision es **pura** y vive
 en `ui.cooking`: `CookingAlarmCommand` (`Schedule`/`Cancel`/`None`) y `CookingAlarmPolicy.onTimerChange`
 (+`onExit()`) traducen una transicion de `CookingTimerState` a un comando con el **instante inyectado**
-(`nowMillis`; nunca lee el reloj) — `Schedule(now + remaining)` solo en las aristas `IDLE→RUNNING` y
-`PAUSED→RUNNING`, `Cancel` al Pausar/Reiniciar/cambiar de paso (los `next`/`previous` reinician el
-temporizador a Inactivo)/salir, `None` en los ticks y no-ops y tambien `None` al **entrar en Terminado**
-(la alarma se deja **viva**: es el unico productor del aviso de fin, y cancelarla ahi abriria una carrera
-con el disparo de `AlarmManager`; correctiva `cooking-timer-finish-notification`, 2026-10-16). La costura
+(`nowMillis`; nunca lee el reloj) — `Schedule(<ancla del temporizador>)` solo en las aristas `IDLE→RUNNING`
+y `PAUSED→RUNNING` (o `now + remaining` si el temporizador no tuviera ancla, degradacion defensiva),
+`Cancel` al Pausar/Reiniciar/cambiar de paso (los `next`/`previous` reinician el temporizador a
+Inactivo)/salir, `None` en los latidos y no-ops y tambien `None` al **entrar en Terminado** (la alarma se
+deja **viva**: es el **respaldo** del aviso, y cancelarla ahi abriria una carrera con el disparo de
+`AlarmManager`; correctivas `cooking-timer-finish-notification` y `cooking-timer-notification-reliability`,
+2026-10-16). La costura
 `CookingAlarm.apply(command)` tiene default `NoOpCookingAlarm` y viaja **por parametro** de `MainActivity`
-→ `SazonApp` → `MainShell` → `CookingModeScreen`, que gana **dos** efectos (`LaunchedEffect` con
-`state.timer.status` como clave, que pasa `SystemClock.elapsedRealtime()`, y `DisposableEffect` de
-cancelacion al desmontarse) sin tocar el reloj, la UI ni el microcopy "¡Listo!". Los adaptadores Android
-viven en `data.cooking`: `AndroidCookingAlarm` programa la alarma **exacta** de un solo disparo
+→ `SazonApp` → `MainShell` → `CookingModeScreen`, que la consulta en **un unico punto por gesto** (con la
+**misma** lectura del reloj que alimenta el estado y la decision del permiso; ya **no** hay un
+`LaunchedEffect` con `state.timer.status` como clave ni el estado `previousTimer`), ademas del
+`DisposableEffect` de cancelacion al desmontarse, sin
+tocar el reloj, la UI ni el microcopy "¡Listo!". Los adaptadores Android
+viven en `data.cooking`: `AndroidCookingAlarm` calcula **una vez** el **sello de fin** en hora de pared
+(`currentTimeMillis() + (at - elapsedRealtime())`) y lo lleva en los **dos** `Intent` (servicio y alarma),
+programa la alarma **exacta** de un solo disparo
 (`setExactAndAllowWhileIdle` sobre `ELAPSED_REALTIME_WAKEUP`; `requestCode` fijo ⇒ una sola viva) y
 **degrada** a `setAndAllowWhileIdle` si `canScheduleExactAlarms()` es `false` (nunca crash),
-`CookingAlarmReceiver` (receptor de manifiesto, `exported="false"`) publica la notificacion del canal
-propio `cooking_timer` (importancia alta, sonido y vibracion, visibilidad publica) con id **fijo** `1001`
-⇒ republicar **reemplaza**, nunca duplica, y `CookingNotifications` construye el contenido **generico**
+`CookingAlarmReceiver` (receptor de manifiesto, `exported="false"`) es el **respaldo**: al disparar
+**para el servicio, retira la `1000`** y publica el aviso con el sello que le llego, y
+`CookingNotifications` construye el contenido **generico**
 (`"¡Listo! El paso ha terminado"` / `"Toca para volver al modo cocina."`): la funcion **no recibe** la
-receta y el `PendingIntent` de la alarma **no lleva extras**, asi que los datos de la receta no cruzan al
-sistema. El toque abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP` (reutiliza
+receta y el `PendingIntent` de la alarma solo lleva **un escalar** (el sello), asi que los datos de la
+receta no cruzan al
+sistema. `notifyFinish(context, sello, contentIntent)` decide con la regla **pura**
+`CookingFinishPublication` (en `data.cooking`, sin `android.*`): **no** publica si ya hay una `1001` con
+el **mismo** sello (mismo fin ya anunciado: una sola notificacion y **una sola** alerta con dos
+publicadores) ni si el sello es mas viejo que la **ventana de frescura** de 60 s (el aviso diferido de un
+paso anterior); `setOnlyAlertOnce` **no** se usa (silenciaria el fin legitimo siguiente). El `when` de la
+`1001` es ese sello. El toque abre `MainActivity` con `FLAG_ACTIVITY_NEW_TASK or FLAG_ACTIVITY_SINGLE_TOP` (reutiliza
 la actividad viva); si el sistema mato el proceso, la app abre en su estado de arranque —salvo que el
 toque venga de una notificacion del temporizador, que entonces vuelve al paso con la sesion persistida
 (ver el parrafo de la cuenta atras mas abajo)—. `MainActivity` crea el canal al arrancar, pero el permiso
@@ -468,13 +485,20 @@ segunda integracion de sistema y la **unica** pieza en primer plano del repo
 `data.cooking.CookingTimerService` mantiene una notificacion **persistente** (id **fijo** `1000`, canal
 `cooking_timer` reutilizado, titulo fijo "Cocina en marcha", `ongoing` + `onlyAlertOnce` + `silent`,
 small icon monocromo, `CATEGORY_STOPWATCH`) cuya **cuenta atras la pinta el sistema**
-(`setUsesChronometer(true)` + `setChronometerCountDown(true)` + `setWhen(fin en hora de pared)`): no hay
-ni una publicacion por segundo ni un `tick` en el servicio, que solo espera **un** despertar (`delay`
-hasta el instante de fin monotono) y entonces retira la notificacion
-(`STOP_FOREGROUND_REMOVE`) y se detiene (`START_NOT_STICKY`). El servicio es un **pintor**: no cambia
-estado, no lee la sesion y **no** publica el "¡Listo!" (sigue siendo de la alarma aceptada, unica dueña
-del aviso, con `USE_EXACT_ALARM` y el receptor intactos). Su **unico** dato de entrada es el instante de
-fin (`EXTRA_END_AT_ELAPSED_MILLIS`), asi que la receta, los pasos y la clave de IA **no** cruzan al
+(`setUsesChronometer(true)` + `setChronometerCountDown(true)` + `setWhen(fin en hora de pared)`, con el
+`when` **recalculado al publicar**): no hay
+ni una publicacion por segundo ni un latido en el servicio, que solo espera **un** despertar (`delay`
+hasta el instante de fin monotono) y entonces **publica el aviso de fin** `1001` (productor **primario**
+desde `cooking-timer-notification-reliability`, 2026-10-16: el `delay` del proceso vivo conoce el instante
+exacto, mientras el fabricante puede diferir la alarma), retira la notificacion
+(`STOP_FOREGROUND_REMOVE`) y se detiene (`START_NOT_STICKY`). Si el instante de fin **ya paso** al
+arrancar, **no pinta** la persistente (nunca se ve la cuenta atras en negativo) y se apaga. La alarma
+aceptada sigue programada como **respaldo** (proceso muerto/congelado) y su receptor, al disparar,
+**para el servicio y retira la `1000`** ademas de publicar; los dos publicadores no duplican ni repiten
+alerta gracias al **sello de fin** (`CookingFinishPublication` + la ventana de frescura de 60 s). Su
+**unico** dato de entrada son dos escalares
+(`EXTRA_END_AT_ELAPSED_MILLIS` y `EXTRA_FINISH_WALL_CLOCK_MILLIS`), asi que la receta, los pasos y la
+clave de IA **no** cruzan al
 sistema. El servicio se declara con `foregroundServiceType="specialUse"` (+ el `<property>
 android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) y los dos permisos **normales** `FOREGROUND_SERVICE` y
 `FOREGROUND_SERVICE_SPECIAL_USE`; el servicio se arranca y se para desde el **mismo** adaptador del aviso

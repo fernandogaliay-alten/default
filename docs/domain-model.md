@@ -138,7 +138,12 @@ Si la IA no está disponible, el lote cae a **solo semilla** y Home sigue siendo
 
 ### Sesión del Modo cocina (persistida)
 `En marcha` | `Pausado` | `Terminado` del temporizador, con la **receta**, el **paso actual**, el
-**marcado** de pasos y el **instante de fin** de la cuenta atrás. **No es una entidad de dominio**: es
+**marcado** de pasos y el **instante de fin** de la cuenta atrás. Mientras el temporizador está **En
+marcha**, **el propio temporizador** lleva el **instante de fin** (su *ancla*) y el restante se **deriva**
+de él (`endAt - elapsedRealtime`): es el **reloj único** del que salen la cuenta atrás de la pantalla, la
+de la notificación del sistema y el aviso de fin, así que no puede haber dos relojes que se separen
+(correctiva `cooking-timer-notification-reliability`, 2026-10-16).
+**No es una entidad de dominio**: es
 una foto de la interfaz del Modo cocina que se persiste en **una** fila (`cooking_session.db`, 2026-10-15,
 `docs/adr/0008-cooking-timer-foreground-service.md`) para poder **volver al paso exacto** desde la
 notificación del temporizador, incluso con el proceso muerto. `En marcha` y `Pausado` son **reanudables**

@@ -124,7 +124,7 @@ class RoomCookingSessionStoreTest {
             recipe = receta(),
             stepIndex = 1,
             completedOrders = setOf(1, 2),
-            timer = CookingTimerState.of(10).start().tick(120_000L).pause(),
+            timer = CookingTimerState.of(10).start(0L).at(120_000L).pause(120_000L),
             endAtElapsedMillis = null,
         )
         val terminado = pausado.copy(
@@ -161,12 +161,20 @@ class RoomCookingSessionStoreTest {
         }
 }
 
-/** Sesion En marcha con instante de fin proyectado (el caso que hay que poder reanudar). */
+/**
+ * Sesion En marcha con instante de fin proyectado (el caso que hay que poder reanudar): es la **forma
+ * persistida** de la fila, donde el ancla del temporizador no viaja como campo propio (la del instante
+ * de fin es [CookingSession.endAtElapsedMillis], que es la que reancla al reanudar).
+ */
 private fun sesionEnMarcha() = CookingSession(
     recipe = receta(),
     stepIndex = 1,
     completedOrders = setOf(1),
-    timer = CookingTimerState.of(10).start().tick(300_000L),
+    timer = CookingTimerState(
+        status = CookingTimerStatus.RUNNING,
+        totalMillis = 600_000L,
+        remainingMillis = 300_000L,
+    ),
     endAtElapsedMillis = 1_500_000L,
 )
 

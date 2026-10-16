@@ -5,8 +5,10 @@ import android.app.AlarmManager
 import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
+import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.ui.cooking.CookingAlarmCommand
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -152,9 +154,46 @@ class AndroidCookingAlarmTest {
             arrancado.getLongExtra(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS, 0L),
         )
         assertEquals(
-            "Unico dato que viaja al servicio",
-            setOf(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS),
+            "Los dos escalares del temporizador (fin monotono + sello en hora de pared)",
+            setOf(
+                CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS,
+                CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS,
+            ),
             arrancado.extras?.keySet().orEmpty(),
+        )
+    }
+
+    @Test
+    fun el_sello_de_fin_compartido_viaja_en_los_dos_intent() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val alarm = AndroidCookingAlarm(context)
+        shadowOf(application).clearStartedServices()
+        val selloEsperado = System.currentTimeMillis() + 600_000L
+
+        alarm.apply(CookingAlarmCommand.Schedule(SystemClock.elapsedRealtime() + 600_000L))
+
+        val alarma = shadowAlarms.scheduledAlarms.single()
+        val intentDeLaAlarma = shadowOf(alarma.operation).savedIntent
+        val selloDeLaAlarma = intentDeLaAlarma
+            .getLongExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, 0L)
+        val intentDelServicio = checkNotNull(shadowOf(application).nextStartedService)
+        val selloDelServicio = intentDelServicio
+            .getLongExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, 0L)
+
+        assertTrue("El sello es un instante positivo", selloDeLaAlarma > 0L)
+        assertEquals(
+            "El sello se calcula una vez y va en los dos Intent",
+            selloDeLaAlarma,
+            selloDelServicio,
+        )
+        assertTrue(
+            "El sello es el fin en hora de pared (60 s de margen por el arranque)",
+            abs(selloDeLaAlarma - selloEsperado) < 60_000L,
+        )
+        assertEquals(
+            "El PendingIntent de la alarma solo lleva el escalar del sello (nunca la receta)",
+            setOf(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS),
+            intentDeLaAlarma.extras?.keySet().orEmpty(),
         )
     }
 
@@ -229,7 +268,11 @@ class AndroidCookingAlarmTest {
     private fun postFinishNotification() {
         shadowOf(application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         notifications().setNotificationsEnabled(true)
-        CookingNotifications.notify(context, contentIntent = null)
+        CookingNotifications.notifyFinish(
+            context,
+            finishWallClockMillis = System.currentTimeMillis(),
+            contentIntent = null,
+        )
     }
 
     private fun notifications(): org.robolectric.shadows.ShadowNotificationManager =

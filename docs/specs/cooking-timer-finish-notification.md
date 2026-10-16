@@ -24,6 +24,11 @@ sesión persistida en Terminado no reabre el paso (`ui/MainShell.kt:184`).
 
 - **No** mantener el servicio en primer plano vivo tras el fin ni publicar la `1001` desde él (Opción B): la alarma
   sigue siendo el **único** productor y el servicio se para con su propio `delay`.
+
+  > **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** la Opción B se **adopta** en la
+  > correctiva siguiente: el **servicio** pasa a ser el productor **primario** de la `1001` (el aviso puntual) y
+  > la alarma queda como **respaldo** con un **sello de fin** compartido. El servicio sigue **sin** quedarse vivo
+  > tras el fin (publica el aviso, retira la `1000` y se detiene).
 - **No** cambiar la notificación de fin (id `1001`, canal `cooking_timer`, microcopy, small icon): sigue siendo
   **descartable** (`setAutoCancel(true)`, no `ongoing`).
 - **No** tocar la lógica del temporizador ni el Modo cocina (`CookingTimerState`, `CookingModeState`,
@@ -224,6 +229,11 @@ UI involved: **no**. Ambas notificaciones son superficies del **sistema operativ
 ## Decisions And Unknowns
 
 - **P1**: la alarma es el **único** productor del aviso y la transición a Terminado no la cancela (Opción A). Se descarta mover el aviso al servicio (Opción B) y un `Cancel` "condicional" en el adaptador: la decisión debe seguir siendo **pura** y testeable en JVM.
+
+  > **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** P1 (la transición a Terminado **no**
+  > cancela la alarma) sigue vigente, pero "la alarma es el **único** productor" deja de serlo: el aviso puntual
+  > lo publica el **servicio** (productor primario) y la alarma es el **respaldo**, sin duplicar ni repetir alerta
+  > gracias al **sello de fin** compartido.
 - **P3**: predicado nuevo en vez de ampliar `isResumable`, para no redefinir semántica aceptada ni sus aserciones; `Inactivo` queda fuera (no hay nada que reabrir y no puede coexistir con un aviso `1001`).
 - **P4**: método dedicado en la costura en lugar de reutilizar `Cancel`, porque la decisión 9 del ADR 0007 prohíbe que `Cancel` retire notificaciones ya mostradas; la llamada vive solo en la salida explícita y **nunca** en `onDispose`. Si el implementer juzgara que excede lo razonable, la alternativa —dejarlo fuera— debe registrarse como decisión explícita en la evidencia, no implementarse a medias.
 - **Trade-off aceptado / limitación preexistente**: heads-up en primer plano además del "¡Listo!" en pantalla, sin duplicado (mismo id, disparo único). Rotar o volver a la app cierra el Modo cocina (`MainShell` lo hospeda con `remember`) y el `onDispose` cancela alarma/servicio: **fuera de alcance** (un defecto aquí sería una **feature correctiva** nueva). Doze/batería/OEM siguen siendo prueba manual.

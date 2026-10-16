@@ -21,9 +21,19 @@ enum class CookingTimerStatus {
 /**
  * Maquina de estados **pura** del temporizador por paso (sin Compose ni Android; testeable en JVM).
  *
- * Es **determinista**: no lee el reloj; el tiempo entra siempre por [tick] con el `delta` explicito
- * que le pasa la capa Compose (`LaunchedEffect` + `delay(1000)`). Las transiciones no validas son
- * **no-op** (devuelven el mismo estado) y ninguna operacion muta el receptor.
+ * **Reloj unico**: cuando la cuenta atras esta En marcha el temporizador lleva el **instante de fin
+ * absoluto** [endAtElapsedMillis] (misma base `ELAPSED_REALTIME` que la alarma y el servicio) y el
+ * restante se **deriva** de el ([at]); nunca se acumulan deltas fijos, asi que los latidos tardios o
+ * desiguales de la capa Compose **no** acumulan deriva y el valor mostrado y el de la notificacion del
+ * sistema dicen siempre lo mismo.
+ *
+ * Es **determinista**: no lee el reloj; el instante entra siempre **inyectado** (`nowMillis`). Las
+ * transiciones no validas son **no-op** (devuelven el mismo estado) y ninguna operacion muta el
+ * receptor.
+ *
+ * Invariante de [endAtElapsedMillis]: **no nulo solo En marcha con tiempo que contar** (`remaining > 0`),
+ * igual que `CookingSession`; en Inactivo, Pausado y Terminado no hay nada que proyectar. Por eso la
+ * persistencia ([CookingSession]) no necesita mas que ese `Long` para recalcular lo que queda.
  *
  * [hasDuration] distingue un paso con duracion (`minutes > 0`) de uno sin ella: la UI oculta el
  * bloque completo del temporizador cuando es `false` (escenario 6 de la spec).
@@ -32,6 +42,7 @@ data class CookingTimerState(
     val status: CookingTimerStatus,
     val totalMillis: Long,
     val remainingMillis: Long,
+    val endAtElapsedMillis: Long? = null,
 ) {
 
     /** `true` si el paso tiene una duracion real (`minutes > 0`); si no, la UI oculta el bloque. */
@@ -43,42 +54,85 @@ data class CookingTimerState(
     /** `true` cuando la cuenta atras llego a cero y dejo de contar. */
     val isFinished: Boolean get() = status == CookingTimerStatus.FINISHED
 
-    /** `IDLE -> RUNNING`; no-op desde cualquier otro estado. */
-    fun start(): CookingTimerState =
-        if (status == CookingTimerStatus.IDLE) copy(status = CookingTimerStatus.RUNNING) else this
-
-    /** `RUNNING -> PAUSED` (congela el tiempo); no-op desde cualquier otro estado. */
-    fun pause(): CookingTimerState =
-        if (status == CookingTimerStatus.RUNNING) copy(status = CookingTimerStatus.PAUSED) else this
-
-    /** `PAUSED -> RUNNING` (sigue desde el valor congelado); no-op desde cualquier otro estado. */
-    fun resume(): CookingTimerState =
-        if (status == CookingTimerStatus.PAUSED) copy(status = CookingTimerStatus.RUNNING) else this
-
-    /** Devuelve el temporizador a [CookingTimerStatus.IDLE] con `remaining = total`, desde cualquier estado. */
-    fun reset(): CookingTimerState =
-        copy(status = CookingTimerStatus.IDLE, remainingMillis = totalMillis)
+    /**
+     * `IDLE -> RUNNING` **anclando** el fin en `nowMillis + remainingMillis` (solo si queda tiempo que
+     * contar); no-op desde cualquier otro estado.
+     */
+    fun start(nowMillis: Long): CookingTimerState =
+        if (status == CookingTimerStatus.IDLE) anchoredAt(nowMillis) else this
 
     /**
-     * Descuenta [deltaMillis] de la cuenta atras **solo** en [CookingTimerStatus.RUNNING].
-     *
-     * `deltaMillis <= 0` es no-op. Al llegar a cero el estado pasa a [CookingTimerStatus.FINISHED] y
-     * deja de contar: los [tick] posteriores no lo reducen mas (se acota a `0`).
+     * `RUNNING -> PAUSED` **congelando** el tiempo en lo que queda en [nowMillis] (`at(now).remaining`)
+     * y **anulando el ancla**; no-op desde cualquier otro estado.
      */
-    fun tick(deltaMillis: Long): CookingTimerState {
-        if (status != CookingTimerStatus.RUNNING || deltaMillis <= 0L) return this
-        val remaining = (remainingMillis - deltaMillis).coerceAtLeast(0L)
+    fun pause(nowMillis: Long): CookingTimerState =
+        if (status == CookingTimerStatus.RUNNING) {
+            copy(
+                status = CookingTimerStatus.PAUSED,
+                remainingMillis = at(nowMillis).remainingMillis,
+                endAtElapsedMillis = null,
+            )
+        } else {
+            this
+        }
+
+    /**
+     * `PAUSED -> RUNNING` **reanclando** el fin en `nowMillis + remainingMillis`; no-op desde cualquier
+     * otro estado.
+     */
+    fun resume(nowMillis: Long): CookingTimerState =
+        if (status == CookingTimerStatus.PAUSED) anchoredAt(nowMillis) else this
+
+    /**
+     * Devuelve el temporizador a [CookingTimerStatus.IDLE] con `remaining = total` y **sin ancla**,
+     * desde cualquier estado.
+     */
+    fun reset(): CookingTimerState =
+        copy(status = CookingTimerStatus.IDLE, remainingMillis = totalMillis, endAtElapsedMillis = null)
+
+    /**
+     * Proyeccion **exacta** del temporizador en el instante [nowMillis]: si no esta En marcha devuelve
+     * el mismo estado; si lo esta, `remaining = (endAt - now).coerceAtLeast(0)` (jamas negativo) y, al
+     * alcanzar o pasar el fin, pasa a [CookingTimerStatus.FINISHED] con `remaining = 0` y **sin ancla**.
+     *
+     * Es la **unica** forma de hacer latir la cuenta atras: el llamante lee el reloj y lo inyecta; una
+     * lectura tardia no acumula error porque el valor no depende del delta. Defensivo con una fila
+     * corrupta sin ancla: degrada al restante guardado (no lanza).
+     */
+    fun at(nowMillis: Long): CookingTimerState {
+        if (status != CookingTimerStatus.RUNNING) return this
+        val endAt = endAtElapsedMillis ?: return this
+        val remaining = (endAt - nowMillis).coerceAtLeast(0L)
         return if (remaining == 0L) {
-            copy(status = CookingTimerStatus.FINISHED, remainingMillis = 0L)
+            copy(status = CookingTimerStatus.FINISHED, remainingMillis = 0L, endAtElapsedMillis = null)
         } else {
             copy(remainingMillis = remaining)
         }
     }
 
+    /**
+     * Instante de fin (`ELAPSED_REALTIME`) que le corresponde al temporizador con el instante
+     * [nowMillis] inyectado: el **ancla** si la tiene y, si no, `nowMillis + remainingMillis`. `null`
+     * fuera de Marcha o sin tiempo que contar (nada que programar).
+     */
+    fun projectedEndMillis(nowMillis: Long): Long? =
+        if (isRunning && remainingMillis > 0L) {
+            endAtElapsedMillis ?: (nowMillis + remainingMillis)
+        } else {
+            null
+        }
+
+    /** Copia En marcha con el ancla puesta en `nowMillis + remainingMillis` (o sin ancla si es cero). */
+    private fun anchoredAt(nowMillis: Long): CookingTimerState = copy(
+        status = CookingTimerStatus.RUNNING,
+        endAtElapsedMillis = if (remainingMillis > 0L) nowMillis + remainingMillis else null,
+    )
+
     companion object {
         /**
          * Temporizador **Inactivo** de un paso de [minutes] minutos: `total = max(0, minutes) * 60_000`
-         * y `remaining = total`. Un paso sin duracion (`minutes <= 0`) da `hasDuration = false`.
+         * y `remaining = total`, **sin ancla**. Un paso sin duracion (`minutes <= 0`) da
+         * `hasDuration = false`.
          */
         fun of(minutes: Int): CookingTimerState {
             val total = minutes.coerceAtLeast(0).toLong() * 60_000L
