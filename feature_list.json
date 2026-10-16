@@ -1791,5 +1791,36 @@
     ],
     "evidence": [],
     "notes": "Mejora pedida por la persona (2026-10-16): hoy 'Siguiente'/'Anterior' cambian de paso de inmediato y `CookingModeState.next()/previous()` **reemplazan** el temporizador por el del paso nuevo (Inactivo), perdiendo el tiempo en curso del paso actual; el **marcado** (`completedOrders`) sí persiste entre pasos, así que lo único que se pierde es el temporizador. Alcance: confirmación **solo cuando el temporizador del paso actual está En marcha o Pausado** (recomendado por la persona), para no meter fricción en cada paso (muchos pasos no tienen duración y el bloque del temporizador ni se pinta). Reutiliza la decisión pura, el `AlertDialog` de Material 3 y el microcopy en constante pura introducidos por `cooking-mode-exit-confirmation` (por eso depende de ella; ambas tocan `CookingModeScreen.kt`). Confirmar ejecuta `next()`/`previous()` como hoy; cancelar no cambia nada. La cuenta atrás sigue corriendo detrás del diálogo. NO entra: cambiar la regla aceptada de que el temporizador se reinicia al cambiar de paso, un snackbar con 'Deshacer' ni tocar `CookingTimerState`/`CookingModeState`/`CookingModeFormat`. Sin dependencias nuevas. Docs a reconciliar al aceptar: `docs/technical-discovery.md` y `DESIGN.md`."
+  },
+  {
+    "id": "cooking-timer-notification-reliability",
+    "area": "integration",
+    "title": "Notificación del temporizador fiable: reloj único, sin negativo y aviso puntual",
+    "user_visible_behavior": "Mientras corre un temporizador del modo cocina, la cuenta atrás de la notificación y la de la pantalla van sincronizadas, la notificación no cuenta en negativo al llegar a cero, y el aviso '¡Listo!' se publica en el instante de fin (también con la app minimizada o el móvil bloqueado), sin retrasos ni avisos de un paso anterior; la primera cuenta atrás tras abrir la app ya no tarda 10-15 s en arrancar.",
+    "depends_on": ["cooking-timer-foreground-service", "cooking-timer-finish-notification"],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' (test + lint) en verde; sin dependencias nuevas ni cambios en build/lockfile/manifiesto/permisos",
+      "Test JVM: la UI deriva el tiempo restante de un instante absoluto (no resta deltas fijos) y no acumula deriva; la decisión de publicar el aviso la toma el servicio en el instante exacto y es idempotente con la alarma de respaldo",
+      "Test JVM/Robolectric: el servicio publica la notificación de fin (1001) y retira la persistente (1000) en el instante de fin; nunca se pinta la cuenta atrás en negativo; la alarma de respaldo no duplica (id fijo)",
+      "Prueba manual (persona, dispositivo ColorOS; no automatizable): la primera cuenta atrás tras abrir la app arranca sin el retraso; notificación y pantalla sincronizadas todo el tiempo; sin negativo al llegar a cero; el aviso '¡Listo!' llega en el instante; no llega el aviso de un paso durante el siguiente"
+    ],
+    "evidence": [],
+    "notes": "Correctiva nueva pedida por la persona (2026-10-16) tras probar el servicio en primer plano en un dispositivo ColorOS (Oppo/OnePlus): el temporizador 'va mal'. Análisis del código: (a) hay **dos relojes** para el mismo instante —la UI resta 1000 ms fijos por tick (`CookingModeScreen` + `CookingTimerState.tick`) mientras la notificación y la sesión usan un instante absoluto (`endAtElapsedMillis`)—, de ahí la desincronización; (b) la notificación visible delega el cronómetro al sistema (`setUsesChronometer` + `setChronometerCountDown` + `setWhen`) y su retirada a un `delay` 'blando' del servicio, así que al pasar `when` pinta **negativo** si la retirada llega tarde o el FGS se congela/mata; (c) el **aviso de fin lo publica la alarma** (`AlarmManager`), que se difiere/coalesce, en vez del servicio que conoce el instante exacto, de ahí el aviso tardío y el aviso de un paso anterior durante el siguiente; (d) el ciclo del temporizador (alarma + servicio) se dispara desde efectos de Compose en el hilo principal, de ahí el **retraso de la primera vez** tras un arranque en frío. Alcance acordado: (1) **reloj único** —la UI deriva `remaining = endAt - elapsedRealtime`—; (2) el **servicio publica el aviso de fin** en su instante exacto y la **alarma queda como respaldo** para el caso de proceso muerto (idempotente, id fijo 1001) → **enmienda la decisión de ADR 0008** que dejaba el aviso 'solo en manos de la alarma'; (3) **sin negativo**: retirada en el instante exacto y `when` recalculado al publicar; (4) menos acoplamiento del arranque del servicio a la composición. NO entra: el número/título de paso en la notificación (va en `cooking-timer-notification-step-label`, que depende de esta) ni cambios de microcopy del aviso. Sin dependencias nuevas. Docs a enmendar: ADR 0008, `docs/technical-discovery.md` y `docs/risks-and-open-questions.md` (fila del cronómetro del fabricante)."
+  },
+  {
+    "id": "cooking-timer-notification-step-label",
+    "area": "integration",
+    "title": "La notificación del temporizador muestra el número y el título del paso",
+    "user_visible_behavior": "Mientras corre la cuenta atrás de un paso del modo cocina, la notificación persistente muestra 'Paso N de M' y el título del paso, además de la cuenta atrás, de modo que el usuario sabe en qué punto de la receta está sin abrir la app.",
+    "depends_on": ["cooking-timer-foreground-service", "cooking-timer-notification-reliability"],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' (test + lint) en verde; sin dependencias nuevas ni cambios en build/lockfile/manifiesto/permisos",
+      "Test JVM/Robolectric: el Intent del servicio y la notificación llevan el número ('N de M') y el título del paso, y ese texto aparece en la notificación; no se expone ningún otro dato de la receta (ingredientes, notas, clave de IA)",
+      "Prueba manual (persona): la notificación persistente muestra 'Paso N de M' y el título del paso mientras corre la cuenta atrás"
+    ],
+    "evidence": [],
+    "notes": "Mejora pedida por la persona (2026-10-16): hoy la notificación persistente es genérica ('Cocina en marcha') porque el servicio solo recibe el instante de fin (`EXTRA_END_AT_ELAPSED_MILLIS`) y su contenido es genérico por decisión (ADR 0007/0008). La persona **acepta** que el número y el título del paso crucen a la notificación del sistema. Alcance: ampliar `CookingTimerService.intent` y `CookingNotifications.ongoing(...)` con la etiqueta ('Paso N de M' + título del paso) y fijar la decisión de privacidad en los ADR. Depende de `cooking-timer-notification-reliability` porque ambas tocan `CookingTimerService`/`CookingNotifications` (se ejecutan en secuencia). NO entra: exponer ingredientes, notas ni la clave de IA; ni cambiar el microcopy del aviso de fin (1001). Sin dependencias nuevas."
   }
 ]
