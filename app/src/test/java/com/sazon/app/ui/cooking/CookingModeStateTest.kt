@@ -33,7 +33,7 @@ class CookingModeStateTest {
     fun siguiente_avanza_y_reinicia_el_temporizador_al_paso_nuevo() {
         val steps = recetaConCincoPasos().steps
         val enMarcha = CookingModeState.initial(recetaConCincoPasos())
-            .withTimer(CookingTimerState.of(10).start().tick(120_000L))
+            .withTimer(CookingTimerState.of(10).start(0L).at(120_000L))
 
         val siguiente = enMarcha.next(steps)
 
@@ -87,7 +87,7 @@ class CookingModeStateTest {
     @Test
     fun marcar_y_desmarcar_un_paso_no_toca_el_indice_ni_el_temporizador() {
         val state = CookingModeState.initial(recetaConCincoPasos())
-            .withTimer(CookingTimerState.of(10).start().tick(60_000L))
+            .withTimer(CookingTimerState.of(10).start(0L).at(60_000L))
 
         val marcado = state.toggleCompleted(2)
 

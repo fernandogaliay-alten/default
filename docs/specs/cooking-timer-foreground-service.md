@@ -49,6 +49,12 @@ costuras delgadas en `data.cooking` y de una costura nueva con default no-op.
   `CookingAlarmReceiver` + `CookingNotifications` con id fijo `1001`) sigue siendo la **única** dueña del
   "¡Listo!" (ver `Decisions`). `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `VIBRATE`,
   `SCHEDULE_EXACT_ALARM (maxSdkVersion=32)` y el receptor **no se tocan**.
+
+  > **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** la alarma deja de ser la
+  > **única** dueña: el **servicio** pasa a ser el productor **primario** del aviso (publica al vencer) y
+  > la alarma queda como **respaldo** con un **sello de fin** compartido (idempotencia). `USE_EXACT_ALARM`,
+  > `POST_NOTIFICATIONS`, `VIBRATE`, `SCHEDULE_EXACT_ALARM (maxSdkVersion=32)` y el receptor siguen
+  > **intactos** como declaración.
 - **No** se cambia la lógica aceptada del temporizador ni del modo: `CookingTimerState`,
   `CookingModeState`, `CookingModeFormat`, `CookingAlarmPolicy`, `CookingAlarmCommand`, la costura
   `CookingAlarm` y `NotificationPermissionPolicy`/`NotificationPermissionPrompt` quedan **sin diff**.
@@ -138,6 +144,12 @@ devuelven `None`; el aviso de fin se publica **una sola vez** (id fijo `1001` y 
 > cierta (la sesión no proyecta fin y los `tick` posteriores dan `None`), pero `CookingAlarmPolicy` ya
 > **no** devuelve `Cancel` en `RUNNING → FINISHED`: devuelve `None` para **dejar viva** la alarma (el
 > único productor del aviso). El aviso se sigue publicando **una sola vez** (id fijo).
+>
+> **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** el productor del aviso ya
+> **no** es único ni es la alarma: el **servicio en primer plano** publica la `1001` en el instante de fin
+> (productor **primario**) y la alarma queda como **respaldo** con el **sello de fin** compartido. La
+> arista `RUNNING → FINISHED` sigue devolviendo `None` (la alarma no se cancela). El aviso sigue
+> publicándose **una sola vez** por fin (id fijo + `CookingFinishPublication`).
 
 ### Scenario 4: Pausar, Reiniciar, cambiar de paso y salir **paran el servicio** (verificación exigida)
 
@@ -244,6 +256,10 @@ igual que antes (ningún servicio vivo, ninguna notificación, ninguna excepció
   el `LaunchedEffect(state.timer.status)` con `previousTimer` y `SystemClock.elapsedRealtime()`, el
   `DisposableEffect` de salida, el reloj `tick(1000)` y el `AlertDialog` del rationale),
   `NotificationPermission.kt` y `NotificationPermissionPrompt.kt` (política pura + costura no-op).
+
+  > **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** el reloj `tick(1000)` y
+  > el efecto con `previousTimer` **ya no existen** (el temporizador lleva el **ancla** y la pantalla
+  > deriva `at(elapsedRealtime())` con un punto único por gesto).
 - `app/src/main/java/com/sazon/app/data/cooking/` — `AndroidCookingAlarm.kt` (adaptador
   `runCatching`/`canScheduleExactAlarms` con degradación, `requestCode` fijo, *no lanza*),
   `CookingAlarmReceiver.kt` (receptor que publica con `FLAG_ACTIVITY_NEW_TASK or
@@ -419,6 +435,11 @@ object NoOpCookingSessionStore : CookingSessionStore {
   monotónico (`endAt`), no la hora de pared.
 - El servicio **no** publica el "¡Listo!" (eso es de la alarma aceptada) ni cambia ningún estado: es un
   **pintor** de la cuenta atrás.
+
+  > **Nota de vigencia (`cooking-timer-notification-reliability`, 2026-10-16):** el servicio **sí**
+  > publica el "¡Listo!" (es el productor **primario**) y sigue sin cambiar ningún estado: pinta la cuenta
+  > atrás, publica la `1001` con el **sello** al vencer y retira la `1000`. El `onStartCommand` lee un
+  > **segundo** escalar (`EXTRA_FINISH_WALL_CLOCK_MILLIS`) y no pinta si el fin ya pasó.
 - `onDestroy`: cancela el scope. `onBind`: `null`. Si `END_AT` falta o el proceso se recrea sin intent
   (`START_NOT_STICKY`), el servicio se apaga sin más (no lanza).
 - No se usa `ServiceCompat.startForeground` (no existe en `core 1.10.1`): el `startForeground(id,

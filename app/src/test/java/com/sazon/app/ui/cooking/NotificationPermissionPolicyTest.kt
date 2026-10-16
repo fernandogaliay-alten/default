@@ -29,7 +29,7 @@ class NotificationPermissionPolicyTest {
 
         val decision = NotificationPermissionPolicy.onTimerChange(
             previous = inactivo,
-            next = inactivo.start(),
+            next = inactivo.start(0L),
             state = sinPedir,
         )
 
@@ -66,14 +66,14 @@ class NotificationPermissionPolicyTest {
 
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.start(), concedido),
+            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.start(0L), concedido),
         )
     }
 
     @Test
     fun reanudar_tras_un_intento_previo_no_vuelve_a_pedir_en_la_sesion() {
-        val enMarcha = CookingTimerState.of(10).start().tick(60_000L)
-        val pausado = enMarcha.pause()
+        val enMarcha = CookingTimerState.of(10).start(0L).at(60_000L)
+        val pausado = enMarcha.pause(1_000L)
 
         assertEquals(
             NotificationPermissionCommand.AskWithRationale,
@@ -82,7 +82,7 @@ class NotificationPermissionPolicyTest {
         assertEquals(
             "Pausar -> Reanudar despues de haberse pedido no vuelve a molestar",
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(pausado, pausado.resume(), yaPedido),
+            NotificationPermissionPolicy.onTimerChange(pausado, pausado.resume(2_000L), yaPedido),
         )
     }
 
@@ -94,15 +94,15 @@ class NotificationPermissionPolicyTest {
         // arranque del mismo temporizador (o de otro paso) no pide nada.
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.start(), yaPedido),
+            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.start(0L), yaPedido),
         )
     }
 
     @Test
     fun pausar_reiniciar_cambiar_de_paso_y_llegar_a_cero_no_piden_nada() {
-        val enMarcha = CookingTimerState.of(10).start().tick(120_000L)
-        val pausado = enMarcha.pause()
-        val terminado = CookingTimerState.of(1).start().tick(60_000L)
+        val enMarcha = CookingTimerState.of(10).start(0L).at(120_000L)
+        val pausado = enMarcha.pause(1_000L)
+        val terminado = CookingTimerState.of(1).start(0L).at(60_000L)
 
         assertEquals(
             NotificationPermissionCommand.None,
@@ -129,7 +129,7 @@ class NotificationPermissionPolicyTest {
             RecipeStep(order = 2, title = "Segundo", description = "", minutes = 8),
         )
         val enPasoUno = CookingModeState.initial(recetaCon(steps))
-            .withTimer(CookingTimerState.of(10).start().tick(120_000L))
+            .withTimer(CookingTimerState.of(10).start(0L).at(120_000L))
 
         // "Siguiente" reinicia el temporizador al del paso nuevo (Inactivo): RUNNING -> IDLE.
         val enPasoDos = enPasoUno.next(steps)
@@ -142,7 +142,7 @@ class NotificationPermissionPolicyTest {
             NotificationPermissionCommand.None,
             NotificationPermissionPolicy.onTimerChange(
                 enPasoDos.timer,
-                enPasoDos.timer.start(),
+                enPasoDos.timer.start(0L),
                 yaPedido,
             ),
         )
@@ -151,42 +151,42 @@ class NotificationPermissionPolicyTest {
     @Test
     fun los_ticks_y_los_no_ops_del_temporizador_no_piden_nada() {
         val inactivo = CookingTimerState.of(10)
-        val pausado = inactivo.start().pause()
-        val terminado = CookingTimerState.of(1).start().tick(60_000L)
+        val pausado = inactivo.start(0L).pause(1_000L)
+        val terminado = CookingTimerState.of(1).start(0L).at(60_000L)
 
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.pause(), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.pause(1_000L), sinPedir),
         )
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.resume(), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(inactivo, inactivo.resume(2_000L), sinPedir),
         )
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(pausado, pausado.pause(), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(pausado, pausado.pause(1_000L), sinPedir),
         )
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(pausado, pausado.start(), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(pausado, pausado.start(0L), sinPedir),
         )
         // El doble "Iniciar" con el temporizador ya En marcha es no-op: no hay arista real.
-        val enMarcha = inactivo.start()
+        val enMarcha = inactivo.start(0L)
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(enMarcha, enMarcha.start(), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(enMarcha, enMarcha.start(0L), sinPedir),
         )
         assertEquals(
             NotificationPermissionCommand.None,
-            NotificationPermissionPolicy.onTimerChange(terminado, terminado.tick(1_000L), sinPedir),
+            NotificationPermissionPolicy.onTimerChange(terminado, terminado.at(1_000L), sinPedir),
         )
     }
 
     @Test
     fun los_ticks_intermedios_no_piden_permiso() {
-        var timer = CookingTimerState.of(10).start()
-        val decisiones = (1..599).map { _ ->
-            val siguiente = timer.tick(1_000L)
+        var timer = CookingTimerState.of(10).start(0L)
+        val decisiones = (1..599).map { segundo ->
+            val siguiente = timer.at(segundo * 1_000L)
             val decision = NotificationPermissionPolicy.onTimerChange(timer, siguiente, sinPedir)
             timer = siguiente
             decision
@@ -202,7 +202,7 @@ class NotificationPermissionPolicyTest {
     @Test
     fun la_decision_es_determinista_para_el_mismo_estado_inyectado() {
         val inactivo = CookingTimerState.of(10)
-        val enMarcha = inactivo.start()
+        val enMarcha = inactivo.start(0L)
 
         val primera = NotificationPermissionPolicy.onTimerChange(inactivo, enMarcha, sinPedir)
         val segunda = NotificationPermissionPolicy.onTimerChange(inactivo, enMarcha, sinPedir)
@@ -226,12 +226,12 @@ class NotificationPermissionPolicyTest {
             "El instante no cambia la decision: ambos ya tienen intento",
             NotificationPermissionPolicy.onTimerChange(
                 CookingTimerState.of(10),
-                CookingTimerState.of(10).start(),
+                CookingTimerState.of(10).start(0L),
                 primero,
             ),
             NotificationPermissionPolicy.onTimerChange(
                 CookingTimerState.of(10),
-                CookingTimerState.of(10).start(),
+                CookingTimerState.of(10).start(0L),
                 segundo,
             ),
         )
@@ -239,7 +239,7 @@ class NotificationPermissionPolicyTest {
             NotificationPermissionCommand.None,
             NotificationPermissionPolicy.onTimerChange(
                 CookingTimerState.of(10),
-                CookingTimerState.of(10).start(),
+                CookingTimerState.of(10).start(0L),
                 primero,
             ),
         )

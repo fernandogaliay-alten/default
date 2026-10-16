@@ -25,11 +25,16 @@ import com.sazon.app.R
  * - la **persistente** ([ONGOING_NOTIFICATION_ID], `ongoing`) que publica el servicio en primer plano
  *   ([CookingTimerService]) con la cuenta atras decreciente mientras corre el temporizador;
  * - la del **aviso de fin** ([NOTIFICATION_ID], `docs/specs/cooking-timer-alarm.md`, escenarios 2, 3 y
- *   6) que publica el receptor de la alarma exacta.
+ *   6). La publica el servicio en el instante exacto (productor **primario**) o, si el proceso estaba
+ *   muerto/congelado, la alarma exacta de **respaldo** ([CookingAlarmReceiver]).
  *
  * El contenido es **generico** por construccion: ni [ongoing] ni [notification] reciben la receta, asi
  * que no pueden exponer la descripcion del paso, los ingredientes ni las notas. Son notificaciones de
  * sistema que no forman parte de ninguna pantalla de la app.
+ *
+ * Con **dos** publicadores posibles, "no duplicar" no lo sostiene el id fijo (evita dos notificaciones,
+ * no dos alertas): lo decide [notifyFinish] con el **sello de fin** compartido (el `when` de la `1001`)
+ * y la regla pura [CookingFinishPublication].
  *
  * **Degradacion silenciosa** (ADR 0005): si `POST_NOTIFICATIONS` esta denegado (o las notificaciones
  * estan apagadas) el aviso de fin **no se publica** y **no** hay excepcion, y la persistente la publica
@@ -77,6 +82,15 @@ object CookingNotifications {
      */
     const val EXTRA_RESUME_COOKING = "com.sazon.app.extra.cooking.RESUME_COOKING"
 
+    /**
+     * Extra con el **sello de fin** en **hora de pared** (un escalar, nunca datos de la receta):
+     * `currentTimeMillis() + (fin monotono - elapsedRealtime())`, calculado **una vez** por el adaptador
+     * al programar. Lo llevan los **dos** `Intent` (el del servicio y el del `PendingIntent` de la
+     * alarma) y es lo que decide si un fin ya esta anunciado ([CookingFinishPublication]): la
+     * notificacion `1001` se publica con ese valor como `when`.
+     */
+    const val EXTRA_FINISH_WALL_CLOCK_MILLIS = "com.sazon.app.extra.cooking.FINISH_WALL_CLOCK_MILLIS"
+
     /** Patron de vibracion corto del canal: dos pulsos de 250 ms con 150 ms de pausa. */
     private val VIBRATION_PATTERN = longArrayOf(0L, 250L, 150L, 250L)
 
@@ -110,15 +124,17 @@ object CookingNotifications {
     }
 
     /**
-     * Construye la notificacion del aviso: icono **monocromo** (el sistema lo tine), el copy generico y
-     * `autoCancel`. No anade **ningun extra propio**. Si [contentIntent] es `null` la notificacion se
-     * construye igual (sin toque) en vez de fallar.
+     * Construye la notificacion del aviso: icono **monocromo** (el sistema lo tine), el copy generico,
+     * `autoCancel` y el **sello de fin** como `when` ([whenMillis], hora de pared) para que un
+     * publicador reconozca que **ese** fin ya esta anunciado. No anade **ningun extra propio**. Si
+     * [contentIntent] es `null` la notificacion se construye igual (sin toque) en vez de fallar.
      */
-    fun notification(context: Context, contentIntent: PendingIntent?): Notification {
+    fun notification(context: Context, contentIntent: PendingIntent?, whenMillis: Long): Notification {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_timer)
             .setContentTitle(TITLE)
             .setContentText(TEXT)
+            .setWhen(whenMillis)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -178,24 +194,50 @@ object CookingNotifications {
     }.getOrNull()
 
     /**
-     * Publica el aviso con el id **fijo** [NOTIFICATION_ID] (republicarlo **reemplaza** la notificacion
-     * anterior, de modo que nunca se duplica, tampoco con la app en primer plano).
+     * Publica el aviso de fin con el id **fijo** [NOTIFICATION_ID] (republicarlo **reemplaza** la
+     * notificacion anterior, de modo que nunca se duplica, tampoco con la app en primer plano) **si
+     * procede**: la decision pura [CookingFinishPublication] descarta el sello ya anunciado (hay una
+     * `1001` con el mismo `when`) y el sello fuera de la ventana de frescura (un aviso de un paso
+     * anterior), de modo que el **sonido/vibracion** solo se produce **una vez** por fin aunque el
+     * servicio y la alarma de respaldo coincidan.
      *
      * Con `POST_NOTIFICATIONS` denegado o las notificaciones apagadas **no publica** (se comprueba
      * antes para no depender del sistema) y si el permiso se retirara entre la comprobacion y la
      * publicacion, el `SecurityException` se absorbe **explicitamente**: el Modo cocina y su "¡Listo!"
      * en pantalla nunca se rompen por el aviso (degradacion silenciosa, ADR 0005).
      */
-    fun notify(context: Context, contentIntent: PendingIntent?) {
+    fun notifyFinish(context: Context, finishWallClockMillis: Long, contentIntent: PendingIntent?) {
         runCatching { ensureChannel(context) }
         if (!canPost(context)) return
+        val decision = CookingFinishPublication.decide(
+            nowWallClockMillis = System.currentTimeMillis(),
+            finishWallClockMillis = finishWallClockMillis,
+            shownFinishWallClockMillis = shownFinishWallClockMillis(context),
+        )
+        if (decision != CookingFinishPublication.PUBLISH) return
         try {
             NotificationManagerCompat.from(context)
-                .notify(NOTIFICATION_ID, notification(context, contentIntent))
+                .notify(NOTIFICATION_ID, notification(context, contentIntent, finishWallClockMillis))
         } catch (permissionDenied: SecurityException) {
             // Permiso retirado entre la comprobacion y la publicacion: el aviso se pierde en silencio.
         }
     }
+
+    /**
+     * `when` del aviso `1001` **ya mostrado** (el sello del fin que se anuncio), o `null` si no hay
+     * ninguno. Se lee del [NotificationManager] del framework (`getActiveNotifications`, API 23+;
+     * `NotificationManagerCompat` de `androidx.core` 1.10.1 **no** expone esa consulta): es el mismo
+     * dato que aplica el `when` de la `1001` y Robolectric lo implementa (`ShadowNotificationManager`),
+     * asi que la idempotencia se verifica en JVM. Nunca lanza: si el sistema no deja consultarlo, se
+     * comporta como "no hay nada mostrado".
+     */
+    private fun shownFinishWallClockMillis(context: Context): Long? = runCatching {
+        notificationManager(context)
+            ?.activeNotifications
+            ?.firstOrNull { it.id == NOTIFICATION_ID }
+            ?.notification
+            ?.`when`
+    }.getOrNull()
 
     /** `true` si el aviso se puede publicar: permiso concedido **y** notificaciones encendidas. */
     private fun canPost(context: Context): Boolean {

@@ -7,7 +7,7 @@
   `/mnt/c/Users/fernando.galiay/Documents/Default-Project-worktrees/dish-image-call-diagnostics`
 - **Sesión**: validación independiente (subagente `validator`, contexto limpio, sin fiarse del handoff
   del implementer); el número de sesión lo fija el orquestador al persistir el veredicto.
-- **Estado previo**: `passing` (implementer, sesión 142; trabajo en disco; `HEAD == 5ef8f7a` — merge del
+- **Estado previo**: `passing` (implementer, sesión 143; trabajo en disco; `HEAD == 5ef8f7a` — merge del
   PR #161 —, **sin commit, sin push, sin PR**).
 - **Veredicto**: **`accept`**
 
@@ -116,7 +116,7 @@ Correctiva de **observación pasiva** de la llamada HTTP de imagen de DevExpert:
   respaldo por estado **no** cambia (verificado en el código).
 - `docs/specs/dish-image-generator.md`: decisión 7 anotada como atendida por esta correctiva, sin
   reescribir sus escenarios/valores históricos.
-- `feature_list.json` (estado `passing` + evidencia) y `PROGRESS.md` (sesión 142) alineados con lo
+- `feature_list.json` (estado `passing` + evidencia) y `PROGRESS.md` (sesión 143) alineados con lo
   re-verificado; **no** se crean docs ni capturas innecesarias (no es UI; `docs/design/**` y `DESIGN.md`
   sin diff). `init.sh` sin cambios y sigue ejecutando el gate real (test + lint).
 
