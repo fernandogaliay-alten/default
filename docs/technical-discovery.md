@@ -421,6 +421,23 @@ corriendo detras y "Seguir cocinando" no cambia nada—: solo "Salir" ejecuta el
 (`exiting` -> `CookingSessionStore.clear()` -> `onClose()` -> `onDispose` con `CookingAlarmPolicy.onExit()`).
 Ver `docs/specs/cooking-mode-exit-confirmation.md`.
 
+El **cambio de paso** del Modo cocina (feature `cooking-mode-step-change-confirmation`, 2026-10-16)
+tambien pasa por una decision **pura** en `ui.cooking`: `CookingStepChangePolicy.requiresConfirmation(state,
+point)` (con el `CookingModeState` **inyectado**, sin Compose/Android y **sin** leer el reloj) pide
+confirmacion **solo** si el temporizador del paso actual esta **En marcha o Pausado** —lo unico que se
+pierde, porque `next`/`previous` lo reemplazan por el del paso nuevo (Inactivo)— y **solo** si la direccion
+cambia de paso de verdad: `CookingStepChangePoint.NEXT` exige `!isLastStep` (en el ultimo paso la primaria
+lee "Terminar" y va por la confirmacion de salida) y `CookingStepChangePoint.PREVIOUS` exige `!isFirstStep`
+("Anterior" esta deshabilitado en el primer paso), con el caso defensivo `isEmpty` => `false`. El **marcado**
+(`completedOrders`) **no** cuenta —a diferencia de `CookingExitPolicy`— porque persiste entre pasos; un
+temporizador Terminado o un paso sin duracion tampoco. El dialogo sigue el **mismo patron** que la salida
+(`AlertDialog` de Material 3 con el microcopy puro `CookingStepChangeCopy` y los roles de `SazonTheme`, sin
+tokens nuevos) y confirmar ejecuta la navegacion **aceptada** (`state.next(recipe.steps)` /
+`state.previous(...)`) sin tocar la regla vigente de **reinicio del temporizador al paso nuevo**: abrir o
+cerrar el dialogo no cambia el paso, el tiempo, el marcado, la sesion, la alarma ni el reloj (la cuenta
+atras sigue corriendo detras) y el `BackHandler` gana una rama para **descartar** el dialogo. Ver
+`docs/specs/cooking-mode-step-change-confirmation.md`.
+
 El **aviso de sistema** de fin del temporizador (feature `cooking-timer-alarm`, 2026-10-15) es la
 **unica** integracion de alarmas y notificaciones del repo y enmienda de forma acotada el Non-Goal
 "Notificaciones y recordatorios" (`docs/adr/0007-cooking-timer-alarm.md`). La decision es **pura** y vive

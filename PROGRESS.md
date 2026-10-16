@@ -253,6 +253,48 @@
   cocinando" con la cuenta atrás viva, atrás con el diálogo abierto y acabado del diálogo en claro/oscuro),
   no automatizable desde WSL; la validación independiente devolvió **`accept`** y la feature queda
   **`accepted`** (commit local del orquestador, **sin** push ni PR).
+- Feature **`cooking-mode-step-change-confirmation`** (área `ui`, depende de `cooking-mode` y
+  `cooking-mode-exit-confirmation`, ambas `accepted`) **implementada y autoverificada** (**`passing`**) por
+  el subagente `implementer` en la **sesión 140** y **`accepted`** en la **sesión 141** (validación
+  independiente del subagente `validator`, contexto limpio, veredicto **`accept`**; ver
+  `docs/validations/cooking-mode-step-change-confirmation.md`), según su spec
+  `docs/specs/cooking-mode-step-change-confirmation.md`, en el worktree
+  `cooking-mode-step-change-confirmation` (rama `feature/cooking-mode-step-change-confirmation`; **sin**
+  commit/push/PR de los subagentes: el commit local lo crea el orquestador de `feature-flow` y la
+  publicación queda para `github-flow`). "Siguiente"/"Anterior"
+  del Modo cocina pasan por la decisión **pura** `ui.cooking.CookingStepChangePolicy.requiresConfirmation(
+  state, point)` (estado inyectado, sin Compose/Android y sin leer el reloj): pide confirmación **solo** si
+  el temporizador del paso actual está **En marcha o Pausado** (lo único que se pierde: `next`/`previous`
+  lo reemplazan por el del paso nuevo) **y** solo si la dirección **cambia de paso** (`NEXT` exige
+  `!isLastStep`, `PREVIOUS` exige `!isFirstStep`, con `isEmpty` defensivo); `completedOrders` **no** cuenta
+  porque el marcado persiste entre pasos (diferencia clave con `CookingExitPolicy`). El diálogo es un
+  `AlertDialog` de Material 3 (`CookingStepChangeDialog`, `private`) con el microcopy puro
+  `CookingStepChangeCopy` y los roles de `SazonTheme` (sin tokens nuevos); confirmar ejecuta la navegación
+  aceptada `state.next`/`state.previous` (regla de reinicio del temporizador **intacta**) y cancelar no
+  cambia nada, con la cuenta atrás viva detrás; el `BackHandler` gana una rama que **descarta** el diálogo.
+  Gate: `bash init.sh` **exit 0**, **115 suites / 911 tests / 0 fallos / 0 errores / 0 saltados** (baseline
+  re-derivada en `HEAD e5012d1`: `git grep -c '@Test'` = 114 ficheros / 896 anotaciones ⇒ delta **+1 suite /
+  +15 tests**: `CookingStepChangePolicyTest` 15, **la verificación exigida**; 0 suites aceptadas
+  modificadas), lint **0 errores, 13 warnings preexistentes, 0 bajo `app/src`**; `init.sh`, build/lockfile,
+  `scripts/**`, `domain/**`, `data/**`, `ui/theme/**`, `ui/MainShell.kt` y las piezas aceptadas de `cooking`
+  **sin diff**; sin dependencias nuevas ni capturas. Docs durables: párrafo del **cambio de paso** en
+  `docs/technical-discovery.md` y nota de **excepción de capturas** en `DESIGN.md`. Queda la **prueba
+  manual** de la persona en el emulador (dos direcciones con En marcha/Pausado, cancelar con la cuenta atrás
+  viva, confirmar con reinicio del temporizador, casos directos y acabado en claro/oscuro), no automatizable
+  desde WSL. **Validación independiente `accept` (sesión 141)**: el validador no modificó código/estado/HEAD;
+  `bash init.sh` salió `UP-TO-DATE` (no vale como evidencia fresca), así que forzó `testDebugUnitTest
+  --rerun-tasks` (BUILD SUCCESSFUL 3m57s; XML frescos **115 suites / 911 tests / 0 fallos / 0 errores / 0
+  saltados**), la tirada focal (`8 suites / 104 tests / 0 fallos`; `CookingStepChangePolicyTest` 15/0) y
+  `lint --rerun-tasks` (exit 0; SARIF **13 warning preexistentes / 0 errores / 0 bajo `app/src`**), y
+  re-derivó la baseline (114 ficheros / 896 anotaciones ⇒ delta **+1 suite / +15 tests**, 0 suites
+  modificadas). Confirmó la pureza (`CookingStepChangeConfirmation.kt`: 0 imports, 0 lecturas del reloj, sin
+  `android.*`/`androidx.*`), la regla (solo En marcha/Pausado **y** solo si la dirección cambia de paso;
+  `completedOrders` fuera) con el caso negativo clave (Inactivo con marcados ⇒ `false`), el `BackHandler` con
+  una sola aparición real, la disciplina de alcance y el camino de salida aceptado **intacto**. Sin hallazgos
+  critical/high/medium; **4 Low informativos no bloqueantes** (L1 descarte hereda `primary`, visual a revisión
+  manual; L2 la decisión se congela al abrir el diálogo; L3 el test de microcopy congela los literales; L4
+  `pendingStepChange` es `remember` y se pierde al rotar, comportamiento seguro). Detalle en
+  `docs/validations/cooking-mode-step-change-confirmation.md`.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -7073,6 +7115,81 @@
   `github-flow`/`feature-flow`: `cooking-mode-step-change-confirmation` (`not_started`; sus dependencias
   `cooking-mode` y `cooking-mode-exit-confirmation` quedan **satisfechas**, sin spec todavía).
 
+### Sesión 140 (implementer, `cooking-mode-step-change-confirmation`)
+
+- Fecha: 2026-10-16
+- Objetivo: implementar y **autoverificar** `cooking-mode-step-change-confirmation` (spec
+  `docs/specs/cooking-mode-step-change-confirmation.md`) hasta `passing`, sin commit/push/PR (el commit
+  local lo crea el orquestador al accept y lo publica `github-flow`).
+- Qué cambió:
+  - **Nuevo** `app/src/main/java/com/sazon/app/ui/cooking/CookingStepChangeConfirmation.kt` — lógica
+    **pura** (0 imports, sin Compose/Android, sin leer el reloj, sin `Recipe`): `CookingStepChangePoint`
+    (`NEXT`, `PREVIOUS`), `CookingStepChangePolicy.requiresConfirmation(state, point)` (confirmar **solo**
+    con el temporizador del paso actual **En marcha o Pausado** **y** solo si la dirección cambia de paso:
+    `NEXT` exige `!isEmpty && !isLastStep`; `PREVIOUS` exige `!isEmpty && !isFirstStep`) y
+    `CookingStepChangeCopy` (título/cuerpo/confirmar/descartar como constantes puras). `completedOrders`
+    **no** cuenta (el marcado persiste entre pasos: diferencia clave con `CookingExitPolicy`).
+  - **Modificado** `app/src/main/java/com/sazon/app/ui/cooking/CookingModeScreen.kt` — estado
+    `pendingStepChange`, entradas gateadas `requestPrevious`/`requestNext` (confirmar ejecuta
+    `state.previous`/`state.next` **sin reimplementarlos**; sin nada que perder, navegación directa), barra
+    inferior cableada a ellas (`CookingBottomBar` sin cambios; `onClose = requestFinish` intacto), rama
+    nueva del `BackHandler` **antes** de la de `confirmExit` (descarta el diálogo de cambio de paso) y
+    `CookingStepChangeDialog` (`private`, `AlertDialog` de Material 3 con los roles del tema, una sola
+    acción principal en `primary`, sin `error`/tokens nuevos). KDoc ampliada.
+  - **Nuevo** `app/src/test/java/com/sazon/app/ui/cooking/CookingStepChangePolicyTest.kt` — **15 tests /
+    0 fallos** (la verificación exigida): matriz por las **dos** direcciones sobre un paso intermedio, más
+    primer/último paso, receta de un solo paso, receta sin pasos, paso sin duración, Inactivo/Terminado
+    (con y sin marcados), 599 ticks, determinismo/no mutación y microcopy.
+  - **Docs durables**: `docs/technical-discovery.md` (párrafo del **cambio de paso** gateado) y `DESIGN.md`
+    (nota de **excepción de capturas**, misma clase que `cooking-mode-exit-confirmation`).
+    `docs/domain-model.md`, `AGENTS.md`, `docs/build-brief.md`, `docs/adr/`, `docs/specs/cooking-mode.md`
+    **no** requieren cambios.
+- Verificación ejecutada:
+  - `bash init.sh` → **exit 0** (test + lint, sin procesos largos; `init.sh` sin cambios).
+  - `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` → **BUILD SUCCESSFUL 4m08s**; XML frescos =
+    **115 suites / 911 tests / 0 fallos / 0 errores / 0 saltados** (`CookingStepChangePolicyTest` 15/15).
+  - Baseline re-derivada en `HEAD e5012d1` (`git grep -c '@Test' HEAD -- app/src/test` = **114 ficheros /
+    896 anotaciones**) ⇒ delta **+1 suite / +15 tests**, **0** suites aceptadas modificadas.
+  - Tirada focal `--tests "com.sazon.app.ui.cooking.*"` → **8 suites / 104 tests / 0 fallos**. Lint: SARIF =
+    **13 resultados / 0 errores** (los preexistentes) y **0 bajo `app/src`**.
+  - Inspecciones: `CookingStepChangeConfirmation.kt` con 0 imports y 0 lecturas del reloj; `BackHandler`
+    solo en `CookingModeScreen.kt`; `CookingExitConfirmation.kt` sin diff; `git diff --stat` limitado a los
+    ficheros previstos; sin dependencias nuevas ni capturas.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador tras el merge (En marcha/
+  Pausado en las dos direcciones, "Seguir en este paso" con la cuenta atrás viva, confirmar con reinicio del
+  temporizador, casos directos, primer/último paso, atrás que descarta el diálogo y acabado claro/oscuro
+  frente a `DESIGN.md`), no automatizable desde WSL. Incógnitas ya documentadas en la spec: microcopy
+  afinable tras el merge, temporizador que llega a cero con el diálogo abierto (no se re-evalúa), rotación
+  que pierde `pendingStepChange` y descarte que hereda `primary`. Un defecto visual se corrige con una
+  **feature correctiva**.
+- Estado de features: `cooking-mode-step-change-confirmation` queda **`passing`** (implementada y
+  autoverificada; pendiente de validación independiente, que la puede dejar en `accepted`). WIP = 1.
+
+### Sesión 141 (validator + orquestador, `cooking-mode-step-change-confirmation`)
+
+- Fecha: 2026-10-16
+- Objetivo: validar de forma **independiente** (subagente `validator`, contexto limpio) la feature dejada
+  `passing` en la sesión 140 y, con veredicto `accept`, persistir la aceptación y crear el commit local
+  (sin push ni PR: la publicación es de `github-flow`).
+- Qué cambió: **ningún** fichero de código. El validador no modificó código, estado ni HEAD y escribió el
+  registro `docs/validations/cooking-mode-step-change-confirmation.md` (solo docs). El orquestador cambió
+  `feature_list.json` (`passing` → `accepted` + evidencia del validador) y este `PROGRESS.md`.
+- Verificación del validador (re-ejecutada por su cuenta):
+  - `bash init.sh` → exit 0, pero `testDebugUnitTest`/`lint` salieron **`UP-TO-DATE`** ⇒ no válido como
+    evidencia fresca; forzado: `testDebugUnitTest --rerun-tasks` **BUILD SUCCESSFUL 3m57s** (XML frescos =
+    **115 suites / 911 tests / 0 fallos / 0 errores / 0 saltados**), focal `--tests "com.sazon.app.ui.cooking.*"`
+    **8 suites / 104 tests / 0 fallos** (`CookingStepChangePolicyTest` 15/0) y `lint --rerun-tasks` exit 0
+    (SARIF **13 warning preexistentes / 0 errores / 0 bajo `app/src`**).
+  - Baseline re-derivada: `HEAD` 114 ficheros / 896 anotaciones → árbol 115 / 911 ⇒ delta **+1 suite / +15
+    tests**, 0 suites existentes modificadas.
+  - Confirmó pureza, la regla (solo En marcha/Pausado **y** solo si la dirección cambia de paso;
+    `completedOrders` fuera), el caso negativo clave, el `BackHandler` con una sola aparición real, la
+    disciplina de alcance y el camino de salida aceptado **intacto**.
+- Veredicto: **`accept`**. Sin hallazgos critical/high/medium; **4 Low** informativos no bloqueantes (L1
+  descarte hereda `primary`; L2 decisión congelada al abrir el diálogo; L3 test de microcopy con literales;
+  L4 `pendingStepChange` se pierde al rotar, comportamiento seguro). Sin hallazgos de seguridad.
+- Estado de features: `cooking-mode-step-change-confirmation` queda **`accepted`** (commit local del
+  orquestador, **sin** push ni PR). WIP = 0.
 ### Sesión 142 (planner + implementer + validator + orquestador `feature-flow`; `cooking-timer-notification-reliability`)
 
 - Fecha: 2026-10-16
