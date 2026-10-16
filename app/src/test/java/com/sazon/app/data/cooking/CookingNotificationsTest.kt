@@ -120,6 +120,40 @@ class CookingNotificationsTest {
     }
 
     @Test
+    fun la_notificacion_de_fin_es_descartable_y_no_es_ongoing() {
+        // El aviso duradero (feature `cooking-timer-finish-notification`, P2) **no** se sostiene con un
+        // servicio vivo: sigue siendo descartable (autoCancel y **no** `FLAG_ONGOING_EVENT`).
+        val notificacion = CookingNotifications.notification(context, contentIntent = null)
+
+        assertTrue(
+            "Descartable: el usuario puede quitarla de la bandeja",
+            notificacion.flags and Notification.FLAG_AUTO_CANCEL != 0,
+        )
+        assertEquals(
+            "El aviso de fin no es una notificacion persistente",
+            0,
+            notificacion.flags and Notification.FLAG_ONGOING_EVENT,
+        )
+    }
+
+    @Test
+    fun el_aviso_de_fin_y_la_persistente_no_comparten_el_modo_ongoing() {
+        val avisoDeFin = CookingNotifications.notification(context, contentIntent = null)
+        val persistente = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+
+        assertEquals(
+            "La persistente si es ongoing",
+            Notification.FLAG_ONGOING_EVENT,
+            persistente.flags and Notification.FLAG_ONGOING_EVENT,
+        )
+        assertEquals(
+            "La del fin no, aunque compartan canal",
+            0,
+            avisoDeFin.flags and Notification.FLAG_ONGOING_EVENT,
+        )
+    }
+
+    @Test
     fun la_notificacion_no_tiene_extras_propios_y_su_contenido_es_solo_el_copy_generico() {
         val notificacion = CookingNotifications.notification(context, contentIntent = null)
         val claves = notificacion.extras.keySet()

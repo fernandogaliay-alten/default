@@ -9,8 +9,10 @@ import org.junit.Test
 
 /**
  * Politica **pura** del aviso de sistema del temporizador (`docs/specs/cooking-timer-alarm.md`,
- * escenarios 1, 4, 5, 7 y 8): programar al Iniciar/Reanudar para el **instante de fin** (`now +
- * remaining`), cancelar al Pausar/Reiniciar/cambiar de paso/llegar a cero/salir y **no** reprogramar en
+ * escenarios 1, 4, 5, 7 y 8, y `docs/specs/cooking-timer-finish-notification.md`, escenarios 1 y 3):
+ * programar al Iniciar/Reanudar para el **instante de fin** (`now + remaining`), cancelar al
+ * Pausar/Reiniciar/cambiar de paso/salir, **dejar viva la alarma al llegar a cero** (el `tick` que cruza
+ * el cero ya **no** cancela, para no adelantarse al disparo de `AlarmManager`) y **no** reprogramar en
  * los ticks.
  *
  * Logica pura sin Compose ni Android: el instante entra siempre por parametro (`nowMillis`), nunca se
@@ -119,20 +121,33 @@ class CookingAlarmPolicyTest {
     }
 
     @Test
-    fun llegar_a_cero_cancela_y_no_reprograma() {
+    fun llegar_a_cero_no_cancela_la_alarma_y_no_reprograma() {
         val enMarcha = CookingTimerState.of(1).start()
         val medio = enMarcha.tick(30_000L)
         val terminado = medio.tick(30_000L)
 
         assertEquals(CookingTimerStatus.FINISHED, terminado.status)
         assertEquals(
-            CookingAlarmCommand.Cancel,
+            "El tick que cruza el cero deja la alarma viva (es la unica productora del aviso)",
+            CookingAlarmCommand.None,
             CookingAlarmPolicy.onTimerChange(medio, terminado, nowMillis = 2_000_000L),
         )
-        // Los ticks posteriores al fin son no-op del temporizador: nada que hacer.
+        // Los ticks posteriores al fin siguen siendo no-op del temporizador: tampoco tocan el aviso.
         assertEquals(
             CookingAlarmCommand.None,
             CookingAlarmPolicy.onTimerChange(terminado, terminado.tick(1_000L), nowMillis = 2_001_000L),
+        )
+    }
+
+    @Test
+    fun reiniciar_desde_terminado_si_cancela_la_alarma() {
+        // No-regresion de P1: la arista `FINISHED -> IDLE` ("Reiniciar" desde Terminado) es una
+        // transicion real y sigue cancelando la alarma pendiente.
+        val terminado = CookingTimerState.of(10).start().tick(600_000L)
+
+        assertEquals(
+            CookingAlarmCommand.Cancel,
+            CookingAlarmPolicy.onTimerChange(terminado, terminado.reset(), nowMillis = 1_600_000L),
         )
     }
 
@@ -215,7 +230,7 @@ class CookingAlarmPolicyTest {
     }
 
     @Test
-    fun la_corrida_completa_emite_un_solo_schedule_y_ninguna_reprogramacion() {
+    fun la_corrida_completa_emite_un_solo_schedule_y_ningun_cancel() {
         var timer = CookingTimerState.of(10)
         val comandos = mutableListOf<CookingAlarmCommand>()
 
@@ -236,9 +251,13 @@ class CookingAlarmPolicyTest {
         assertEquals("Un unico aviso programado", 1, comandos.count { it is CookingAlarmCommand.Schedule })
         assertEquals(CookingAlarmCommand.Schedule(1_600_000L), comandos.first())
         assertEquals(
-            "El tick que cruza el cero cancela el aviso (no lo reprograma)",
-            1,
+            "El cruce del cero ya no cancela la alarma pendiente (P1)",
+            0,
             comandos.count { it == CookingAlarmCommand.Cancel },
+        )
+        assertTrue(
+            "Ningun comando cancela en toda la corrida",
+            comandos.none { it is CookingAlarmCommand.Cancel },
         )
         assertEquals(
             "Ninguna reprogramacion tras FINISHED",
@@ -253,6 +272,8 @@ class CookingAlarmPolicyTest {
         NoOpCookingAlarm.apply(CookingAlarmCommand.Schedule(1L))
         NoOpCookingAlarm.apply(CookingAlarmCommand.Cancel)
         NoOpCookingAlarm.apply(CookingAlarmCommand.None)
+        // El comando de limpieza del aviso de fin tampoco tiene efecto (y no lanza).
+        NoOpCookingAlarm.dismissFinishNotification()
     }
 
     private fun recetaCon(steps: List<RecipeStep>): Recipe = Recipe(

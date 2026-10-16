@@ -120,6 +120,12 @@ Then el contador de la notificación persistente **decrece** sin que la app est�
 cero el aviso "¡Listo!" suena y vibra (una sola vez, canal `cooking_timer`) mientras la notificación
 persistente **desaparece**.
 
+> **Nota de vigencia (`cooking-timer-finish-notification`, 2026-10-16):** este escenario se cumplía solo
+> de forma **no determinista** con la app en primer plano (la política cancelaba la alarma en
+> `RUNNING → FINISHED` a la vez que el `tick` llegaba a cero). Desde la correctiva la alarma ya **no** se
+> cancela al llegar a cero, así que el aviso se publica **siempre**; la persistente sigue desapareciendo
+> porque el servicio se para con su propio `delay`. El resto de la evidencia histórica no se reescribe.
+
 ### Scenario 3: al llegar a cero se avisa una sola vez (verificación exigida)
 
 Given una sesión del Modo cocina En marcha con su instante de fin proyectado,
@@ -128,6 +134,11 @@ Then la sesión persistida deja de proyectar instante de fin (`endAtElapsedMilli
 rearrancar"), `CookingAlarmPolicy` devuelve `Cancel` (no reprograma) y los `tick`/reintentos posteriores
 devuelven `None`; el aviso de fin se publica **una sola vez** (id fijo `1001` y disparo único aceptado).
 
+> **Nota de vigencia (`cooking-timer-finish-notification`, 2026-10-16):** la primera mitad sigue siendo
+> cierta (la sesión no proyecta fin y los `tick` posteriores dan `None`), pero `CookingAlarmPolicy` ya
+> **no** devuelve `Cancel` en `RUNNING → FINISHED`: devuelve `None` para **dejar viva** la alarma (el
+> único productor del aviso). El aviso se sigue publicando **una sola vez** (id fijo).
+
 ### Scenario 4: Pausar, Reiniciar, cambiar de paso y salir **paran el servicio** (verificación exigida)
 
 Given el temporizador En marcha con el servicio corriendo,
@@ -135,6 +146,11 @@ When el usuario pulsa "Pausar", o "Reiniciar", o "Siguiente"/"Anterior", o "Atr�
 Then la política devuelve `Cancel`, el servicio se **detiene** y su notificación persistente
 **desaparece**; "Reanudar" lo vuelve a arrancar con el instante correcto. Pausar/reiniciar/cambiar de paso
 **no** borran la sesión (siguen siendo reanudables); salir del modo **sí** la borra (Scenario 8).
+
+> **Nota de vigencia (`cooking-timer-finish-notification`, 2026-10-16):** este escenario **se mantiene**
+> (Pausar/Reiniciar/cambiar de paso/salir siguen dando `Cancel`); la única ampliación es que, al salir del
+> modo ("Atrás"/"Terminar"), la costura retira además el aviso de fin `1001` ya mostrado
+> (`dismissFinishNotification`, comando aparte de `Cancel` y nunca en el `onDispose`).
 
 ### Scenario 5: el toque en la notificación vuelve al paso exacto
 
@@ -157,6 +173,11 @@ de cuenta atrás recalculado desde el instante de fin: si el instante ya pasó, 
 **Terminado** con el aviso "¡Listo!" en pantalla; si aún no pasó (muerte del proceso a mitad), sigue
 En marcha con el tiempo restante correcto.
 
+> **Nota de vigencia (`cooking-timer-finish-notification`, 2026-10-16):** el escenario **se mantiene** y
+> se refuerza: la puerta de reapertura pasa a `CookingSession.reopensFromNotification` (`isResumable`
+> **o** Terminado), de modo que una sesión persistida en **Terminado** (`remaining = 0`) también reabre el
+> paso desde el aviso, sin rearmar alarma ni servicio. `isResumable` conserva su semántica.
+
 ### Scenario 7: el permiso denegado no rompe nada
 
 Given `POST_NOTIFICATIONS` denegado,
@@ -170,6 +191,11 @@ Given una sesión persistida y la app abierta **sin** venir de la notificación,
 When el usuario abre la app (en frío o desde el lanzador),
 Then el Modo cocina **no** se abre solo; y si sale del modo con "Atrás"/"Terminar", la sesión se **borra**
 (la notificación que quede en la bandeja ya no reanuda nada: la app abre en su estado normal).
+
+> **Nota de vigencia (`cooking-timer-finish-notification`, 2026-10-16):** la salida explícita
+> ("Atrás"/"Terminar") **también retira** el aviso de fin `1001` que pudiera quedar en la bandeja
+> (`CookingAlarm.dismissFinishNotification`), de modo que ya **no** queda una notificación obsoleta; la
+> sesión se sigue borrando y un arranque normal sigue sin abrir el Modo cocina.
 
 ### Scenario 9: las notificaciones y los `Intent` exponen lo mínimo (verificación exigida)
 

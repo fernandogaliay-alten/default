@@ -77,6 +77,12 @@ Restricciones del repositorio que condicionan la decisión:
    ventana de frescura ni reloj de pared. `MainActivity` lo convierte en el estado `resumeRequest` (de
    `onCreate` **y** de `onNewIntent`, con `setIntent`), `MainShell` carga la sesión y abre el overlay si
    es **resumible** (En marcha o Pausado).
+
+   > **Ampliada (`cooking-timer-finish-notification`, 2026-10-16):** la puerta pasa a
+   > `CookingSession.reopensFromNotification` (`isResumable` **o** Terminado), porque el usuario puede
+   > tocar el aviso "¡Listo!" **después** de que el instante de fin pase: en ese caso la sesión persistida
+   > está en Terminado con `remaining = 0` y debe reabrir el paso igual (sin rearmar alarma ni servicio).
+   > `isResumable` **no** cambia de semántica; el predicado nuevo lo **compone**.
 8. **Reanudar una sesión En marcha rearma el trabajo del sistema**: la sesión puede sobrevivir a un
    proceso cuya alarma y servicio ya no existen, así que la pantalla aplica **una vez**
    `CookingAlarmPolicy.onTimerChange` tratando la reanudación como `IDLE → RUNNING` (misma decisión pura,
@@ -100,6 +106,13 @@ Restricciones del repositorio que condicionan la decisión:
     quedan **sin diff**; el aviso de fin sigue publicándose igual (solo gana el flag de reanudación en su
     `Intent` de contenido).
 
+    > **Revisado (`cooking-timer-finish-notification`, 2026-10-16):** esta decisión deja de aplicar tal
+    > cual. La feature correctiva del aviso duradero toca `CookingAlarmPolicy` (la arista
+    > `RUNNING → FINISHED` pasa de `Cancel` a `None`), `CookingAlarmCommand.Cancel` (KDoc) y la costura
+    > `CookingAlarm` (método nuevo `dismissFinishNotification`), que eran las piezas declaradas "sin
+    > diff". El servicio (`CookingTimerService`), el receptor, el canal, los ids y el microcopy **siguen**
+    > intactos.
+
 Alcance: `ui/cooking/CookingSession.kt` y `CookingSessionStore.kt` (nuevos, puros), `data/cooking/`
 (persistencia Room, servicio y notificación persistente; adaptador y receptor con la pata nueva),
 `ui/cooking/CookingModeScreen.kt` (persistencia, rearme y borrado al salir), `ui/MainShell.kt`/
@@ -114,6 +127,12 @@ JVM/Robolectric. **No** se toca `domain/**`, la Taxonomía, `seed-recipes.json`,
    Ahorraría una pieza, pero el aviso de fin dejaría de llegar si el sistema mata el proceso y chocaría
    con el `Cancel` que la política emite en `RUNNING → FINISHED` (cuando el `tick` de la app llega a cero
    en primer plano), añadiendo una carrera difícil de probar en JVM. Descartado.
+   > **Revisada (`cooking-timer-finish-notification`, 2026-10-16):** el `Cancel` de `RUNNING → FINISHED`
+   > desapareció (ver ADR 0007, decisión 9 revisada) y esa carrera concreta ya no existe, pero la
+   > alternativa **sigue descartada**: el servicio no es un productor fiable del aviso (el `delay` corre
+   > en el proceso de la app, que el sistema puede matar), mientras que la alarma la ejecuta el sistema y
+   > publica el aviso **siempre**. La misma decisión de "Opción A" (servicio pintor, alarma como único
+   > productor) se mantiene.
 2. **`shortService`** como tipo de primer plano. Es el más afín pero está limitado a ~3 minutos: un
    temporizador de cocina puede durar más y el servicio moriría a mitad. Descartado.
 3. **Bucle de texto por segundo** (republicar la notificación con `NotificationManager.notify` en cada
@@ -144,6 +163,12 @@ JVM/Robolectric. **No** se toca `domain/**`, la Taxonomía, `seed-recipes.json`,
   En marcha y `Cancel` para el servicio.
 - **El "¡Listo!" sigue llegando siempre** (escenario 3): lo publica la alarma aceptada, una sola vez, con
   su id fijo. El servicio no publica nada al terminar, así que no hay duplicados.
+  > **Corregida (`cooking-timer-finish-notification`, 2026-10-16):** la alarma era el único productor,
+  > pero la política la **cancelaba** en `RUNNING → FINISHED`, así que el aviso **no siempre llegaba**
+  > (carrera entre el `tick` de la composición y el disparo de `AlarmManager`). Desde la correctiva esa
+  > arista devuelve `None`: la alarma se deja viva y publica **siempre**; el servicio se para **solo**
+  > con su `delay` (no se mantiene vivo para sostener el aviso), y la `1001` se retira en la salida
+  > explícita con `dismissFinishNotification`.
 - **El toque vuelve al paso exacto** (escenarios 5 y 6), con la cuenta atrás recalculada desde el instante
   de fin: con el proceso muerto, la app lee la sesión persistida y monta el paso (En marcha con el tiempo
   restante o Terminado si ya pasó).

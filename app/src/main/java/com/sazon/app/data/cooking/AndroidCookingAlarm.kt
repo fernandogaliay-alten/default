@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingAlarmCommand
@@ -35,6 +36,9 @@ import com.sazon.app.ui.cooking.CookingAlarmCommand
  *   y mismo `Intent`): **no** retira una notificacion ya mostrada (decision 9 aceptada). Detener el
  *   servicio si retira su notificacion persistente, que es justo lo que se quiere al Pausar/Reiniciar/
  *   cambiar de paso/salir.
+ * - [dismissFinishNotification] es el comando **aparte** que si retira el aviso de fin ya mostrado
+ *   (`Cancel(1001)`); lo llama **solo** la salida explicita del Modo cocina, nunca el desmontaje de la
+ *   composicion (una rotacion no debe borrar el aviso).
  * - **Degradacion silenciosa** (ADR 0005): todo va envuelto en `runCatching`; un `SecurityException`,
  *   un `AlarmManager` ausente o un paquete sin launch intent no pueden tumbar el modo cocina.
  */
@@ -50,6 +54,19 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
             is CookingAlarmCommand.Schedule -> schedule(command.triggerAtMillis)
             CookingAlarmCommand.Cancel -> cancel()
             CookingAlarmCommand.None -> Unit
+        }
+    }
+
+    /**
+     * Retira de la bandeja el aviso de fin ya mostrado (id fijo
+     * [CookingNotifications.NOTIFICATION_ID]) y **no** toca la alarma pendiente ni el servicio. Es
+     * **independiente** de [cancel] (decision 9 del ADR 0007: `Cancel` no retira notificaciones
+     * mostradas) y lo llama **solo** la salida explicita del Modo cocina; **nunca lanza**.
+     */
+    override fun dismissFinishNotification() {
+        runCatching {
+            NotificationManagerCompat.from(appContext)
+                .cancel(CookingNotifications.NOTIFICATION_ID)
         }
     }
 

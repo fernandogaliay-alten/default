@@ -11,8 +11,10 @@ import org.junit.Test
 
 /**
  * Sesion del Modo cocina: proyeccion del **instante de fin** y reanudacion del paso
- * (`docs/specs/cooking-timer-foreground-service.md`, escenarios 1, 3, 4 y 6). Es la verificacion
- * **exigida** por la entrada de `feature_list.json`.
+ * (`docs/specs/cooking-timer-foreground-service.md`, escenarios 1, 3, 4 y 6; y
+ * `docs/specs/cooking-timer-finish-notification.md`, escenarios 4 y 5). Es la verificacion
+ * **exigida** por la entrada de `feature_list.json` de la feature del servicio y, en parte, de la del
+ * aviso duradero.
  *
  * Logica **pura** sin Compose ni Android y **sin leer el reloj**: el instante entra siempre por
  * parametro (`nowMillis`), nunca del sistema. Mismo patron que `CookingAlarmPolicyTest`.
@@ -171,9 +173,10 @@ class CookingSessionTest {
     }
 
     @Test
-    fun terminado_no_proyecta_fin_y_la_politica_cancela_y_despues_no_hace_nada() {
-        // "Aviso una sola vez" (Scenario 3): al llegar a cero la sesion deja de proyectar fin, la
-        // politica cancela (no reprograma) y los ticks posteriores devuelven `None`.
+    fun terminado_no_proyecta_fin_y_la_politica_deja_la_alarma_viva_sin_reprogramar() {
+        // "Aviso duradero" (Scenario 1 y 3): al llegar a cero la sesion deja de proyectar fin, la
+        // politica **no** cancela (el aviso de fin lo publica la alarma, que se deja viva) y los ticks
+        // posteriores devuelven `None`.
         val enMarcha = CookingTimerState.of(10).start()
         val terminado = enMarcha.tick(600_000L)
         val sesionTerminada = CookingSession.of(modoCon(terminado), receta(), nowMillis = 1_600_000L)
@@ -181,13 +184,55 @@ class CookingSessionTest {
         assertNull(sesionTerminada.endAtElapsedMillis)
         assertNull(sesionTerminada.projectedEndMillis(1_600_000L))
         assertEquals(
-            CookingAlarmCommand.Cancel,
+            CookingAlarmCommand.None,
             CookingAlarmPolicy.onTimerChange(enMarcha, terminado, nowMillis = 1_600_000L),
         )
         assertEquals(
             "Los ticks de un Terminado no reprograman nada",
             CookingAlarmCommand.None,
             CookingAlarmPolicy.onTimerChange(terminado, terminado.tick(1_000L), nowMillis = 1_601_000L),
+        )
+    }
+
+    @Test
+    fun reabre_desde_la_notificacion_en_marcha_pausado_y_terminado_pero_no_inactivo() {
+        val inactivo = CookingTimerState.of(10)
+        val enMarcha = inactivo.start()
+        val pausado = inactivo.start().pause()
+        val terminado = inactivo.start().tick(600_000L)
+
+        assertTrue(CookingSession.of(modoCon(enMarcha), receta(), 1_000L).reopensFromNotification)
+        assertTrue(CookingSession.of(modoCon(pausado), receta(), 1_000L).reopensFromNotification)
+        assertTrue(
+            "Terminado tambien reabre el paso desde el aviso de fin",
+            CookingSession.of(modoCon(terminado), receta(), 1_000L).reopensFromNotification,
+        )
+        assertFalse(
+            "Inactivo no tiene nada que reabrir",
+            CookingSession.of(modoCon(inactivo), receta(), 1_000L).reopensFromNotification,
+        )
+    }
+
+    @Test
+    fun una_sesion_terminada_reabre_en_el_paso_con_cero_y_sin_rearmar() {
+        val terminado = CookingTimerState.of(10).start().tick(600_000L)
+        val sesion = CookingSession.of(modoCon(terminado), receta(), nowMillis = 1_600_000L)
+
+        val reabierta = sesion.resumedMode(nowMillis = 1_640_000L)
+
+        assertTrue(sesion.reopensFromNotification)
+        assertEquals(CookingTimerStatus.FINISHED, reabierta.timer.status)
+        assertEquals(0L, reabierta.timer.remainingMillis)
+        assertEquals("Sin instante de fin proyectado no hay nada que rearrancar", null, sesion.endAtElapsedMillis)
+        // La reanudacion de una sesion Terminada no rearma alarma ni servicio: `IDLE -> FINISHED` no
+        // programa nada.
+        assertEquals(
+            CookingAlarmCommand.None,
+            CookingAlarmPolicy.onTimerChange(
+                previous = sesion.timer.copy(status = CookingTimerStatus.IDLE),
+                next = reabierta.timer,
+                nowMillis = 1_640_000L,
+            ),
         )
     }
 
@@ -199,7 +244,8 @@ class CookingSessionTest {
         val reanudada = sesion.resumedMode(nowMillis = 1_600_000L)
 
         assertEquals(CookingTimerStatus.FINISHED, reanudada.timer.status)
-        assertFalse("Terminado no es resumible por si solo", sesion.isResumable)
+        assertFalse("Terminado no es `isResumable` por si solo (semantica aceptada)", sesion.isResumable)
+        assertTrue("Pero si reabre desde la notificacion", sesion.reopensFromNotification)
     }
 
     @Test

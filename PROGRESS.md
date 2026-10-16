@@ -121,6 +121,43 @@
   Compose/Activity se verifica por inspección, coherente con `AGENTS.md`), todos como follow-up
   (aclaración de spec y/o feature correctiva), sin bloquear. Detalle en
   `docs/validations/cooking-timer-foreground-service.md`.
+- Correctiva **`cooking-timer-finish-notification`** implementada y autoverificada (**`passing`**) por el
+  subagente `implementer` (skill `feature-implementer`) en la **sesión 138** y **`accepted`** en la
+  **sesión 139** (validación independiente del subagente `validator`, contexto limpio, veredicto
+  **`accept`**; ver `docs/validations/cooking-timer-finish-notification.md`), en su worktree
+  `cooking-timer-finish-notification` (rama `feature/cooking-timer-finish-notification`; **sin**
+  commit/push/PR: el commit local lo crea el orquestador de `feature-flow` y publica `github-flow`).
+  Cierra la carrera que hacía que el aviso "¡Listo!" (id `1001`) **no siempre llegara** con la app en
+  primer plano: `CookingAlarmPolicy.onTimerChange` vuelve a `None` (en vez de `Cancel`) al **entrar en
+  Terminado** (el `tick` que cruza el cero ya no cancela la alarma, único productor del aviso; el
+  servicio se para **solo** con su `delay`), una sesión persistida en **Terminado** también reabre el paso
+  desde el aviso (`CookingSession.reopensFromNotification = isResumable || Terminado`, consumido por
+  `MainShell`; `isResumable` intacto), y la salida explícita ("Atrás"/"Terminar") **retira** la `1001` con
+  el comando **aparte** de la costura `CookingAlarm.dismissFinishNotification` (implementado en
+  `AndroidCookingAlarm`; **nunca** en el `onDispose`, así una rotación no lo borra). Gate: `bash init.sh`
+  exit 0, **113 suites / 882 tests / 0 fallos / 0 errores / 0 saltados** (baseline en `HEAD d75c7a5`:
+  `git grep -c '@Test'` = 113 ficheros / 874 anotaciones ⇒ delta **+8 tests / 0 suites nuevas**:
+  `CookingAlarmPolicyTest` 15→16, `CookingSessionTest` 14→16, `AndroidCookingAlarmTest` 10→13 y
+  `CookingNotificationsTest` 15→17), lint **0 errores, 13 warnings preexistentes, 0 bajo `app/src`**. Docs
+  durables: ADR 0007/0008 (notas de revisión), nota de vigencia en
+  `docs/specs/cooking-timer-foreground-service.md` (escenarios 2/3/4/6/8), `docs/technical-discovery.md`,
+  `docs/domain-model.md` y `docs/risks-and-open-questions.md` (filas + dos riesgos nuevos). Queda la
+  **prueba manual** de la persona en el emulador (el aviso duradero en primer plano y minimizado, el toque
+  en Terminado, la limpieza al salir, la rotación que **no** lo borra, el heads-up sin duplicado y sin
+  permiso sin crash), no automatizable desde WSL. **Validación independiente `accept` (sesión 139)**: el
+  validador no modificó nada (17 entradas de `git status` idénticas antes y después) y reprodujo la evidencia
+  con tirada propia (`bash init.sh` exit 0 con `UP-TO-DATE` ⇒ forzado: `testDebugUnitTest --rerun-tasks`
+  3m59s y `lint --rerun-tasks` 3m15s, ambos BUILD SUCCESSFUL; XML frescos **113 suites / 882 tests / 0
+  fallos / 0 errores / 0 saltados**; SARIF **13 resultados / 0 errores, 0 bajo `app/src`**; baseline en
+  `HEAD d75c7a5` = 113 ficheros / 874 anotaciones ⇒ delta **+8 tests / 0 suites nuevas**), confirmó los
+  escenarios 1-6, los 10 items del Validator Checklist, la pureza y el confinamiento Android, la `1001`
+  descartable/no `ongoing` sin datos de receta, la limpieza solo en la salida explícita (`onDispose` sin
+  diff) y la disciplina de alcance. Sin hallazgos Critical/High/Medium; **3 Low informativos no
+  bloqueantes** (L1: la `1001` obsoleta tras Reiniciar desde Terminado o al avanzar de paso sigue sin
+  retirarse —alcance exacto de P4, ya documentado como cosmético en el ADR 0007—; L2: el test de `dismiss`
+  combina permiso denegado y ausencia de notificación mostrada; L3: la frase "el adaptador NO cancela la
+  alarma al llegar a cero" se acredita de forma transitiva), todos como follow-up, sin bloquear. Detalle en
+  `docs/validations/cooking-timer-finish-notification.md`.
 - Alta (2026-10-15): dos features nuevas pedidas por la persona, ambas `not_started` y sin spec todavía.
   **`app-launcher-icon`** (`area: ui`, depende de `design-tokens-and-theme`): la app usa hoy el icono de
   plantilla de Android Studio; la feature añade un icono propio (adaptativo cuadrado/redondo + monocromo,
@@ -6729,3 +6766,108 @@
   la cuenta atrás si el sistema mata el proceso o el usuario quita la tarea de recientes (el "¡Listo!"
   sigue llegando y el toque devuelve al paso) y el reinicio del dispositivo (no sobrevive nada); un
   defecto de acabado se corrige con una **feature correctiva**.
+
+### Sesión 138 (implementer, `cooking-timer-finish-notification`)
+
+- Objetivo: implementar **una** feature ya planificada (skill `feature-implementer`) desde
+  `docs/specs/cooking-timer-finish-notification.md`, dejarla **`passing`** con autoverificación real y el
+  repositorio listo para el validador independiente. Worktree `cooking-timer-finish-notification` (rama
+  `feature/cooking-timer-finish-notification`, partiendo del commit `d75c7a5`); dependencia
+  `cooking-timer-foreground-service` (`accepted`). **Sin** commit/push/PR.
+- Qué cambió (P1+P3+P4+P2, Opción A de la spec):
+  - **P1** `ui/cooking/CookingAlarm.kt`: en `CookingAlarmPolicy.onTimerChange` se añade, **antes** de la
+    regla genérica `previous != next -> Cancel`, la arista `next.isFinished && previous != next -> None`,
+    de modo que el `tick` que cruza el cero **no** cancela la alarma (el servicio se para solo con su
+    `delay`). KDoc de `CookingAlarmCommand.Cancel` y de las reglas actualizados (ya sin "llegar a cero";
+    se documenta la carrera con `AlarmManager` y que `FINISHED -> IDLE` sigue cancelando).
+  - **P3** `ui/cooking/CookingSession.kt`: predicado nuevo
+    `reopensFromNotification = isResumable || timer.status == FINISHED` (En marcha/Pausado/Terminado;
+    Inactivo fuera), con KDoc y **sin** tocar `isResumable`; `ui/MainShell.kt` lo consume en el gate del
+    arranque por `EXTRA_RESUME_COOKING` (KDoc actualizada). Una sesión persistida en Terminado reabre el
+    paso con `remaining = 0` y **no** rearma alarma ni servicio.
+  - **P4** `ui/cooking/CookingAlarm.kt`: método nuevo `dismissFinishNotification()` en la costura
+    (default no-op en `NoOpCookingAlarm`), implementado en `data/cooking/AndroidCookingAlarm.kt` con
+    `NotificationManagerCompat.from(appContext).cancel(1001)` en `runCatching`; lo llama **solo**
+    `CookingModeScreen` en el `LaunchedEffect(exiting)` (antes de `session.clear()`/`onClose()`), **nunca**
+    el `onDispose` (una rotación no borra el aviso). Sigue siendo distinto de `Cancel` (decisión 9 del
+    ADR 0007: `Cancel` no retira notificaciones mostradas).
+  - **P2** `data/cooking/CookingNotifications.kt` **sin cambios** (ya era `autoCancel`, no `ongoing`); se
+    añade la aserción de que la `1001` **no** lleva `FLAG_ONGOING_EVENT` (y que la `1000` sí).
+- Tests: `CookingAlarmPolicyTest` 15→16 (cruce del cero → `None`; corrida completa con **1** `Schedule` y
+  **0** `Cancel`; no-regresión `FINISHED -> IDLE` → `Cancel`; no-op del comando de limpieza),
+  `CookingSessionTest` 14→16 (predicado por estado; reapertura de Terminado con `remaining = 0`), 
+  `AndroidCookingAlarmTest` 10→13 (retira la `1001`; idempotente/sin permiso no lanza; `Cancel` **no** la
+  retira) y `CookingNotificationsTest` 15→17 (la `1001` no es `ongoing`).
+- Verificación (evidencia real de esta sesión):
+  - Gate `bash init.sh` **exit 0** (test + lint vía `scripts/gradle.sh`; `init.sh` **sin cambios** y sin
+    procesos largos).
+  - Tirada forzada `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` = **BUILD SUCCESSFUL 5m43s**
+    (34/34 tareas); parseo propio de `app/build/test-results/testDebugUnitTest/TEST-*.xml` =
+    **113 suites / 882 tests / 0 fallos / 0 errores / 0 saltados**; baseline re-derivada en `HEAD d75c7a5`
+    (`git grep -c '@Test' HEAD -- app/src/test` = 113 ficheros / 874 anotaciones) ⇒ delta **+8 tests /
+    0 suites nuevas**.
+  - Tirada focal `bash scripts/gradle.sh testDebugUnitTest --tests "com.sazon.app.ui.cooking.*"
+    --tests "com.sazon.app.data.cooking.*"` = **BUILD SUCCESSFUL** (12 suites / 135 tests, 0 fallos).
+  - Lint: `bash scripts/gradle.sh lint --rerun-tasks` = **BUILD SUCCESSFUL 4m03s** (30/30 tareas); SARIF
+    `app/build/reports/lint-results-debug.sarif` = **13 resultados / 0 errores** (GradleDependency 7,
+    NewerVersionAvailable 3, AndroidGradlePluginVersion 2, OldTargetApi 1) y **0 bajo `app/src`**.
+  - Inspecciones: `CookingAlarm.kt`/`CookingSession.kt` con **0** imports `android.*`/`androidx.*` y **0**
+    lecturas del reloj; `dismissFinishNotification` con default no-op y confinado a `data/cooking`;
+    `onDispose` de `CookingModeScreen` **sin diff**; `git status`/`git diff --stat` con **solo** los 9
+    ficheros previstos de `app/src` + 6 docs durables + `feature_list.json` (sin tocar
+    `CookingTimerService`, `CookingAlarmReceiver`, el manifiesto, build/lockfile, `init.sh`, `scripts/**`,
+    `domain/**`, `ui/theme/**` ni `docs/design/**`; sin dependencias ni permisos nuevos).
+- Docs durables: ADR **0007** (nota en la decisión 9, consecuencia del disparo único y matiz de la
+  "notificación obsoleta"), ADR **0008** (notas en las decisiones 7 y 12, alternativa 1 revisada y
+  consecuencia corregida), **nota de vigencia** en los escenarios 2/3/4/6/8 de
+  `docs/specs/cooking-timer-foreground-service.md` (sin reescribir la evidencia histórica),
+  `docs/technical-discovery.md` (párrafo del aviso y párrafo de la cuenta atrás), `docs/domain-model.md`
+  (Terminado **sí** reabre) y `docs/risks-and-open-questions.md` (fila del aviso ampliada, fila del toque
+  cerrada del todo —hallazgo Low L1— y dos filas nuevas: heads-up en primer plano sin duplicado y rotación
+  que cierra el Modo cocina, preexistente y fuera de alcance).
+- Estado: `feature_list.json` con `cooking-timer-finish-notification` en **`passing`** y 8 entradas de
+  evidencia (el rango máximo que puede dejar el implementer); pendiente la **validación independiente**
+  (`feature-validator`) y, después, el commit/push/PR del orquestador.
+- Riesgo o incógnita abierta: prueba **manual** de la persona en el emulador (con la app en primer plano,
+  al llegar a cero el aviso **queda** en la bandeja; minimizada, lo mismo; tocar el aviso vuelve al paso
+  aunque el temporizador ya esté en Terminado; "Atrás"/"Terminar" limpian el aviso; una **rotación** no lo
+  borra; descartar y "borrar todo" sin crash; sin permiso, nada se rompe), no automatizable según
+  `AGENTS.md`. Trade-off aceptado y documentado: con la app en primer plano el heads-up del canal de
+  importancia alta puede sonar/vibrar **además** del "¡Listo!" en pantalla, **sin duplicado** (mismo id
+  `1001`, disparo único). Sigue fuera de alcance (feature correctiva si molesta): la rotación cierra el
+  Modo cocina (preexistente).
+
+### Sesión 139 (validator + orquestador `feature-flow`, `cooking-timer-finish-notification`)
+
+- Objetivo: **validación independiente** (`feature-validator`, subagente `validator`, contexto limpio) de la
+  feature implementada en la sesión 138 y, con el veredicto **`accept`**, persistir la aceptación y crear el
+  **commit local**. Worktree `cooking-timer-finish-notification` (rama
+  `feature/cooking-timer-finish-notification`, `HEAD = d75c7a5`). **Sin push y sin PR** (publica
+  `github-flow`).
+- Veredicto: **`accept`**, sin hallazgos Critical/High/Medium; **3 Low informativos no bloqueantes** y sin
+  brief de reparación (no hubo `revise`).
+  - Reprodujo la evidencia por su cuenta: `bash init.sh` **exit 0** (con `testDebugUnitTest`/`lintDebug`
+    `UP-TO-DATE`, así que lo forzó); `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` **3m59s** y
+    `bash scripts/gradle.sh lint --rerun-tasks` **3m15s**, ambos **BUILD SUCCESSFUL**; XML frescos **113
+    suites / 882 tests / 0 fallos / 0 errores / 0 saltados**; SARIF **13 resultados / 0 errores, 0 bajo
+    `app/src`**; baseline en `HEAD d75c7a5` = 113 ficheros / 874 anotaciones ⇒ delta **+8 tests / 0 suites
+    nuevas** (`CookingAlarmPolicyTest` 15→16, `CookingSessionTest` 14→16, `AndroidCookingAlarmTest` 10→13,
+    `CookingNotificationsTest` 15→17).
+  - Confirmó los escenarios 1-6, los **10/10** items del Validator Checklist, la pureza de
+    `CookingAlarm.kt`/`CookingSession.kt` (0 imports `android.*`/`androidx.*`, 0 lecturas del reloj), el
+    confinamiento Android, la `1001` descartable/no `ongoing` sin datos de receta, la limpieza solo en la
+    salida explícita (`onDispose` **sin diff**), y la disciplina de alcance (nada fuera de los 9 ficheros de
+    `app/src` previstos + docs/estado; `CookingTimerService` sin diff; sin dependencias/permisos nuevos).
+  - Low informativos (follow-up, no bloquean): L1 la `1001` obsoleta tras Reiniciar desde Terminado o al
+    avanzar de paso sigue sin retirarse (alcance exacto de P4, ya documentado como cosmético en el ADR
+    0007); L2 el test de `dismiss` combina permiso denegado y ausencia de notificación mostrada; L3 la frase
+    "el adaptador NO cancela la alarma al llegar a cero" se acredita de forma transitiva.
+  - Detalle: `docs/validations/cooking-timer-finish-notification.md` (**nuevo**).
+- Persistencia por el orquestador: `feature_list.json` pasa de `passing` a **`accepted`** (9 entradas de
+  evidencia, incluida la validación independiente); `PROGRESS.md` actualizado (bullets de estado y esta
+  sesión); commit local **`feat: complete cooking-timer-finish-notification`** en
+  `feature/cooking-timer-finish-notification`. **Sin push y sin PR.**
+- Estado: la feature queda **`accepted`**; WIP = 0 en este worktree. Pendiente **no bloqueante** para la
+  persona (emulador): el aviso duradero en primer plano y minimizado, el toque en Terminado, la limpieza con
+  "Atrás"/"Terminar", la rotación que **no** lo borra, el heads-up sin duplicado (mismo id `1001`) y sin
+  permiso sin crash; un defecto de acabado se corrige con una **feature correctiva**.

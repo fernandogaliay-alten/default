@@ -63,6 +63,16 @@ Restricciones del repositorio que condicionan la decisión:
 9. **`Cancel` cancela solo la alarma pendiente, no la notificación ya mostrada.** Si la cancelación
    retirara también la notificación, el `Cancel` de `RUNNING → FINISHED` (cuando el `tick` de la app
    llega a cero en primer plano) borraría el aviso recién disparado por el receptor.
+
+   > **Revisada (`cooking-timer-finish-notification`, 2026-10-16):** se comprobó en el emulador que el
+   > aviso de fin **no siempre llegaba** con la app en primer plano, por una carrera entre el `tick` de
+   > la composición y el disparo de `AlarmManager`: el `Cancel` de `RUNNING → FINISHED` cancelaba la
+   > alarma pendiente (y paraba el servicio) antes de que pudiera publicar. La arista `RUNNING → FINISHED`
+   > **ya no emite `Cancel`** (devuelve `None`: la alarma es el **único** productor del aviso y el
+   > servicio se para solo con su `delay`). `Cancel` sigue con la semántica de esta decisión —**no**
+   > retira notificaciones ya mostradas— y la limpieza de la `1001` en la salida explícita es un comando
+   > **aparte** de la costura (`CookingAlarm.dismissFinishNotification`), que **no** se emite en el
+   > `onDispose`.
 10. **Sin persistencia**: el instante de fin vive en la alarma del sistema; el estado del Modo cocina
     sigue sin persistirse (Non-Goal). "Reanudar donde lo dejé" es otra feature.
 11. **El permiso se pide una vez por proceso al arrancar** (`MainActivity.onCreate`, con
@@ -141,6 +151,12 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
   idempotente y la salida la cubre también el `DisposableEffect` del `onDispose`.
 - **Disparo único** (escenario 5): `RUNNING → FINISHED` devuelve `Cancel` (no reprograma), los `tick`
   posteriores `None` y el id fijo reemplaza en lugar de duplicar.
+  > **Revisada (`cooking-timer-finish-notification`, 2026-10-16):** `RUNNING → FINISHED` ya **no** emite
+  > `Cancel`, sino `None`: cancelar ahí abría una carrera con el disparo de `AlarmManager` y el aviso
+  > podía no publicarse. La alarma sigue viva y publica una sola vez (id fijo; los `tick` posteriores
+  > siguen dando `None`). Tocar el aviso también vuelve al paso con el temporizador ya en Terminado, y
+  > "Atrás"/"Terminar" retiran la `1001` con `dismissFinishNotification`
+  > (`docs/specs/cooking-timer-finish-notification.md`).
 - **Permiso denegado = sin aviso, sin crash** (escenario 6): `notify` comprueba permiso y
   `areNotificationsEnabled()` antes de publicar; el Modo cocina queda intacto. Un paso sin duración nunca
   programa (escenario 7).
@@ -159,6 +175,10 @@ ni el "¡Listo!" en pantalla, ni `ui/theme/**`, ni `domain/**`, ni el resto de `
 - **Notificación obsoleta en la bandeja**: como `Cancel` no la retira, tras "Reiniciar" puede quedar el
   aviso ya mostrado en la bandeja (se reemplaza solo con el mismo id en el siguiente disparo). Cosmético,
   corregible con una feature correctiva.
+  > **Matizada (`cooking-timer-finish-notification`, 2026-10-16):** "Atrás"/"Terminar" sí retiran la
+  > `1001` mediante `CookingAlarm.dismissFinishNotification` (comando aparte, **no** en el `onDispose`);
+  > una rotación o un `Reiniciar` siguen sin retirarla (el aviso ya mostrado aguanta hasta que el usuario
+  > lo descarte o salga del modo).
 - **Canal ya creado con otros ajustes**: Android **no** actualiza los atributos de un canal existente;
   cambiarlos exige cambiar `CHANNEL_ID`. No aplica a un canal nuevo.
 - **Acabado (tono, patrón de vibración, aspecto en la pantalla de bloqueo)**: lo revisa la persona en el

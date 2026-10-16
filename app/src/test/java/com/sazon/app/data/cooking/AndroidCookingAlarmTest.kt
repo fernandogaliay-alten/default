@@ -1,11 +1,14 @@
 package com.sazon.app.data.cooking
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.Application
+import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.ui.cooking.CookingAlarmCommand
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -175,4 +178,60 @@ class AndroidCookingAlarmTest {
 
         assertNull("Los ticks no tocan el servicio", shadowOf(application).peekNextStartedService())
     }
+
+    // --- Limpieza del aviso de fin al salir del modo (feature `cooking-timer-finish-notification`,
+    // escenarios 5 y 6): `dismissFinishNotification` retira la `1001` ya mostrada, es idempotente y sin
+    // permiso no lanza; `Cancel` **no** la retira (guarda de la decision 9 del ADR 0007). ---
+
+    @Test
+    fun dismiss_finish_notification_retira_la_1001_ya_mostrada() {
+        postFinishNotification()
+        assertNotNull(
+            "El aviso de fin esta en la bandeja antes de limpiarlo",
+            notifications().getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+
+        AndroidCookingAlarm(context).dismissFinishNotification()
+
+        assertNull(
+            "La limpieza al salir (Atras/Terminar) retira el aviso de fin",
+            notifications().getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+    }
+
+    @Test
+    fun dismiss_finish_notification_es_idempotente_y_sin_permiso_no_lanza() {
+        shadowOf(application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        val alarm = AndroidCookingAlarm(context)
+
+        // Sin aviso mostrado y sin permiso: no lanza ni deja nada.
+        alarm.dismissFinishNotification()
+        alarm.dismissFinishNotification()
+
+        assertNull(notifications().getNotification(CookingNotifications.NOTIFICATION_ID))
+    }
+
+    @Test
+    fun cancelar_no_retira_la_1001_ya_mostrada_guarda_decision_9() {
+        postFinishNotification()
+        val alarm = AndroidCookingAlarm(context)
+
+        alarm.apply(CookingAlarmCommand.Cancel)
+
+        assertNotNull(
+            "Decision 9 del ADR 0007: `Cancel` no retira una notificacion ya mostrada; solo la limpia " +
+                "`dismissFinishNotification` en la salida explicita",
+            notifications().getNotification(CookingNotifications.NOTIFICATION_ID),
+        )
+    }
+
+    /** Publica el aviso de fin (id `1001`) con el permiso concedido, como haria el receptor. */
+    private fun postFinishNotification() {
+        shadowOf(application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        notifications().setNotificationsEnabled(true)
+        CookingNotifications.notify(context, contentIntent = null)
+    }
+
+    private fun notifications(): org.robolectric.shadows.ShadowNotificationManager =
+        shadowOf(context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
 }
