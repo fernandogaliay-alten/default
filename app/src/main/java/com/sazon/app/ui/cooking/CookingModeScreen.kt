@@ -124,6 +124,17 @@ private const val COMPLETED_ALPHA = 0.45f
  * aceptado (`exiting` -> `session.clear()` -> `onClose()` -> `onDispose`). Abrir/cerrar el dialogo no toca
  * la sesion, la alarma/servicio ni el reloj: la cuenta atras sigue corriendo detras y "Seguir cocinando" no
  * cambia nada. Sin nada que perder, la salida es directa.
+ *
+ * **Confirmacion al cambiar de paso** (feature `cooking-mode-step-change-confirmation`): "Siguiente" y
+ * "Anterior" de la barra inferior pasan por la decision **pura** [CookingStepChangePolicy], que pide
+ * confirmacion **solo** si el temporizador del paso actual esta **En marcha o Pausado** (lo unico que se
+ * pierde: `next`/`previous` lo reemplazan por el del paso nuevo) y **solo** si la direccion cambia de
+ * paso de verdad (el marcado persiste, asi que `completedOrders` **no** cuenta aqui). Con confirmacion se
+ * muestra [CookingStepChangeDialog]; "Cambiar de paso" ejecuta la navegacion aceptada
+ * (`state.next`/`state.previous`) y "Seguir en este paso" (o el descarte) solo cierra el dialogo: el paso,
+ * el tiempo, el marcado, la sesion y la alarma quedan intactos, con la cuenta atras viva detras. Sin nada
+ * que perder el cambio es directo. El **gesto/tecla atras del sistema** con este dialogo abierto lo
+ * descarta (rama nueva de [BackHandler], antes de la de salida), sin salir del modo.
  */
 @Composable
 fun CookingModeScreen(
@@ -154,6 +165,11 @@ fun CookingModeScreen(
     // decision **pura** [CookingExitPolicy] dice que hay algo que perder. Abrir/cerrar el dialogo **no**
     // toca `exiting`, la sesion, la alarma ni el reloj: solo "Salir" activa el camino de salida de abajo.
     var confirmExit by remember { mutableStateOf(false) }
+    // Confirmacion de cambio de paso visible (feature `cooking-mode-step-change-confirmation`): guarda la
+    // **direccion** pendiente (enum, estado estable para Compose) y se abre solo cuando la decision
+    // **pura** [CookingStepChangePolicy] dice que el temporizador En marcha/Pausado se perderia. Es
+    // `remember` (no `rememberSaveable`), como `confirmExit`: al rotar se pierde, limitacion aceptada.
+    var pendingStepChange by remember { mutableStateOf<CookingStepChangePoint?>(null) }
 
     // Reanudacion de una sesion En marcha (el proceso murio a mitad): la cuenta atras ya se recalculo
     // desde el instante de fin, pero la alarma y el servicio murieron con el proceso, asi que se
@@ -207,15 +223,36 @@ fun CookingModeScreen(
         }
     }
 
-    // Gesto/tecla atras del sistema: se intercepta **solo mientras el Modo cocina esta compuesto** (fuera
-    // del modo, la app no gana pila de navegacion y el atras sigue como hoy). Con el dialogo abierto, el
-    // atras lo **descarta** (equivale a "Seguir cocinando": no sale, no reabre y no cambia nada); con el
-    // dialogo cerrado, enruta por el mismo gate que "Atras".
-    BackHandler {
-        if (confirmExit) {
-            confirmExit = false
+    // Cambio de paso ("Siguiente"/"Anterior"): la decision **pura** [CookingStepChangePolicy] pide
+    // confirmacion solo con el temporizador del paso actual En marcha/Pausado y solo si la direccion
+    // cambia de paso de verdad; sin nada que perder se ejecuta la navegacion aceptada sin friccion.
+    // Confirmar tambien acaba en `state.next`/`state.previous` (abajo), asi que la regla aceptada de
+    // reinicio del temporizador al paso nuevo queda **intacta**.
+    val requestPrevious: () -> Unit = {
+        if (CookingStepChangePolicy.requiresConfirmation(state, CookingStepChangePoint.PREVIOUS)) {
+            pendingStepChange = CookingStepChangePoint.PREVIOUS
         } else {
-            requestBack()
+            state = state.previous(recipe.steps)
+        }
+    }
+    val requestNext: () -> Unit = {
+        if (CookingStepChangePolicy.requiresConfirmation(state, CookingStepChangePoint.NEXT)) {
+            pendingStepChange = CookingStepChangePoint.NEXT
+        } else {
+            state = state.next(recipe.steps)
+        }
+    }
+
+    // Gesto/tecla atras del sistema: se intercepta **solo mientras el Modo cocina esta compuesto** (fuera
+    // del modo, la app no gana pila de navegacion y el atras sigue como hoy). Con el dialogo de cambio de
+    // paso abierto, el atras lo **descarta** (equivale a "Seguir en este paso": no cambia de paso, no sale
+    // del modo y no reabre). Con el dialogo de salida abierto, lo descarta igual. Sin ningun dialogo,
+    // enruta por el mismo gate que "Atras".
+    BackHandler {
+        when {
+            pendingStepChange != null -> pendingStepChange = null
+            confirmExit -> confirmExit = false
+            else -> requestBack()
         }
     }
 
@@ -269,8 +306,8 @@ fun CookingModeScreen(
                 isEmpty = state.isEmpty,
                 isFirstStep = state.isFirstStep,
                 isLastStep = state.isLastStep,
-                onPrevious = { state = state.previous(recipe.steps) },
-                onNext = { state = state.next(recipe.steps) },
+                onPrevious = requestPrevious,
+                onNext = requestNext,
                 onClose = requestFinish,
             )
         },
@@ -339,6 +376,57 @@ fun CookingModeScreen(
             onDismiss = { confirmExit = false },
         )
     }
+
+    // Confirmacion de cambio de paso: "Cambiar de paso" ejecuta la navegacion **aceptada**
+    // (`state.next`/`state.previous`: avanza/retrocede y reinicia el temporizador al del paso nuevo) y
+    // "Seguir en este paso" (o el descarte) solo cierra el dialogo, sin tocar el paso, el tiempo, el
+    // marcado, la sesion ni la alarma. Abrir/cerrar el dialogo no fija `exiting` ni pausa el reloj: la
+    // cuenta atras sigue corriendo detras.
+    pendingStepChange?.let { point ->
+        CookingStepChangeDialog(
+            onConfirm = {
+                pendingStepChange = null
+                state = when (point) {
+                    CookingStepChangePoint.NEXT -> state.next(recipe.steps)
+                    CookingStepChangePoint.PREVIOUS -> state.previous(recipe.steps)
+                }
+            },
+            onDismiss = { pendingStepChange = null },
+        )
+    }
+}
+
+/**
+ * Dialogo de confirmacion de **cambio de paso** del Modo cocina: `AlertDialog` de Material 3 con el
+ * microcopy de [CookingStepChangeCopy] y los **roles** de `SazonTheme` (sin tokens, formas ni colores
+ * nuevos; `DESIGN.md` no cubre dialogos). Una sola accion principal ("Cambiar de paso", en `primary`) y
+ * el descarte "Seguir en este paso"; `colorScheme.error` **no** se usa (no hay estilo destructivo).
+ */
+@Composable
+private fun CookingStepChangeDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = CookingStepChangeCopy.TITLE) },
+        text = { Text(text = CookingStepChangeCopy.MESSAGE) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(text = CookingStepChangeCopy.CONFIRM)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = CookingStepChangeCopy.DISMISS)
+            }
+        },
+    )
 }
 
 /**
