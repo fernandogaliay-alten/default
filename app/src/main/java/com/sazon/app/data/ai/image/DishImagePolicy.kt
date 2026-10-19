@@ -100,6 +100,27 @@ object DishImagePolicy {
         statusCode in EDIT_FALLBACK_STATUSES
 
     /**
+     * Clasificacion **pura y total** del estado HTTP de una llamada de imagen a un
+     * [DishImageCallReason] (correctiva `dish-image-call-diagnostics`): un unico sitio de politica,
+     * testeable en JVM sin red (mismo patron que [editFailureRequiresTextFallback]).
+     *
+     * - `null` (sin respuesta) -> [DishImageCallReason.TRANSPORT].
+     * - `402`/`429` -> [DishImageCallReason.CUOTA]; `401`/`403` -> [DishImageCallReason.AUTH].
+     * - `5xx` -> [DishImageCallReason.SERVER].
+     * - `2xx` -> [DishImageCallReason.OK] si [deliveredBytes] y [DishImageCallReason.INVALID] si no.
+     * - Cualquier otro (`400`/`404`/`408`/`3xx`, ...) -> [DishImageCallReason.HTTP_ERROR] (residual,
+     *   para que la funcion sea **total**: ningun estado queda sin motivo).
+     */
+    fun reasonFor(httpStatus: Int?, deliveredBytes: Boolean): DishImageCallReason = when {
+        httpStatus == null -> DishImageCallReason.TRANSPORT
+        httpStatus == 402 || httpStatus == 429 -> DishImageCallReason.CUOTA
+        httpStatus == 401 || httpStatus == 403 -> DishImageCallReason.AUTH
+        httpStatus in 500..599 -> DishImageCallReason.SERVER
+        httpStatus in 200..299 -> if (deliveredBytes) DishImageCallReason.OK else DishImageCallReason.INVALID
+        else -> DishImageCallReason.HTTP_ERROR
+    }
+
+    /**
      * Geometria de la reduccion local: si [width] supera [TARGET_WIDTH_PX] devuelve
      * `[TARGET_WIDTH_PX, alto proporcional]` (minimo 1 px); si no, devuelve el tamano original sin
      * agrandar. Pura (sin Android) y testeable en JVM.

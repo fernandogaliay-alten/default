@@ -542,7 +542,12 @@ Decisiones cerradas por esta spec (el implementador no las reabre):
    reportar**, no una excusa para debilitar la verificación.
 7. **Sin diagnostics ni `Log` en esta fase.** El puerto no tiene tipo de evento, no hay consumidor y la
    clave no debe aparecer en logs: la opción más simple y segura es no registrar nada (la fase 4, si lo
-   necesita, añade su propia costura).
+   necesita, añade su propia costura). **Atendido después por la correctiva
+   `dish-image-call-diagnostics`** (2026-10-16): el adaptador gana la costura **aditiva** `onEvent`
+   (`DishImageCallEvent`: llamada, motivo clasificado, estado HTTP, duración y bytes entregados) y
+   `MainActivity` la cablea a `Log.d("SazonDishImage", …)`; nunca lleva clave, `Authorization`, `prompt`
+   ni cuerpo, y el contrato de esta spec (`null` sin excepción, `MAX_ATTEMPTS = 1`, respaldo por
+   estado) **no** cambia.
 8. **Sin consumidor ni cableado.** Nadie llama al puerto (lo hacen las fases 3-4) y no se toca
    `MainActivity`/`BuildConfig`; la clave llega por constructor, como en `DevExpertRecipeGenerator`, y
    su origen (`BuildConfig.DEVEXPERT_API_KEY` ← `local.properties`) ya existe y no se modifica.

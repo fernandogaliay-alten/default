@@ -206,6 +206,18 @@ class MainActivity : ComponentActivity() {
                     apiKey = BuildConfig.DEVEXPERT_API_KEY,
                     client = aiClient,
                     styleReference = dishImageStyleReference,
+                    // Diagnostico de la llamada de imagen (correctiva `dish-image-call-diagnostics`):
+                    // una linea por llamada HTTP con el estado y el motivo clasificado, para que una
+                    // cuota agotada deje de ser invisible. Nunca lleva clave, `Authorization`, prompt ni
+                    // cuerpo; es observacion pasiva (no cambia la cadena, la cache, el gate ni el tope)
+                    // y se cablea sin gate de debug, igual que el `onEvent` del chat (`SazonAi`).
+                    onEvent = { event ->
+                        Log.d(
+                            "SazonDishImage",
+                            "${event.call} ${event.reason} status=${event.httpStatus} " +
+                                "${event.durationMillis}ms bytes=${event.bytes} ${event.detail}",
+                        )
+                    },
                 ),
                 settings = dishImageSettings,
             ),
