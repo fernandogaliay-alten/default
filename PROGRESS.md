@@ -220,6 +220,62 @@
   (**sin** push ni PR). Queda la **prueba manual** de la persona en el dispositivo ColorOS (primera cuenta
   atrás sin retraso, pantalla y notificación sincronizadas, sin negativo, "¡Listo!" en el instante y una
   sola vez con el móvil bloqueado, sin aviso del paso anterior), no automatizable desde WSL (`AGENTS.md`).
+- Feature **`cooking-timer-notification-step-label`** (`area: integration`, depende de
+  `cooking-timer-foreground-service` y `cooking-timer-notification-reliability`, ambas `accepted`)
+  implementada y autoverificada (**`passing`**) por el subagente `implementer` (skill
+  `feature-implementer`) en la **sesión 143** y **`accepted`** en la **sesión 144** (validación
+  independiente del subagente `validator`, contexto limpio, veredicto **`accept`**; ver
+  `docs/validations/cooking-timer-notification-step-label.md`), según su spec
+  `docs/specs/cooking-timer-notification-step-label.md`, en el worktree
+  `cooking-timer-notification-step-label` (rama `feature/cooking-timer-notification-step-label`; **sin**
+  commit/push/PR: el commit local lo crea el orquestador de `feature-flow` y publica `github-flow`).
+  Mientras corre el temporizador de un paso, la notificación **persistente** (id `1000`) ya **no** dice el
+  título fijo "Cocina en marcha": muestra **"Paso N de M"** (la **misma** microcopy del encabezado del Modo
+  cocina, sin copy paralelo) en el título y el **título del paso** en el cuerpo, además de la cuenta atrás
+  que pinta el sistema. La etiqueta es un tipo **puro** nuevo `ui.cooking.CookingStepLabel`
+  (`of(stepIndex, totalSteps, step)`, `null` sin paso o sin pasos) que **deriva** el número y el título del
+  paso actual + la receta en el momento de armar el trabajo del sistema (el gesto y el rearme al reanudar),
+  así que **no** se persiste ni puede quedar obsoleta; es la **frontera de privacidad**: cruzan solo esas
+  dos cadenas (ni descripción, ni ingredientes, ni notas, ni tips, ni nutrición ni clave de IA).
+  `CookingAlarmCommand.Schedule`/`CookingAlarmPolicy.onTimerChange` ganan `stepLabel: CookingStepLabel? =
+  null` (el default conserva los call sites aceptados; `None`/`Cancel` **no** la llevan),
+  `CookingTimerService.intent(..., stepLabel)` añade `EXTRA_STEP_PROGRESS`/`EXTRA_STEP_TITLE` **solo** si hay
+  etiqueta (para que el `keySet` siga siendo exacto), `CookingNotifications.ongoing(...)` acepta las dos
+  cadenas y **degrada** al título genérico sin cuerpo si faltan o vienen en blanco (`ONGOING_TITLE` queda
+  como **fallback** documentado), y `AndroidCookingAlarm.schedule(at, stepLabel)` la pasa **solo** al
+  `Intent` del servicio: el `PendingIntent` de la alarma sigue con el **único** escalar del sello y el aviso
+  `1001` **no** cambia. Gate: `bash init.sh` **exit 0** (re-ejecutado sobre el árbol final, con
+  `compileDebugKotlin` y `testDebugUnitTest` **ejecutados**, no `UP-TO-DATE`), evidencia **fresca** forzada
+  (`testDebugUnitTest --rerun-tasks` 34/34, 3m46s; `lint --rerun-tasks` 30/30, 3m06s) ⇒ **117 suites / 951
+  tests / 0 fallos / 0 errores / 0 saltados** (baseline re-derivada en `HEAD 3f3f0fe` = 116 ficheros / 931
+  anotaciones ⇒ delta **+1 suite / +20 tests**: **nueva** `CookingStepLabelTest` 8, `CookingAlarmPolicyTest`
+  17→20, `CookingTimerServiceTest` 11→14, `CookingNotificationsTest` 22→26 y `AndroidCookingAlarmTest`
+  14→16; ninguna otra suite cambia de recuento), SARIF **13 preexistentes / 0 errores / 0 bajo `app/src`**.
+  Docs durables: nota **"Acotada"** en la decisión 7 del **ADR 0007**, notas en las decisiones 2, 9 y 12 del
+  **ADR 0008**, párrafo de la cuenta atrás en `docs/technical-discovery.md`, nota de **vigencia** en el
+  escenario 9 de `docs/specs/cooking-timer-foreground-service.md`, **precisión** en la excepción de capturas
+  de `DESIGN.md` y **fila nueva** con el trade-off de privacidad aceptado en
+  `docs/risks-and-open-questions.md`; `docs/domain-model.md`, `AGENTS.md` y `docs/build-brief.md` sin
+  cambios. Queda la **prueba manual** de la persona en el emulador ("Paso N de M" + título del paso con la
+  cuenta atrás decreciendo, el paso nuevo tras cambiar de paso, lectura con el móvil bloqueado y sin permiso
+  sin crash), no automatizable desde WSL (`AGENTS.md`); el acabado de la notificación con dos líneas lo
+  revisa la persona y un defecto se corrige con una **feature correctiva**. **Validación independiente `accept`
+  (sesión 144)**: el `validator` no modificó código ni estado (solo el registro de validación) y reprodujo la
+  evidencia con tirada propia (`bash init.sh` exit 0 con `testDebugUnitTest` `UP-TO-DATE` ⇒ forzado:
+  `testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL 3m52s, 34/34 tareas, y `lint --rerun-tasks` BUILD
+  SUCCESSFUL 3m22s, 30/30 tareas; XML frescos **117 suites / 951 tests / 0 fallos / 0 errores / 0 saltados**;
+  SARIF fresco **13 resultados / 0 errores / 0 bajo `app/src`**; baseline re-derivada en `HEAD 3f3f0fe` = 116
+  ficheros / 931 anotaciones ⇒ delta **+1 suite / +20 tests** cuadrado con el reparto declarado; tirada focal
+  `ui.cooking.*` + `data.cooking.*` 16 suites / 204 tests / 0 fallos), confirmó los escenarios 1-6 y el
+  Validator Checklist, la **frontera de privacidad** (`keySet` exacto de los `Intent`, solo el número y el
+  título cruzan), los **dos** armados con etiqueta, la pureza de `CookingStepLabel.kt`, el servicio no
+  exportado con `PendingIntent` inmutables y la disciplina de alcance (diff función a función contra `HEAD`).
+  Sin hallazgos Critical/High/Medium; **3 Low informativos no bloqueantes** (L1 la etiqueta a medias se trata
+  como ausente; L2 mezcla de frase histórica y precisión nueva en `DESIGN.md` y checklist histórico; L3
+  warning nuevo de compilación de tests por `ScheduledAlarm.operation` deprecado de Robolectric). Detalle en
+  `docs/validations/cooking-timer-notification-step-label.md`. El commit local
+  `feat: complete cooking-timer-notification-step-label` lo crea el orquestador de `feature-flow` en la rama
+  `feature/cooking-timer-notification-step-label` (**sin** push ni PR; publica `github-flow`).
 - Feature **`cooking-mode-exit-confirmation`** (área `ui`, depende de `cooking-mode` y
   `cooking-timer-foreground-service`, ambas `accepted`) implementada y autoverificada (**`passing`**) por
   el subagente `implementer` en la **sesión 138** y **`accepted`** en la **sesión 139** (validación
@@ -7232,3 +7288,91 @@
   dependencia `cooking-timer-notification-reliability` queda **satisfecha**; `cooking-timer-foreground-service`
   ya lo estaba). Nota: `cooking-mode-step-change-confirmation` también está `not_started` con dependencias
   satisfechas; se elige por orden de `feature_list.json`.
+
+### Sesión 143 (implementer, `cooking-timer-notification-step-label`)
+
+- Fecha: 2026-10-19
+- Objetivo: implementar y autoverificar **una** feature ya planificada (WIP = 1) siguiendo su spec
+  `docs/specs/cooking-timer-notification-step-label.md` (escrita por el `planner` en este mismo worktree),
+  **sin** commit/push/PR y sin ampliar el alcance.
+- Contexto de partida: rama `feature/cooking-timer-notification-step-label`, `HEAD 3f3f0fe` (merge de la PR
+  #163), árbol limpio salvo la spec sin trackear; dependencias `cooking-timer-foreground-service` y
+  `cooking-timer-notification-reliability` en `accepted`.
+- Qué se implementó: la notificación **persistente** del temporizador dice el **paso**: **"Paso N de M"**
+  (reutilizando `CookingModeFormat.progressLabel`, sin microcopy paralela) en el título y el **título del
+  paso** en el cuerpo, con la cuenta atrás del sistema intacta. Piezas: tipo **puro** nuevo
+  `ui/cooking/CookingStepLabel.kt` (`of(...)`, `null` sin paso o sin pasos; frontera de privacidad),
+  `CookingAlarmCommand.Schedule(triggerAtMillis, stepLabel = null)` y
+  `CookingAlarmPolicy.onTimerChange(..., stepLabel = null)` (solo la rama `Schedule` la copia),
+  `CookingModeScreen` con el helper `stepLabelOf(state)` en los **dos** armados (`onUserAction` con el
+  estado nuevo y el `LaunchedEffect(Unit)` del rearme al reanudar), `AndroidCookingAlarm.schedule(at,
+  stepLabel)` (la etiqueta va **solo** al `Intent` del servicio), `CookingTimerService` con
+  `EXTRA_STEP_PROGRESS`/`EXTRA_STEP_TITLE` y el parámetro de `intent(...)` (los dos extras **solo** si hay
+  etiqueta: `putExtra(name, null)` dejaría la clave presente) y `CookingNotifications.ongoing(context,
+  endWallClockMillis, stepProgress, stepTitle, contentIntent)` con `ONGOING_TITLE` como **fallback** y sin
+  cuerpo si falta o viene en blanco.
+- Verificación (autoverificación, no aceptación): `bash init.sh` **exit 0** (test + lint) y, además,
+  evidencia **fresca** forzada `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**34/34 tareas**,
+  3m46s) y `bash scripts/gradle.sh lint --rerun-tasks` (**30/30 tareas**, 3m06s), ambos **BUILD
+  SUCCESSFUL**; XML frescos **117 suites / 951 tests / 0 fallos / 0 errores / 0 saltados** (baseline
+  re-derivada en `HEAD 3f3f0fe` con `git grep -c '@Test' HEAD -- app/src/test` = **116 ficheros / 931
+  anotaciones** ⇒ delta **+1 suite / +20 tests**); SARIF **13 resultados preexistentes / 0 errores / 0 bajo
+  `app/src`**; y tirada focal `--tests "com.sazon.app.ui.cooking.*" --tests "com.sazon.app.data.cooking.*"`
+  (16 suites / 204 tests / 0 fallos). Tras los últimos ajustes de KDoc se re-ejecutó `bash init.sh` sobre el
+  árbol final con `compileDebugKotlin` y `testDebugUnitTest` **ejecutados** (no `UP-TO-DATE`) y los mismos
+  conteos. Casos añadidos: `CookingStepLabelTest` (nueva, 8), `CookingAlarmPolicyTest` 20, `CookingTimerServiceTest`
+  14, `CookingNotificationsTest` 26 y `AndroidCookingAlarmTest` 16; los escenarios 1-6 quedan cubiertos en
+  JVM/Robolectric (la pantalla, por inspección: no hay UI de emulador automatizable).
+- Inspecciones registradas: `CookingStepLabel.kt` con **0** imports `android.*`/`androidx.*` y **0** lecturas
+  del reloj; `git status` con **solo** los ficheros previstos (6 de `app/src/main` —uno nuevo—, 4 + 1 de
+  `app/src/test`, 5 docs y `DESIGN.md`); **sin diff** en `notification`/`notifyFinish`/`contentIntent`, en el
+  `PendingIntent` de la alarma, en el canal/ids/microcopy del aviso `1001`, ni en
+  `CookingModeState`/`CookingModeFormat`/`CookingTimerState`/`CookingSession`/Room/manifiesto/`res/**`/build/
+  lockfile/`init.sh`/`scripts/**`/`domain/**`/`ui/theme/**`; sin dependencias nuevas y sin capturas
+  (`docs/design/concepts/cooking-timer-notification-step-label/` **no** se crea).
+- Docs durables: **ADR 0007** (nota "Acotada" en la decisión 7), **ADR 0008** (decisiones 2, 9 y 12),
+  `docs/technical-discovery.md`, nota de vigencia en el escenario 9 de
+  `docs/specs/cooking-timer-foreground-service.md`, precisión en la excepción de capturas de `DESIGN.md` y
+  fila nueva del trade-off de privacidad en `docs/risks-and-open-questions.md`.
+- Riesgo o incógnita abierta: el aspecto real de la **persistente con dos líneas de texto + cronómetro** (y
+  su truncado/lectura en la pantalla de bloqueo con el canal `VISIBILITY_PUBLIC`) solo se ve en el emulador:
+  lo revisa la persona y un defecto se corrige con una **feature correctiva**. El precio de privacidad
+  (número y título visibles en la pantalla de bloqueo) queda aceptado y registrado.
+- Estado de features: `cooking-timer-notification-step-label` queda **`passing`** (implementada y
+  autoverificada, **pendiente de validación independiente**; WIP = 1 en este worktree). El estado máximo que
+  fija el implementer es `passing`; `accepted` lo persiste el orquestador tras el `accept` del `validator`.
+  Siguiente paso en este worktree: `feature-validator` sobre
+  `docs/specs/cooking-timer-notification-step-label.md` y el diff actual (sin commit).
+
+### Sesión 144 (validator + orquestador `feature-flow`, `cooking-timer-notification-step-label`)
+
+- Fecha: 2026-10-19
+- Objetivo: validar de forma independiente la feature `passing` de la sesión 143 y, con el veredicto
+  `accept`, persistir `accepted`, crear el commit local y preparar el handoff (**sin** push ni PR; la
+  publicación la hace `github-flow`).
+- Validación independiente: el subagente `validator` (contexto limpio, skill `feature-validator`) devolvió
+  **`accept`** sin modificar código ni estado (solo creó su registro `docs/validations/cooking-timer-notification-step-label.md`).
+  Reprodujo el gate por su cuenta: `bash init.sh` **exit 0** con `testDebugUnitTest` `UP-TO-DATE` (no vale
+  como fresca) ⇒ forzado `testDebugUnitTest --rerun-tasks` (**BUILD SUCCESSFUL**, 3m52s, 34/34 tareas) y
+  `lint --rerun-tasks` (**BUILD SUCCESSFUL**, 3m22s, 30/30 tareas); XML frescos **117 suites / 951 tests /
+  0 fallos / 0 errores / 0 saltados**; SARIF fresco **13 resultados / 0 errores / 0 bajo `app/src`**; tirada
+  focal `ui.cooking.*` + `data.cooking.*` (16 suites / 204 tests / 0 fallos); baseline re-derivada en
+  `HEAD 3f3f0fe` = 116 ficheros / 931 anotaciones ⇒ delta **+1 suite / +20 tests**, cuadrado con el reparto
+  declarado; segundo `bash init.sh` sobre el árbol final con la suite completa ejecutada.
+- Qué confirmó: escenarios 1-6 de la spec y el Validator Checklist; la **frontera de privacidad** (`keySet`
+  exacto de los `Intent` del servicio, solo el número y el título del paso cruzan; `ongoing` admite solo
+  `Context`/`PendingIntent`/escalares y dos `String`, y `notification`/`notifyFinish` siguen sin aceptar
+  `String`); los **dos** armados con etiqueta del `CookingModeScreen`; la pureza de `CookingStepLabel.kt`;
+  el servicio `exported="false"` con `PendingIntent` `FLAG_IMMUTABLE`; y la disciplina de alcance (diff
+  función a función contra `HEAD`, sin cambios en las piezas aceptadas ni en build/lockfile/manifiesto/
+  `res/**`/Room). Escenario 7 (emulador) queda pendiente de la persona (no bloqueante).
+- Hallazgos: **ninguno Critical/High/Medium**; **3 Low informativos no bloqueantes** (L1 `ongoing` trata la
+  etiqueta a medias como ausente —lectura literal del escenario 5, coherente y testeada—; L2 mezcla de la
+  frase histórica "título fijo" con la precisión nueva en `DESIGN.md` y checklist histórico lejos de la nota
+  de vigencia; L3 warning nuevo de compilación de tests por `ScheduledAlarm.operation` deprecado de
+  Robolectric, junto al preexistente).
+- Persistencia de la aceptación: `feature_list.json` pasa a **`accepted`** con la evidencia de la validación
+  independiente y el commit local es `feat: complete cooking-timer-notification-step-label` en la rama
+  `feature/cooking-timer-notification-step-label` (**sin** push ni PR).
+- Estado de features: `cooking-timer-notification-step-label` queda **`accepted`**; WIP = 0 en este worktree.
+  No hay más features `in_progress`/`passing` en esta rama.

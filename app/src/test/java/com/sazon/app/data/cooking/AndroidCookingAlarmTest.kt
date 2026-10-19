@@ -8,8 +8,10 @@ import android.content.Context
 import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.ui.cooking.CookingAlarmCommand
+import com.sazon.app.ui.cooking.CookingStepLabel
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,6 +32,10 @@ import org.robolectric.shadows.ShadowAlarmManager
  * `setAndAllowWhileIdle` (y `setCanScheduleExactAlarms`), asi que la ruta **exacta** y la degradacion
  * **inexacta** se comprueban de verdad; no hay limitacion del shadow que documentar. El disparo real
  * (Doze, pantalla bloqueada) no es automatizable: lo revisa la persona en el emulador.
+ *
+ * Desde `cooking-timer-notification-step-label` el `Schedule` transporta tambien la **etiqueta del paso**
+ * y esta viaja **solo** al `Intent` del servicio: el `PendingIntent` de la alarma sigue con el unico
+ * escalar del sello.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -161,6 +167,53 @@ class AndroidCookingAlarmTest {
             ),
             arrancado.extras?.keySet().orEmpty(),
         )
+    }
+
+    @Test
+    fun la_etiqueta_del_paso_viaja_solo_al_servicio_y_nunca_a_la_alarma() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val alarm = AndroidCookingAlarm(context)
+        shadowOf(application).clearStartedServices()
+        val etiqueta = CookingStepLabel("Paso 2 de 5", "Dorar el pollo")
+
+        alarm.apply(CookingAlarmCommand.Schedule(1_600_000L, etiqueta))
+
+        val intentDelServicio = checkNotNull(shadowOf(application).nextStartedService)
+        assertEquals("Paso 2 de 5", intentDelServicio.getStringExtra(CookingTimerService.EXTRA_STEP_PROGRESS))
+        assertEquals("Dorar el pollo", intentDelServicio.getStringExtra(CookingTimerService.EXTRA_STEP_TITLE))
+        assertEquals(
+            "El servicio recibe fin + sello + la etiqueta del paso, y nada mas",
+            setOf(
+                CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS,
+                CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS,
+                CookingTimerService.EXTRA_STEP_PROGRESS,
+                CookingTimerService.EXTRA_STEP_TITLE,
+            ),
+            intentDelServicio.extras?.keySet().orEmpty(),
+        )
+        val intentDeLaAlarma = shadowOf(shadowAlarms.scheduledAlarms.single().operation).savedIntent
+        assertFalse(
+            "El respaldo del proceso muerto no expone nada nuevo: solo el escalar del sello",
+            intentDeLaAlarma.hasExtra(CookingTimerService.EXTRA_STEP_PROGRESS),
+        )
+        assertFalse(intentDeLaAlarma.hasExtra(CookingTimerService.EXTRA_STEP_TITLE))
+        assertEquals(
+            setOf(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS),
+            intentDeLaAlarma.extras?.keySet().orEmpty(),
+        )
+    }
+
+    @Test
+    fun sin_etiqueta_el_servicio_arranca_igual_que_antes_de_la_feature() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val alarm = AndroidCookingAlarm(context)
+        shadowOf(application).clearStartedServices()
+
+        alarm.apply(CookingAlarmCommand.Schedule(1_600_000L))
+
+        val arrancado = checkNotNull(shadowOf(application).nextStartedService)
+        assertFalse(arrancado.hasExtra(CookingTimerService.EXTRA_STEP_PROGRESS))
+        assertFalse(arrancado.hasExtra(CookingTimerService.EXTRA_STEP_TITLE))
     }
 
     @Test

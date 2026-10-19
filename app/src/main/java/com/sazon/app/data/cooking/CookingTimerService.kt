@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.os.SystemClock
+import com.sazon.app.ui.cooking.CookingStepLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,13 +24,15 @@ import kotlinx.coroutines.launch
  * atras; la cuenta atras que ve el usuario la **renderiza el sistema** con el cronometro descendente de
  * la notificacion, asi que no hay ni una publicacion por segundo ni un bucle de latidos.
  *
- * - `onStartCommand` lee **solo** dos extras: `EXTRA_END_AT_ELAPSED_MILLIS` (instante de fin en
- *   `ELAPSED_REALTIME`, la misma base que la alarma) y [CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS]
- *   (el **sello de fin** compartido, que viaja tambien en el `PendingIntent` de la alarma). Si el
- *   instante de fin **ya paso**, **no** pinta nada (no hay cronometro caducado ni cuenta atras en
- *   negativo) y se apaga; si no, llama a `startForeground(...)` **inmediato** (dentro de los 5 s que
- *   exige el framework) con el `when` **recalculado en esa misma lectura** y programa el **unico**
- *   despertar.
+ * - `onStartCommand` lee **solo** los extras del temporizador: `EXTRA_END_AT_ELAPSED_MILLIS` (instante
+ *   de fin en `ELAPSED_REALTIME`, la misma base que la alarma) y
+ *   [CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS] (el **sello de fin** compartido, que viaja
+ *   tambien en el `PendingIntent` de la alarma), mas la **etiqueta del paso** (feature
+ *   `cooking-timer-notification-step-label`: [EXTRA_STEP_PROGRESS] y [EXTRA_STEP_TITLE], el numero
+ *   "Paso N de M" y el titulo, opcionales). Si el instante de fin **ya paso**, **no** pinta nada (no
+ *   hay cronometro caducado ni cuenta atras en negativo) y se apaga; si no, llama a
+ *   `startForeground(...)` **inmediato** (dentro de los 5 s que exige el framework) con el `when`
+ *   **recalculado en esa misma lectura** y programa el **unico** despertar.
  * - Al vencer, **publica** la `1001` con el sello (el aviso puntual, sin depender de que el fabricante
  *   difiera la alarma), **retira** su notificacion persistente (`STOP_FOREGROUND_REMOVE`) y se detiene.
  *   Republicar no duplica ni vuelve a alertar: lo garantiza [CookingFinishPublication] sobre el sello.
@@ -77,6 +80,8 @@ class CookingTimerService : Service() {
                 CookingNotifications.ongoing(
                     context = this,
                     endWallClockMillis = wallClockEnd(endAtElapsedMillis),
+                    stepProgress = intent.getStringExtra(EXTRA_STEP_PROGRESS),
+                    stepTitle = intent.getStringExtra(EXTRA_STEP_TITLE),
                     contentIntent = CookingNotifications.contentIntent(
                         this,
                         CookingAlarmReceiver.CONTENT_REQUEST_CODE,
@@ -141,16 +146,40 @@ class CookingTimerService : Service() {
         const val EXTRA_END_AT_ELAPSED_MILLIS = "com.sazon.app.extra.cooking.END_AT_ELAPSED_MILLIS"
 
         /**
-         * `Intent` **explicito** de arranque del servicio: lleva **solo** los dos escalares del
-         * temporizador (el instante de fin monotono y el sello de fin en hora de pared); ni la receta,
-         * ni el paso, ni la clave de IA cruzan al sistema.
+         * Extra con el **numero de paso** en la microcopy ya aceptada del encabezado del Modo cocina
+         * ("Paso N de M"), derivado por [com.sazon.app.ui.cooking.CookingStepLabel] del paso actual y la
+         * receta. Es la **frontera de privacidad**: junto con [EXTRA_STEP_TITLE] es lo **unico** derivado
+         * de la receta que cruza al sistema (nunca la descripcion, los ingredientes, las notas ni la
+         * clave de IA). Faltan los dos extras cuando no hay paso que etiquetar.
+         */
+        const val EXTRA_STEP_PROGRESS = "com.sazon.app.extra.cooking.STEP_PROGRESS"
+
+        /** Extra con el **titulo del paso** ([EXTRA_STEP_PROGRESS]). */
+        const val EXTRA_STEP_TITLE = "com.sazon.app.extra.cooking.STEP_TITLE"
+
+        /**
+         * `Intent` **explicito** de arranque del servicio: lleva los dos escalares del temporizador (el
+         * instante de fin monotono y el sello de fin en hora de pared) y, **solo si hay etiqueta**, el
+         * numero y el titulo del paso ([EXTRA_STEP_PROGRESS]/[EXTRA_STEP_TITLE]); ni la receta completa,
+         * ni la descripcion, ni los ingredientes, ni la clave de IA cruzan al sistema.
+         *
+         * Los dos extras de la etiqueta se anaden **juntos y solo si [stepLabel] no es `null`**:
+         * `putExtra(name, null: String?)` dejaria la **clave presente** con valor nulo y el `keySet`
+         * dejaria de ser exacto (lo que comprueba el test de "nada mas cruza").
          */
         fun intent(
             context: Context,
             endAtElapsedMillis: Long,
             finishWallClockMillis: Long,
+            stepLabel: CookingStepLabel?,
         ): Intent = Intent(context, CookingTimerService::class.java)
             .putExtra(EXTRA_END_AT_ELAPSED_MILLIS, endAtElapsedMillis)
             .putExtra(CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS, finishWallClockMillis)
+            .apply {
+                if (stepLabel != null) {
+                    putExtra(EXTRA_STEP_PROGRESS, stepLabel.progress)
+                    putExtra(EXTRA_STEP_TITLE, stepLabel.title)
+                }
+            }
     }
 }

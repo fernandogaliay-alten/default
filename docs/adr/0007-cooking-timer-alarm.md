@@ -77,6 +77,19 @@ Restricciones del repositorio que condicionan la decisión:
    > servicio y se publica como `when` de la `1001` para reconocer un fin ya anunciado. Sigue **sin**
    > ningún dato de la receta (ni título, ni paso, ni ingredientes) y la garantía estructural se mantiene
    > (los tests de firma aceptan solo `Context`, `PendingIntent` y ese escalar).
+   >
+   > **Acotada (`cooking-timer-notification-step-label`, 2026-10-19):** por **decisión explícita de la
+   > persona** (mejora pedida el 2026-10-16: "saber en qué paso voy sin abrir la app"), la notificación
+   > **persistente** (`ongoing`) acepta además **dos cadenas**: el número del paso —`"Paso N de M"`, la
+   > microcopy ya aceptada del encabezado del Modo cocina, sin copy paralelo— y el **título del paso**.
+   > Son lo **único** derivado de la receta que puede cruzar al sistema y se **derivan** del paso actual +
+   > la receta en `ui.cooking.CookingStepLabel` al armar el trabajo del sistema (no se persisten). El
+   > aviso `1001` (`notification`/`notifyFinish`) sigue **sin** aceptar texto y con su copy genérico
+   > **intacto**, y el `PendingIntent` de la alarma sigue llevando **solo** el escalar del sello (la
+   > etiqueta viaja únicamente al `Intent` del servicio): el camino del respaldo con el proceso muerto no
+   > expone nada nuevo. Ni descripción del paso, ni ingredientes, ni notas, ni tips, ni nutrición ni clave
+   > de IA cruzan. El canal es `VISIBILITY_PUBLIC`, así que ese texto se lee en la pantalla de bloqueo:
+   > el trade-off queda registrado en `docs/risks-and-open-questions.md`.
 8. **Id de notificación fijo (`1001`)**: publicarla otra vez **reemplaza** la anterior ⇒ nunca se duplica,
    tampoco con la app en primer plano (donde el `tick` de la app y el receptor pueden coincidir).
 

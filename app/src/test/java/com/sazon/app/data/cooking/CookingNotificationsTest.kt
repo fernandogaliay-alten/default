@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.MainActivity
+import com.sazon.app.ui.cooking.CookingModeFormat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -31,6 +32,11 @@ import org.robolectric.annotation.Config
  * id **fijo**; su contenido es **generico** (titulo/texto exactos, sin la receta) y **sin extras
  * propios**; el `Intent` de contenido lleva **solo** el flag booleano de reanudacion (ni receta, ni
  * pasos, ni claves); y con `POST_NOTIFICATIONS` denegado no se publica nada y no hay excepcion.
+ *
+ * Desde `cooking-timer-notification-step-label` la **persistente** pinta el numero del paso ("Paso N de
+ * M", la microcopy del encabezado) en el titulo y el **titulo del paso** en el cuerpo (la frontera de
+ * privacidad, por decision explicita de la persona); sin etiqueta o con un texto en blanco degrada al
+ * titulo generico y sin cuerpo, y la firma de `ongoing` solo admite esas dos cadenas.
  *
  * El comportamiento con el movil bloqueado, en Doze o con la pantalla apagada no es automatizable
  * (AGENTS.md): lo revisa la persona en el emulador.
@@ -149,7 +155,13 @@ class CookingNotificationsTest {
     @Test
     fun el_aviso_de_fin_y_la_persistente_no_comparten_el_modo_ongoing() {
         val avisoDeFin = CookingNotifications.notification(context, contentIntent = null, whenMillis = 1_600_000L)
-        val persistente = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+        val persistente = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = null,
+            stepTitle = null,
+            contentIntent = null,
+        )
 
         assertEquals(
             "La persistente si es ongoing",
@@ -185,16 +197,16 @@ class CookingNotificationsTest {
 
     @Test
     fun la_funcion_no_puede_filtrar_la_receta_porque_no_la_recibe() {
-        // Garantia **estructural** (no una convencion): la construccion y la publicacion solo aceptan
-        // `Context`, el `PendingIntent` de contenido y el escalar del sello de fin; no hay ningun
-        // parametro de receta ni de paso.
+        // Garantia **estructural** (no una convencion): la construccion y la publicacion de las dos
+        // notificaciones solo aceptan `Context`, el `PendingIntent` de contenido y los escalares del
+        // temporizador; **ninguna** acepta texto (`String`), y mucho menos la receta o un paso.
         val firma = CookingNotifications::class.java.methods
             .filter { it.name == "notification" || it.name == "notifyFinish" }
             .flatMap { it.parameterTypes.toList() }
             .toSet()
 
         assertTrue(
-            "Solo `Context`, `PendingIntent` y el escalar del sello cruzan a la notificacion",
+            "Solo `Context`, `PendingIntent` y los escalares cruzan a la notificacion",
             firma.all {
                 it == Context::class.java ||
                     it == android.app.PendingIntent::class.java ||
@@ -202,6 +214,32 @@ class CookingNotificationsTest {
                     it == java.lang.Long::class.java
             },
         )
+    }
+
+    @Test
+    fun la_persistente_solo_admite_el_numero_y_el_titulo_del_paso_ademas_de_lo_ya_aceptado() {
+        // La etiqueta del paso es la **unica** concesion de `cooking-timer-notification-step-label` (por
+        // decision explicita de la persona): `ongoing` admite `Context`, `PendingIntent`, escalares y
+        // **dos** `String` (el numero y el titulo), ni un parametro de receta ni de paso.
+        val firma = CookingNotifications::class.java.methods
+            .filter { it.name == "ongoing" }
+            .flatMap { it.parameterTypes.toList() }
+            .toSet()
+        val textos = CookingNotifications::class.java.methods
+            .filter { it.name == "ongoing" }
+            .flatMap { it.parameterTypes.filter { type -> type == String::class.java } }
+
+        assertTrue(
+            "Solo `Context`, `PendingIntent`, escalares y `String`",
+            firma.all {
+                it == Context::class.java ||
+                    it == android.app.PendingIntent::class.java ||
+                    it == java.lang.Long.TYPE ||
+                    it == java.lang.Long::class.java ||
+                    it == String::class.java
+            },
+        )
+        assertEquals("Exactamente dos textos: el numero y el titulo", 2, textos.size)
     }
 
     @Test
@@ -376,7 +414,13 @@ class CookingNotificationsTest {
 
     @Test
     fun la_notificacion_persistente_se_construye_sin_excepcion_con_la_cuenta_atras_del_sistema() {
-        val notificacion = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+        val notificacion = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = null,
+            stepTitle = null,
+            contentIntent = null,
+        )
 
         assertEquals("Cocina en marcha", notificacion.extras.getString(Notification.EXTRA_TITLE))
         assertEquals(CookingNotifications.ONGOING_TITLE, notificacion.extras.getString(Notification.EXTRA_TITLE))
@@ -400,7 +444,13 @@ class CookingNotificationsTest {
 
     @Test
     fun la_notificacion_persistente_se_publica_con_su_id_fijo_y_sin_extras_de_receta() {
-        val notificacion = CookingNotifications.ongoing(context, 1_600_000L, contentIntent = null)
+        val notificacion = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = null,
+            stepTitle = null,
+            contentIntent = null,
+        )
         val claves = notificacion.extras.keySet()
         val contenido = notificacion.extras.toString()
 
@@ -420,6 +470,98 @@ class CookingNotificationsTest {
             CookingNotifications.NOTIFICATION_ID,
             CookingNotifications.ONGOING_NOTIFICATION_ID,
         )
+    }
+
+    @Test
+    fun la_persistente_pinta_el_numero_del_paso_en_el_titulo_y_el_titulo_del_paso_en_el_cuerpo() {
+        val notificacion = CookingNotifications.ongoing(
+            context = context,
+            endWallClockMillis = 1_600_000L,
+            stepProgress = "Paso 2 de 5",
+            stepTitle = "Dorar el pollo",
+            contentIntent = null,
+        )
+
+        assertEquals("Paso 2 de 5", notificacion.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Dorar el pollo", notificacion.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals(
+            "El numero reutiliza la microcopy del encabezado del Modo cocina",
+            CookingModeFormat.progressLabel(1, 5),
+            notificacion.extras.getString(Notification.EXTRA_TITLE),
+        )
+        assertTrue(
+            "El sistema sigue pintando la cuenta atras",
+            notificacion.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER),
+        )
+        assertTrue(notificacion.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+        assertEquals(1_600_000L, notificacion.`when`)
+        assertTrue(
+            "Persistente",
+            notificacion.flags and Notification.FLAG_ONGOING_EVENT != 0,
+        )
+        assertFalse(
+            "Sin claves propias de la app",
+            notificacion.extras.keySet().any { it.startsWith("com.sazon") },
+        )
+        assertFalse("Sin rastro de recetas ni ingredientes", notificacion.extras.toString().contains(TITULO_RECETA))
+        assertFalse(
+            "Sin rastro de ingredientes",
+            notificacion.extras.toString().contains(NOMBRE_INGREDIENTE),
+        )
+    }
+
+    @Test
+    fun sin_etiqueta_la_persistente_degrada_al_titulo_generico_y_sin_cuerpo() {
+        val notificacion = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = null,
+            stepTitle = null,
+            contentIntent = null,
+        )
+
+        assertEquals(
+            CookingNotifications.ONGOING_TITLE,
+            notificacion.extras.getString(Notification.EXTRA_TITLE),
+        )
+        assertNull(
+            "Sin texto de cuerpo: la notificacion queda como antes de la feature",
+            notificacion.extras.getString(Notification.EXTRA_TEXT),
+        )
+    }
+
+    @Test
+    fun un_texto_en_blanco_se_trata_como_etiqueta_ausente() {
+        val numeroEnBlanco = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = "   ",
+            stepTitle = "Dorar el pollo",
+            contentIntent = null,
+        )
+        val tituloEnBlanco = CookingNotifications.ongoing(
+            context,
+            1_600_000L,
+            stepProgress = "Paso 2 de 5",
+            stepTitle = "",
+            contentIntent = null,
+        )
+
+        assertEquals(
+            "Un numero en blanco es ausente",
+            CookingNotifications.ONGOING_TITLE,
+            numeroEnBlanco.extras.getString(Notification.EXTRA_TITLE),
+        )
+        assertNull(
+            "Una etiqueta a medias no pinta cuerpo",
+            numeroEnBlanco.extras.getString(Notification.EXTRA_TEXT),
+        )
+        assertEquals(
+            "Un titulo en blanco es ausente",
+            "Paso 2 de 5",
+            tituloEnBlanco.extras.getString(Notification.EXTRA_TITLE),
+        )
+        assertNull(tituloEnBlanco.extras.getString(Notification.EXTRA_TEXT))
     }
 
     @Test

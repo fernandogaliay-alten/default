@@ -65,6 +65,17 @@ Restricciones del repositorio que condicionan la decisión:
    proceso esté despierto para repintar texto. El servicio solo espera **un** despertar (el instante de
    fin real, monotónico) y entonces retira la notificación (`STOP_FOREGROUND_REMOVE`) y se detiene.
 
+   > **Ampliada (`cooking-timer-notification-step-label`, 2026-10-19):** la persistente **deja de tener el
+   > título fijo** "Cocina en marcha" mientras corre el temporizador: muestra **"Paso N de M"** (la misma
+   > microcopy del encabezado del Modo cocina) en el título y el **título del paso** en el cuerpo,
+   > compuestos por `ui.cooking.CookingStepLabel` a partir de `stepIndex`/`totalSteps` +
+   > `RecipeStep.title` en el momento de armar el trabajo del sistema (el gesto del temporizador o el
+   > rearme al reanudar), así que la etiqueta **no se persiste** ni puede quedar obsoleta.
+   > `ONGOING_TITLE` se conserva como **fallback** documentado: sin etiqueta —o con cualquiera de las dos
+   > cadenas en blanco— la notificación queda **igual** que antes (título genérico, sin cuerpo) y nada
+   > lanza. El id `1000`, `ongoing`, `onlyAlertOnce`, `silent`, el cronómetro del sistema y el `when`
+   > recalculado al publicar **no cambian**.
+   >
    > **Enmendada (`cooking-timer-notification-reliability`, 2026-10-16):** en ese mismo despertar el
    > servicio, **antes** de retirar la `1000` y detenerse, **publica el aviso de fin** (`1001`) con el
    > sello compartido (`when`), porque es quien conoce el instante exacto. Además: el `when` del
@@ -128,6 +139,13 @@ Restricciones del repositorio que condicionan la decisión:
    > calculado **una vez** en `schedule(at)`: es el escalar que comparten los dos publicadores para que un
    > fin ya anunciado no se repita. `Cancel` busca el `PendingIntent` existente sin recrearlo
    > (`FLAG_NO_CREATE`), para no reescribir el sello de una alarma viva.
+   >
+   > **Ampliada (`cooking-timer-notification-step-label`, 2026-10-19):** el `Intent` **del servicio**
+   > lleva además la **etiqueta del paso** (`EXTRA_STEP_PROGRESS`/`EXTRA_STEP_TITLE`: el número y el
+   > título), y **solo si existe**: los dos extras se añaden juntos o no se añaden (con
+   > `putExtra(name, null)` la clave quedaría presente y el `keySet` dejaría de ser exacto). El
+   > `PendingIntent` **de la alarma** no la lleva y el sello compartido sigue igual, de modo que el camino
+   > del respaldo con el proceso muerto no expone nada nuevo.
 10. **`onDispose` no borra la sesión; "Atrás"/"Terminar" sí**: una muerte de actividad o una rotación no
     debe perderla (es justo el caso a cubrir), mientras que salir del modo es una decisión explícita del
     usuario; el borrado se completa **antes** de cerrar la composición.
@@ -158,6 +176,15 @@ Restricciones del repositorio que condicionan la decisión:
     > (latido derivado y **un punto por gesto**). Lo que **sigue** sin diff: `CookingModeState`,
     > `CookingModeFormat`, el canal, los ids, el microcopy, el manifiesto, la persistencia Room
     > (`CookingSessionEntity`/`Dao`/`Database`/`Mappers`/`RoomCookingSessionStore`) y
+    > `NotificationPermissionPolicy`/`NotificationPermissionPrompt`.
+    >
+    > **Revisado (`cooking-timer-notification-step-label`, 2026-10-19):** la etiqueta del paso toca de
+    > nuevo `CookingAlarmCommand.Schedule` y `CookingAlarmPolicy.onTimerChange` (campo y parámetro nuevos,
+    > con default `null`), `CookingModeScreen` (los dos armados pasan la etiqueta), `CookingTimerService`
+    > (dos extras y el parámetro de `intent(...)`), `CookingNotifications.ongoing` (admite el número y el
+    > título del paso) y `AndroidCookingAlarm` (`schedule(at, stepLabel)`). Lo que **sigue** sin diff:
+    > `CookingTimerState`, `CookingModeState`, `CookingModeFormat`, el canal, los ids, el microcopy del
+    > aviso `1001`, el manifiesto, la persistencia Room y
     > `NotificationPermissionPolicy`/`NotificationPermissionPrompt`.
 
 Alcance: `ui/cooking/CookingSession.kt` y `CookingSessionStore.kt` (nuevos, puros), `data/cooking/`

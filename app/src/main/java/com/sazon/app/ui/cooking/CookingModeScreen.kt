@@ -98,7 +98,11 @@ private const val COMPLETED_ALPHA = 0.45f
  * por un **unico punto de entrada** que hace **una sola** lectura del reloj y con ella aplica el estado
  * nuevo y las **dos** decisiones puras ([CookingAlarmPolicy.onTimerChange], que programa el respaldo en
  * el **ancla** del temporizador + arranca el servicio, y [NotificationPermissionPolicy.onTimerChange],
- * que muestra el rationale la primera vez que arranca sin permiso). Ya **no** hay un efecto con
+ * que muestra el rationale la primera vez que arranca sin permiso). El comando `Schedule` transporta
+ * ademas la **etiqueta del paso** ([CookingStepLabel]: "Paso N de M" + el titulo, feature
+ * `cooking-timer-notification-step-label`), que es lo que la notificacion persistente pinta; se compone
+ * con el estado **nuevo** (paso actual) y la receta, y tambien en el rearme al reanudar. Ya **no** hay
+ * un efecto con
  * `state.timer.status` como clave ni estado `previousTimer`: la alarma y el servicio se arman/cancelan
  * en el mismo punto que el gesto, no en la composicion.
  *
@@ -172,9 +176,21 @@ fun CookingModeScreen(
     // `remember` (no `rememberSaveable`), como `confirmExit`: al rotar se pierde, limitacion aceptada.
     var pendingStepChange by remember { mutableStateOf<CookingStepChangePoint?>(null) }
 
+    // Etiqueta del paso ([CookingStepLabel], frontera de privacidad): el numero en la microcopy del
+    // encabezado ("Paso N de M") y el titulo del paso, derivados del estado y la receta en el momento de
+    // armar el trabajo del sistema. Como es **derivada** no se persiste ni puede quedar obsoleta: cada
+    // armado compone la del paso que arranca.
+    fun stepLabelOf(modeState: CookingModeState): CookingStepLabel? = CookingStepLabel.of(
+        stepIndex = modeState.stepIndex,
+        totalSteps = modeState.totalSteps,
+        step = recipe.steps.getOrNull(modeState.stepIndex),
+    )
+
     // **Punto unico por gesto** (feature `cooking-timer-notification-reliability`): una sola lectura del
     // reloj alimenta el estado nuevo y las **dos** decisiones puras. Asi la alarma (respaldo) y el
-    // servicio se arman/cancelan en el propio gesto, no en un efecto dependiente de la composicion.
+    // servicio se arman/cancelan en el propio gesto, no en un efecto dependiente de la composicion. La
+    // etiqueta del paso nuevo viaja con el comando `Schedule` (feature
+    // `cooking-timer-notification-step-label`): es lo que la notificacion persistente pinta.
     // Un no-op del temporizador (doble "Iniciar", "Pausar" en Inactivo, "Reiniciar" ya Inactivo, un paso
     // sin duracion) no toca nada.
     fun onUserAction(transform: (CookingModeState, Long) -> CookingModeState) {
@@ -183,7 +199,14 @@ fun CookingModeScreen(
         val next = transform(state, now)
         if (next == state) return
         state = next
-        alarm.apply(CookingAlarmPolicy.onTimerChange(previous, next.timer, now))
+        alarm.apply(
+            CookingAlarmPolicy.onTimerChange(
+                previous = previous,
+                next = next.timer,
+                nowMillis = now,
+                stepLabel = stepLabelOf(next),
+            ),
+        )
         val permissionDecision = NotificationPermissionPolicy.onTimerChange(
             previous = previous,
             next = next.timer,
@@ -199,7 +222,8 @@ fun CookingModeScreen(
 
     // Reanudacion de una sesion En marcha (el proceso murio a mitad): la cuenta atras ya se recalculo
     // desde el ancla, pero la alarma y el servicio murieron con el proceso, asi que se **rearma** el
-    // trabajo del sistema **una vez**, tratando la reanudacion como `IDLE -> RUNNING`.
+    // trabajo del sistema **una vez**, tratando la reanudacion como `IDLE -> RUNNING`. La etiqueta sale
+    // del estado **reanudado** (el paso persistido), no del paso 1.
     LaunchedEffect(Unit) {
         val resumed = resume ?: return@LaunchedEffect
         if (resumed.timer.status != CookingTimerStatus.RUNNING) return@LaunchedEffect
@@ -208,6 +232,7 @@ fun CookingModeScreen(
                 previous = resumed.timer.copy(status = CookingTimerStatus.IDLE),
                 next = state.timer,
                 nowMillis = SystemClock.elapsedRealtime(),
+                stepLabel = stepLabelOf(state),
             ),
         )
     }

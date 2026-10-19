@@ -14,8 +14,17 @@ sealed interface CookingAlarmCommand {
      * Hay que programar (o **reemplazar**) el aviso para el instante [triggerAtMillis] (el fin de la
      * cuenta atras): el **ancla** del temporizador que acaba de arrancar o, si no la tiene, `now +
      * remaining`.
+     *
+     * [stepLabel] es la etiqueta del paso que acaba de arrancar ([CookingStepLabel]): el numero en la
+     * microcopy del encabezado y el titulo del paso, lo **unico** derivado de la receta que puede cruzar
+     * al sistema (frontera de privacidad). Es `null` cuando no hay paso que etiquetar (p. ej. una
+     * reanudacion sin paso o una receta sin pasos) y entonces la notificacion persistente cae a su
+     * titulo generico.
      */
-    data class Schedule(val triggerAtMillis: Long) : CookingAlarmCommand
+    data class Schedule(
+        val triggerAtMillis: Long,
+        val stepLabel: CookingStepLabel? = null,
+    ) : CookingAlarmCommand
 
     /**
      * No debe quedar ningun aviso vivo (Pausar, Reiniciar, cambio de paso o salir). **No** se emite al
@@ -43,9 +52,12 @@ sealed interface CookingAlarmCommand {
  *
  * Reglas de [onTimerChange], evaluadas en este orden:
  * 1. **Iniciar/Reanudar** (`next.isRunning && !previous.isRunning` y `next.remainingMillis > 0`) ->
- *    `Schedule(next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis))`: **el ancla** del
- *    temporizador si la tiene (para que UI, sesion persistida, alarma y servicio compartan el **mismo**
- *    `Long`) y, si no, la proyeccion `now + remaining` (degradacion defensiva).
+ *    `Schedule(next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis), stepLabel)`: **el ancla**
+ *    del temporizador si la tiene (para que UI, sesion persistida, alarma y servicio compartan el
+ *    **mismo** `Long`) y, si no, la proyeccion `now + remaining` (degradacion defensiva). El comando
+ *    transporta ademas la **etiqueta del paso** ([stepLabel], `null` por defecto para no cambiar los
+ *    call sites aceptados), que es lo unico que la notificacion persistente necesita para decir que
+ *    paso es. Las **demas** reglas no la llevan: `None` y `Cancel` no hablan del paso.
  * 2. Cualquier otro caso con `next` En marcha (los latidos, el doble "Iniciar" no-op y el caso
  *    defensivo `remainingMillis <= 0`) -> `None`: **no** se reprograma en cada segundo (seria el bug
  *    clasico de "una alarma por tick").
@@ -58,7 +70,8 @@ sealed interface CookingAlarmCommand {
  * 5. `next` **no-op** del temporizador (`previous == next`) -> `None`.
  *
  * Un cambio de paso no necesita una regla propia: [CookingModeState.next]/[CookingModeState.previous]
- * **reinician** el temporizador a Inactivo, asi que la regla 4 ya cancela el aviso del paso anterior.
+ * **reinician** el temporizador a Inactivo, asi que la regla 4 ya cancela el aviso del paso anterior y
+ * el armado siguiente compone la etiqueta del paso **nuevo** (nunca hay etiqueta heredada).
  * "Reiniciar" desde Terminado (`FINISHED -> IDLE`) tambien cae en la regla 4 y cancela.
  */
 object CookingAlarmPolicy {
@@ -68,10 +81,12 @@ object CookingAlarmPolicy {
         previous: CookingTimerState,
         next: CookingTimerState,
         nowMillis: Long,
+        stepLabel: CookingStepLabel? = null,
     ): CookingAlarmCommand = when {
         next.isRunning && !previous.isRunning && next.remainingMillis > 0 ->
             CookingAlarmCommand.Schedule(
-                next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis),
+                triggerAtMillis = next.endAtElapsedMillis ?: (nowMillis + next.remainingMillis),
+                stepLabel = stepLabel,
             )
 
         next.isRunning -> CookingAlarmCommand.None

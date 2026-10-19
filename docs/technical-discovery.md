@@ -500,8 +500,12 @@ La **cuenta atras fuera de la app** (feature `cooking-timer-foreground-service`,
 segunda integracion de sistema y la **unica** pieza en primer plano del repo
 (`docs/adr/0008-cooking-timer-foreground-service.md`): mientras corre el temporizador de un paso,
 `data.cooking.CookingTimerService` mantiene una notificacion **persistente** (id **fijo** `1000`, canal
-`cooking_timer` reutilizado, titulo fijo "Cocina en marcha", `ongoing` + `onlyAlertOnce` + `silent`,
-small icon monocromo, `CATEGORY_STOPWATCH`) cuya **cuenta atras la pinta el sistema**
+`cooking_timer` reutilizado, `ongoing` + `onlyAlertOnce` + `silent`,
+small icon monocromo, `CATEGORY_STOPWATCH`) cuyo **titulo** es el **numero del paso** ("Paso N de M", la
+microcopy ya aceptada del encabezado del Modo cocina) y cuyo **cuerpo** es el **titulo del paso**, desde
+`cooking-timer-notification-step-label` (2026-10-19; antes era el titulo **fijo** "Cocina en marcha", que
+se conserva como **fallback** cuando falta la etiqueta o cualquiera de las dos cadenas viene en blanco),
+y cuya **cuenta atras la pinta el sistema**
 (`setUsesChronometer(true)` + `setChronometerCountDown(true)` + `setWhen(fin en hora de pared)`, con el
 `when` **recalculado al publicar**): no hay
 ni una publicacion por segundo ni un latido en el servicio, que solo espera **un** despertar (`delay`
@@ -513,10 +517,16 @@ arrancar, **no pinta** la persistente (nunca se ve la cuenta atras en negativo) 
 aceptada sigue programada como **respaldo** (proceso muerto/congelado) y su receptor, al disparar,
 **para el servicio y retira la `1000`** ademas de publicar; los dos publicadores no duplican ni repiten
 alerta gracias al **sello de fin** (`CookingFinishPublication` + la ventana de frescura de 60 s). Su
-**unico** dato de entrada son dos escalares
-(`EXTRA_END_AT_ELAPSED_MILLIS` y `EXTRA_FINISH_WALL_CLOCK_MILLIS`), asi que la receta, los pasos y la
-clave de IA **no** cruzan al
-sistema. El servicio se declara con `foregroundServiceType="specialUse"` (+ el `<property>
+dato de entrada son dos escalares
+(`EXTRA_END_AT_ELAPSED_MILLIS` y `EXTRA_FINISH_WALL_CLOCK_MILLIS`) mas la **etiqueta del paso**
+(`EXTRA_STEP_PROGRESS`/`EXTRA_STEP_TITLE`, opcionales: solo se añaden si existe, para que el `keySet`
+siga siendo exacto), derivada por la logica **pura** `ui.cooking.CookingStepLabel` (numero del paso con
+la microcopy del encabezado + `RecipeStep.title`) al armar el trabajo del sistema y **nunca** persistida.
+De la receta **solo** cruzan esas dos cadenas, por decision explicita de la persona
+(`cooking-timer-notification-step-label`, 2026-10-19): ni la descripcion del paso, ni los ingredientes,
+ni las notas, ni los tips, ni la nutricion ni la clave de IA cruzan al
+sistema; el aviso `1001` y el `PendingIntent` de la alarma siguen **sin** la etiqueta. El servicio se
+declara con `foregroundServiceType="specialUse"` (+ el `<property>
 android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) y los dos permisos **normales** `FOREGROUND_SERVICE` y
 `FOREGROUND_SERVICE_SPECIAL_USE`; el servicio se arranca y se para desde el **mismo** adaptador del aviso
 (`AndroidCookingAlarm`: `Schedule` => `startForegroundService` + alarma; `Cancel` => `stopService` +

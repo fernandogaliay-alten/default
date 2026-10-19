@@ -28,9 +28,13 @@ import com.sazon.app.R
  *   6). La publica el servicio en el instante exacto (productor **primario**) o, si el proceso estaba
  *   muerto/congelado, la alarma exacta de **respaldo** ([CookingAlarmReceiver]).
  *
- * El contenido es **generico** por construccion: ni [ongoing] ni [notification] reciben la receta, asi
- * que no pueden exponer la descripcion del paso, los ingredientes ni las notas. Son notificaciones de
- * sistema que no forman parte de ninguna pantalla de la app.
+ * El contenido es **generico** salvo la **etiqueta del paso** de la persistente (feature
+ * `cooking-timer-notification-step-label`): ni [ongoing] ni [notification] reciben la `Recipe`, asi que
+ * no pueden exponer la descripcion del paso, los ingredientes ni las notas. Lo **unico** derivado de la
+ * receta que cruza es el numero ("Paso N de M", la microcopy del encabezado del Modo cocina) y el
+ * **titulo** del paso, por decision explicita de la persona; la garantia de que nada mas puede cruzar
+ * sigue siendo **estructural** (las funciones no reciben la receta). Son notificaciones de sistema que
+ * no forman parte de ninguna pantalla de la app.
  *
  * Con **dos** publicadores posibles, "no duplicar" no lo sostiene el id fijo (evita dos notificaciones,
  * no dos alertas): lo decide [notifyFinish] con el **sello de fin** compartido (el `when` de la `1001`)
@@ -69,9 +73,11 @@ object CookingNotifications {
     const val ONGOING_NOTIFICATION_ID = 1000
 
     /**
-     * Titulo **fijo** de la notificacion persistente: solo dice que hay una cocina en marcha. La cuenta
-     * atras la pinta el **sistema** (cronometro descendente), asi que aqui no hay ningun dato de la
-     * receta.
+     * Titulo **generico** de la notificacion persistente, **fallback** desde
+     * `cooking-timer-notification-step-label`: mientras corre el temporizador el titulo es el numero del
+     * paso ("Paso N de M") y este texto queda para cuando **falta** la etiqueta (un `Intent` sin paso, un
+     * proceso recreado con un `Intent` viejo o una receta sin pasos). La cuenta atras la pinta el
+     * **sistema** (cronometro descendente), asi que aqui no hay ningun dato de la receta.
      */
     const val ONGOING_TITLE = "Cocina en marcha"
 
@@ -143,10 +149,20 @@ object CookingNotifications {
     }
 
     /**
-     * Construye la notificacion **persistente** del servicio en primer plano: titulo fijo
-     * ([ONGOING_TITLE]) y una **cuenta atras que pinta el sistema** (`setUsesChronometer(true)` +
-     * `setChronometerCountDown(true)` + `setWhen(endWallClockMillis)`), sin `contentText` ni extras
-     * propios: no expone la receta, los ingredientes, los pasos ni la clave de IA.
+     * Construye la notificacion **persistente** del servicio en primer plano: el **numero del paso**
+     * ([stepProgress], "Paso N de M") como titulo y el **titulo del paso** ([stepTitle]) como cuerpo,
+     * con una **cuenta atras que pinta el sistema** (`setUsesChronometer(true)` +
+     * `setChronometerCountDown(true)` + `setWhen(endWallClockMillis)`).
+     *
+     * Los dos textos son **opcionales** (frontera de privacidad, feature
+     * `cooking-timer-notification-step-label`): sin etiqueta —o con cualquiera de los dos en blanco— el
+     * titulo cae al generico [ONGOING_TITLE] ("Cocina en marcha") y **no** se pinta cuerpo, de modo que
+     * la notificacion queda **igual** que antes de la feature. Es la degradacion defensiva coherente con
+     * el contrato "no lanza" (un `Intent` viejo o un arranque sin paso no rompen nada).
+     *
+     * Lo **unico** derivado de la receta que puede llegar aqui es ese numero y ese titulo: la funcion no
+     * recibe la `Recipe`, asi que no puede exponer la descripcion del paso, los ingredientes, las notas
+     * ni la clave de IA; tampoco anade extras propios.
      *
      * `ongoing` + `onlyAlertOnce` + `silent`: no se puede descartar con un gesto y **no** vuelve a
      * alertar (ni suena ni vibra) al refrescarse; se publica en el **mismo canal** aceptado
@@ -159,11 +175,17 @@ object CookingNotifications {
     fun ongoing(
         context: Context,
         endWallClockMillis: Long,
+        stepProgress: String?,
+        stepTitle: String?,
         contentIntent: PendingIntent?,
     ): Notification {
+        val progress = stepProgress?.takeIf { it.isNotBlank() }
+        // Una etiqueta a medias es una etiqueta **ausente**: sin numero no se pinta tampoco el cuerpo, de
+        // modo que la notificacion queda igual que antes de la feature (escenario 5).
+        val title = if (progress == null) null else stepTitle?.takeIf { it.isNotBlank() }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_timer)
-            .setContentTitle(ONGOING_TITLE)
+            .setContentTitle(progress ?: ONGOING_TITLE)
             .setWhen(endWallClockMillis)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
@@ -171,6 +193,7 @@ object CookingNotifications {
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+        if (title != null) builder.setContentText(title)
         if (contentIntent != null) builder.setContentIntent(contentIntent)
         return builder.build()
     }
