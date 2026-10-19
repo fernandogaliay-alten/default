@@ -120,6 +120,7 @@ Convierte los ingredientes que **ya tienes en casa** en recetas completas genera
 
 | Elemento del curso | Qué hicimos | Evidencia |
 |---|---|---|
+| `feature-intake` | Alta de features y correctivas: formato único, ids y dependencias | `.opencode/skills/feature-intake/` |
 | `feature-flow` | planner→implementer→validator + commit local al accept | ramas `feature/<id>` |
 | `github-flow` | Issue `[<id>]`, rama, worktree, sesión, PR | **82 PRs** |
 | `pr-flow` + `reviewer` | Revisión independiente del PR y **merge** con puerta | `.opencode/skills/pr-*` |
@@ -194,14 +195,14 @@ main ──┬─ feature/A  → worktree A  → sesión opencode A ─┐
 **Tres orquestadores encadenados; una sola autoridad de merge.**
 
 ```text
-feature-flow                 github-flow                 pr-flow
-spec → implement → validar   issue → rama → worktree      sync base → reviewer
-     → commit local          → push → PR                 → ¿revise? implementer
-(nunca push/PR)              (nunca merge)               → merge commit ✔
+idea → feature-intake → feature-flow ─────────► github-flow ─────► pr-flow
+       alta en el plan  spec → implement → validar  issue → rama → PR  reviewer → merge
+       (commit local)   (commit local, nunca push)  (nunca merge)      (única autoridad)
 ```
 
 | Fase | Skill | Subagente | Produce | Nunca hace |
 |---|---|---|---|---|
+| Dar de alta | `feature-intake` | — | entrada en `feature_list.json` | spec · código · push |
 | Especificar | `feature-spec` | `planner` | `docs/specs/<id>.md` | código |
 | Implementar | `feature-implementer` | `implementer` | código + autoverificación | commit · push · PR |
 | Validar | `feature-validator` | `validator` | veredicto `accept` | merge |
@@ -330,11 +331,27 @@ El dominio **no depende de ningún SDK**: depende de **dos puertos puros**.
 ## Cómo se añade un evolutivo
 
 1. Se documenta una **propuesta** (no aceptada, fuera del MVP)
-2. Se dan de alta las **fases como features** en `feature_list.json` (con `depends_on`)
+2. Las **fases se dan de alta como features** con `feature-intake` (`id`, `depends_on`, `verification`)
 3. Cada fase recorre el **ciclo normal**: spec → implement → validación
 4. Al cerrar, se **actualiza un ADR**
 
 `docs/ai-dish-images-proposal.md` · `docs/backend-proposal.md`
+
+---
+
+## Cómo nace una feature o una correctiva
+
+**`feature-intake`**: del hallazgo a una entrada del plan, con el mismo formato siempre.
+
+1. Se declara **tipo** (feature o correctiva), título, comportamiento visible, área y **dependencias**
+2. La skill comprueba que el `id` no existe y que las dependencias están **`accepted`**
+3. Redacta `status: not_started` + `verification` + `notes` y **valida el JSON**
+4. Commit `chore(plan): alta de …`; `github-flow` la toma ya desde `origin/main`
+5. Después, el ciclo normal: `feature-spec` → `feature-implementer` → `feature-validator`
+
+> El alta también es un contrato: no se planifica ni se implementa aquí.
+
+`.opencode/skills/feature-intake/SKILL.md` · `feature_list.json`
 
 ---
 
@@ -456,6 +473,7 @@ Cuando algo falla, **no se parchea a mano**: nace una **feature correctiva** con
 | Gradle no cuelga la shell | Daemons → salida a fichero |
 | Capturas: exigir → provisionar → **retirar** | Política móvil → material **opcional** |
 | Lanzador foreground → bg → **foreground** (revert) | Evitar sesiones huérfanas |
+| Alta de features/correctivas (`feature-intake`) | Formato único + ids/dependencias verificadas antes del flujo |
 | Prune de worktrees mergeados | Limpieza segura |
 
 ---
