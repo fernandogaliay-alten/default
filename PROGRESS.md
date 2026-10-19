@@ -10,6 +10,26 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Correctiva **`pr-worktree-fork-detection`** (`area: platform`, `depends_on: []`) implementada y
+  autoverificada (**`passing`**) por el subagente `implementer` en la **sesión 145** y **`accepted`** en la
+  **sesión 146** (validación independiente del subagente `validator`, contexto limpio, veredicto
+  **`accept`**; ver `docs/validations/pr-worktree-fork-detection.md`), en el worktree
+  `pr-worktree-fork-detection` (rama `feature/pr-worktree-fork-detection`; **sin** commit/push/PR de los
+  subagentes: el commit local lo crea el orquestador de `feature-flow` y la publicación queda para
+  `github-flow`). `scripts/pr-worktree.sh` clasifica un PR como fork **por el repositorio donde vive la rama
+  head** (`isCrossRepository=true`) y ya **no** por su dueño: en un repositorio de organización el dueño
+  (`fernandogaliay-alten`) nunca coincide con el usuario autenticado (`FernandoGaliay`), así que antes
+  **todo** PR legítimo se rechazaba. Una sola llamada `gh pr view` pide
+  `headRefName,state,isDraft,isCrossRepository,headRepository` (el diagnóstico al final, `// "-"`, para que
+  un `headRepository` nulo no desplace columnas) y se rechaza **solo** `cross = "true"`; se eliminan
+  `gh api user`, la variable `me` y la comparación con `headRepositoryOwner`. Sin cambios en el resto del
+  contrato (rutas, reutilización, `fetch`, `worktree add`, `local.properties`, stdout solo la ruta, códigos
+  0/1/2). Docs durables alineados: `.opencode/skills/pr-flow/SKILL.md` y `AGENTS.md` (fork = head en **otro
+  repositorio**, no un dueño distinto). Gate: `bash -n` exit 0; `bash init.sh` exit 0 y, forzado,
+  `testDebugUnitTest --rerun-tasks` + `lint --rerun-tasks` **117 suites / 967 tests / 0 fallos / 0 errores /
+  0 saltados** y **13 warnings preexistentes / 0 errores**; arnés determinista con stub de `gh` (4 casos,
+  0 `gh api user`) y caso real #167 exit 0. Sin dependencias nuevas ni cambios en `init.sh`, otros scripts,
+  la app, build/lockfile, manifiesto ni permisos. Sin hallazgos bloqueantes; F1-F3 informativos.
 - Ampliacion **`cooking-timer-alarm`** implementada y autoverificada (**`passing`**) en la **sesion 131**
   y **`accepted`** en la **sesion 132** (validacion independiente, veredicto `accept`; ver
   `docs/validations/cooking-timer-alarm.md`) en la rama `feature/cooking-timer-alarm` (implementer, sin
@@ -7498,3 +7518,81 @@
   `feature/cooking-timer-notification-step-label` (**sin** push ni PR).
 - Estado de features: `cooking-timer-notification-step-label` queda **`accepted`**; WIP = 0 en este worktree.
   No hay más features `in_progress`/`passing` en esta rama.
+
+### Sesión 145 (implementer, `pr-worktree-fork-detection`)
+
+- Fecha: 2026-10-19
+- Objetivo: implementar y autoverificar **una** feature ya planificada (WIP = 1) siguiendo su spec
+  `docs/specs/pr-worktree-fork-detection.md` (correctiva detectada al mergear el PR #167 desde `pr-flow`),
+  **sin** commit/push/PR y sin ampliar el alcance.
+- Contexto de partida: rama `feature/pr-worktree-fork-detection`, `HEAD 285dc8e`, árbol limpio salvo la spec
+  sin trackear; `depends_on` vacío.
+- Qué se implementó: `scripts/pr-worktree.sh` clasifica el fork **por el repositorio** donde vive la rama
+  head y ya no por su dueño. Una sola llamada a `gh pr view` pide
+  `headRefName,state,isDraft,isCrossRepository,headRepository` y el `jq` emite
+  `[headRefName, state, draft, cross, headRepository.nameWithOwner // "-"]` (los cuatro campos que gobiernan
+  el flujo primero, el diagnóstico al final, para que un `headRepository` nulo no desplace columnas con
+  `IFS=$'\t' read`). Se rechaza **solo** `cross = "true"` con «PR #<n> viene de un fork (<repo>); pr-flow no
+  lo soporta todavia». Se **eliminó** `gh api user`, la variable `me` y la comparación con
+  `headRepositoryOwner`. Cabecera actualizada (exit 1 documenta «head en otro repositorio (fork)»). Sin
+  cambios en el resto del contrato: `repo_root`/`worktrees_root`/`dir_name`, reutilización, `fetch`,
+  `worktree add`, copia de `local.properties`, stdout (solo la ruta), stderr y códigos 0/1/2.
+- Docs durables: `.opencode/skills/pr-flow/SKILL.md` (la viñeta de fork pasa a «head lives in another
+  repository (`isCrossRepository=true`)», con la nota de que el dueño es irrelevante en una organización) y
+  `AGENTS.md` (sección `pr-flow`: un fork es un head en **otro repositorio**, no un dueño distinto).
+- Verificación (autoverificación, no aceptación): `bash -n scripts/pr-worktree.sh` **exit 0**; **arnés
+  determinista** con un stub efímero de `gh` en `/tmp` (no versionado) → **s1=1** (fork `otra-org/default`)
+  y **s2=1** (fork `FernandoGaliay/default`, mismo dueño que el usuario: el código viejo lo dejaba pasar),
+  ambos sin stdout, con «viene de un fork» en stderr y sin crear `worktrees/demo`; **s3=0** imprimiendo
+  `<scratch>/worktrees/demo` y **s4=0** con «worktree ya existe»; el log del stub registra **solo 4 llamadas
+  `pr view`** y **ninguna `gh api user`** (cualquier otra llamada habría fallado con exit 97). **Caso real**:
+  `gh pr view 167 --json isCrossRepository,headRefName,headRepository,state` ⇒ `false`,
+  `feature/cooking-timer-notification-step-label`, `fernandogaliay-alten/default`, `MERGED`;
+  `WORKTREES_ROOT=$(mktemp -d /tmp/sazon-pr167.XXXXXX) bash scripts/pr-worktree.sh 167 main` ⇒ **exit 0**,
+  stdout `/tmp/sazon-pr167.*/cooking-timer-notification-step-label`, stderr
+  `PR #167: head=... state=MERGED draft=false` y `local.properties copiado`, sin aviso de fork; limpieza con
+  `git worktree remove --force` + `git branch -D` (la rama no existía antes) y `git worktree list` de vuelta
+  al checkout base + este worktree. Contrato: sin argumentos **exit 2**; helper por feature-id sin `gh`
+  resuelve la rama y **exit 1** si falta el ref. Gate del repo: `bash init.sh` **exit 0** con
+  `:app:testDebugUnitTest` ejecutado (34/34 tareas, BUILD SUCCESSFUL 29s) y `:app:lint` (BUILD SUCCESSFUL
+  35s); XML frescos **117 suites / 967 tests / 0 fallos / 0 errores / 0 saltados**; SARIF **13 resultados /
+  0 errores**. Sin dependencias nuevas ni cambios en `init.sh`.
+- Alcance: `git diff --stat` limitado a `scripts/pr-worktree.sh`, `.opencode/skills/pr-flow/SKILL.md`,
+  `AGENTS.md`, `feature_list.json` (+ este registro y la spec); **sin** cambios en `init.sh`, el resto de
+  `scripts/`, `app/**`, build/lockfile, manifiesto ni permisos.
+- Riesgo o incógnita abierta: si una instalación de `gh` muy antigua no admitiera `isCrossRepository`,
+  `gh pr view --json` fallaría y el helper caería en «no se encontro el PR» (fallo visible, no una
+  clasificación errónea). No se añade fallback.
+- Estado de features: `pr-worktree-fork-detection` queda **`passing`** (implementada y autoverificada,
+  **pendiente de validación independiente**; WIP = 1 en este worktree). El estado máximo que fija el
+  implementer es `passing`; `accepted` lo persiste el orquestador tras el `accept` del `validator`.
+  Siguiente paso en este worktree: `feature-validator` sobre `docs/specs/pr-worktree-fork-detection.md` y el
+  diff actual (sin commit).
+
+### Sesión 146 (orquestador `feature-flow`, `pr-worktree-fork-detection`)
+
+- Fecha: 2026-10-19
+- Objetivo: validar de forma independiente la feature **`pr-worktree-fork-detection`** (ya `passing` desde la
+  sesión 145) y persistir el veredicto.
+- Validación: subagente **`validator`** (skill `feature-validator`, contexto limpio, sin fiarse del handoff
+  del implementer) sobre `docs/specs/pr-worktree-fork-detection.md` y el diff en disco (rama
+  `feature/pr-worktree-fork-detection`, `HEAD 285dc8e`). **Veredicto: `accept`**. Reprodujo por su cuenta
+  `bash -n scripts/pr-worktree.sh` (exit 0), el **arnés determinista con stub de `gh`** (s1=1 y s2=1 con
+  stdout vacío, «viene de un fork» y sin crear worktree; s3=0 con ruta y directorio; s4=0 con «worktree ya
+  existe»; **4 llamadas `pr view`, 0 `gh api user`**), el **caso real #167** (`isCrossRepository=false`;
+  helper exit 0, ruta temporal, sin aviso de fork; limpieza verificada) y el contrato 0/1/2. `bash init.sh`
+  salió exit 0 con `testDebugUnitTest` **`UP-TO-DATE`** (no vale como evidencia fresca), así que forzó
+  `bash scripts/gradle.sh testDebugUnitTest --rerun-tasks` (**34/34 tareas**, exit 0) y `lint --rerun-tasks`
+  (**30/30 tareas**, exit 0): XML frescos **117 suites / 967 tests / 0 fallos / 0 errores / 0 saltados**;
+  SARIF **13 resultados, todos warning, 0 errores** (preexistentes, ajenos al diff). Confirmó los escenarios
+  1-5, la desaparición de `gh api user`/`comparación de dueño` en la decisión, la alineación de
+  `.opencode/skills/pr-flow/SKILL.md` y `AGENTS.md`, el modo `100755`, la seguridad (se retira una llamada
+  autenticada; `head_repo` solo va a stderr) y la disciplina de alcance. **Sin hallazgos
+  Critical/High/Medium**; F1 (un comentario mezcla ASCII y `dueño`), F2 (la spec estaba sin trackear y se
+  incluye en el commit) y F3 (sin fallback para un `gh` muy antiguo; fallo visible, documentado) quedan como
+  informativos sin reparación. Detalle en `docs/validations/pr-worktree-fork-detection.md`.
+- Persistencia de la aceptación: `feature_list.json` pasa a **`accepted`** con la evidencia de la validación
+  independiente y el commit local es `feat: complete pr-worktree-fork-detection` en la rama
+  `feature/pr-worktree-fork-detection` (**sin** push ni PR; publica `github-flow`).
+- Estado de features: `pr-worktree-fork-detection` queda **`accepted`**; WIP = 0 en este worktree. No hay más
+  features `in_progress`/`passing` en esta rama.

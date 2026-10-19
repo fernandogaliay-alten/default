@@ -20,7 +20,7 @@ set -euo pipefail
 #
 # Salida (stdout, una linea al final): la ruta del worktree.
 #   0  worktree listo (existente o creado)
-#   1  no se puede: PR no encontrado, rama fork, o rama sin ref remoto
+#   1  no se puede: PR no encontrado, head en otro repositorio (fork), o rama sin ref remoto
 #   2  uso incorrecto
 
 BASE_BRANCH="${2:-${BASE_BRANCH:-main}}"
@@ -38,26 +38,27 @@ worktrees_root="${WORKTREES_ROOT:-$(dirname "$repo_root")/${base_dirname}-worktr
 
 branch=""
 if [[ "$target" =~ ^[0-9]+$ ]]; then
-  # Numero de PR: resolver headRefName, owner, state y draft con gh.
+  # Numero de PR: resolver headRefName, state, draft y si el head vive en otro
+  # repositorio (fork). El dueño del repo no decide nada: en una organizacion
+  # nunca coincide con el usuario autenticado.
   if ! command -v gh >/dev/null 2>&1; then
     echo "gh no esta disponible y se paso un numero de PR" >&2
     exit 1
   fi
   info="$(gh pr view "$target" \
-    --json headRefName,headRepositoryOwner,state,isDraft \
-    --jq '[.headRefName, .headRepositoryOwner.login, .state, (.isDraft|tostring)] | @tsv' 2>/dev/null || true)"
+    --json headRefName,state,isDraft,isCrossRepository,headRepository \
+    --jq '[.headRefName, .state, (.isDraft|tostring), (.isCrossRepository|tostring), (.headRepository.nameWithOwner // "-")] | @tsv' 2>/dev/null || true)"
   if [ -z "$info" ]; then
     echo "no se encontro el PR #${target}" >&2
     exit 1
   fi
-  IFS=$'\t' read -r branch owner state draft <<< "$info"
+  IFS=$'\t' read -r branch state draft cross head_repo <<< "$info"
   if [ -z "$branch" ]; then
     echo "no se pudo leer headRefName del PR #${target}" >&2
     exit 1
   fi
-  me="$(gh api user --jq .login 2>/dev/null || echo '')"
-  if [ -n "$owner" ] && [ -n "$me" ] && [ "$owner" != "$me" ]; then
-    echo "PR #${target} viene de un fork (${owner}); pr-flow no lo soporta todavia" >&2
+  if [ "$cross" = "true" ]; then
+    echo "PR #${target} viene de un fork (${head_repo}); pr-flow no lo soporta todavia" >&2
     exit 1
   fi
   echo "PR #${target}: head=${branch} state=${state:-?} draft=${draft:-false}" >&2
