@@ -1873,5 +1873,20 @@
       "Hallazgos del validador: **ninguno Critical/High/Medium**. 3 Low informativos **no bloqueantes**: L1 `ongoing` trata la etiqueta a medias como ausente (lectura literal del escenario 5; coherente, testeada y sin accion obligatoria); L2 mezcla en `DESIGN.md` de la frase historica \"titulo fijo\" con la precision nueva y checklist historico lejos de la nota de vigencia (evidencia historica conservada a proposito); L3 warning nuevo de compilacion de tests por `ScheduledAlarm.operation` deprecado de Robolectric (junto al preexistente; `@Suppress(\"DEPRECATION\")` lo dejaria limpio)."
     ],
     "notes": "Mejora pedida por la persona (2026-10-16): hoy la notificación persistente es genérica ('Cocina en marcha') porque el servicio solo recibe el instante de fin (`EXTRA_END_AT_ELAPSED_MILLIS`) y su contenido es genérico por decisión (ADR 0007/0008). La persona **acepta** que el número y el título del paso crucen a la notificación del sistema. Alcance: ampliar `CookingTimerService.intent` y `CookingNotifications.ongoing(...)` con la etiqueta ('Paso N de M' + título del paso) y fijar la decisión de privacidad en los ADR. Depende de `cooking-timer-notification-reliability` porque ambas tocan `CookingTimerService`/`CookingNotifications` (se ejecutan en secuencia). NO entra: exponer ingredientes, notas ni la clave de IA; ni cambiar el microcopy del aviso de fin (1001). Sin dependencias nuevas."
+  },
+  {
+    "id": "pr-worktree-fork-detection",
+    "area": "platform",
+    "title": "pr-worktree.sh no confunde la organización dueña con un fork",
+    "user_visible_behavior": "No cambia la app. `bash scripts/pr-worktree.sh <pr>` prepara el worktree de un PR de este repositorio aunque su rama head viva bajo la organización dueña (`fernandogaliay-alten`), y sigue rechazando un PR cuyo head pertenece a otro repositorio (fork real).",
+    "depends_on": [],
+    "status": "not_started",
+    "verification": [
+      "'bash init.sh' sigue en verde y sin dependencias nuevas; el cambio se limita a `scripts/pr-worktree.sh` (sin tocar `init.sh`, el resto de scripts, la app, build/lockfile, manifiesto ni permisos)",
+      "Prueba reproducible (positiva): sobre un PR de este repositorio con `isCrossRepository=false` (p. ej. #167), `bash scripts/pr-worktree.sh <n> main` NO aborta con «viene de un fork» y termina con exit 0 imprimiendo la ruta del worktree (reutilizándolo si ya existe)",
+      "Prueba reproducible (negativa): un head en otro repositorio (`isCrossRepository=true`) se sigue rechazando con exit 1 y el mensaje de fork; el caso se ejerce con el propio dato que consulta el script (sustituyendo la respuesta de `gh` por una de fork) o por inspección de la condición implementada"
+    ],
+    "evidence": [],
+    "notes": "Defecto detectado en la sesión del orquestador `pr-flow` (merge del PR #167): `scripts/pr-worktree.sh` compara `headRepositoryOwner.login` con el usuario autenticado de `gh`; en un repositorio de organización el dueño (`fernandogaliay-alten`) nunca coincide con el usuario (`FernandoGaliay`), así que un PR legítimo de este repositorio se clasifica como fork y el helper aborta. `gh pr view 167 --json isCrossRepository` devuelve `false` y `headRepository.nameWithOwner` es el propio repositorio, o sea que la comprobación correcta es si la rama head vive en el mismo repositorio (no el dueño frente al usuario). En esa sesión se esquivó creando el worktree a mano con la misma lógica del script. Alcance: corregir la detección de fork en `scripts/pr-worktree.sh` (una sola condición) para que `pr-flow` pueda seguir su camino estándar. NO entra: reescribir otros helpers (`new-worktree.sh`, `sync-worktree.sh`, `cleanup-worktree.sh`), la app, build/lockfile, manifiesto, permisos ni `init.sh`. Sin dependencias nuevas. No hay configuración por máquina: el script está versionado, así que el arreglo llega a cualquier equipo al hacer pull de `main`."
   }
 ]
