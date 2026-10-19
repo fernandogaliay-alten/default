@@ -57,7 +57,7 @@ bash scripts/pr-worktree.sh <pr-number> <base_branch>   # prints the worktree pa
 Rules:
 
 - Never switch the base checkout's branch and never `git checkout` the PR branch in the base checkout; work only inside the PR worktree.
-- If the PR head is a fork branch (different `headRepositoryOwner`), stop that PR and report it as unsupported by this flow.
+- If the PR head lives in another repository (`isCrossRepository=true`), stop that PR and report it as unsupported by this flow. The owner of the head repository is irrelevant: in an organization repository it never matches the authenticated user.
 - Keep WIP=1 per PR; do not run two features in one worktree.
 
 ## Orchestration Loop (per PR)

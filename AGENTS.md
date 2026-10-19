@@ -126,7 +126,8 @@ aceptación.
 - `pr-flow` opera sobre los **PRs ya abiertos** por `github-flow`, no sobre ramas locales. Alcance por
   ejecución: un PR (número o feature id) o todos los PRs abiertos contra la rama base, uno a uno.
 - Precondiciones: `gh` autenticado con permiso de merge y la base al día. Los PRs de un fork quedan
-  fuera (por ahora el head debe ser una rama `feature/<id>` de este repositorio).
+  fuera: un fork es un head en **otro repositorio** (`isCrossRepository=true`), no un dueño distinto; el
+  head debe ser una rama `feature/<id>` de este repositorio.
 - Ciclo por PR: sincronizar la base en la rama (`scripts/sync-worktree.sh <id>`), revisar con el
   subagente `reviewer`, reparar un `revise` con el subagente `implementer` (máx. 2 rondas) y mergear
   al `accept`.
