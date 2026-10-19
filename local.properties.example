@@ -1,0 +1,16 @@
+## Plantilla de local.properties. NO contiene secretos: copiala y rellena los valores.
+##   cp local.properties.example local.properties
+## local.properties esta ignorado en git (las claves de IA no se versionan y no viajan
+## con el clon): pasalas aparte a cada maquina.
+
+## Ruta del SDK de Android. La escribe Android Studio; en WSL, scripts/wsl-env.sh la
+## normaliza al SDK de Linux (~/Android/Sdk) al arrancar Gradle.
+sdk.dir=
+
+## Clave del chat (OpenCode Go): generador, Busqueda con IA y lote de sugerencias.
+## Si falta o esta vacia, la app degrada en silencio a modo semilla y el log muestra MISSING_KEY.
+opencode.apiKey=
+
+## Clave de la imagen de plato (DevExpert). Si falta o esta vacia, la tarjeta cae a la
+## ficha tipografica (sin imagen generada).
+devexpert.apiKey=

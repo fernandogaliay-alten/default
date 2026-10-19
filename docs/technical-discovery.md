@@ -50,7 +50,7 @@ backend propio. El diseño de referencia está en `DESIGN.md`.
 | Imagen de plato **generada** (caché) | Ficheros **WebP en `cacheDir/dish-images`** cuyo nombre es la clave canónica (`<cacheKey>.webp`), más una **LRU de bytes en memoria** (16), resueltos por `data.image` (`DishImageResolver`); tope de disco de **80 MiB con evicción LRU** | Reutiliza sin volver a gastar cuota la imagen ya generada; el sistema puede descartar `cacheDir` en cualquier momento (nunca se usa `filesDir`) |
 | Fotos semilla de **platos frecuentes** | **Assets versionados** en `app/src/main/assets/img/dishes/seed/<cacheKey>.<ext>` (6 fotos WebP de 960 px, ~439 KiB), resueltas por `data.DishImageSeedAssets` y leídas por `data.AssetDishImageSeedSource` | Es la **tercera capa** de la caché de imagen de plato (fase 7): esos platos muestran su foto propia **sin red y sin gastar cuota** (ni la primera vez), sin duplicar bytes en `cacheDir`; se preparan una sola vez con `scripts/prepare-dish-image-seed.sh` (fuera de `init.sh` y de runtime) |
 | **Interruptor de imágenes del plato** (ajuste de gasto) | `SharedPreferences` privado de la app (`dish_image_settings` / `enabled`), detrás de la costura pura `data.image.DishImageSettingsStore` y del adaptador `AndroidDishImageSettingsStore`; se restaura **síncronamente** en el punto de composición (`MainActivity`) | Es **un bit** de ajuste (no estado relacional: Room queda para el Perfil, Favoritos, Resumen y Lote) y **sin dependencias nuevas** (API del framework). El **tope por sesión** **no** se persiste; ausencia de valor = default de la política (apagado) |
-| Claves de IA | **Dos**, desde `local.properties` (que no se versiona): `BuildConfig.OPENCODE_API_KEY` (`opencode.apiKey`) para el **chat** de OpenCode Go y `BuildConfig.DEVEXPERT_API_KEY` (`devexpert.apiKey`) para la **imagen** de DevExpert | Decisión de demo; cada consumidor degrada en silencio si falta la suya (chat → modo semilla; imagen → ficha tipográfica); ver riesgos |
+| Claves de IA | **Dos**, desde `local.properties` (que no se versiona): `BuildConfig.OPENCODE_API_KEY` (`opencode.apiKey`) para el **chat** de OpenCode Go y `BuildConfig.DEVEXPERT_API_KEY` (`devexpert.apiKey`) para la **imagen** de DevExpert. La plantilla **versionada y sin secretos** `local.properties.example` (raíz del repo) declara las tres propiedades (`sdk.dir`, `opencode.apiKey`, `devexpert.apiKey`) con valores vacíos: se copia a `local.properties` en un clon nuevo y las claves se pasan **aparte** | Decisión de demo; cada consumidor degrada en silencio si falta la suya (chat → modo semilla con `MISSING_KEY`; imagen → ficha tipográfica); `scripts/new-worktree.sh` **avisa por stderr** si al `local.properties` del worktree le falta alguna (sin bloquear); ver riesgos |
 
 La Taxonomía **no** se persiste en base de datos: se empaqueta con la app y es idéntica entre
 versiones. Los `id` nunca se renombran.
@@ -1054,7 +1054,12 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
 ## Deployment and Operations
 
 - Distribución como APK de depuración para el curso. **No** Play Store en el MVP.
-- La clave de IA se inyecta en tiempo de build desde `local.properties` (que no se versiona).
+- La clave de IA se inyecta en tiempo de build desde `local.properties` (que no se versiona): en un clon
+  nuevo hay que copiar la plantilla versionada `local.properties.example` (sin secretos) a
+  `local.properties` y rellenar `sdk.dir`, `opencode.apiKey` y `devexpert.apiKey`; las claves se pasan
+  aparte porque no viajan en git. `scripts/new-worktree.sh` avisa por stderr si al `local.properties` del
+  worktree le falta alguna de las dos claves (chat → modo semilla con `MISSING_KEY`; imagen → ficha
+  tipográfica) sin cambiar su código de salida.
 - Sin CI obligatoria. El harness usa `init.sh` localmente, en WSL (ver `Testing and Verification`).
 - Operación: la asume el propio estudiante; no hay entorno de producción.
 

@@ -10,6 +10,45 @@
   desde cero, sin `sudo`. Ver Sesión 059.
 - Camino estándar de verificación: `./gradlew test` y `./gradlew lint`, ambos vía `init.sh` (que
   enruta la salida por `scripts/gradle.sh` para no colgar la shell del agente; ver Sesión 056)
+- Correctiva **`ai-keys-onboarding-guard`** (`area: platform`, `depends_on: []`, correctiva pedida por
+  la persona el 2026-10-19 tras probar la Búsqueda con IA en una instalación hecha desde otro PC)
+  implementada y autoverificada (**`passing`**) por el subagente `implementer` (skill
+  `feature-implementer`) en la **sesión 147** y **`accepted`** en la **sesión 148** (validación
+  independiente del subagente `validator`, contexto limpio, veredicto **`accept`**; ver
+  `docs/validations/ai-keys-onboarding-guard.md`), según su spec
+  `docs/specs/ai-keys-onboarding-guard.md`, en el worktree `ai-keys-onboarding-guard` (rama
+  `feature/ai-keys-onboarding-guard`; **sin** commit/push/PR: el commit local lo crea el orquestador de
+  `feature-flow` y publica `github-flow`). Las claves de IA dejan de perderse en silencio al clonar: hay
+  una **plantilla versionada y sin secretos** `local.properties.example` en la raíz (solo `sdk.dir`,
+  `opencode.apiKey` y `devexpert.apiKey` con **valores vacíos** y comentarios de para qué sirve cada una,
+  que `local.properties` no se versiona y que las claves se pasan aparte) y `scripts/new-worktree.sh`
+  **avisa por stderr** cuando el `local.properties` resultante no define `opencode.apiKey` (chat →
+  `MISSING_KEY` y modo semilla) o `devexpert.apiKey` (imagen → ficha tipográfica). El helper
+  `sazon_props_value` (grep + última aparición + recorte de CRLF/espacios) **no imprime valores** y una
+  propiedad **presente pero vacía** cuenta como ausente; cada clave se evalúa por separado. **Nada más
+  cambia**: la app y su degradación silenciosa quedan intactas, los avisos van solo a stderr, stdout y
+  los códigos 0/1/2 se conservan, y no se rellena ni se pide ninguna clave. Gate: `bash -n` exit 0;
+  `bash init.sh` **exit 0** con `testDebugUnitTest` **ejecutado** (34/34 tareas) y `lint` (30/30) ⇒ XML
+  frescos **117 suites / 967 tests / 0 fallos / 0 errores / 0 saltados** y SARIF **13 resultados / 0
+  errores / 0 bajo `app/src`** (misma baseline que `HEAD f5e28fe`: sin cambios en `app/**`). Arnés
+  determinista en `/tmp` (4 casos, exit 0 todos): aviso del chat con `MISSING_KEY` en el negativo y en el
+  borde "presente y vacía", aviso de imagen solo cuando falta `devexpert.apiKey`, **ninguno** con las dos
+  claves, **ningún** `dummy-chat`/`dummy-img` en stdout/stderr y `local.properties` copiado; más caso 6
+  (sin `local.properties` ni `ANDROID_HOME` → aviso previo; segunda pasada → `worktree ya existe` exit 0;
+  rama `ANDROID_HOME` → su línea, sin avisos de clave; sin argumentos → exit 2) y comparación contra
+  `HEAD` del **stdout byte a byte idéntico** en positivo, negativo y sin fichero. Docs durables:
+  `AGENTS.md` (paso explícito al clonar, viñetas de `local.properties` y de worktrees) y
+  `docs/technical-discovery.md` (fila de claves de IA y *Deployment and Operations*). El validador
+  independiente (contexto limpio) reprodujo el arnés (34/34 checks) y **demostró que discrimina** (contra
+  el script de `HEAD` falla el aserto exigido de `opencode.apiKey`/`MISSING_KEY`); confirmó con `bash -x`
+  que el snippet de la spec tal cual **solo** falla en su última aserción por el `rm -rf` de `run_case`
+  (con `con_claves` al final → `ARNES OK`, sin debilitar ninguna aserción), que stdout es **byte a byte
+  idéntico** a `HEAD` y que stderr solo gana las 2 líneas `AVISO` nuevas, con códigos 0/2/128 y ramas
+  `ANDROID_HOME`/sin fichero/`worktree ya existe` intactas, sin fugas de valores; gate re-ejecutado
+  (`--rerun-tasks`, 34/34 y 30/30) con XML 117/967/0/0/0 y SARIF 13 warning/0 errores/0 en `app/src`.
+  Sin hallazgos Critical/High/Medium (F1-F4 informativos o ya documentados). Aceptación persistida por el
+  orquestador de `feature-flow`; commit local en la rama `feature/ai-keys-onboarding-guard`, **sin**
+  push/PR (publica `github-flow`).
 - Correctiva **`pr-worktree-fork-detection`** (`area: platform`, `depends_on: []`) implementada y
   autoverificada (**`passing`**) por el subagente `implementer` en la **sesión 145** y **`accepted`** en la
   **sesión 146** (validación independiente del subagente `validator`, contexto limpio, veredicto
@@ -7596,3 +7635,121 @@
   `feature/pr-worktree-fork-detection` (**sin** push ni PR; publica `github-flow`).
 - Estado de features: `pr-worktree-fork-detection` queda **`accepted`**; WIP = 0 en este worktree. No hay más
   features `in_progress`/`passing` en esta rama.
+
+### Sesión 147 (implementer, `ai-keys-onboarding-guard`)
+
+- Fecha: 2026-10-19
+- Objetivo: implementar y autoverificar **una** feature ya planificada (WIP = 1) siguiendo su spec
+  `docs/specs/ai-keys-onboarding-guard.md` (correctiva pedida por la persona tras ver `MISSING_KEY` en una
+  instalación hecha desde otro PC), **sin** commit/push/PR y sin ampliar el alcance.
+- Contexto de partida: rama `feature/ai-keys-onboarding-guard`, `HEAD f5e28fe`, árbol limpio salvo la spec
+  sin trackear y la entrada de la feature en `feature_list.json`; `depends_on` vacío. `ANDROID_HOME` sí
+  está presente en el entorno WSL (`wsl-env.sh`), lo que no afecta al arnés (los casos con
+  `local.properties` toman esa rama) y por eso el caso 6 se ejecuta con
+  `SAZON_WSL_ANDROID_SDK=/nonexistent` y `env -u ANDROID_HOME -u ANDROID_SDK_ROOT`.
+- Qué se implementó:
+  1. `local.properties.example` (raíz, **rastreado con `git add`**, no ignorado): plantilla sin secretos
+     con `sdk.dir=`, `opencode.apiKey=` y `devexpert.apiKey=` **vacíos** y comentarios de para qué sirve
+     cada clave, que `local.properties` no se versiona y que las claves se pasan aparte.
+  2. `scripts/new-worktree.sh`: helper `sazon_props_value` (grep anclado `^[[:space:]]*<prop>[[:space:]]*=`,
+     última aparición, `${line#*=}`, tolerancia a CRLF y recorte de espacios; `|| true` bajo
+     `set -euo pipefail`; **nunca** imprime valores ni hace `cat` del fichero) y **dos avisos
+     independientes por stderr** dentro de la rama `if [ -f local.properties ]`, justo después del
+     `echo "local.properties copiado a ..."`: chat (`opencode.apiKey` + `MISSING_KEY` + modo semilla) y
+     imagen (`devexpert.apiKey` + ficha tipográfica), ambos señalando `${repo_root}/local.properties` y
+     `local.properties.example`. Una propiedad presente pero vacía cuenta como ausente. Cabecera
+     actualizada con el aviso nuevo.
+  3. Docs durables: `AGENTS.md` (paso **2** explícito en *Flujo de arranque* para un clon nuevo, viñeta de
+     `local.properties` con la plantilla y la degradación de cada clave, viñeta de worktrees con el aviso
+     nuevo) y `docs/technical-discovery.md` (fila `| Claves de IA |` y viñeta de *Deployment and
+     Operations*).
+- Verificación (autoverificación, no aceptación):
+  - `bash -n scripts/new-worktree.sh` ⇒ **exit 0**.
+  - **Arnés determinista** de la spec §2 sobre el script real, repo git desechable en `/tmp`, con
+    `SAZON_WSL_LOCAL_PROPS=0` (no toca el `local.properties` real) y `base-sha` como segundo argumento:
+    `sin_chat=0`, `vacia=0`, `con_claves=0`, `sin_imagen=0`; `sin_chat.err` nombra `opencode.apiKey` +
+    `MISSING_KEY` **y** `devexpert.apiKey`; `vacia.err` avisa del chat (presente y vacía) y **no** de la
+    imagen; `con_claves.err` **sin** ningún aviso de clave; `sin_imagen.err` avisa **solo** de
+    `devexpert.apiKey`; `dummy-chat`/`dummy-img` **no** aparecen en ningún `.out`/`.err`; stdout conserva
+    `local.properties copiado a ...` y `worktree: ...`; `worktrees/demo-con_claves/local.properties`
+    existe. **Desviación de forma, no de fondo**: tal cual está escrito, el aserto final
+    `[ -f .../demo-con_claves/local.properties ]` falla porque el último `run_case` (`sin_imagen`) hace
+    `rm -rf "$scratch/worktrees"` al empezar (artefacto de orden del propio arnés, no de la
+    implementación); ejecutando **los mismos cuatro casos con `con_claves` al final** y **todos** los demás
+    asertos idénticos ⇒ `ARNES OK: 4 casos, avisos de clave donde toca` y **exit 0**. Queda anotado en la
+    spec (nota del implementer en §Verification Plan) para que el validador lo reproduzca igual.
+  - **Caso 6 (sin regresión)**: con `env -u ANDROID_HOME -u ANDROID_SDK_ROOT
+    SAZON_WSL_ANDROID_SDK=/nonexistent SAZON_WSL_LOCAL_PROPS=0` y sin `local.properties` ⇒ exit 0 con
+    `AVISO: no hay local.properties ni ANDROID_HOME; el build puede fallar` (los `AVISO` de `wsl-env.sh`
+    sobre el SDK son ajenos); segunda pasada ⇒ `worktree ya existe` exit 0; rama `ANDROID_HOME` ⇒
+    `sin local.properties; Gradle usara ANDROID_HOME=...` exit 0 **sin** avisos de clave; sin argumentos ⇒
+    `uso: ...` **exit 2**.
+  - **Contrato de stdout**: comparación contra `git show HEAD:scripts/new-worktree.sh` en el mismo repo
+    desechable ⇒ stdout **byte a byte idéntico** en positivo (`con_claves`), negativo (`sin_chat`) y sin
+    `local.properties`; stderr idéntico salvo **exactamente** las dos líneas `AVISO` nuevas del negativo.
+  - **Plantilla**: `git ls-files --error-unmatch local.properties.example` ⇒ exit 0 (rastreada);
+    `git check-ignore -v --no-index local.properties.example` ⇒ **exit 1** (no ignorada);
+    3 propiedades con valor vacío y 0 con valor no vacío; `grep -cE 'oc_sk_|sk-[A-Za-z0-9]'` ⇒ 0.
+  - **Gate del repo**: `bash init.sh` ⇒ **exit 0** con `:app:testDebugUnitTest` **ejecutado** (no
+    `UP-TO-DATE`; 34/34 tareas, BUILD SUCCESSFUL 4m21s) y `:app:lint` (30/30 tareas, BUILD SUCCESSFUL
+    2m16s). XML frescos **117 suites / 967 tests / 0 fallos / 0 errores / 0 saltados**; SARIF **13
+    resultados, todos warning, 0 errores y 0 bajo `app/src`** (`GradleDependency` 7,
+    `NewerVersionAvailable` 3, `AndroidGradlePluginVersion` 2, `OldTargetApi` 1) = baseline de `HEAD`.
+    Sin dependencias nuevas ni cambios en `init.sh`.
+- Alcance: `git diff HEAD --stat` limitado a `scripts/new-worktree.sh`, `AGENTS.md`,
+  `docs/technical-discovery.md`, `local.properties.example` (nuevo), `feature_list.json` (+ este registro y
+  la spec); **sin** cambios en `app/**`, `app/build.gradle.kts`, build/lockfile, manifiesto, permisos,
+  `init.sh`, el resto de `scripts/**` ni `local.properties`. WIP = 1.
+- Riesgo o incógnita abierta: el aviso **no** valida `sdk.dir` a propósito (fuera de alcance: su ausencia
+  ya se cubre con el aviso existente de `ANDROID_HOME`/Gradle) ni actúa en un clon sin worktree (eso lo
+  cubren la plantilla y `AGENTS.md`). El `grep` pasa la clave tal cual, así que el `.` de
+  `opencode.apiKey` casa cualquier carácter (inocuo en un `local.properties`); si se quisiera exactitud
+  literal, sería `opencode\.apiKey` (no cambia el comportamiento verificado).
+- Estado de features: `ai-keys-onboarding-guard` queda **`passing`** (implementada y autoverificada,
+  **pendiente de validación independiente**; WIP = 1 en este worktree). El estado máximo que fija el
+  implementer es `passing`; `accepted` lo persiste el orquestador tras el `accept` del `validator`.
+  Siguiente paso en este worktree: `feature-validator` sobre `docs/specs/ai-keys-onboarding-guard.md` y el
+  diff actual (sin commit).
+
+### Sesión 148 (validator + orquestador `feature-flow`, `ai-keys-onboarding-guard`)
+
+- Fecha: 2026-10-19
+- Objetivo: validar de forma **independiente** (contexto limpio, subagente `validator`, skill
+  `feature-validator`) la feature `ai-keys-onboarding-guard` ya `passing`, y persistir la aceptación si el
+  veredicto es `accept`.
+- Veredicto: **`accept`**. Registro completo en `docs/validations/ai-keys-onboarding-guard.md`.
+- Comprobaciones del validador (independientes, en el worktree `ai-keys-onboarding-guard`, rama
+  `feature/ai-keys-onboarding-guard`, `HEAD f5e28fe`; lectura-solo, arnés y logs en `/tmp/validator-aikeys`):
+  `bash -n` exit 0; `bash init.sh` exit 0; `testDebugUnitTest --rerun-tasks` exit 0 (34/34 tareas
+  ejecutadas, 4m11s) y `lint --rerun-tasks` exit 0 (30/30, 3m15s) ⇒ XML frescos **117 suites / 967 tests /
+  0 fallos / 0 errores / 0 saltados** y SARIF **13 warning / 0 errores / 0 bajo `app/src`** (baseline de
+  `HEAD`); arnés propio **34/34 checks PASS**, incluidos los bordes (presente-vacía, solo-espacios, línea
+  comentada, última aparición gana, CRLF) y la ausencia de fugas.
+- Puntos clave verificados por el validador:
+  - **El arnés discrimina**: aplicado al script de `HEAD`, el aserto exigido
+    (`opencode.apiKey`/`MISSING_KEY`) **falla**; con `bash -x`, el snippet de la spec tal cual pasa
+    **todas** las aserciones salvo la última `[ -f .../demo-con_claves/local.properties ]` (el último
+    `run_case` hace `rm -rf "$scratch/worktrees"`); con `con_claves` al final y asertos idénticos ⇒
+    `ARNES OK` exit 0. **Ninguna aserción se debilitó** y la copia del fichero se comprobó aparte.
+  - **Contrato intacto**: stdout **byte a byte idéntico** a `HEAD` en positivo, negativo y sin fichero;
+    stderr igual salvo **exactamente** las dos líneas `AVISO` nuevas del caso negativo; exit 0 conservado,
+    sin argumentos → 2 y sha inválido → 128 igual que `HEAD`; ramas `ANDROID_HOME`, sin `local.properties`
+    y `worktree ya existe` sin regresión.
+  - **Plantilla y seguridad**: `local.properties.example` rastreada (`ls-files` exit 0), **no** ignorada
+    (`check-ignore` exit 1), 3 propiedades vacías / 0 con valor / 0 patrones de clave; los avisos solo
+    nombran la propiedad ausente y nunca su valor (sin fugas de `dummy-chat`/`dummy-img`); `local.properties`
+    sigue fuera de git y con mtime anterior a las ediciones.
+  - **Alcance**: solo `local.properties.example`, `scripts/new-worktree.sh`, `AGENTS.md`,
+    `docs/technical-discovery.md` y los ficheros de estado/spec; sin cambios en `app/**`,
+    build/lockfile, manifiesto, permisos, `init.sh`, `.gitignore` ni el resto de `scripts/**`.
+- Hallazgos: ninguno Critical/High/Medium. F1 (el snippet de la spec no es copiable tal cual; ya
+  documentado en la spec), F2 (spec sin trackear → **incluida en el commit de aceptación**), F3 (la clave
+  del `grep` sin escapar: inocuo, sin fugas) y F4 (`sdk.dir` no se valida a propósito).
+- Persistencia (orquestador): `feature_list.json` → `ai-keys-onboarding-guard` **`accepted`** con la
+  evidencia de esta validación; `docs/validations/ai-keys-onboarding-guard.md` creado; commit local
+  `feat: complete ai-keys-onboarding-guard` en `feature/ai-keys-onboarding-guard`. **Sin push ni PR**: la
+  publicación la hace el orquestador de `github-flow`.
+- Nota de proceso: la primera pasada del validador terminó su turno sin veredicto mientras su re-ejecución
+  forzada del gate seguía en segundo plano; se reanudó la **misma** sesión del validador (recuperación de
+  `feature-flow`, sin cambiar de rol) y devolvió `accept`. Quedó un bucle de sondeo huérfano que se mató;
+  no se vio afectado ningún artefacto.
