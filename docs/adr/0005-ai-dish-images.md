@@ -129,8 +129,9 @@ timeouts propios **más cortos** que los de chat (connect 10 s / socket 30 s / r
 intento** (`MAX_ATTEMPTS = 1`): con ~2 % de cuota por imagen, reintentar duplicaría el gasto sin cambiar
 la experiencia. Fallo = `null` **sin excepción y sin reintento**; la cancelación se propaga. El
 adaptador **no** conoce el modelo de recetas ni la Taxonomía (usa `request.prompt`; `request.cacheKey`
-es la identidad de la fase 3 y **no** viaja en la petición), no registra nada (sin `Log`) y **nadie lo
-consume todavía**. **No** hay caché, ni UI, ni persistencia, ni cambios en el dominio, ni dependencias
+es la identidad de la fase 3 y **no** viaja en la petición), es transporte + códec puros con
+**diagnóstico local aditivo** (`onEvent` → `Log.d("SazonDishImage", …)`, correctiva
+`dish-image-call-diagnostics`) y **nadie lo consume todavía**. **No** hay caché, ni UI, ni persistencia, ni cambios en el dominio, ni dependencias
 nuevas. Ver `docs/specs/dish-image-generator.md`.
 
 Alcance de la **fase 3** (feature `dish-image-cache`): la **caché** en `com.sazon.app.data.image`, capa
@@ -254,8 +255,10 @@ un `401/403/429/5xx` devuelven `null` **sin** respaldo (misma disciplina que `MA
 La referencia es un **asset ya empaquetado y versionado** (la foto neutra `img/recipes/default.<ext>` de
 `recipe-photos`, resuelta por extensiones con `DishImageStyleReferencePolicy`), **nunca** una imagen
 subida por el usuario: no hay permisos, galería, cámara, `mask`, `n`, `response_format` ni persistencia
-nueva. El adaptador sigue siendo **transporte puro y mudo** (sin `Log`, sin `Recipe`/`Taxonomía`, sin
-`cacheKey`/`recipeId` en la petición) y `MainActivity` carga la referencia de forma *best-effort*
+nueva. El adaptador sigue siendo **transporte + códec puros** (sin `Recipe`/`Taxonomía`, sin
+`cacheKey`/`recipeId` en la petición) con **diagnóstico local aditivo** (`onEvent` → `Log.d`, correctiva
+`dish-image-call-diagnostics`; ver Observability en `docs/technical-discovery.md`) y `MainActivity`
+carga la referencia de forma *best-effort*
 (`AssetDishImageStyleReference`; `null` = comportamiento exacto de la fase 2). `DishImageCacheKey.VERSION`
 **no** sube (el prompt y su normalización no cambian; la referencia **añade** un ancla visual, no
 sustituye el `STYLE_SUFFIX`), así que las imágenes ya cacheadas conservan el aspecto anterior hasta que

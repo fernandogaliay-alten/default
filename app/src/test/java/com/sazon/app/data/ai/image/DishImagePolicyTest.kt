@@ -121,4 +121,90 @@ class DishImagePolicyTest {
             )
         }
     }
+
+    // Scenario 7 (correctiva `dish-image-call-diagnostics`): la clasificacion es pura y total.
+    @Test
+    fun reasonFor_clasifica_los_estados_exigidos() {
+        assertEquals(
+            "Sin respuesta es transporte",
+            DishImageCallReason.TRANSPORT,
+            DishImagePolicy.reasonFor(null, false),
+        )
+        assertEquals(
+            "Sin respuesta es transporte tambien con bytes",
+            DishImageCallReason.TRANSPORT,
+            DishImagePolicy.reasonFor(null, true),
+        )
+
+        listOf(402, 429).forEach { status ->
+            assertEquals(
+                "El estado $status es cuota",
+                DishImageCallReason.CUOTA,
+                DishImagePolicy.reasonFor(status, false),
+            )
+        }
+        listOf(401, 403).forEach { status ->
+            assertEquals(
+                "El estado $status es auth",
+                DishImageCallReason.AUTH,
+                DishImagePolicy.reasonFor(status, false),
+            )
+        }
+        listOf(500, 503, 599).forEach { status ->
+            assertEquals(
+                "El estado $status es servidor",
+                DishImageCallReason.SERVER,
+                DishImagePolicy.reasonFor(status, false),
+            )
+        }
+        listOf(400, 404, 408, 301, 100, 600).forEach { status ->
+            assertEquals(
+                "El estado $status es residual",
+                DishImageCallReason.HTTP_ERROR,
+                DishImagePolicy.reasonFor(status, false),
+            )
+        }
+    }
+
+    // Scenario 7: un 2xx es OK solo con bytes entregados; sin ellos es INVALID (ningun estado en blanco).
+    @Test
+    fun reasonFor_distingue_ok_de_invalid_en_los_2xx() {
+        listOf(200, 201, 204, 299).forEach { status ->
+            assertEquals(
+                "El estado $status con bytes es OK",
+                DishImageCallReason.OK,
+                DishImagePolicy.reasonFor(status, true),
+            )
+            assertEquals(
+                "El estado $status sin bytes es INVALID",
+                DishImageCallReason.INVALID,
+                DishImagePolicy.reasonFor(status, false),
+            )
+        }
+    }
+
+    // Scenario 7 (caso negativo): los motivos no se confunden entre si y el 2xx difiere con/sin bytes.
+    @Test
+    fun reasonFor_no_confunde_motivos() {
+        assertNotEquals(
+            "402 no es AUTH",
+            DishImageCallReason.AUTH,
+            DishImagePolicy.reasonFor(402, false),
+        )
+        assertNotEquals(
+            "500 no es CUOTA",
+            DishImageCallReason.CUOTA,
+            DishImagePolicy.reasonFor(500, false),
+        )
+        assertNotEquals(
+            "400 no es SERVER",
+            DishImageCallReason.SERVER,
+            DishImagePolicy.reasonFor(400, false),
+        )
+        assertNotEquals(
+            "un 2xx con y sin bytes difieren",
+            DishImagePolicy.reasonFor(200, true),
+            DishImagePolicy.reasonFor(200, false),
+        )
+    }
 }

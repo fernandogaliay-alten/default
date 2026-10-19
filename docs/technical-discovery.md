@@ -1274,6 +1274,20 @@ dispositivo y no salen de él, salvo la petición de generación a la API de IA.
   (`0 c/0 b`), ilegible (longitudes > 0, `0` recibidas) y lote sin ninguna receta aceptada
   (`received > 0`, `accepted = 0` y `discards={…}`); con `FALLBACK`, que el intento con `json_object`
   fue rechazado con `400`/`422` y se reintenta sin formato.
+- **Diagnóstico de la llamada de imagen de plato** (correctiva `dish-image-call-diagnostics`): el
+  adaptador de imagen (`data.ai.image`) emite **un** evento local por cada llamada HTTP real
+  (`/images/generations` o `/images/edits`) por la costura aditiva `DishImageCallEvent` (default no-op):
+  llamada (`GENERATE`/`EDIT`), **motivo clasificado** (`DishImagePolicy.reasonFor`, un único sitio:
+  `CUOTA` 402/429, `AUTH` 401/403, `SERVER` 5xx, `TRANSPORT` sin respuesta —o al leer el cuerpo de un
+  `2xx`—, `INVALID` `2xx` sin bytes entregables, `OK` `2xx` con bytes y el residual `HTTP_ERROR`),
+  estado HTTP, duración, `detail` (`"HTTP <status>"`/`"transport"`) y **tamaño** de los bytes
+  entregados. `MainActivity` lo cablea a `Log.d("SazonDishImage", …)` (sin gate de debug, igual que el
+  `onEvent` del chat `SazonAi`). Es **observación pasiva**: no cambia la cadena de resolución, la caché,
+  el gate del interruptor ni el tope, y un fallo sigue siendo `null` sin excepción (la cancelación se
+  relanza sin emitir). El evento **nunca** lleva la clave, la cabecera `Authorization`, el `prompt` ni
+  el cuerpo de la respuesta, no se persiste ni se envía a telemetría. Un acierto de caché/semilla o un
+  gate cerrado no emiten evento (no hay llamada); un rechazo del ajuste con respaldo emite `EDIT` y
+  después `GENERATE` (dos eventos, dos peticiones).
 - **Modo de diagnóstico verboso (temporal, debug-only).** El interruptor `verboseDiagnostics` de
   `DevExpertRecipeGenerator` (**apagado por defecto**; `MainActivity` lo activa solo en
   `BuildConfig.DEBUG`) añade al evento `discards` (motivo + causa + **título**) y `rawContent` (el
