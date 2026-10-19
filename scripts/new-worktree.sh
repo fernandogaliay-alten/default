@@ -7,6 +7,8 @@ set -euo pipefail
 
 # Crea (o reutiliza) un worktree git para una feature, fuera del checkout base,
 # y lo siembra con local.properties para que Gradle encuentre el SDK de Android.
+# Ademas avisa (por stderr) si el local.properties resultante no define las claves de
+# IA (opencode.apiKey / devexpert.apiKey), porque sin ellas la app degrada en silencio.
 #
 # Uso: scripts/new-worktree.sh <feature-id | prefijo/id> [base-sha]
 #   <feature-id>  id de la feature: rama feature/<id>, worktree <root>/<id>
@@ -64,10 +66,27 @@ else
   git worktree add "$worktree_path" -b "$branch" "$base_sha"
 fi
 
+# Valor de una propiedad de un local.properties. Vacio si no existe o esta en blanco.
+# No imprime nunca el contenido del fichero. Ultima aparicion gana (regla de .properties).
+sazon_props_value() { # <fichero> <propiedad>
+  local file="$1" key="$2" line=""
+  line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "$file" 2>/dev/null | tail -n 1 || true)"
+  line="${line#*=}"
+  printf '%s' "${line%$'\r'}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
 # local.properties esta ignorado en git y no viaja al worktree.
 if [ -f "${repo_root}/local.properties" ]; then
   cp "${repo_root}/local.properties" "${worktree_path}/local.properties"
   echo "local.properties copiado a $worktree_path"
+  # Avisos (solo stderr) si falta alguna clave de IA: sin ellas la app degrada en silencio.
+  # Una propiedad presente pero vacia cuenta como ausente (es el caso que produce MISSING_KEY).
+  if [ -z "$(sazon_props_value "${worktree_path}/local.properties" opencode.apiKey)" ]; then
+    echo "AVISO: ${worktree_path}/local.properties no define opencode.apiKey; el chat de IA (generador, busqueda y lote) caera en MISSING_KEY y la app usara el modo semilla. Rellena la clave en ${repo_root}/local.properties (ver local.properties.example)." >&2
+  fi
+  if [ -z "$(sazon_props_value "${worktree_path}/local.properties" devexpert.apiKey)" ]; then
+    echo "AVISO: ${worktree_path}/local.properties no define devexpert.apiKey; la imagen de plato generada caera a la ficha tipografica. Rellena la clave en ${repo_root}/local.properties (ver local.properties.example)." >&2
+  fi
 elif [ -n "${ANDROID_HOME:-}" ]; then
   echo "sin local.properties; Gradle usara ANDROID_HOME=${ANDROID_HOME}"
 else

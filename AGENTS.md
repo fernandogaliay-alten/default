@@ -25,10 +25,14 @@ Leer solo cuando sea relevante para la tarea:
 Antes de escribir código:
 
 1. Confirma el directorio de trabajo.
-2. Lee `PROGRESS.md` para conocer el estado verificado y el siguiente paso.
-3. Lee `feature_list.json` y toma la primera feature lista sin terminar, en orden de lista.
-4. Ejecuta el camino de arranque (ver "Notas de entorno" para el comando exacto).
-5. Si la verificación base falla, arréglala antes de empezar trabajo nuevo.
+2. **Clon nuevo**: copia `local.properties.example` a `local.properties`
+   (`cp local.properties.example local.properties`) y rellena `sdk.dir`, `opencode.apiKey` (chat de IA)
+   y `devexpert.apiKey` (imagen de plato). El fichero no se versiona: las claves se pasan aparte y sin
+   ellas la app degrada en silencio (ver "Notas de entorno").
+3. Lee `PROGRESS.md` para conocer el estado verificado y el siguiente paso.
+4. Lee `feature_list.json` y toma la primera feature lista sin terminar, en orden de lista.
+5. Ejecuta el camino de arranque (ver "Notas de entorno" para el comando exacto).
+6. Si la verificación base falla, arréglala antes de empezar trabajo nuevo.
 
 ## Reglas de trabajo
 
@@ -211,8 +215,12 @@ Una feature está hecha solo si se cumplen todas:
   no encuentra dispositivo útil: la comprobación visual/manual sigue haciéndose en Android Studio. Solo
   si se quiere instalar desde WSL hay que puentear `adb` (p. ej. invocando el `adb.exe` de Windows).
 - `local.properties` (fuera de control de versiones) lo regenera Android Studio con la ruta del SDK de
-  Windows; `wsl-env.sh` la reescribe a la del SDK de Linux al detectar una ruta de Windows, así que no
-  hay que mantenerlo a mano.
+  Windows y **solo** con `sdk.dir`: la plantilla versionada **sin secretos** `local.properties.example`
+  dice qué propiedades hacen falta (`sdk.dir`, `opencode.apiKey` y `devexpert.apiKey`); cópiala en un clon
+  nuevo y rellena las claves, que se pasan aparte porque no están en git. Sin `opencode.apiKey` el chat
+  (generador, búsqueda y lote) degrada en silencio a **modo semilla** con `MISSING_KEY` en el log; sin
+  `devexpert.apiKey` la imagen de plato cae a la **ficha tipográfica**. `wsl-env.sh` reescribe `sdk.dir` a
+  la del SDK de Linux al detectar una ruta de Windows, así que no hay que mantenerlo a mano.
 - La **caché de Gradle** (dependencias, distribuciones, JDKs aprovisionados) vive en ext4
   (`~/.gradle`): bajo `/mnt/c` (DrvFs) cada acceso cuesta órdenes de magnitud más. `wsl-env.sh` fuerza
   `GRADLE_USER_HOME` a ext4 y desactiva el file-watching (`-Dorg.gradle.vfs.watch=false`), que no es
@@ -226,7 +234,9 @@ Una feature está hecha solo si se cumplen todas:
   `bash scripts/new-worktree.sh <feature-id>`, **desde WSL**. El script hace `git fetch origin main`
   antes de ramificar (para no partir de un `origin/main` obsoleto), crea la rama `feature/<feature-id>`
   en `../<checkout>-worktrees/<id>`, copia `local.properties` al worktree (ignorado en git, no viaja
-  solo) y avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
+  solo) y avisa por stderr si al `local.properties` resultante le falta `opencode.apiKey` (chat → modo
+  semilla con `MISSING_KEY`) o `devexpert.apiKey` (imagen → ficha tipográfica), sin cambiar el código de
+  salida; también avisa si la rama queda por detrás de la base. Sin `local.properties` ni `ANDROID_HOME`,
   `./init.sh` falla al no encontrar el SDK. No se hace `pull` de la base dentro del worktree.
 - **Los worktrees se crean desde WSL, no desde Git Bash.** La metadata de git de un worktree guarda
   rutas absolutas con el formato del sistema que lo creó: uno creado en Windows aparece `prunable` en
