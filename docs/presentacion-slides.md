@@ -62,7 +62,7 @@ style: |
 
 ## SDD, harness e IA aplicados a un proyecto personal Android
 
-**63 features · 62 aceptadas · 82 PRs · 739 tests · 6 ADRs**
+**77 features · 76 aceptadas · 100 PRs · 967 tests · 8 ADRs**
 
 Del descubrimiento al MVP, feature a feature, con verificación independiente.
 
@@ -108,11 +108,11 @@ Convierte los ingredientes que **ya tienes en casa** en recetas completas genera
 | `build-brief` (discovery guiado) | Entrevista 1-a-1: problema, usuarios, MVP, no-goals, riesgos | `docs/build-brief.md`, `CONTEXT.md` |
 | Vocabulario / glosario | Glosario vivo con términos **rechazados** (anti drift) | `CONTEXT.md` |
 | `harness-starter` | Derivamos los 4 artefactos obligatorios | `AGENTS.md`, `init.sh`, `PROGRESS.md`, `feature_list.json` |
-| `feature_list.json` | 63 features con `depends_on`, `verification`, `evidence`, `status` | `feature_list.json` |
-| Ciclo de vida | 62 recorrieron el ciclo completo; 1 en `blocked` | `feature_list.json`, `PROGRESS.md` |
-| `feature-spec` (**planner**) | 62 specs implementables, nunca PRDs ni código | `docs/specs/` (62) |
+| `feature_list.json` | 77 features con `depends_on`, `verification`, `evidence`, `status` | `feature_list.json` |
+| Ciclo de vida | 76 recorrieron el ciclo completo; 1 en `blocked` | `feature_list.json`, `PROGRESS.md` |
+| `feature-spec` (**planner**) | 76 specs implementables, nunca PRDs ni código | `docs/specs/` (76) |
 | `feature-implementer` (**generator**) | Código + autoverificación + evidencia | `PROGRESS.md` |
-| `feature-validator` (**evaluator**) | Contexto limpio, re-ejecuta el gate | `docs/validations/` (38) |
+| `feature-validator` (**evaluator**) | Contexto limpio, re-ejecuta el gate | `docs/validations/` (52) |
 
 ---
 
@@ -122,14 +122,14 @@ Convierte los ingredientes que **ya tienes en casa** en recetas completas genera
 |---|---|---|
 | `feature-intake` | Alta de features y correctivas: formato único, ids y dependencias | `.opencode/skills/feature-intake/` |
 | `feature-flow` | planner→implementer→validator + commit local al accept | ramas `feature/<id>` |
-| `github-flow` | Issue `[<id>]`, rama, worktree, sesión, PR | **82 PRs** |
+| `github-flow` | Issue `[<id>]`, rama, worktree, sesión, PR | **100 PRs** |
 | `pr-flow` + `reviewer` | Revisión independiente del PR y **merge** con puerta | `.opencode/skills/pr-*` |
 | Worktrees + sesiones paralelas | Una feature por worktree/sesión | `scripts/new-worktree.sh`, `scripts/launch-feature-session.sh` |
 | Subagentes y permisos | Rol por subagente con `edit`/`shell` acotados | `.opencode/agent/*` |
 | Comandos | `/spec`, `/implement`, `/validate`, `/feature`, `/review-pr` | `.opencode/command/` |
 | Verificación estándar | `bash init.sh` = test + lint | `init.sh`, `scripts/gradle.sh` |
-| Memoria del proceso | Estado + registro de sesiones (hasta la 127) | `PROGRESS.md` |
-| ADRs | Decisión con estado y reversiones | `docs/adr/` (0001–0006) |
+| Memoria del proceso | Estado + registro de sesiones (hasta la 148) | `PROGRESS.md` |
+| ADRs | Decisión con estado y reversiones | `docs/adr/` (0001–0008) |
 
 ---
 
@@ -139,8 +139,8 @@ Convierte los ingredientes que **ya tienes en casa** en recetas completas genera
 <div class="card">
 
 **Features**
-- 63 planificadas
-- **62 `accepted`**
+- 77 planificadas
+- **76 `accepted`**
 - **1 `blocked`**
 - 0 `in_progress` · 0 `passing` (WIP = 0)
 
@@ -148,21 +148,21 @@ Convierte los ingredientes que **ya tienes en casa** en recetas completas genera
 <div class="card">
 
 **Volumen**
-- 62 specs · 38 validaciones
-- 82 PRs · 263 commits
-- 6 ADRs
-- 2026-09-22 → 2026-10-15
+- 76 specs · 52 validaciones
+- 100 PRs · 322 commits
+- 8 ADRs
+- 2026-09-22 → 2026-10-19
 
 </div>
 </div>
 
-**Gate:** 98 suites / **739 tests** / 0 fallos · lint **0 errores**
+**Gate:** 117 suites / **967 tests** / 0 fallos · lint **0 errores**
 
 ---
 
 ## Cobertura: áreas y corte vertical
 
-**Distribución por área** — `ui 33 · integration 15 · domain 7 · data 7 · platform 1`
+**Distribución por área** — `ui 39 · integration 21 · domain 7 · data 7 · platform 3`
 
 **Corte vertical completo, todo `accepted`:**
 
@@ -186,7 +186,7 @@ main ──┬─ feature/A  → worktree A  → sesión opencode A ─┐
 - **El orquestador (`github-flow`) es el único integrador:** trae `origin/main` con **merge** (nunca rebase/force-push) y resuelve los artefactos compartidos (`feature_list.json`, `PROGRESS.md`).
 - **Publicación:** al `accept` → push + **PR** (issue, rama y PR con el mismo `id`). El **merge** lo hace después el orquestador **`pr-flow`**, nunca quien publica.
 
-*Evidencia: `scripts/new-worktree.sh`, `scripts/launch-feature-session.sh`, `scripts/sync-worktree.sh`, 82 PRs.*
+*Evidencia: `scripts/new-worktree.sh`, `scripts/launch-feature-session.sh`, `scripts/sync-worktree.sh`, 100 PRs.*
 
 ---
 
@@ -570,7 +570,7 @@ Cuando algo falla, **no se parchea a mano**: nace una **feature correctiva** con
 <div class="card">
 
 **Mejoraríamos**
-- Backfill de validaciones (38/62)
+- Backfill de validaciones (52/76)
 - Backfill de capturas de UI
 - Pruebas de UI no automatizadas (WSL/emulador)
 - Coste/cuota de IA (mitigado: caché + tope + semilla)
