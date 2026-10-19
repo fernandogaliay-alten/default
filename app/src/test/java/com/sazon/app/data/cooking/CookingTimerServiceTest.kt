@@ -11,6 +11,7 @@ import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
 import com.sazon.app.R
+import com.sazon.app.ui.cooking.CookingStepLabel
 import java.time.Duration
 import kotlin.math.abs
 import org.junit.Assert.assertEquals
@@ -39,6 +40,10 @@ import org.robolectric.shadows.ShadowService
  *
  * El comportamiento real (pantalla bloqueada, Doze, bateria agresiva) no es automatizable (AGENTS.md):
  * lo revisa la persona en el emulador.
+ *
+ * Desde `cooking-timer-notification-step-label` el `Intent` del servicio puede llevar ademas la
+ * **etiqueta del paso** (numero + titulo, la frontera de privacidad) y la persistente la pinta como
+ * titulo y cuerpo; sin etiqueta todo queda como antes (titulo generico, sin cuerpo).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -60,13 +65,17 @@ class CookingTimerServiceTest {
     private fun lanzar(intent: Intent): ServiceController<CookingTimerService> =
         Robolectric.buildService(CookingTimerService::class.java, intent).create().startCommand(0, 1)
 
-    /** Arranca el servicio con una cuenta atras de [restanteMillis] y su sello de fin coherente. */
-    private fun conCuentaAtras(restanteMillis: Long): ServiceController<CookingTimerService> =
+    /** Arranca el servicio con una cuenta atras de [restanteMillis], su sello de fin y la etiqueta. */
+    private fun conCuentaAtras(
+        restanteMillis: Long,
+        stepLabel: CookingStepLabel? = null,
+    ): ServiceController<CookingTimerService> =
         lanzar(
             CookingTimerService.intent(
                 context = context,
                 endAtElapsedMillis = SystemClock.elapsedRealtime() + restanteMillis,
                 finishWallClockMillis = System.currentTimeMillis() + restanteMillis,
+                stepLabel = stepLabel,
             ),
         )
 
@@ -161,8 +170,76 @@ class CookingTimerServiceTest {
     }
 
     @Test
-    fun los_dos_escalares_del_temporizador_son_lo_unico_que_viaja_al_servicio() {
-        val intent = CookingTimerService.intent(context, 1_600_000L, 1_700_000L)
+    fun la_persistente_muestra_el_numero_y_el_titulo_del_paso_con_la_cuenta_atras_intacta() {
+        val controller = conCuentaAtras(600_000L, CookingStepLabel("Paso 2 de 5", "Dorar el pollo"))
+
+        val notificacion = checkNotNull(controller.shadow.lastForegroundNotification)
+
+        assertEquals("Paso 2 de 5", notificacion.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Dorar el pollo", notificacion.extras.getString(Notification.EXTRA_TEXT))
+        assertTrue(
+            "El sistema sigue pintando la cuenta atras",
+            notificacion.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER),
+        )
+        assertTrue(notificacion.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+        assertTrue(
+            "Sigue siendo persistente y alertando una sola vez",
+            notificacion.flags and Notification.FLAG_ONGOING_EVENT != 0 &&
+                notificacion.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0,
+        )
+        assertFalse(
+            "Ni un dato mas de la receta en la notificacion",
+            notificacion.extras.keySet().any { it.startsWith("com.sazon") },
+        )
+        assertFalse(
+            "Sin rastro de la descripcion del paso",
+            notificacion.extras.toString().contains(DESCRIPCION_PASO),
+        )
+
+        controller.destroy()
+    }
+
+    @Test
+    fun al_armar_el_paso_nuevo_la_persistente_lleva_su_etiqueta_y_no_la_heredada() {
+        val controller = Robolectric.buildService(
+            CookingTimerService::class.java,
+            CookingTimerService.intent(
+                context,
+                SystemClock.elapsedRealtime() + 600_000L,
+                System.currentTimeMillis() + 600_000L,
+                CookingStepLabel("Paso 1 de 5", "Picar la cebolla"),
+            ),
+        ).create()
+        controller.startCommand(0, 1)
+        assertEquals(
+            "Paso 1 de 5",
+            checkNotNull(controller.shadow.lastForegroundNotification)
+                .extras.getString(Notification.EXTRA_TITLE),
+        )
+
+        // Cambio de paso: la politica cancela el aviso (para el servicio) y el armado siguiente compone la
+        // etiqueta del paso **nuevo**; la persistente nunca arrastra la del anterior.
+        controller.get().onStartCommand(
+            CookingTimerService.intent(
+                context,
+                SystemClock.elapsedRealtime() + 300_000L,
+                System.currentTimeMillis() + 300_000L,
+                CookingStepLabel("Paso 2 de 5", "Dorar el pollo"),
+            ),
+            0,
+            2,
+        )
+
+        val notificacion = checkNotNull(controller.shadow.lastForegroundNotification)
+        assertEquals("Paso 2 de 5", notificacion.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals("Dorar el pollo", notificacion.extras.getString(Notification.EXTRA_TEXT))
+
+        controller.destroy()
+    }
+
+    @Test
+    fun los_dos_escalares_del_temporizador_son_lo_unico_que_viaja_al_servicio_sin_etiqueta() {
+        val intent = CookingTimerService.intent(context, 1_600_000L, 1_700_000L, stepLabel = null)
 
         assertEquals(CookingTimerService::class.java.name, intent.component?.className)
         assertEquals(1_600_000L, intent.getLongExtra(CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS, 0L))
@@ -182,11 +259,34 @@ class CookingTimerServiceTest {
     }
 
     @Test
+    fun con_etiqueta_el_intent_del_servicio_lleva_el_numero_y_el_titulo_del_paso_y_nada_mas() {
+        val intent = CookingTimerService.intent(
+            context,
+            1_600_000L,
+            1_700_000L,
+            CookingStepLabel("Paso 2 de 5", "Dorar el pollo"),
+        )
+
+        assertEquals("Paso 2 de 5", intent.getStringExtra(CookingTimerService.EXTRA_STEP_PROGRESS))
+        assertEquals("Dorar el pollo", intent.getStringExtra(CookingTimerService.EXTRA_STEP_TITLE))
+        assertEquals(
+            "Fin + sello + numero + titulo: ni un dato mas de la receta cruza al sistema",
+            setOf(
+                CookingTimerService.EXTRA_END_AT_ELAPSED_MILLIS,
+                CookingNotifications.EXTRA_FINISH_WALL_CLOCK_MILLIS,
+                CookingTimerService.EXTRA_STEP_PROGRESS,
+                CookingTimerService.EXTRA_STEP_TITLE,
+            ),
+            intent.extras?.keySet().orEmpty(),
+        )
+    }
+
+    @Test
     fun al_vencer_la_cuenta_atras_publica_el_aviso_retira_la_persistente_y_se_detiene() {
         grantPostNotifications()
         val endAt = SystemClock.elapsedRealtime() + 600_000L
         val sello = System.currentTimeMillis() + 600_000L
-        val controller = lanzar(CookingTimerService.intent(context, endAt, sello))
+        val controller = lanzar(CookingTimerService.intent(context, endAt, sello, stepLabel = null))
         val shadow = controller.shadow
         assertFalse("Antes de vencer sigue vivo", shadow.isStoppedBySelf())
 
@@ -268,7 +368,7 @@ class CookingTimerServiceTest {
             "Sin intent no se recrea: el toque vuelve al paso por la sesion persistida",
             android.app.Service.START_NOT_STICKY,
             controller.get().onStartCommand(
-                CookingTimerService.intent(context, 1L, 1L),
+                CookingTimerService.intent(context, 1L, 1L, stepLabel = null),
                 0,
                 2,
             ),
@@ -301,6 +401,7 @@ class CookingTimerServiceTest {
                 context,
                 SystemClock.elapsedRealtime() + 600_000L,
                 System.currentTimeMillis() + 600_000L,
+                stepLabel = null,
             ),
         ).create()
         controller.startCommand(0, 1)
@@ -317,5 +418,11 @@ class CookingTimerServiceTest {
         assertFalse("Sigue en marcha", shadow.isStoppedBySelf())
 
         controller.destroy()
+    }
+
+    private companion object {
+
+        /** Descripcion de un paso que **nunca** puede aparecer en la notificacion persistente. */
+        const val DESCRIPCION_PASO = "Sella la piel a fuego fuerte y dora por los dos lados."
     }
 }

@@ -218,6 +218,15 @@ microcopy aceptado; **ninguna** incluye clave de IA, cuerpo de la receta, ingred
 `Intent` de arranque del servicio lleva **solo** el instante de fin y los `Intent` de contenido llevan
 **solo** el flag de reanudación (booleano).
 
+> **Nota de vigencia (`cooking-timer-notification-step-label`, 2026-10-19):** el escenario queda
+> **ampliado** por decisión explícita de la persona: la persistente ya **no** muestra un título fijo, sino
+> **"Paso N de M"** (la microcopy del encabezado del Modo cocina) y el **título del paso** (por eso la
+> verificación exigida de la nueva feature es el `Intent` del servicio + la notificación). Sigue sin
+> cruzar **nada más** de la receta (ni descripción, ni ingredientes, ni notas, ni clave de IA), el aviso
+> `1001` y los `Intent` de contenido no cambian (solo el booleano de reanudación) y el `PendingIntent` de
+> la alarma sigue llevando **solo** el escalar del sello. La evidencia histórica de esta spec (el título
+> fijo) se conserva tal cual; ver `docs/adr/0007`/`0008` y `docs/technical-discovery.md`.
+
 ### Scenario 10: el manifiesto declara el servicio y la app vive sin él (verificación exigida)
 
 Given el repositorio tras esta feature,

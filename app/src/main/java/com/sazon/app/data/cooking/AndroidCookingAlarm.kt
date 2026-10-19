@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.sazon.app.ui.cooking.CookingAlarm
 import com.sazon.app.ui.cooking.CookingAlarmCommand
+import com.sazon.app.ui.cooking.CookingStepLabel
 
 /**
  * Adaptador Android de la costura [CookingAlarm]: programa en `AlarmManager` la alarma de **un solo
@@ -33,8 +34,8 @@ import com.sazon.app.ui.cooking.CookingAlarmCommand
  *   no, **degrada** a `setAndAllowWhileIdle` (inexacta: el aviso puede llegar tarde, pero llega).
  *   Nunca `setRepeating`/`setInexactRepeating`.
  * - `Schedule` arranca tambien el servicio en primer plano (`startForegroundService` con
- *   [CookingTimerService.intent], que solo lleva los dos escalares) y `Cancel` lo para (`stopService`),
- *   de modo que la notificacion persistente existe **solo** En marcha. Las dos patas son
+ *   [CookingTimerService.intent], que lleva el instante de fin, el sello y la **etiqueta del paso**) y
+ *   `Cancel` lo para (`stopService`), de modo que la notificacion persistente existe **solo** En marcha. Las dos patas son
  *   **independientes**: si una falla, la otra se intenta igual (cada una con su `runCatching`).
  *   Arrancar el servicio siempre ocurre desde una interaccion del usuario con la app en primer plano
  *   ("Iniciar"/"Reanudar"/"Siguiente"/"Anterior"), asi que no aplica la restriccion de arranque en
@@ -57,7 +58,7 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
 
     override fun apply(command: CookingAlarmCommand) {
         when (command) {
-            is CookingAlarmCommand.Schedule -> schedule(command.triggerAtMillis)
+            is CookingAlarmCommand.Schedule -> schedule(command.triggerAtMillis, command.stepLabel)
             CookingAlarmCommand.Cancel -> cancel()
             CookingAlarmCommand.None -> Unit
         }
@@ -78,10 +79,14 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
 
     /**
      * Calcula **una vez** el sello de fin compartido, programa la alarma exacta para [at] (o la
-     * inexacta de respaldo) con ese sello y arranca el servicio en primer plano con el instante de fin
-     * **y** el sello; nunca lanza.
+     * inexacta de respaldo) con ese sello y arranca el servicio en primer plano con el instante de fin,
+     * el sello **y** la etiqueta del paso ([stepLabel], opcional); nunca lanza.
+     *
+     * La etiqueta viaja **solo** al `Intent` del servicio: el `PendingIntent` de la alarma **no** la
+     * lleva (no la necesita: el aviso de fin `1001` es generico y no cambia), de modo que el camino del
+     * respaldo con el proceso muerto sigue sin exponer nada nuevo.
      */
-    private fun schedule(at: Long) {
+    private fun schedule(at: Long, stepLabel: CookingStepLabel?) {
         val finishWallClockMillis = System.currentTimeMillis() + (at - SystemClock.elapsedRealtime())
         val pendingIntent = broadcastPendingIntent(finishWallClockMillis)
         runCatching {
@@ -106,7 +111,7 @@ class AndroidCookingAlarm(context: Context) : CookingAlarm {
         runCatching {
             ContextCompat.startForegroundService(
                 appContext,
-                CookingTimerService.intent(appContext, at, finishWallClockMillis),
+                CookingTimerService.intent(appContext, at, finishWallClockMillis, stepLabel),
             )
         }
     }

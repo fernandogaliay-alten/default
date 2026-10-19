@@ -15,6 +15,10 @@ import org.junit.Test
  * cancelar al Pausar/Reiniciar/cambiar de paso/salir, **dejar viva la alarma al llegar a cero** (es el
  * **respaldo** del aviso: el productor primario es el servicio) y **no** reprogramar en los latidos.
  *
+ * Desde `cooking-timer-notification-step-label` el comando `Schedule` transporta ademas la **etiqueta
+ * del paso** ([CookingStepLabel]) —la que pinta la notificacion persistente— sin cambiar el instante
+ * programado ni las demas reglas (`None`/`Cancel` no la llevan).
+ *
  * Logica pura sin Compose ni Android: el instante entra siempre por parametro (`nowMillis`), nunca se
  * lee el reloj. Mismo patron que `CookingTimerStateTest`.
  */
@@ -33,6 +37,77 @@ class CookingAlarmPolicyTest {
         )
 
         assertEquals(CookingAlarmCommand.Schedule(1_600_000L), comando)
+    }
+
+    @Test
+    fun la_etiqueta_del_paso_viaja_en_el_comando_schedule_sin_cambiar_el_instante() {
+        val inactivo = CookingTimerState.of(10)
+        val enMarcha = inactivo.start(inicio)
+        val etiqueta = CookingStepLabel("Paso 2 de 5", "Dorar el pollo")
+
+        val conEtiqueta = CookingAlarmPolicy.onTimerChange(
+            previous = inactivo,
+            next = enMarcha,
+            nowMillis = inicio,
+            stepLabel = etiqueta,
+        )
+        val sinEtiqueta = CookingAlarmPolicy.onTimerChange(inactivo, enMarcha, nowMillis = inicio)
+
+        assertEquals(CookingAlarmCommand.Schedule(1_600_000L, etiqueta), conEtiqueta)
+        assertEquals(
+            "Sin etiqueta el comando queda como antes de la feature",
+            CookingAlarmCommand.Schedule(1_600_000L),
+            sinEtiqueta,
+        )
+        assertEquals(
+            "El instante programado no depende de que haya etiqueta",
+            (sinEtiqueta as CookingAlarmCommand.Schedule).triggerAtMillis,
+            (conEtiqueta as CookingAlarmCommand.Schedule).triggerAtMillis,
+        )
+    }
+
+    @Test
+    fun el_rearme_de_una_reanudacion_transporta_la_etiqueta_del_paso_persistido() {
+        // Escenario 4: el rearme al reanudar (`IDLE -> RUNNING`) recorre el **mismo** camino que el
+        // gesto, asi que la etiqueta del paso persistido (el 3) viaja en el comando, no la del paso 1.
+        val persistido = CookingTimerState.of(10).start(0L).at(300_000L)
+        val etiqueta = CookingStepLabel("Paso 3 de 5", "Cocer la pasta")
+
+        val comando = CookingAlarmPolicy.onTimerChange(
+            previous = persistido.copy(status = CookingTimerStatus.IDLE),
+            next = persistido,
+            nowMillis = 700_000L,
+            stepLabel = etiqueta,
+        )
+
+        assertEquals(CookingAlarmCommand.Schedule(600_000L, etiqueta), comando)
+    }
+
+    @Test
+    fun las_reglas_que_no_programan_no_llevan_etiqueta() {
+        val enMarcha = CookingTimerState.of(10).start(inicio).at(inicio + 60_000L)
+        val etiqueta = CookingStepLabel("Paso 2 de 5", "Dorar el pollo")
+
+        assertEquals(
+            "Pausar cancela: el comando no habla del paso",
+            CookingAlarmCommand.Cancel,
+            CookingAlarmPolicy.onTimerChange(
+                enMarcha,
+                enMarcha.pause(inicio + 100_000L),
+                nowMillis = inicio + 100_000L,
+                stepLabel = etiqueta,
+            ),
+        )
+        assertEquals(
+            "Un latido intermedio no reprograma ni arrastra etiqueta",
+            CookingAlarmCommand.None,
+            CookingAlarmPolicy.onTimerChange(
+                enMarcha,
+                enMarcha.at(inicio + 61_000L),
+                nowMillis = inicio + 61_000L,
+                stepLabel = etiqueta,
+            ),
+        )
     }
 
     @Test
